@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b171d" />
+    <meta name="description" content="霧潮航線的單人卡牌對戰演習。分配能量、部署手牌，指揮船艦穿越霧海。" />
+    <title>霧潮航線</title>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="shell masthead-inner">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>霧潮航線</span></div>
+        <div class="masthead-actions">
+          <span id="connection" class="connection" data-state="offline" role="status">待命</span>
+          <button id="rules" class="quiet-button" type="button">作戰規則</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell game" aria-labelledby="page-title">
+      <div class="game-heading">
+        <div>
+          <h1 id="page-title">攔截演習</h1>
+          <p>調度手牌與能量，擊沉敵方巡弋艇。</p>
+        </div>
+        <dl class="readings">
+          <div><dt>回合</dt><dd id="turn">—</dd></div>
+          <div><dt>能量</dt><dd id="energy" data-testid="energy">—</dd></div>
+          <div><dt>牌庫</dt><dd id="deck">—</dd></div>
+        </dl>
+      </div>
+
+      <div class="operations">
+        <section id="board" class="board" aria-label="作戰海域">
+          <canvas id="surface" aria-hidden="true"></canvas>
+          <div class="board-bezel" aria-hidden="true"></div>
+          <div class="vessel vessel-opponent">
+            <span class="vessel-symbol" aria-hidden="true"></span>
+            <div class="vessel-meter">
+              <div class="vessel-row"><h2>敵方巡弋艇</h2><span id="opponent-hp" data-testid="opponent-hp">—</span></div>
+              <progress id="opponent-meter" aria-label="敵方巡弋艇船體" max="1" value="0"></progress>
+              <div id="opponent-shield" class="shield"></div>
+            </div>
+          </div>
+          <div class="board-center">
+            <div id="game-status" class="game-status" data-testid="game-status" data-status="idle">
+              <h2 id="status-title" tabindex="-1">演習待命</h2>
+              <p id="status-detail">部署指揮艦，開始你的第一個回合。</p>
+              <div class="status-actions">
+                <button id="start-match" data-testid="start-match" class="button primary" type="button">開始對局</button>
+                <button id="restart-match" data-testid="restart-match" class="button primary" type="button" hidden>再打一場</button>
+                <button id="verify-replay" data-testid="verify-replay" class="button secondary" type="button" hidden>驗證回放</button>
+              </div>
+              <p id="replay-result" data-testid="replay-result" class="replay-result" role="status"></p>
+            </div>
+            <div id="drop-zone" class="drop-zone" data-testid="drop-zone" hidden>
+              <span class="drop-mark" aria-hidden="true"></span>
+              <span>部署卡牌</span>
+            </div>
+          </div>
+          <div class="vessel vessel-player">
+            <span class="vessel-symbol" aria-hidden="true"></span>
+            <div class="vessel-meter">
+              <div class="vessel-row"><h2>你的指揮艦</h2><span id="player-hp" data-testid="player-hp">—</span></div>
+              <progress id="player-meter" aria-label="你的指揮艦船體" max="1" value="0"></progress>
+              <div id="player-shield" class="shield"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="activity" aria-labelledby="log-title">
+          <h2 id="log-title">對局紀錄</h2>
+          <div id="activity-feed" class="activity-feed" tabindex="0" aria-label="對局紀錄">
+            <p id="log-empty">開始對局後會顯示出牌和傷害紀錄。</p>
+            <ol id="events" data-testid="events" aria-label="最新事件優先"></ol>
+          </div>
+        </aside>
+      </div>
+
+      <section class="hand-panel" aria-labelledby="hand-title">
+        <div class="hand-heading">
+          <div><h2 id="hand-title">手牌</h2><p id="selection-note">開局後會抽取手牌。</p></div>
+          <div class="hand-actions">
+            <button id="play-card" class="button primary" data-testid="play-card" type="button" disabled>部署所選卡牌</button>
+            <button id="end-turn" class="button secondary" data-testid="end-turn" type="button" disabled>結束回合</button>
+          </div>
+        </div>
+        <p id="error-note" class="error-note" role="alert" hidden></p>
+        <div id="hand" class="hand" data-testid="hand"></div>
+      </section>
+      <p id="announcement" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+    </main>
+
+    <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
+      <form method="dialog">
+        <div class="rules-heading"><h2 id="rules-title">作戰規則</h2><button class="quiet-button" type="submit">關閉</button></div>
+        <ol>
+          <li>每回合補充能量與手牌。卡片左上顯示部署所需的能量。</li>
+          <li>點選手牌後按「部署所選卡牌」，或直接把手牌拖到作戰海域。</li>
+          <li>結束回合時會棄掉手牌，接著敵方採取行動。船體歸零即落敗。</li>
+        </ol>
+      </form>
+    </dialog>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

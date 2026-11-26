@@ -1,0 +1,1156 @@
+{
+  "seed": 2026,
+  "outcome": [
+    "won",
+    "lost"
+  ],
+  "trace": [
+    {
+      "tick": 0,
+      "turn": 1,
+      "phase": "start_turn",
+      "hp": [
+        12,
+        10
+      ]
+    },
+    {
+      "tick": 0,
+      "turn": 1,
+      "phase": "draw",
+      "hp": [
+        12,
+        10
+      ],
+      "cards": [
+        [
+          3,
+          55,
+          14,
+          28,
+          33
+        ],
+        [
+          8,
+          53,
+          52,
+          48,
+          21
+        ]
+      ]
+    },
+    {
+      "tick": 0,
+      "turn": 1,
+      "phase": "draw_event",
+      "hp": [
+        12,
+        10
+      ],
+      "cards": [
+        [
+          458
+        ],
+        [
+          64
+        ]
+      ]
+    },
+    {
+      "tick": 0,
+      "turn": 1,
+      "phase": "move_input",
+      "hp": [
+        12,
+        10
+      ]
+    },
+    {
+      "tick": 132,
+      "turn": 1,
+      "phase": "movement_resolved",
+      "hp": [
+        12,
+        10
+      ],
+      "initiative": [
+        1,
+        0
+      ],
+      "distance": 1
+    },
+    {
+      "tick": 132,
+      "turn": 1,
+      "phase": "cpu_attack_input",
+      "hp": [
+        12,
+        10
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "player_defence_input",
+      "hp": [
+        12,
+        10
+      ],
+      "submitted": [
+        [
+          3,
+          false
+        ],
+        [
+          33,
+          false
+        ],
+        [
+          458,
+          true
+        ]
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "battle_points",
+      "hp": [
+        12,
+        10
+      ],
+      "points": [
+        6,
+        7
+      ],
+      "tables": [
+        [
+          3,
+          33,
+          458
+        ],
+        [
+          48,
+          64
+        ]
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "dice",
+      "hp": [
+        12,
+        10
+      ],
+      "dice": [
+        [
+          4,
+          3,
+          3,
+          2,
+          1,
+          5,
+          5
+        ],
+        [
+          4,
+          1,
+          0,
+          3,
+          5,
+          1
+        ]
+      ],
+      "damage": 1
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "damage_resolved",
+      "hp": [
+        11,
+        10
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "initiative_changed",
+      "hp": [
+        11,
+        10
+      ],
+      "initiative": [
+        0,
+        1
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "player_attack_input",
+      "hp": [
+        11,
+        10
+      ],
+      "submitted": [
+        [
+          28,
+          true
+        ]
+      ]
+    },
+    {
+      "tick": 183,
+      "turn": 1,
+      "phase": "cpu_defence_input",
+      "hp": [
+        11,
+        10
+      ]
+    },
+    {
+      "tick": 231,
+      "turn": 1,
+      "phase": "battle_points",
+      "hp": [
+        11,
+        10
+      ],
+      "points": [
+        10,
+        4
+      ],
+      "tables": [
+        [
+          28
+        ],
+        [
+          21
+        ]
+      ]
+    },
+    {
+      "tick": 231,
+      "turn": 1,
+      "phase": "dice",
+      "hp": [
+        11,
+        10
+      ],
+      "dice": [
+        [
+          5,
+          3,
+          5,
+          1,
+          2,
+          5,
+          1,
+          5,
+          3,
+          3
+        ],
+        [
+          0,
+          3,
+          1,
+          4
+        ]
+      ],
+      "damage": 3
+    },
+    {
+      "tick": 231,
+      "turn": 1,
+      "phase": "damage_resolved",
+      "hp": [
+        11,
+        7
+      ]
+    },
+    {
+      "tick": 231,
+      "turn": 1,
+      "phase": "finish_turn",
+      "hp": [
+        11,
+        7
+      ]
+    },
+    {
+      "tick": 234,
+      "turn": 2,
+      "phase": "start_turn",
+      "hp": [
+        11,
+        7
+      ]
+    },
+    {
+      "tick": 234,
+      "turn": 2,
+      "phase": "draw",
+      "hp": [
+        11,
+        7
+      ],
+      "cards": [
+        [
+          34,
+          39,
+          26
+        ],
+        [
+          5,
+          18,
+          10,
+          16,
+          30
+        ]
+      ]
+    },
+    {
+      "tick": 234,
+      "turn": 2,
+      "phase": "draw_event",
+      "hp": [
+        11,
+        7
+      ],
+      "cards": [
+        [
+          259
+        ],
+        [
+          262
+        ]
+      ]
+    },
+    {
+      "tick": 234,
+      "turn": 2,
+      "phase": "move_input",
+      "hp": [
+        11,
+        7
+      ]
+    },
+    {
+      "tick": 363,
+      "turn": 2,
+      "phase": "movement_resolved",
+      "hp": [
+        11,
+        7
+      ],
+      "initiative": [
+        1,
+        0
+      ],
+      "distance": 3
+    },
+    {
+      "tick": 363,
+      "turn": 2,
+      "phase": "cpu_attack_input",
+      "hp": [
+        11,
+        7
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "player_defence_input",
+      "hp": [
+        11,
+        7
+      ],
+      "submitted": [
+        [
+          34,
+          false
+        ]
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "battle_points",
+      "hp": [
+        11,
+        7
+      ],
+      "points": [
+        5,
+        10
+      ],
+      "tables": [
+        [
+          34
+        ],
+        [
+          18,
+          10,
+          16,
+          262
+        ]
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "dice",
+      "hp": [
+        11,
+        7
+      ],
+      "dice": [
+        [
+          4,
+          4,
+          2,
+          0,
+          4,
+          0,
+          4,
+          0,
+          0,
+          1
+        ],
+        [
+          3,
+          1,
+          1,
+          4,
+          2
+        ]
+      ],
+      "damage": 3
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "damage_resolved",
+      "hp": [
+        8,
+        7
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "initiative_changed",
+      "hp": [
+        8,
+        7
+      ],
+      "initiative": [
+        0,
+        1
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "player_attack_input",
+      "hp": [
+        8,
+        7
+      ],
+      "submitted": [
+        [
+          55,
+          true
+        ],
+        [
+          14,
+          false
+        ],
+        [
+          39,
+          true
+        ],
+        [
+          259,
+          true
+        ]
+      ]
+    },
+    {
+      "tick": 411,
+      "turn": 2,
+      "phase": "cpu_defence_input",
+      "hp": [
+        8,
+        7
+      ]
+    },
+    {
+      "tick": 462,
+      "turn": 2,
+      "phase": "battle_points",
+      "hp": [
+        8,
+        7
+      ],
+      "points": [
+        15,
+        6
+      ],
+      "tables": [
+        [
+          55,
+          14,
+          39,
+          259
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "tick": 462,
+      "turn": 2,
+      "phase": "dice",
+      "hp": [
+        8,
+        7
+      ],
+      "dice": [
+        [
+          1,
+          5,
+          4,
+          2,
+          4,
+          5,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0,
+          0,
+          2
+        ],
+        [
+          3,
+          5,
+          3,
+          0,
+          5,
+          2
+        ]
+      ],
+      "damage": 2
+    },
+    {
+      "tick": 462,
+      "turn": 2,
+      "phase": "damage_resolved",
+      "hp": [
+        8,
+        5
+      ]
+    },
+    {
+      "tick": 462,
+      "turn": 2,
+      "phase": "finish_turn",
+      "hp": [
+        8,
+        5
+      ]
+    },
+    {
+      "tick": 465,
+      "turn": 3,
+      "phase": "start_turn",
+      "hp": [
+        8,
+        5
+      ]
+    },
+    {
+      "tick": 465,
+      "turn": 3,
+      "phase": "draw",
+      "hp": [
+        8,
+        5
+      ],
+      "cards": [
+        [
+          49,
+          32,
+          40,
+          7
+        ],
+        [
+          1,
+          41,
+          4,
+          44,
+          2
+        ]
+      ]
+    },
+    {
+      "tick": 465,
+      "turn": 3,
+      "phase": "draw_event",
+      "hp": [
+        8,
+        5
+      ],
+      "cards": [
+        [
+          261
+        ],
+        [
+          263
+        ]
+      ]
+    },
+    {
+      "tick": 465,
+      "turn": 3,
+      "phase": "move_input",
+      "hp": [
+        8,
+        5
+      ]
+    },
+    {
+      "tick": 591,
+      "turn": 3,
+      "phase": "movement_resolved",
+      "hp": [
+        8,
+        6
+      ],
+      "initiative": [
+        1,
+        0
+      ],
+      "distance": 3
+    },
+    {
+      "tick": 591,
+      "turn": 3,
+      "phase": "cpu_attack_input",
+      "hp": [
+        8,
+        6
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "player_defence_input",
+      "hp": [
+        8,
+        6
+      ],
+      "submitted": [
+        [
+          32,
+          false
+        ]
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "battle_points",
+      "hp": [
+        8,
+        6
+      ],
+      "points": [
+        4,
+        10
+      ],
+      "tables": [
+        [
+          32
+        ],
+        [
+          44,
+          263
+        ]
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "dice",
+      "hp": [
+        8,
+        6
+      ],
+      "dice": [
+        [
+          3,
+          2,
+          0,
+          1,
+          4,
+          0,
+          0,
+          1,
+          1,
+          1
+        ],
+        [
+          5,
+          4,
+          4,
+          3
+        ]
+      ],
+      "damage": -2
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "damage_resolved",
+      "hp": [
+        8,
+        6
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "initiative_changed",
+      "hp": [
+        8,
+        6
+      ],
+      "initiative": [
+        0,
+        1
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "player_attack_input",
+      "hp": [
+        8,
+        6
+      ],
+      "submitted": [
+        [
+          49,
+          false
+        ],
+        [
+          40,
+          true
+        ],
+        [
+          7,
+          true
+        ],
+        [
+          261,
+          true
+        ]
+      ]
+    },
+    {
+      "tick": 642,
+      "turn": 3,
+      "phase": "cpu_defence_input",
+      "hp": [
+        8,
+        6
+      ]
+    },
+    {
+      "tick": 693,
+      "turn": 3,
+      "phase": "battle_points",
+      "hp": [
+        8,
+        6
+      ],
+      "points": [
+        12,
+        7
+      ],
+      "tables": [
+        [
+          49,
+          40,
+          7,
+          261
+        ],
+        [
+          1,
+          4,
+          2
+        ]
+      ]
+    },
+    {
+      "tick": 693,
+      "turn": 3,
+      "phase": "dice",
+      "hp": [
+        8,
+        6
+      ],
+      "dice": [
+        [
+          5,
+          5,
+          4,
+          3,
+          4,
+          2,
+          1,
+          1,
+          1,
+          4,
+          5,
+          0
+        ],
+        [
+          3,
+          0,
+          4,
+          4,
+          4,
+          3,
+          1
+        ]
+      ],
+      "damage": 3
+    },
+    {
+      "tick": 693,
+      "turn": 3,
+      "phase": "damage_resolved",
+      "hp": [
+        8,
+        3
+      ]
+    },
+    {
+      "tick": 693,
+      "turn": 3,
+      "phase": "finish_turn",
+      "hp": [
+        8,
+        3
+      ]
+    },
+    {
+      "tick": 696,
+      "turn": 4,
+      "phase": "start_turn",
+      "hp": [
+        8,
+        3
+      ]
+    },
+    {
+      "tick": 696,
+      "turn": 4,
+      "phase": "draw",
+      "hp": [
+        8,
+        3
+      ],
+      "cards": [
+        [
+          6,
+          42,
+          25,
+          43
+        ],
+        [
+          20,
+          57,
+          51,
+          24
+        ]
+      ]
+    },
+    {
+      "tick": 696,
+      "turn": 4,
+      "phase": "draw_event",
+      "hp": [
+        8,
+        3
+      ],
+      "cards": [
+        [
+          457
+        ],
+        [
+          65
+        ]
+      ]
+    },
+    {
+      "tick": 696,
+      "turn": 4,
+      "phase": "move_input",
+      "hp": [
+        8,
+        3
+      ]
+    },
+    {
+      "tick": 822,
+      "turn": 4,
+      "phase": "movement_resolved",
+      "hp": [
+        8,
+        3
+      ],
+      "initiative": [
+        1,
+        0
+      ],
+      "distance": 1
+    },
+    {
+      "tick": 822,
+      "turn": 4,
+      "phase": "cpu_attack_input",
+      "hp": [
+        8,
+        3
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "player_defence_input",
+      "hp": [
+        8,
+        3
+      ],
+      "submitted": [
+        [
+          25,
+          true
+        ],
+        [
+          457,
+          true
+        ]
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "battle_points",
+      "hp": [
+        8,
+        3
+      ],
+      "points": [
+        7,
+        12
+      ],
+      "tables": [
+        [
+          25,
+          457
+        ],
+        [
+          41,
+          20,
+          65
+        ]
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "dice",
+      "hp": [
+        8,
+        3
+      ],
+      "dice": [
+        [
+          1,
+          0,
+          3,
+          5,
+          3,
+          4,
+          1,
+          2,
+          0,
+          5,
+          4,
+          4
+        ],
+        [
+          5,
+          3,
+          3,
+          2,
+          5,
+          1,
+          1
+        ]
+      ],
+      "damage": 3
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "damage_resolved",
+      "hp": [
+        5,
+        3
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "initiative_changed",
+      "hp": [
+        5,
+        3
+      ],
+      "initiative": [
+        0,
+        1
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "player_attack_input",
+      "hp": [
+        5,
+        3
+      ],
+      "submitted": [
+        [
+          26,
+          true
+        ],
+        [
+          43,
+          false
+        ]
+      ]
+    },
+    {
+      "tick": 873,
+      "turn": 4,
+      "phase": "cpu_defence_input",
+      "hp": [
+        5,
+        3
+      ]
+    },
+    {
+      "tick": 921,
+      "turn": 4,
+      "phase": "battle_points",
+      "hp": [
+        5,
+        3
+      ],
+      "points": [
+        14,
+        8
+      ],
+      "tables": [
+        [
+          26,
+          43
+        ],
+        [
+          57
+        ]
+      ]
+    },
+    {
+      "tick": 921,
+      "turn": 4,
+      "phase": "dice",
+      "hp": [
+        5,
+        3
+      ],
+      "dice": [
+        [
+          2,
+          4,
+          1,
+          3,
+          0,
+          5,
+          5,
+          1,
+          0,
+          3,
+          5,
+          0,
+          4,
+          0
+        ],
+        [
+          4,
+          0,
+          3,
+          0,
+          5,
+          1,
+          3,
+          3
+        ]
+      ],
+      "damage": 3
+    },
+    {
+      "tick": 921,
+      "turn": 4,
+      "phase": "damage_resolved",
+      "hp": [
+        5,
+        0
+      ]
+    },
+    {
+      "tick": 921,
+      "turn": 4,
+      "phase": "finished",
+      "hp": [
+        5,
+        0
+      ],
+      "outcome": [
+        "won",
+        "lost"
+      ],
+      "remaining_hp": [
+        [
+          5
+        ],
+        [
+          0
+        ]
+      ]
+    }
+  ]
+}

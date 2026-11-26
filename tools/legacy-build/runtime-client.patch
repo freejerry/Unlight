@@ -1,0 +1,8 @@
+--- lib/log.as
++++ lib/log.as
+@@ -52,4 +52,5 @@
+         private static function rec(level:int, type:String, ... args):void {
++            if (!ExternalInterface.available) return;
+             var inspect:Function = function(arg:*, bracket:Boolean = true):String {
+                 var className:String = getQualifiedClassName(arg);
+                 var str:String;

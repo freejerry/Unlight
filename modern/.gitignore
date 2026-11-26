@@ -1,0 +1,5 @@
+/target/
+/.npm-cache/
+/web/dist/
+/web/node_modules/
+/web/public/naval_engine.wasm

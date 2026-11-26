@@ -1,0 +1,21 @@
+--- server/src/net/crypt.rb
++++ server/src/net/crypt.rb
+@@ -31,7 +31,7 @@ module Unlight
+           des_a[i]=a[i]^s[(i)%slen]
+           i+=1
+         end
+-        des_a
++        des_a.pack("C*")
+       end
+
+       def encrypt2(data)
+
+--- server/src/rule/multi_duel.rb
++++ server/src/rule/multi_duel.rb
+@@ -92,5 +92,5 @@
+      @avatars = [pl, foe]                                                # アバター
+-     @avatar_names = [pl.name, foe.name]                                 # アバター名
++     @avatar_names = [pl.name.dup, foe.name.dup]                                 # アバター名
+      @entrants = [@alpha, @beta]                                         #対戦者全員
+      @initi = [0,1]                                                     # イニシアチブの結果
+      @event_deck1,@event_deck2 = EventDeck.create_decks(context,event_cards1,event_cards2,self) # イベントカードデッキを作る

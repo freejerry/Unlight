@@ -1,0 +1,9 @@
+{
+  "name": "fogtide-cloud-preview",
+  "private": true,
+  "scripts": {
+    "build": "bash ./build.sh",
+    "dev": "bash ./serve.sh",
+    "test:integration": "node ./qa/smoke.mjs"
+  }
+}
