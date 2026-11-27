@@ -67,6 +67,9 @@ const questLandUi = {
   slot: document.querySelector('#session-quest-land-slot'),
   progress: document.querySelector('#session-quest-land-progress'),
   finish: document.querySelector('#session-quest-land-finish'),
+  reward: document.querySelector('#session-quest-land-reward'),
+  rewardGems: document.querySelector('#session-quest-land-reward-gems'),
+  gemBalance: document.querySelector('#session-quest-land-gem-balance'),
   encounter: document.querySelector('#session-quest-land-encounter'),
   battleFields: document.querySelectorAll('#session-quest-land-duel [data-field]'),
 };
@@ -245,6 +248,12 @@ const questLandRejected = {
   15: '牌組裡沒有角色卡',
   43: '無法進入此地區',
 };
+const questLandConfirmations = {
+  encounter: '伺服器已確認進入地形與戰鬥開場。其他任務服務操作已暫停。',
+  empty: '伺服器已確認通過這格。本格沒有戰鬥、寶箱或事件。',
+  treasure: '伺服器已確認寶箱的 Gem 獎勵。',
+  ready: '伺服器已確認進入地形，並回傳任務進度或結算。其他任務服務操作已暫停。',
+};
 const questBattlePhases = {
   encounter: ['待就緒', '可向伺服器送出就緒。'],
   preparing: ['補牌階段', '等待伺服器補牌並開放移動。'],
@@ -377,7 +386,7 @@ function clearLiveQuestResults(view) {
 }
 
 function questLandLocked() {
-  return ['encounter', 'empty', 'ready', 'uncertain', 'lost'].includes(questLandUi.status.dataset.state);
+  return ['encounter', 'empty', 'treasure', 'ready', 'uncertain', 'lost'].includes(questLandUi.status.dataset.state);
 }
 
 function updateLiveQuestButtons() {
@@ -1319,6 +1328,7 @@ function clearQuestLand() {
   for (const field of [questLandUi.name, questLandUi.inventoryId, questLandUi.id, questLandUi.slot, ...questLandUi.battleFields]) {
     field.textContent = '';
   }
+  displayQuestLandReward(null);
   showQuestActionStatus(questLandUi.status, 'idle');
 }
 
@@ -1397,14 +1407,25 @@ function displayQuestLandProgress(progress) {
   questLandUi.progress.lastElementChild.textContent = progress ?? '';
 }
 
-function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish, emptyTerrain = false }) {
+function displayQuestLandReward(receipt) {
+  const { reward, rewardGems, gemBalance } = questLandUi;
+  reward.hidden = !receipt;
+  rewardGems.textContent = receipt?.amount ?? '';
+  gemBalance.textContent = receipt?.balance ?? '';
+  if (receipt) reward.dataset.treasureId = String(receipt.treasureId);
+  else delete reward.dataset.treasureId;
+}
+
+function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish, emptyTerrain = false, fixedGemTreasure = null }) {
   const battleFields = encounter?.duel ? { ...encounter, ...encounter.duel } : null;
   const battleValues = battleFields && [...questLandUi.battleFields].map(field => battleFields[field.dataset.field]);
   const validBattle = battleValues?.every(value => typeof value === 'boolean' || Number.isSafeInteger(value)
     || (Array.isArray(value) && value.every(Number.isSafeInteger)));
+  const nonbattle = emptyTerrain || fixedGemTreasure;
   if (slot !== land.slot || (encounter && !validBattle) || (!encounter && progress == null && !finish)
       || (progress != null && !Number.isSafeInteger(progress))
-      || (emptyTerrain && (land.emptyTerrain !== true || encounter || finish || (progress & (1 << slot)) === 0))
+      || (nonbattle && (encounter || finish || (progress & (1 << slot)) === 0))
+      || (emptyTerrain && land.emptyTerrain !== true) || (fixedGemTreasure && (!land.fixedGemTreasure || emptyTerrain))
       || (finish && (finish.inventoryId !== inventoryId || !Number.isSafeInteger(finish.result)))) {
     throw new SessionError('quest-land-uncertain');
   }
@@ -1417,8 +1438,10 @@ function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish
   questLandUi.result.dataset.inventoryId = String(inventoryId);
   questLandUi.result.dataset.landId = String(land.id);
   questLandUi.result.dataset.slot = String(slot);
-  questLandUi.result.dataset.kind = emptyTerrain ? 'empty' : encounter ? 'encounter' : finish ? 'finished' : 'progress';
+  const state = encounter ? 'encounter' : fixedGemTreasure ? 'treasure' : emptyTerrain ? 'empty' : 'ready';
+  questLandUi.result.dataset.kind = state === 'ready' ? (finish ? 'finished' : 'progress') : state;
   displayQuestLandProgress(progress);
+  displayQuestLandReward(fixedGemTreasure);
   questLandUi.finish.hidden = !finish;
   questLandUi.finish.lastElementChild.textContent = finish?.result ?? '';
   if (battleValues) {
@@ -1429,13 +1452,7 @@ function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish
   }
   questLandUi.encounter.hidden = !encounter;
   questLandUi.result.hidden = false;
-  if (emptyTerrain) {
-    showQuestActionStatus(questLandUi.status, 'empty', '伺服器已確認通過這格。本格沒有戰鬥、寶箱或事件。');
-  } else {
-    showQuestActionStatus(questLandUi.status, encounter ? 'encounter' : 'ready', encounter
-      ? '伺服器已確認進入地形與戰鬥開場。其他任務服務操作已暫停。'
-      : '伺服器已確認進入地形，並回傳任務進度或結算。其他任務服務操作已暫停。');
-  }
+  showQuestActionStatus(questLandUi.status, state, questLandConfirmations[state]);
 }
 
 function openQuestBattle(session, encounter) {
@@ -1522,16 +1539,23 @@ async function enterQuestLand(row, inventoryId, land, button) {
   try {
     const options = { signal: controller.signal };
     if (land.emptyTerrain === true) options.emptyTerrain = true;
+    else if (land.fixedGemTreasure) options.fixedGemTreasure = true;
     const result = await session.enterQuestLand(inventoryId, land.slot, options);
     if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
     const adventure = session.questAdventure;
-    if (options.emptyTerrain && (result?.emptyTerrain !== true || adventure?.emptyTerrain !== true
-        || adventure.inventoryId !== inventoryId || adventure.slot !== land.slot || adventure.progress !== result.progress)) {
+    const sameProgress = adventure?.inventoryId === inventoryId && adventure.slot === land.slot
+      && adventure.progress === result?.progress;
+    if (options.emptyTerrain && (!sameProgress || result?.emptyTerrain !== true || adventure.emptyTerrain !== true)) {
+      throw new SessionError('quest-land-uncertain');
+    }
+    if (options.fixedGemTreasure && (!sameProgress || !matchesQuestGemReward(result?.fixedGemTreasure,
+      land.fixedGemTreasure, adventure.fixedGemTreasure, session.initialData.avatar))) {
       throw new SessionError('quest-land-uncertain');
     }
     displayQuestLand(inventoryId, land, result);
     openQuestBattle(session, result.encounter);
-    if (result.emptyTerrain && adventure.state === 'between-lands') displayQuestNextLands(adventure);
+    if (result.fixedGemTreasure) displayBootstrap(session.initialData);
+    if ((result.emptyTerrain || result.fixedGemTreasure) && adventure.state === 'between-lands') displayQuestNextLands(adventure);
     if (result.finish) await reconcileFinishedQuest(inventoryId, Number(row.dataset.questId), session, controller.signal);
     else watchQuestLandConnection(session);
   } catch (error) {
@@ -1553,6 +1577,14 @@ async function enterQuestLand(row, inventoryId, land, button) {
       questLandUi.status.focus();
     }
   }
+}
+
+function matchesQuestGemReward(receipt, source, confirmed, avatar) {
+  return Number.isSafeInteger(receipt?.treasureId) && receipt.treasureId === source.treasureId
+    && Number.isSafeInteger(receipt.amount) && receipt.amount > 0 && receipt.amount === source.value
+    && Number.isSafeInteger(receipt.balance) && receipt.balance >= 0
+    && confirmed?.treasureId === receipt.treasureId && confirmed.amount === receipt.amount
+    && confirmed.balance === receipt.balance && avatar.gems === receipt.balance;
 }
 
 async function enterNextQuestLand(slot, button) {
@@ -1954,10 +1986,12 @@ function supportedFirstQuestLand({ firstLand: land, positions, mapId }) {
   if (!Number.isInteger(land?.slot) || land.slot < 0 || land.slot > 2 || !Number.isSafeInteger(land.id) || land.id <= 0
       || typeof land.name !== 'string' || !land.name.trim()) return null;
   if (Number.isSafeInteger(land.enemyId) && land.enemyId > 0) return land;
-  if (land.emptyTerrain !== true || !Number.isInteger(mapId) || mapId < 1 || mapId > NORMAL_QUEST_MAP_COUNT
+  if (!Number.isInteger(mapId) || mapId < 1 || mapId > NORMAL_QUEST_MAP_COUNT
       || !Array.isArray(positions)) return null;
   const start = positions.find(position => position.slot === land.slot && position.id === land.id);
-  if (start?.emptyTerrain !== true || !Array.isArray(start.nextSlots)) return null;
+  const empty = land.emptyTerrain === true && start?.emptyTerrain === true;
+  const treasure = land.fixedGemTreasure && start?.fixedGemTreasure?.treasureId === land.fixedGemTreasure.treasureId;
+  if ((!empty && !treasure) || !Array.isArray(start?.nextSlots)) return null;
   return positions.some(position => start.nextSlots.includes(position.slot)
     && Number.isSafeInteger(position.enemyId) && position.enemyId > 0) ? land : null;
 }

@@ -37,6 +37,7 @@ export const QUEST_NEXT_LAND_REPLY = 128;
 export const QUEST_PROGRESS_REPLY = 19;
 export const QUEST_DECK_STATE_REPLY = 20;
 export const QUEST_FINISH_REPLY = 24;
+export const QUEST_TREASURE_REPLY = 25;
 export const QUEST_ENCOUNTER_REPLY = 37;
 export const QUEST_DUEL_START_REPLY = 40;
 export const QUEST_DUEL_FINISH_REPLY = 41;
@@ -294,6 +295,16 @@ export function readQuestFinishReply(reply) {
   reply.done();
   if (inventoryId <= 0 || result < 0 || result > 6) throw new Error('Invalid quest finish reply.');
   return { inventoryId, result };
+}
+
+export function readQuestTreasureReply(reply) {
+  if (reply.command !== QUEST_TREASURE_REPLY) throw new Error('Unexpected quest treasure reply.');
+  const type = reply.byte();
+  const slotType = reply.int();
+  const value = reply.int();
+  reply.done();
+  if (type < 0 || type > 7) throw new Error('Invalid quest treasure reply.');
+  return { type, slotType, value };
 }
 
 export function readQuestEncounterReply(reply) {

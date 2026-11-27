@@ -171,7 +171,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-land-option .quest-land-name { display: block; }
 .quest-land-record-name { margin-top: .45rem; color: #203b46; font-weight: 680; overflow-wrap: anywhere; }
 .quest-land-record .quest-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"], [data-state="lost"], [data-state="closed"]) { color: var(--failure); }
-.quest-land-status[data-state="empty"] {
+.quest-land-status:is([data-state="empty"], [data-state="treasure"]) {
   margin-top: .45rem;
   padding: .5rem .65rem;
   border-inline-start: 3px solid var(--native-action);
@@ -182,6 +182,9 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-land-record .quest-status:focus { outline: 2px solid #007f69; outline-offset: 2px; }
 .quest-land-record .quest-original-text { margin-top: .2rem; }
 .quest-land-metadata { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); margin-top: .5rem; }
+.quest-land-reward { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: .55rem; }
+.quest-land-reward > div { border-color: var(--native-edge); background: var(--native-tint); }
+.quest-land-reward dd { color: var(--native-action); }
 .quest-land-battle h5, .quest-first-turn h5, .quest-settlement h5 { margin: .65rem 0 0; color: #203b46; font-size: .94rem; }
 .quest-first-turn { margin-top: .8rem; }
 .quest-first-turn .quest-status:empty { margin-top: 0; }

@@ -8,7 +8,7 @@ import {
   QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
   QUEST_START_REQUEST, QUEST_DELETED_REPLY,
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
-  QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_FINISH_REPLY,
+  QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_FINISH_REPLY, QUEST_TREASURE_REPLY,
   QUEST_READY_REQUEST, QUEST_DIRECTION_REQUEST, QUEST_MOVE_COMMIT_REQUEST, QUEST_TURN_REPLY,
   QUEST_MOVE_CARD_ADD_REQUEST, QUEST_MOVE_CARD_REMOVE_REQUEST, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
   QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
@@ -27,7 +27,7 @@ import {
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
-  readQuestProgressReply, readQuestDeckStateReply, readQuestFinishReply,
+  readQuestProgressReply, readQuestDeckStateReply, readQuestFinishReply, readQuestTreasureReply,
   readQuestTurnReply, readQuestRefillReply, readQuestMovePhaseReply,
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
@@ -47,6 +47,7 @@ const QUEST_IN_PROGRESS = 2;
 const QUEST_PENDING = 4;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const QUEST_LAND_SLOTS = 15;
+const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
 const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
@@ -603,19 +604,23 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
 }
 
 async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter,
-  { emptyTerrain = false } = {}) {
+  { emptyTerrain = false, fixedGemTreasure = null } = {}) {
+  const peaceful = emptyTerrain || fixedGemTreasure !== null;
   let arrived = false;
   let encounter = null;
   let progress = null;
   let finish = null;
   let deleted = false;
   let invalid = false;
+  let gemBalance = null;
+  let treasure = null;
   let unsubscribe;
   const notification = new Promise((resolve, reject) => {
     unsubscribe = socket.observe([
       QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
       QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY,
-      ...(emptyTerrain ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
+      ...(peaceful ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
+      ...(fixedGemTreasure ? [QUEST_GEMS_REPLY, QUEST_TREASURE_REPLY] : []),
     ], (reply) => {
       if (invalid) return;
       try {
@@ -626,7 +631,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             arrived = true;
             break;
           case QUEST_ENCOUNTER_REPLY:
-            if (emptyTerrain || !arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
+            if (peaceful || !arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
             encounter = readQuestEncounterReply(reply);
             break;
           case QUEST_DUEL_START_REPLY: {
@@ -644,16 +649,33 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             if (!arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
               throw new SessionError('protocol');
             }
-            if (emptyTerrain && (progress !== null || update.progress !== (1 << slot))) {
+            if (peaceful && (progress !== null || update.progress !== (1 << slot))) {
               throw new SessionError('protocol');
             }
             progress = update.progress;
-            resolve(null); // The original callback may still settle this quest.
+            if (!fixedGemTreasure) resolve(null); // The original callback may still settle this quest.
+            break;
+          }
+          case QUEST_GEMS_REPLY: {
+            const { value } = readQuestSettlementValueReply(reply);
+            if (progress === null || gemBalance !== null || value < fixedGemTreasure.value) throw new SessionError('protocol');
+            gemBalance = value;
+            break;
+          }
+          case QUEST_TREASURE_REPLY: {
+            const { type, slotType, value } = readQuestTreasureReply(reply);
+            // SC25 has no inventory ID and belongs to this one outstanding, matched land entry.
+            if (gemBalance === null || treasure || type !== fixedGemTreasure.type
+                || slotType !== fixedGemTreasure.slotType || value !== fixedGemTreasure.value) {
+              throw new SessionError('protocol');
+            }
+            treasure = { treasureId: fixedGemTreasure.treasureId, amount: value, balance: gemBalance };
+            resolve(null);
             break;
           }
           case QUEST_DELETED_REPLY:
             if (readQuestDeletedReply(reply) !== inventoryId) break;
-            if (encounter || (emptyTerrain && arrived)) throw new SessionError('protocol');
+            if (encounter || (peaceful && arrived)) throw new SessionError('protocol');
             deleted = true;
             if (!arrived) {
               unsubscribe();
@@ -663,7 +685,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           case QUEST_FINISH_REPLY: {
             const settled = readQuestFinishReply(reply);
             if (settled.inventoryId !== inventoryId) break;
-            if (emptyTerrain || !arrived || encounter || !deleted || finish) throw new SessionError('protocol');
+            if (peaceful || !arrived || encounter || !deleted || finish) throw new SessionError('protocol');
             finish = settled;
             resolve(null);
             break;
@@ -695,10 +717,13 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
     const result = await bounded(Promise.race([notification, interrupted]), signal);
     if (result) return result;
 
-    // An authored empty land must also reject a contradictory frame coalesced with its Pong.
-    await finishQuestObservation(socket, signal, emptyTerrain ? undefined : unsubscribe);
+    // Preserve authored land observation through the Pong's chunk to catch contradictions.
+    await finishQuestObservation(socket, signal, peaceful ? undefined : unsubscribe);
     if (invalid || (deleted && !finish)) throw new SessionError('protocol');
-    return { slot, encounter: null, progress, finish, ...(emptyTerrain ? { emptyTerrain: true } : {}) };
+    return {
+      slot, encounter: null, progress, finish,
+      ...(emptyTerrain ? { emptyTerrain: true } : {}), ...(treasure ? { fixedGemTreasure: treasure } : {}),
+    };
   } finally {
     unsubscribe();
   }
@@ -731,18 +756,29 @@ async function readQuestRoute(questId, signal) {
   const ordinaryMap = Number.isInteger(mapId) && mapId >= 1 && mapId <= MAX_QUEST_MAP_ID;
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
-  for (const { slot, id, name, caption, enemyId, emptyTerrain, nextSlots } of positions) {
+  for (const { slot, id, name, caption, enemyId, emptyTerrain, fixedGemTreasure, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
           || Math.floor(next / 3) !== Math.floor(slot / 3) + 1)) return null;
     nodes.set(slot, {
       slot, id, name, caption, enemyId: validQuestCardId(enemyId) ? enemyId : null,
-      emptyTerrain: ordinaryMap && emptyTerrain === true && enemyId === 0, nextSlots,
+      emptyTerrain: ordinaryMap && emptyTerrain === true && enemyId === 0,
+      fixedGemTreasure: ordinaryMap && emptyTerrain === false && enemyId === 0
+        ? verifiedFixedGemTreasure(fixedGemTreasure) : null,
+      nextSlots,
     });
   }
   if (positions.some(({ nextSlots }) => nextSlots.some((slot) => !nodes.has(slot)))) return null;
   return nodes;
+}
+
+function verifiedFixedGemTreasure(treasure) {
+  if (!treasure || typeof treasure !== 'object') return null;
+  const { treasureId, type, slotType, value } = treasure;
+  if (!validQuestCardId(treasureId) || type !== QUEST_GEM_TREASURE_TYPE || !validQuestCardId(value)
+      || !Number.isInteger(slotType) || slotType < 0 || slotType > 0x7fffffff) return null;
+  return { treasureId, type, slotType, value };
 }
 
 function sameValues(first, second) {
@@ -758,9 +794,10 @@ function nextBattleLands(positions, slot, progress) {
     .map(({ slot, id, name, caption, enemyId }) => ({ slot, id, name, caption, enemyId }));
 }
 
-function observeEmptyTerrain(socket, { inventoryId, deckIndex }, progress, onUncertain) {
+function observeNonCombatTerrain(socket, { inventoryId, deckIndex }, { progress, fixedGemTreasure }, onUncertain) {
   const commands = [QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_DELETED_REPLY, QUEST_FINISH_REPLY,
     QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_ERROR_REPLY];
+  if (fixedGemTreasure) commands.push(QUEST_GEMS_REPLY, QUEST_TREASURE_REPLY);
   function receive(reply) {
     try {
       if (reply.command === QUEST_PROGRESS_REPLY) {
@@ -1590,7 +1627,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (returning) await returning.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
-          retained.emptyObserver?.stop();
+          retained.nonCombatObserver?.stop();
           await closeChannel(retained.channel);
         }
         await closeSession(auth, channels);
@@ -1655,7 +1692,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function availableNextLands(current) {
     if (current.battle) return current.battle.nextLands;
-    if (!current.emptyTerrain || current.run.progress === null) return [];
+    if ((!current.emptyTerrain && !current.fixedGemTreasure) || current.run.progress === null) return [];
     return nextBattleLands(current.run.positions, current.slot, current.run.progress);
   }
 
@@ -1721,6 +1758,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       return {
         inventoryId, slot, state: nextLands.length ? 'between-lands' : state, closed: channel.socket.closed,
         nextLands, progress: run.progress, damage: run.damage?.slice() ?? null, emptyTerrain: adventure.emptyTerrain === true,
+        fixedGemTreasure: adventure.fixedGemTreasure ? { ...adventure.fixedGemTreasure } : null,
       };
     },
     get questBattle() { return adventure?.battle?.snapshot() ?? null; },
@@ -1842,12 +1880,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         throw error;
       }
     },
-    async enterQuestLand(inventoryId, slot, { signal, emptyTerrain = false } = {}) {
+    async enterQuestLand(inventoryId, slot, { signal, emptyTerrain = false, fixedGemTreasure = false } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
       assertQuestAvailable();
       if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
-          || !Number.isInteger(slot) || slot < 0 || slot > 2 || typeof emptyTerrain !== 'boolean') {
+          || !Number.isInteger(slot) || slot < 0 || slot > 2 || typeof emptyTerrain !== 'boolean'
+          || typeof fixedGemTreasure !== 'boolean' || (emptyTerrain && fixedGemTreasure)) {
         throw new SessionError('protocol');
       }
       const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
@@ -1863,11 +1902,15 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         return await readFromQuest(
           async (socket, confirm, questSignal, channel) => {
             const run = questRun();
-            if (emptyTerrain) {
+            let authoredTreasure = null;
+            if (emptyTerrain || fixedGemTreasure) {
               const catalogSignal = AbortSignal.any([questSignal, AbortSignal.timeout(3500)]);
               run.positions = await readQuestRoute(selected.questId, catalogSignal).catch(() => null);
               questSignal.throwIfAborted();
-              if (!run.positions?.get(slot)?.emptyTerrain || !nextBattleLands(run.positions, slot, 0).length) {
+              const authored = run.positions?.get(slot);
+              authoredTreasure = fixedGemTreasure ? authored?.fixedGemTreasure ?? null : null;
+              if (!(emptyTerrain ? authored?.emptyTerrain : authoredTreasure)
+                  || !nextBattleLands(run.positions, slot, 0).length) {
                 throw new SessionError('quest-land-unavailable');
               }
             }
@@ -1886,16 +1929,17 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               current.playerCards = encounter.playerCardIds.slice();
               current.battle = observeQuestBattle(socket, selected, slot, encounter, current.run,
                 (receipt) => reconcileQuestSettlement(selected, receipt));
-            }, { emptyTerrain });
+            }, { emptyTerrain, fixedGemTreasure: authoredTreasure });
             if (result.rejection !== undefined) {
               adventure = null;
               channel.retained = false;
-            } else if (result.emptyTerrain) {
+            } else if (result.emptyTerrain || result.fixedGemTreasure) {
               current.run.progress = result.progress;
-              current.emptyObserver = observeEmptyTerrain(socket, selected, result.progress, () => {
+              current.nonCombatObserver = observeNonCombatTerrain(socket, selected, result, () => {
                 if (['entering', 'progress'].includes(current.state)) current.state = 'uncertain';
               });
-              current.emptyTerrain = true;
+              current.emptyTerrain = result.emptyTerrain === true;
+              current.fixedGemTreasure = result.fixedGemTreasure ? { ...result.fixedGemTreasure } : null;
             } else if (result.finish) {
               if (current.state !== 'closed') current.state = 'finished';
               channel.retained = false;
@@ -1912,6 +1956,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             else {
               current.channel.socket.assertOpen();
               if (current.state === 'uncertain') throw new SessionError('quest-land-uncertain');
+              if (result.fixedGemTreasure) initialData.avatar.gems = result.fixedGemTreasure.balance;
               current.state = result.encounter ? 'encounter' : 'progress';
             }
             return result;
@@ -1936,7 +1981,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         throw new SessionError('quest-land-unavailable');
       }
       const previousBattle = current.battle;
-      const previousObserver = previousBattle ?? current.emptyObserver;
+      const previousObserver = previousBattle ?? current.nonCombatObserver;
       const previousState = current.state;
 
       auth.assertOpen();
@@ -1969,7 +2014,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               (receipt) => reconcileQuestSettlement(current.selected, receipt));
             current.slot = slot;
             current.emptyTerrain = false;
-            current.emptyObserver = null;
+            current.fixedGemTreasure = null;
+            current.nonCombatObserver = null;
             void previousObserver.stop('closed');
           });
         controller.signal.throwIfAborted();

@@ -84,6 +84,20 @@ def native_quest_catalog():
             }
             for row in DictReader(source)
         }
+    fixed_gem_treasures = {}
+    with suppress(OSError):
+        with (SERVER_CSV / "ja/TreasureDatas.csv").open(encoding="utf-8-sig", newline="") as source:
+            for row in DictReader(source):
+                with suppress(TypeError, ValueError):
+                    treasure_id, allocation, treasure_type, slot_type, value = (
+                        int(row.get(key)) for key in ("id", "allocation_type", "treasure_type", "slot_type", "value")
+                    )
+                    # Source TREASURE_ALLOC_TYPE_NONE and TG_GEM.
+                    if (allocation == 0 and treasure_type == 5 and 0 <= slot_type <= 0x7fffffff
+                            and 0 < treasure_id <= 0x7fffffff and 0 < value <= 0x7fffffff):
+                        fixed_gem_treasures[treasure_id] = {
+                            "treasureId": treasure_id, "type": treasure_type, "slotType": slot_type, "value": value,
+                        }
     land_rows = []
     with suppress(OSError):
         with (SERVER_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
@@ -104,6 +118,8 @@ def native_quest_catalog():
                 event_id = int(row.get("event_no"))
                 if all(0 <= value <= 0x7fffffff for value in (treasure_id, event_id)):
                     contents["emptyTerrain"] = (enemy_id, treasure_id, event_id) == (0, 0, 0)
+                    if enemy_id == 0 and event_id == 0 and treasure_id in fixed_gem_treasures:
+                        contents["fixedGemTreasure"] = fixed_gem_treasures[treasure_id]
     quests = {}
     with (SERVER_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
