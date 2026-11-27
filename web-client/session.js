@@ -5,7 +5,9 @@ import {
 } from './data-bootstrap.js';
 import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
+  QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
   readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
+  readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -15,6 +17,8 @@ const QUEST_REGION = 0;
 const QUEST_NEW = 0;
 const QUEST_PENDING = 4;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
+const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
+const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
 const CHANNELS = [
   { port: 12002, pong: 35 },
   { port: DATA_PORT, pong: 3 },
@@ -32,13 +36,16 @@ const messages = {
   timeout: '遊戲服務未及時回覆，請再試一次。',
   cancelled: '已取消連線。',
   busy: '正在讀取任務資料。',
+  'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
+  'search-rejected': '遊戲服務未接受這次搜尋。',
 };
 
 export class SessionError extends Error {
-  constructor(kind) {
+  constructor(kind, code) {
     super(messages[kind]);
     this.name = 'SessionError';
     this.kind = kind;
+    if (code !== undefined) this.code = code;
   }
 }
 
@@ -386,9 +393,63 @@ async function readQuestDiscovery(socket, confirm, signal, inventoryId) {
   }
 }
 
+async function submitQuestSearch(socket, confirm, signal, mapId, inventoryIds, markDispatched) {
+  const existing = await readQuestInventoryPushes(socket, confirm, signal);
+  const known = new Set(inventoryIds);
+  for (const { inventoryId } of existing) known.add(inventoryId);
+
+  let row = null;
+  let energy = null;
+  let rejection = null;
+  let invalid = false;
+  const unsubscribe = socket.observe([QUEST_SEARCH_REPLY, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY], (reply) => {
+    if (invalid) return;
+    try {
+      switch (reply.command) {
+        case QUEST_SEARCH_REPLY: {
+          const receivedAt = performance.now();
+          const added = readQuestSearchReply(reply);
+          if (!added) break; // The original may resend untimed rows on rejection.
+          if (row || known.has(added.inventoryId)) invalid = true;
+          else row = { ...added, receivedAt };
+          break;
+        }
+        case QUEST_ENERGY_REPLY: {
+          const update = readQuestEnergyReply(reply);
+          // The original sends the timed inventory row before spending the energy.
+          if (!row) break;
+          if (energy !== null) invalid = true;
+          else energy = update.energy;
+          break;
+        }
+        case QUEST_ERROR_REPLY: {
+          const code = readQuestErrorReply(reply);
+          if (rejection !== null || !QUEST_SEARCH_ERRORS.has(code)) invalid = true;
+          else rejection = code;
+          break;
+        }
+      }
+    } catch {
+      invalid = true;
+    }
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(QUEST_SEARCH_REQUEST, [mapId, QUEST_SEARCH_TIMER]);
+    markDispatched();
+    await finishQuestObservation(socket, signal, unsubscribe);
+    if (!invalid && rejection !== null && !row) return { rejection };
+    if (!invalid && rejection === null && row && energy !== null) return { row, energy };
+    throw new SessionError('search-uncertain');
+  } finally {
+    unsubscribe();
+  }
+}
+
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
   let questRequest;
+  let searchUncertain = false;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -465,6 +526,43 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     },
     async readQuestServiceInventory({ signal } = {}) {
       return readFromQuest(readQuestInventoryPushes, signal);
+    },
+    async startQuestSearch({ signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (questRequest) throw new SessionError('busy');
+      if (searchUncertain) throw new SessionError('search-uncertain');
+
+      const mapId = questData?.questFlag + 1;
+      if (!initialData.avatar || !Number.isInteger(mapId) || mapId < 1 || mapId > MAX_QUEST_MAP_ID) {
+        throw new SessionError('protocol');
+      }
+      const inventoryIds = questData.rows.map(({ inventoryId }) => inventoryId);
+      let sent = false;
+      try {
+        return await readFromQuest(
+          (socket, confirm, questSignal) => submitQuestSearch(socket, confirm, questSignal, mapId, inventoryIds, () => {
+            sent = true;
+            searchUncertain = true;
+          }),
+          signal,
+          (result) => {
+            if (result.rejection !== undefined) {
+              searchUncertain = false;
+              throw new SessionError('search-rejected', result.rejection);
+            }
+            const { row, energy } = result;
+            questData.rows.push(row);
+            initialData.avatar.energy = energy;
+            searchUncertain = false;
+            return { row: { ...row }, energy };
+          },
+        );
+      } catch (error) {
+        // Replaying a search without a result could create another row and spend more energy.
+        if (sent && searchUncertain) throw new SessionError('search-uncertain');
+        throw error;
+      }
     },
     async checkQuestDiscovery(inventoryId, { signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');

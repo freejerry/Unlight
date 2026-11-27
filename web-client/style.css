@@ -134,6 +134,10 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-status[data-state="failed"] { color: var(--failure); }
 .quest-metadata { margin-top: .65rem; }
 .quest-map-progress { display: flex; flex-wrap: wrap; gap: .25rem .7rem; margin-top: .65rem; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.quest-search { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem .75rem; margin-top: .65rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: .45rem; background: #f2f7f9; }
+.quest-search > div { flex: 1 1 14rem; min-width: 0; color: #2d444f; font-size: .9rem; }
+.quest-search .quest-status:empty { margin-top: 0; }
+.quest-search .quest-status[data-state="rejected"], .quest-search .quest-status[data-state="uncertain"] { color: var(--failure); }
 .quest-inventory { width: 100%; margin-top: .65rem; border-collapse: collapse; font-size: .9rem; }
 .quest-inventory th, .quest-inventory td { padding: .45rem .55rem; border-bottom: 1px solid var(--line); text-align: start; }
 .quest-inventory th { color: var(--muted); font-size: .84rem; }

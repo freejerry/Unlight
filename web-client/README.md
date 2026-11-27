@@ -30,7 +30,9 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 要驗收登入後的「最新消息」，在上述啟動指令加上 `--news /path/to/news.xml`，登入後展開該區塊。可用 `--news app/client/public/news.xml.orig` 查看庫內保存的日文範例。瀏覽器讀取 UTF-8 XML 的 `<XML><news>` 內容，保留來源文字和段落、粗體、清單等基本格式。省略 `--news` 時，首次展開後會隱藏此區塊。[原版讀取方式](../app/client/lib/News.as#L130) · [公告驗收](../docs/playtest/README.md#原生瀏覽器登入)
 
-有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。進度下方會顯示目前區域的說明。展開「關卡說明」下的任務可讀取原始繁中敘述及地形名稱和描述。頁面讀取已收到的快照和同源的 CSV 資料，供唯讀核對。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208) · [任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
+有角色的帳號可按「讀取任務資料」，查看清單、任務狀態、清單上限和普通區域通關數。清單以原版 Data 登入資料及本次登入收到的 Quest 回覆為準。展開「關卡說明」下的任務可讀取原始繁中敘述及地形名稱和描述。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208) · [任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
+
+讀取任務資料後，可在角色進度所指的普通區域按「開始搜尋」。頁面列出原版地圖資料中的行動力成本，並送出原版 3 分鐘設定，由 Ruby 驗證行動力與持有上限。若發送後無法確認結果，請重新登入查看清單與行動力。[開始搜尋驗收](../docs/playtest/README.md#開始搜尋)
 
 搜尋中的任務會顯示「預估剩餘」，重讀任務資料沿用該次登入的計時起點。估計到期後，可按該列的「確認搜尋結果」。原版 Quest 確認後，頁面更新該筆任務的 ID、狀態與原始關卡說明。伺服器尚未確認或連線中斷時可重試。[倒數驗收](../docs/playtest/README.md#搜尋中任務的預估倒數) · [確認結果驗收](../docs/playtest/README.md#確認搜尋結果)
 

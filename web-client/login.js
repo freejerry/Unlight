@@ -19,7 +19,8 @@ const ui = {
   bootstrapTitle: document.querySelector('#session-bootstrap-title'),
   avatarData: document.querySelector('#session-avatar-data'),
   registrationData: document.querySelector('#session-registration-data'),
-  avatarFields: ['name', 'id', 'level', 'gems', 'exp', 'energy'].map(field => document.querySelector(`#session-avatar-${field}`)),
+  avatarFields: ['name', 'id', 'level', 'gems', 'exp'].map(field => document.querySelector(`#session-avatar-${field}`)),
+  avatarEnergy: document.querySelector('#session-avatar-energy'),
   registrationFields: ['parts', 'cards'].map(field => document.querySelector(`#session-starter-${field}`)),
 };
 
@@ -38,6 +39,13 @@ const questUi = {
   detailList: document.querySelector('#session-quest-detail-list'),
   detailTemplate: document.querySelector('#session-quest-detail-template'),
   fields: ['count', 'capacity', 'flag', 'clear-count'].map(field => document.querySelector(`#session-quest-${field}`)),
+};
+
+const searchUi = {
+  section: document.querySelector('#session-quest-search'),
+  cost: document.querySelector('#session-quest-search-cost'),
+  start: document.querySelector('#session-quest-search-start'),
+  status: document.querySelector('#session-quest-search-status'),
 };
 
 const mapsUi = {
@@ -88,11 +96,17 @@ const errors = {
 };
 
 const questStatuses = {
-  idle: '可查看登入時取得的任務清單與進度。',
+  idle: '可查看任務清單與進度。',
   loading: '正在讀取任務資料…',
-  empty: '登入時的任務清單沒有項目。',
-  success: '已讀取登入時的任務資料。',
+  empty: '目前的任務清單沒有項目。',
+  success: '已讀取任務資料。',
   failed: '無法讀取任務資料，請重試。',
+};
+const questSearchRejected = {
+  1: 'AP不足',
+  30: '因任務數量已達到上限，所以不能再取得任務',
+  31: '錯誤的任務地圖編號',
+  32: '你的等級不足以取得地圖',
 };
 const MAX_CATALOG_ID = 0x7fffffff;
 const QUEST_PENDING = 4;
@@ -130,9 +144,10 @@ function displayBootstrap(initialData) {
   ui.registrationData.hidden = !registration;
 
   const avatarValues = avatar
-    ? [avatar.name, avatar.id, avatar.level, avatar.gems, avatar.exp, `${avatar.energy} / ${avatar.energyMax}`]
+    ? [avatar.name, avatar.id, avatar.level, avatar.gems, avatar.exp]
     : [];
   ui.avatarFields.forEach((field, index) => { field.textContent = avatarValues[index] ?? ''; });
+  ui.avatarEnergy.textContent = avatar ? `${avatar.energy} / ${avatar.energyMax}` : '';
   const registrationValues = registration ? [registration.partCount, registration.cardCount] : [];
   ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
 }
@@ -152,6 +167,15 @@ function showLiveQuestStatus(view, state, kind) {
   else delete view.status.dataset.errorKind;
 }
 
+function showQuestSearchStatus(state, message = '', kind, code) {
+  searchUi.status.dataset.state = state;
+  searchUi.status.textContent = message;
+  if (kind) searchUi.status.dataset.errorKind = kind;
+  else delete searchUi.status.dataset.errorKind;
+  if (Number.isSafeInteger(code)) searchUi.status.dataset.errorCode = String(code);
+  else delete searchUi.status.dataset.errorCode;
+}
+
 function clearLiveQuestResults(view) {
   view.result.hidden = true;
   view.count.textContent = '';
@@ -163,7 +187,9 @@ function updateLiveQuestButtons() {
   const busy = liveQuestRequest !== null;
   mapsUi.load.disabled = busy;
   serviceInventoryUi.load.disabled = busy;
-  questUi.load.disabled = questUi.status.dataset.state === 'loading' || liveQuestRequest?.kind === 'discovery';
+  questUi.load.disabled = questUi.status.dataset.state === 'loading'
+    || liveQuestRequest?.kind === 'discovery' || liveQuestRequest?.kind === 'search';
+  searchUi.start.disabled = busy || searchUi.section.hidden || searchUi.status.dataset.state === 'uncertain';
   for (const { button } of questCountdowns) button.disabled = busy;
 }
 
@@ -192,6 +218,7 @@ function clearLiveQuest() {
     clearLiveQuestResults(view);
     showLiveQuestStatus(view, 'idle');
   }
+  showQuestSearchStatus('idle');
   updateLiveQuestButtons();
 }
 
@@ -211,6 +238,9 @@ function clearQuestResults() {
   questUi.mapName.textContent = '';
   questUi.mapCount.textContent = '';
   setOriginalText(questUi.mapCaption, '');
+  searchUi.section.hidden = true;
+  delete searchUi.section.dataset.mapId;
+  searchUi.cost.textContent = '行動力（AP）';
   questUi.inventory.hidden = true;
   questUi.rows.replaceChildren();
   questUi.details.hidden = true;
@@ -313,11 +343,11 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
   }
 }
 
-function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receivedAt }) {
+function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receivedAt }, newestEntry) {
   const values = [rows.length, capacity, questFlag, questClearNum];
   questUi.fields.forEach((field, index) => { field.textContent = String(values[index]); });
 
-  for (const entry of rows) {
+  for (const entry of newestEntry ? [newestEntry] : rows) {
     const row = appendQuestRow(questUi.rows, entry);
     const name = document.createElement('span');
     name.className = 'quest-name';
@@ -327,8 +357,9 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
     map.hidden = true;
     const description = row.insertCell();
     description.append(name, map);
+    const rowReceivedAt = entry.receivedAt ?? receivedAt;
     if (entry.status === QUEST_PENDING && Number.isSafeInteger(entry.findSeconds)
-        && Number.isFinite(receivedAt) && receivedAt >= 0) {
+        && Number.isFinite(rowReceivedAt) && rowReceivedAt >= 0) {
       const element = document.createElement('span');
       element.className = 'quest-countdown';
       element.setAttribute('role', 'timer');
@@ -343,8 +374,9 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
       statusElement.setAttribute('role', 'status');
       statusElement.dataset.state = 'idle';
       description.append(element, button, statusElement);
-      // Ruby truncates toward zero. A nonnegative value can be up to one second short.
-      const deadline = entry.findSeconds < 0 ? 0 : receivedAt + (entry.findSeconds + 1) * 1000;
+      // Data reports truncated remaining seconds. A new Quest row has the exact duration.
+      const tolerance = entry.receivedAt === undefined ? 1 : 0;
+      const deadline = entry.findSeconds < 0 ? 0 : rowReceivedAt + (entry.findSeconds + tolerance) * 1000;
       const countdown = { element, deadline, button };
       questCountdowns.push(countdown);
       button.addEventListener('click', () => void confirmQuestDiscovery(row, entry.inventoryId, countdown, statusElement));
@@ -411,6 +443,10 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
     questUi.mapCount.textContent = `${completed} / ${map.clearTarget}`;
     questUi.mapProgress.dataset.mapId = String(mapId);
     questUi.mapProgress.hidden = false;
+    searchUi.section.dataset.mapId = String(mapId);
+    searchUi.cost.textContent = Number.isSafeInteger(map.ap) && map.ap >= 0 ? `${map.ap} 點行動力（AP）` : '行動力（AP）';
+    searchUi.section.hidden = false;
+    updateLiveQuestButtons();
   }
   if (map?.id === mapId) setOriginalText(questUi.mapCaption, map.caption);
 
@@ -427,6 +463,54 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
     }
   }
   showQuestDetails(catalog.values());
+}
+
+async function startQuestSearch() {
+  if (searchUi.start.disabled) return;
+  const request = beginLiveQuestRequest('search');
+  if (!request) return;
+  const { session, controller } = request;
+  const { signal } = controller;
+  showQuestSearchStatus('starting', '正在向伺服器開始搜尋…');
+
+  try {
+    const { row, energy } = await session.startQuestSearch({ signal });
+    if (!isCurrentLiveQuestRequest(request)) return;
+    if (!Number.isSafeInteger(row?.inventoryId) || row.inventoryId <= 0 || row.questId !== 0
+        || row.status !== QUEST_PENDING || !Number.isSafeInteger(row.findSeconds)
+        || !Number.isFinite(row.receivedAt) || row.receivedAt < 0 || !Number.isSafeInteger(energy) || energy < 0) {
+      throw new SessionError('search-uncertain');
+    }
+
+    ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
+    showQuestSearchStatus('started', '伺服器已開始搜尋。');
+    try {
+      const snapshot = await session.readQuestInventory({ signal });
+      if (!isCurrentLiveQuestRequest(request)) return;
+      const newestEntry = snapshot?.rows.find(entry => entry.inventoryId === row.inventoryId);
+      if (!newestEntry || questUi.rows.querySelector(`[data-inventory-id="${row.inventoryId}"]`)) {
+        throw new SessionError('protocol');
+      }
+      displayQuestSnapshot(snapshot, { ...newestEntry, receivedAt: row.receivedAt });
+    } catch {
+      if (isCurrentLiveQuestRequest(request)) {
+        showQuestSearchStatus('started', '伺服器已開始搜尋。請重新讀取任務資料以查看倒數。');
+      }
+    }
+  } catch (error) {
+    if (!isCurrentLiveQuestRequest(request)) return;
+    const kind = error instanceof SessionError ? error.kind : 'search-uncertain';
+    if (kind === 'search-rejected') {
+      const reason = questSearchRejected[error.code];
+      showQuestSearchStatus('rejected', reason ? `${reason}。` : '伺服器拒絕開始搜尋。', kind, error.code);
+    } else if (kind === 'search-uncertain') {
+      showQuestSearchStatus('uncertain', '無法確認搜尋是否已開始。請重新登入後查看任務清單。', kind);
+    } else {
+      showQuestSearchStatus('failed', '無法開始搜尋，請重試。', kind);
+    }
+  } finally {
+    finishLiveQuestRequest(request);
+  }
 }
 
 function showNewsState(state, message = '') {
@@ -649,6 +733,7 @@ mapsUi.load.addEventListener('click', () => {
 serviceInventoryUi.load.addEventListener('click', () => {
   void readLiveQuest(serviceInventoryUi, 'readQuestServiceInventory', appendServiceInventory);
 });
+searchUi.start.addEventListener('click', () => void startQuestSearch());
 
 document.addEventListener('visibilitychange', updateQuestCountdowns);
 

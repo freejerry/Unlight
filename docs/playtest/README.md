@@ -136,7 +136,13 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 另用 Chromium 登入隔離 Ruby，以鍵盤展開「落日大蝙蝠」，逐字核對魔女山谷說明、任務敘述與「寬廣高原1」的名稱及描述。任務文字取自 `tcn/Quests.csv` 的 `name` 和 `caption`，地圖與地形使用原始資料表的 `name_tcn` 和 `caption_tcn`。桌面和 320 CSS 像素、DPR 2 的畫面都能讀到完整文字。重新讀取及展開時，未觀察到新增的 Ruby 訊息或 SQLite 資料變更。登出或大廳斷線後，延遲的文字回覆不會留在頁面。[原始任務](../../app/server/data/csv/tcn/Quests.csv) · [原始地圖](../../app/server/data/csv/ja/QuestMaps.csv) · [原始地形](../../app/server/data/csv/ja/QuestLands.csv) · [桌面實測](native/26-native-quest-details.png) · [320 像素實測](native/27-native-quest-details-mobile.png)
 
-此頁提供唯讀資料核對。原版首場 PvE 的地形缺字修正有獨立的前後畫面，完整遊玩流程可在原版相容入口驗收。[地形修正前](browser/30-browser-land-font-before.png) · [地形修正後](browser/31-browser-land-font-after.png) · [原版首場 PvE](#首場-pve-結算)
+「讀取任務資料」提供唯讀資料核對。原版首場 PvE 的地形缺字修正有獨立的前後畫面，完整遊玩流程可在原版相容入口驗收。[地形修正前](browser/30-browser-land-font-before.png) · [地形修正後](browser/31-browser-land-font-after.png) · [原版首場 PvE](#首場-pve-結算)
+
+### 開始搜尋
+
+按「開始搜尋」時，原生頁面把登入旗標加一所得的當前普通區域，以及原版 3 分鐘設定的索引 `1`，送給 Quest 命令 `5`。地圖名稱及行動力成本取自原版資料表，由 Ruby 判定能否搜尋。頁面收到新增的搜尋紀錄 `6` 與行動力更新 `4` 後才顯示已開始。新紀錄用 Ruby 回覆的搜尋係數算出整秒時長，從收到回覆時估算剩餘時間。從 Data 登入資料恢復的倒數保留原本的一秒截斷餘裕。[原版命令](../../app/client/src/net/command/QuestCommand.as#L200) · [原版行動力與持有上限](../../app/server/src/model/avatar.rb#L2798) · [原版時間設定](../../app/server/src/model/avatar_quest_inventory.rb#L109)
+
+隔離 Ruby 的魔女山谷測例以 5% 搜尋係數實際等待 9 秒，行動力由 5 降為 4，只新增一筆搜尋中紀錄。跨過真實截止後按「確認搜尋結果」，SQLite 狀態由 `4` 轉為 `0`，320 CSS 像素、DPR 2 的畫面顯示原始繁中關卡及地形說明。另在獨立測例中攔下 Ruby 已送出的搜尋紀錄與行動力回覆，同一次登入的重讀與再次操作都沒有送出第二筆搜尋。重新登入從 Data 取回同一筆搜尋中任務與已扣除的行動力。[桌面開始搜尋](native/36-native-quest-search-started.png) · [320 像素確認結果](native/37-native-quest-search-confirmed-mobile.png)
 
 ### 搜尋中任務的預估倒數
 

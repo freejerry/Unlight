@@ -2,7 +2,9 @@ const MAX_ID_LIST_BYTES = 4096;
 const MIN_INT32 = -0x80000000;
 const MAX_INT32 = 0x7fffffff;
 const MAX_SENDER_NAME_BYTES = 128;
+const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
+const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
@@ -10,6 +12,11 @@ export const QUEST_MAP_REPLY = 14;
 export const QUEST_INVENTORY_REPLY = 6;
 export const QUEST_DISCOVERY_REQUEST = 17;
 export const QUEST_DISCOVERY_REPLY = 17;
+export const QUEST_SEARCH_REQUEST = 5;
+export const QUEST_SEARCH_REPLY = QUEST_INVENTORY_REPLY;
+export const QUEST_SEARCH_TIMER = 1;
+export const QUEST_ENERGY_REPLY = 4;
+export const QUEST_ERROR_REPLY = 29;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -59,16 +66,48 @@ function questInventoryRow(inventoryId, questId, status) {
   return { inventoryId, questId, status };
 }
 
-export function readQuestInventoryReply(reply) {
+function readQuestGetReply(reply) {
   if (reply.command !== QUEST_INVENTORY_REPLY) throw new Error('Unexpected quest inventory reply.');
   const inventoryId = reply.int();
   const questId = reply.int();
-  reply.int(); // Find time.
-  reply.int(); // Search power.
+  const timer = reply.int();
+  const power = reply.int();
   const status = reply.byte();
   reply.discardString(MAX_SENDER_NAME_BYTES, true);
   reply.done();
-  return questInventoryRow(inventoryId, questId, status);
+  return { row: questInventoryRow(inventoryId, questId, status), timer, power };
+}
+
+export function readQuestInventoryReply(reply) {
+  return readQuestGetReply(reply).row;
+}
+
+export function readQuestSearchReply(reply) {
+  const { row, timer, power } = readQuestGetReply(reply);
+  if (timer === 0) return null; // Quest login and inventory-limit rejections may resend existing rows.
+  const findSeconds = Math.floor(SEARCH_BASE_SECONDS * power / 100);
+  if (timer !== QUEST_SEARCH_TIMER || row.questId !== 0 || row.status !== NEW_STATUS
+    || power < 1 || findSeconds > MAX_INT32) {
+    throw new Error('Invalid quest search reply.');
+  }
+  return { ...row, status: PENDING_STATUS, findSeconds };
+}
+
+export function readQuestEnergyReply(reply) {
+  if (reply.command !== QUEST_ENERGY_REPLY) throw new Error('Unexpected quest energy reply.');
+  const energy = reply.int();
+  const remainingSeconds = reply.int();
+  reply.done();
+  if (energy < 0 || remainingSeconds < 0) throw new Error('Invalid quest energy reply.');
+  return { energy, remainingSeconds };
+}
+
+export function readQuestErrorReply(reply) {
+  if (reply.command !== QUEST_ERROR_REPLY) throw new Error('Unexpected quest error reply.');
+  const code = reply.int();
+  reply.done();
+  if (code <= 0) throw new Error('Invalid quest error reply.');
+  return code;
 }
 
 export function readQuestDiscoveryReply(reply) {

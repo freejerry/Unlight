@@ -153,9 +153,9 @@
           <div class="quest-heading">
             <div>
               <h3 id="session-quest-title">任務資料</h3>
-              <p id="session-quest-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">可查看登入時取得的任務清單與進度。</p>
+              <p id="session-quest-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">可查看任務清單與進度。</p>
             </div>
-            <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-map-caption session-quest-inventory session-quest-details">讀取任務資料</button>
+            <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-map-caption session-quest-search session-quest-inventory session-quest-details">讀取任務資料</button>
           </div>
           <dl id="session-quest-progress" class="session-metadata quest-metadata" hidden>
             <div><dt>持有任務數</dt><dd id="session-quest-count"></dd></div>
@@ -168,8 +168,15 @@
             <span id="session-quest-map-count"></span>
           </p>
           <p id="session-quest-map-caption" class="quest-original-text quest-map-caption" hidden></p>
+          <div id="session-quest-search" class="quest-search" hidden>
+            <div>
+              <p id="session-quest-search-description">3 分鐘設定，消耗 <span id="session-quest-search-cost">行動力（AP）</span>。倒數依伺服器回覆估算。</p>
+              <p id="session-quest-search-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
+            </div>
+            <button id="session-quest-search-start" type="button" class="button primary" aria-describedby="session-quest-map-name session-quest-search-description" aria-controls="session-quest-inventory" disabled>開始搜尋</button>
+          </div>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
-            <caption class="sr-only">登入時的任務清單</caption>
+            <caption class="sr-only">任務清單</caption>
             <thead>
               <tr><th scope="col">持有紀錄 ID</th><th scope="col">任務 ID</th><th scope="col">狀態代碼</th><th scope="col">任務名稱與地圖</th></tr>
             </thead>

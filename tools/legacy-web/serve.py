@@ -78,6 +78,7 @@ def native_quest_catalog():
             int(row["id"]): {
                 "id": int(row["id"]), "name": row["name_tcn"] or row["name"],
                 "clearTarget": int(row["difficulty"]), "caption": row["caption_tcn"] or "",
+                "ap": int(row["ap"]),
             }
             for row in DictReader(source)
         }
