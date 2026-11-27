@@ -112,53 +112,67 @@ export function createWebGLPanelRenderer(onContextLost) {
   }
   surface.addEventListener('webglcontextlost', handleLoss);
 
-  return {
-    drawPanel(canvas, image, width, height, guides, pixelRatio) {
-      if (disposed || gl.isContextLost()) throw new Error('WebGL panel context is unavailable');
+  function drawPanels(panels, image, guides, pixelRatio) {
+    if (panels.length === 0) return;
+    if (disposed || gl.isContextLost()) throw new Error('WebGL panel context is unavailable');
+    const output = [];
+    const vertices = [];
+    let batchWidth = 0;
+    let batchHeight = 0;
+    for (const { canvas, width, height } of panels) {
       const { pixelWidth, pixelHeight, imageWidth, imageHeight, slices } =
         panelLayout(image, width, height, guides, pixelRatio);
-      if (pixelWidth > maxWidth || pixelHeight > maxHeight) {
-        throw new RangeError('Panel exceeds the WebGL viewport limit');
-      }
-      if (surface.width < pixelWidth) surface.width = growExtent(surface.width, pixelWidth, maxWidth);
-      if (surface.height < pixelHeight) surface.height = growExtent(surface.height, pixelHeight, maxHeight);
-      if (gl.drawingBufferWidth !== surface.width || gl.drawingBufferHeight !== surface.height) {
-        throw new Error('Unable to resize the WebGL panel surface');
+      const offsetY = batchHeight;
+      batchWidth = Math.max(batchWidth, pixelWidth);
+      batchHeight += pixelHeight;
+      if (batchWidth > maxWidth || batchHeight > maxHeight) {
+        throw new RangeError('Panel batch exceeds the WebGL viewport limit');
       }
 
-      const source = image.currentSrc;
-      // Decoded images in the gallery share one texture. Mutable canvas and video sources are uploaded again.
-      if (!source || uploadedImage !== image || uploadedSource !== source) {
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        uploadedImage = image;
-        uploadedSource = source;
-      }
-
-      const vertices = [];
       for (const { source: [sx, sy, sw, sh], destination: [dx, dy, dw, dh] } of slices) {
         const u0 = sx / imageWidth;
         const v0 = sy / imageHeight;
         const u1 = (sx + sw) / imageWidth;
         const v1 = (sy + sh) / imageHeight;
+        const y0 = offsetY + dy;
         const x1 = dx + dw;
-        const y1 = dy + dh;
+        const y1 = y0 + dh;
         vertices.push(
-          dx, dy, u0, v0, x1, dy, u1, v0, dx, y1, u0, v1,
-          dx, y1, u0, v1, x1, dy, u1, v0, x1, y1, u1, v1,
+          dx, y0, u0, v0, x1, y0, u1, v0, dx, y1, u0, v1,
+          dx, y1, u0, v1, x1, y0, u1, v0, x1, y1, u1, v1,
         );
       }
-      gl.viewport(0, 0, pixelWidth, pixelHeight);
-      gl.scissor(0, 0, pixelWidth, pixelHeight);
-      gl.uniform2f(sizeUniform, pixelWidth, pixelHeight);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 4);
-      if (gl.getError() !== gl.NO_ERROR || gl.isContextLost()) {
-        uploadedImage = null;
-        throw new Error('Unable to render the WebGL panel');
-      }
+      output.push({ canvas, pixelWidth, pixelHeight, offsetY });
+    }
 
-      // The display canvas stays available for Canvas2D fallback after a context loss.
+    if (surface.width < batchWidth) surface.width = growExtent(surface.width, batchWidth, maxWidth);
+    if (surface.height < batchHeight) surface.height = growExtent(surface.height, batchHeight, maxHeight);
+    if (gl.drawingBufferWidth !== surface.width || gl.drawingBufferHeight !== surface.height) {
+      throw new Error('Unable to resize the WebGL panel surface');
+    }
+
+    const source = image.currentSrc;
+    // Decoded gallery images reuse their texture. Sources without a URL are uploaded per batch.
+    if (!source || uploadedImage !== image || uploadedSource !== source) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      uploadedImage = image;
+      uploadedSource = source;
+    }
+
+    gl.viewport(0, 0, batchWidth, batchHeight);
+    gl.scissor(0, 0, batchWidth, batchHeight);
+    gl.uniform2f(sizeUniform, batchWidth, batchHeight);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 4);
+    if (gl.getError() !== gl.NO_ERROR || gl.isContextLost()) {
+      uploadedImage = null;
+      throw new Error('Unable to render the WebGL panel batch');
+    }
+
+    // WebGL draws from the bottom-left; Canvas2D crops from the top-left of the full surface.
+    const batchTop = surface.height - batchHeight;
+    for (const { canvas, pixelWidth, pixelHeight, offsetY } of output) {
       const resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
       if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
       if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
@@ -168,10 +182,13 @@ export function createWebGLPanelRenderer(onContextLost) {
         if (typeof context.reset === 'function') context.reset();
         else canvas.width = pixelWidth;
       }
-      // WebGL draws at the bottom-left; drawImage reads the surface from its top-left.
-      context.drawImage(surface, 0, surface.height - pixelHeight, pixelWidth, pixelHeight,
+      context.drawImage(surface, 0, batchTop + offsetY, pixelWidth, pixelHeight,
         0, 0, pixelWidth, pixelHeight);
-    },
+    }
+  }
+
+  return {
+    drawPanels,
     dispose() {
       if (disposed) return;
       disposed = true;

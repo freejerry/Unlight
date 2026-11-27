@@ -14,7 +14,7 @@
 
 原生九宮格已接上 WebGL 2，沿用原版面板圖並與 Canvas 2D 共用切片幾何。Chromium 已驗證窄欄、DPR 變動、像素取樣及圖形環境中斷後的 Canvas 2D 接手。個別面板會隨訊息展開而重繪，並有實際輸入欄、標題與消息內文的排版測例。[WebGL 2 面板驗收](docs/playtest/README.md#原生-webgl-2-九宮格) · [內容排版驗收](docs/playtest/README.md#原生面板內容排版)
 
-原生九宮格連續縮放時會重用同一個 WebGL 2 繪圖緩衝區，只把本次繪製的矩形送到可見畫布。已加入連續變更尺寸時的畫布與像素驗收。[連續縮放驗收](docs/playtest/README.md#原生九宮格連續縮放)
+原生九宮格連續縮放時會重用同一個 WebGL 2 繪圖緩衝區，把同次更新的面板合併繪製，再各自裁回可見畫布。已驗證連續變更尺寸時的像素與繪製次數。[連續縮放驗收](docs/playtest/README.md#原生九宮格連續縮放) · [批次驗收](docs/playtest/README.md#原生九宮格批次繪製)
 
 原生對局紀錄頁已驗收固定種子 `2026` 的 68 筆原版 Ruby 事件。Chromium 逐筆核對順序、回合、抽牌數、HP 及勝負，並驗證時間軸的播放、暫停和定位。[回放驗收](docs/playtest/README.md#原生對局紀錄回放)
 

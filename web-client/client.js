@@ -224,14 +224,19 @@ function startAsset(media, path, status, readyEvent, onSuccess) {
 }
 
 function drawPanelSamples(ratio, renderer) {
+  const panels = [];
   for (const canvas of panelCanvases) {
     const { width, height } = canvas.getBoundingClientRect();
     const previous = renderedPanels.get(canvas);
     if (previous?.width === width && previous.height === height && previous.ratio === ratio
         && previous.renderer === renderer) continue;
+    panels.push({ canvas, width, height });
+  }
 
-    if (renderer) renderer.drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
-    else drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
+  if (panels.length === 0) return;
+  if (renderer) renderer.drawPanels(panels, panelImage, panelGuides, ratio);
+  for (const { canvas, width, height } of panels) {
+    if (!renderer) drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
     renderedPanels.set(canvas, { width, height, ratio, renderer });
     canvas.dataset.rendered = 'true';
   }

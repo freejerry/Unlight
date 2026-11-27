@@ -29,7 +29,9 @@ PANEL_CONTEXT_MONITOR = """
     const prototype = HTMLCanvasElement.prototype;
     const getContext = prototype.getContext;
     const surfaces = new WeakSet();
-    const monitor = window.panelContextMonitor = {attempts: 0, contexts: new Set(), sizeWrites: []};
+    const monitor = window.panelContextMonitor = {
+        attempts: 0, contexts: new Set(), sizeWrites: [], drawCalls: 0, copies: new WeakMap(),
+    };
     prototype.getContext = function (kind, ...args) {
         if (kind !== 'webgl2') return getContext.call(this, kind, ...args);
         monitor.attempts++;
@@ -53,6 +55,20 @@ PANEL_CONTEXT_MONITOR = """
             },
         });
     }
+    if (window.WebGL2RenderingContext) {
+        const gpu = WebGL2RenderingContext.prototype;
+        const drawArrays = gpu.drawArrays;
+        gpu.drawArrays = function (...args) {
+            if (monitor.contexts.has(this)) monitor.drawCalls++;
+            return drawArrays.apply(this, args);
+        };
+    }
+    const output = CanvasRenderingContext2D.prototype;
+    const drawImage = output.drawImage;
+    output.drawImage = function (image, ...args) {
+        if (surfaces.has(image)) monitor.copies.set(this.canvas, (monitor.copies.get(this.canvas) || 0) + 1);
+        return drawImage.call(this, image, ...args);
+    };
 }
 """
 
@@ -278,14 +294,20 @@ def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=2
             const contexts = [...panelContextMonitor.contexts];
             const gl = contexts.find(context => !context.isContextLost());
             if (!(gl instanceof WebGL2RenderingContext)) throw new Error('No live WebGL2 context observed');
-            const [x, y, width, height] = gl.getParameter(gl.VIEWPORT);
+            const viewport = [...gl.getParameter(gl.VIEWPORT)];
             const backing = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+            const {width, height} = canvases.at(-1);
+            const batch = [...document.querySelectorAll('#panel-previews canvas')];
+            const expectedViewport = [0, 0, Math.max(...batch.map(canvas => canvas.width)),
+                batch.reduce((sum, canvas) => sum + canvas.height, 0)];
             const pixels = new Uint8Array(width * height * 4);
-            gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            // The last atlas cell is left aligned and touches the lower edge of the active region.
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
             const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
             webgl = {
                 ...comparePixels(width, height, pixels, heights.at(-1), true, gl.getContextAttributes().premultipliedAlpha),
-                origin: [x, y],
+                viewport,
+                expectedViewport,
                 backing,
                 renderer: gl.getParameter(rendererInfo?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
             };
@@ -310,8 +332,8 @@ def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=2
         assert result["mismatch"] is None, (height, dpr, result["mismatch"])
     if webgl := results["webgl"]:
         assert (webgl["width"], webgl["height"]) == (int(css_width * dpr + .5), int(PANEL_HEIGHTS[-1] * dpr + .5)), webgl
-        assert webgl["origin"] == [0, 0], webgl
-        assert webgl["width"] <= webgl["backing"][0] and webgl["height"] <= webgl["backing"][1], webgl
+        assert webgl["viewport"] == webgl["expectedViewport"], webgl
+        assert all(active <= backing for active, backing in zip(webgl["viewport"][2:], webgl["backing"], strict=True)), webgl
         assert webgl["mismatch"] is None, (dpr, webgl["mismatch"])
     print(f"Original panel pixels match the {css_width}×96/215/300 previews at DPR {dpr} using {renderer}.")
     return results["webgl"]
@@ -450,6 +472,35 @@ def lose_panel_context(page):
     expect(page.locator("#panel-previews")).to_have_attribute("data-renderer", "canvas2d")
 
 
+def panel_batch_state(preview):
+    return preview.evaluate("""panel => {
+        const monitor = panelContextMonitor;
+        const gl = [...monitor.contexts].find(context => !context.isContextLost());
+        const grid = panel.closest('#panel-previews');
+        return {
+            draws: monitor.drawCalls,
+            contentCopies: monitor.copies.get(panel.querySelector('canvas[data-panel-content]')) || 0,
+            viewport: [...gl.getParameter(gl.VIEWPORT)],
+            fixed: [...grid.querySelectorAll('canvas[data-panel-height]')].map(canvas => ({
+                width: canvas.width,
+                height: canvas.height,
+                rendered: canvas.dataset.rendered,
+                pixels: canvas.toDataURL(),
+                copies: monitor.copies.get(canvas) || 0,
+            })),
+        };
+    }""")
+
+
+def expect_single_content_batch(preview, previous, size):
+    current = panel_batch_state(preview)
+    assert current["draws"] == previous["draws"] + 1, "Expected exactly one draw for the content panel"
+    assert current["contentCopies"] == previous["contentCopies"] + 1, "Expected one copy to the content panel"
+    assert current["viewport"] == [0, 0, *size], current["viewport"]
+    assert current["fixed"] == previous["fixed"], "Expanding or collapsing the content repainted other panels"
+    return current
+
+
 def check_panel_content(page, dpr, *, desktop=False, screenshot=None, lose_on_expand=False):
     preview = page.get_by_role("region", name="內容排版")
     expect(preview.get_by_role("heading", name="內容排版")).to_be_visible()
@@ -465,6 +516,8 @@ def check_panel_content(page, dpr, *, desktop=False, screenshot=None, lose_on_ex
     closed = panel_content_geometry(preview, dpr, False)
     field.fill("臺灣 Café Élan")
     expect(field).to_have_value("臺灣 Café Élan")
+    uses_webgl = page.locator("#panel-previews").get_attribute("data-renderer") == "webgl2"
+    batch = panel_batch_state(preview) if uses_webgl else None
 
     summary.click()
     expect(details).to_have_js_property("open", True)
@@ -472,6 +525,8 @@ def check_panel_content(page, dpr, *, desktop=False, screenshot=None, lose_on_ex
     expect(message).to_contain_text("臺灣")
     expect(message).to_contain_text("Café Élan")
     expanded = panel_content_geometry(preview, dpr, True)
+    if batch:
+        batch = expect_single_content_batch(preview, batch, expanded["backing"])
     assert expanded["size"][1] > closed["size"][1], (closed, expanded)
     assert expanded["backing"][1] > closed["backing"][1], (closed, expanded)
     if desktop:
@@ -493,6 +548,10 @@ def check_panel_content(page, dpr, *, desktop=False, screenshot=None, lose_on_ex
     expect(message).to_be_hidden()
     expect(field).to_have_value("臺灣 Café Élan")
     collapsed = panel_content_geometry(preview, dpr, False)
+    if batch and not lose_on_expand:
+        expect_single_content_batch(preview, batch, collapsed["backing"])
+    if batch:
+        print("The disclosure drew only the content panel and left all three fixed canvases unchanged.")
     assert collapsed["size"] == closed["size"] and collapsed["backing"] == closed["backing"]
     assert page.evaluate("document.documentElement.scrollWidth === innerWidth"), "Panel text overflowed the viewport"
     print(f"Panel title and content rendered in separate regions at DPR {dpr}; opening and closing updated its backing size.")
@@ -567,13 +626,14 @@ def check_continuous_resize(page, origin, path, requests, screenshot):
             const content = grid.querySelector('canvas[data-panel-content]');
             const monitor = panelContextMonitor;
             const gl = renderer === 'webgl2' ? [...monitor.contexts][0] : null;
-            const startWrites = monitor.sizeWrites.length;
             const samples = [];
             const axisSizes = (canvas) => {
                 const box = canvas.getBoundingClientRect();
                 return [Math.round(box.width * devicePixelRatio), Math.round(box.height * devicePixelRatio)];
             };
             await frame();
+            const startWrites = monitor.sizeWrites.length;
+            const startDraws = monitor.drawCalls;
             for (const width of [...widths, ...widths, ...widths, 164]) {
                 grid.style.maxWidth = `${width}px`;
                 // Layout and ResizeObserver run after the current rAF and before the next one.
@@ -597,9 +657,13 @@ def check_continuous_resize(page, origin, path, requests, screenshot):
                 if (gl) {
                     const [x, y, activeWidth, activeHeight] = gl.getParameter(gl.VIEWPORT);
                     const backing = [gl.drawingBufferWidth, gl.drawingBufferHeight];
-                    if (x !== 0 || y !== 0 || activeWidth !== width * 2 || activeHeight !== 600
-                        || backing[0] < activeWidth || backing[1] < Math.max(activeHeight, content.height)) {
+                    const expectedHeight = canvases.reduce((sum, canvas) => sum + canvas.height, 0);
+                    if (x !== 0 || y !== 0 || activeWidth !== width * 2 || activeHeight !== expectedHeight
+                        || backing[0] < activeWidth || backing[1] < activeHeight) {
                         throw new Error(`Unexpected WebGL2 viewport/capacity at ${width}px: ${x},${y},${activeWidth},${activeHeight} / ${backing}`);
+                    }
+                    if (monitor.drawCalls - startDraws !== samples.length + 1) {
+                        throw new Error(`Expected one WebGL2 draw for layout ${samples.length + 1}`);
                     }
                     samples.push({width, active: [activeWidth, activeHeight], backing,
                         writes: monitor.sizeWrites.length - startWrites});
@@ -614,7 +678,8 @@ def check_continuous_resize(page, origin, path, requests, screenshot):
             warmup_writes = samples[len(widths) - 1]["writes"]
             assert samples[-1]["writes"] == warmup_writes, samples
             assert any(s["active"][0] < s["backing"][0] or s["active"][1] < s["backing"][1] for s in samples), samples
-            print(f"WebGL2 scratch size writes during continuous resizing: {warmup_writes} in the first cycle, zero after it.")
+            print(f"WebGL2 drew 1 batch at each of {len(samples)} layout updates. "
+                  f"Scratch size writes: {warmup_writes} in the first cycle, zero after it.")
         check_panel(page, origin, path, requests, 2, renderer=renderer, css_width=164)
         panel_content_geometry(preview, 2, True)
         if screenshot:
