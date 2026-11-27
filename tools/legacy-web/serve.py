@@ -115,12 +115,30 @@ def native_quest_catalog():
                     first_land = {"slot": first_slot, **first}
                     if first["id"] in land_enemies:
                         first_land["enemyId"] = land_enemies[first["id"]]
+                positions = []
+                for slot, land_id in enumerate(slots):
+                    if land_id <= 0:
+                        continue
+                    column, lane = divmod(slot, 3)
+                    mask = int(row[f"next_{column}_{lane}"] or 0)
+                    # Quest#check_road_exist? addresses the next column using lane bits 4, 2, 1.
+                    next_start = (column + 1) * 3
+                    next_slots = [
+                        target for target, bit in zip(range(next_start, next_start + 3), (4, 2, 1))
+                        if target < len(slots) and slots[target] > 0 and mask & bit
+                    ]
+                    land = lands.get(land_id, {"id": land_id, "name": "", "caption": ""})
+                    position = {"slot": slot, **land, "nextSlots": next_slots}
+                    if land_id in land_enemies:
+                        position["enemyId"] = land_enemies[land_id]
+                    positions.append(position)
                 quests[quest_id] = {
                     "id": quest_id, "name": row["name"], "map": area.get("name", ""),
                     "caption": row["caption"] or "",
                     "ap": int(row["ap"]),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
                     "firstLand": first_land,
+                    "positions": positions,
                 }
     return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
 

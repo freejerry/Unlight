@@ -113,7 +113,7 @@
             <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
             <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
           </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形支援原版的回合移動、換角與攻防。後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
+          <p id="session-quest-entry-note" class="quest-status" hidden>原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>
@@ -122,7 +122,7 @@
             <tbody id="session-quest-rows"></tbody>
           </table>
           <section id="session-quest-land" class="quest-region quest-land-record" aria-labelledby="session-quest-land-title" hidden>
-            <h4 id="session-quest-land-title">首格地形紀錄</h4>
+            <h4 id="session-quest-land-title">地形紀錄</h4>
             <p id="session-quest-land-status" class="quest-status quest-land-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
             <div id="session-quest-land-result" class="quest-land-result" hidden>
               <p id="session-quest-land-name" class="quest-land-record-name"></p>
@@ -286,6 +286,15 @@
                       <ul id="session-quest-previous-damage" class="quest-combat-damage"></ul>
                     </div>
                   </details>
+                </div>
+              </section>
+              <section id="session-quest-next-land" class="quest-next-land native-surface" aria-labelledby="session-quest-next-land-title" hidden>
+                <header class="native-surface-header">
+                  <h5 id="session-quest-next-land-title">下一格地形</h5>
+                </header>
+                <div class="native-surface-body">
+                  <p id="session-quest-next-land-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                  <ul id="session-quest-next-land-options" class="quest-next-land-options" aria-label="可進入的戰鬥地形"></ul>
                 </div>
               </section>
               <section id="session-quest-settlement" class="quest-settlement" aria-labelledby="session-quest-settlement-title" hidden>

@@ -8,7 +8,7 @@ import {
   QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
   QUEST_START_REQUEST, QUEST_DELETED_REPLY,
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
-  QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY,
+  QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_FINISH_REPLY,
   QUEST_READY_REQUEST, QUEST_DIRECTION_REQUEST, QUEST_MOVE_COMMIT_REQUEST, QUEST_TURN_REPLY,
   QUEST_MOVE_CARD_ADD_REQUEST, QUEST_MOVE_CARD_REMOVE_REQUEST, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
   QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
@@ -27,7 +27,7 @@ import {
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
-  readQuestProgressReply, readQuestFinishReply,
+  readQuestProgressReply, readQuestDeckStateReply, readQuestFinishReply,
   readQuestTurnReply, readQuestRefillReply, readQuestMovePhaseReply,
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
@@ -46,6 +46,7 @@ const QUEST_UNSOLVED = 1;
 const QUEST_IN_PROGRESS = 2;
 const QUEST_PENDING = 4;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
+const QUEST_LAND_SLOTS = 15;
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
 const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
@@ -75,7 +76,7 @@ const QUEST_COMBAT_REPLIES = [
   QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
 ];
 const QUEST_SETTLEMENT_REPLIES = [
-  QUEST_DUEL_FINISH_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_PROGRESS_REPLY,
+  QUEST_DUEL_FINISH_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY, QUEST_ENERGY_REPLY,
 ];
@@ -601,14 +602,7 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
   }
 }
 
-async function submitQuestLand(socket, confirm, signal, selected, slot, markDispatched, markEncounter) {
-  const { inventoryId, questId, deckIndex } = selected;
-  const rows = await readQuestInventoryPushes(socket, confirm, signal);
-  if (!rows.some((row) => row.inventoryId === inventoryId && row.questId === questId
-      && row.status === QUEST_IN_PROGRESS)) {
-    throw new SessionError('quest-land-unavailable');
-  }
-
+async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter) {
   let arrived = false;
   let encounter = null;
   let progress = null;
@@ -703,6 +697,43 @@ function validQuestCardId(cardId) {
   return Number.isInteger(cardId) && cardId > 0 && cardId <= 0x7fffffff;
 }
 
+function validQuestSlot(slot) {
+  return Number.isInteger(slot) && slot >= 0 && slot < QUEST_LAND_SLOTS;
+}
+
+function questRun() {
+  return {
+    positions: null, progress: null, damage: null,
+    avatar: { exp: null, gems: null, level: null, energy: null, energyMax: null },
+    map: { questFlag: null, questClearNum: null },
+    awards: new Map(),
+  };
+}
+
+async function readQuestRoute(questId, signal) {
+  const params = new URLSearchParams({ id: String(questId) });
+  const response = await fetch(`/api/quest-catalog?${params}`, { signal });
+  if (!response.ok) return null;
+  const { quests } = await response.json();
+  if (signal.aborted || !Array.isArray(quests) || quests.length !== 1 || quests[0].id !== questId) return null;
+  const { positions } = quests[0];
+  if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
+  const nodes = new Map();
+  for (const { slot, id, name, caption, enemyId, nextSlots } of positions) {
+    if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
+        || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
+        || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
+          || Math.floor(next / 3) !== Math.floor(slot / 3) + 1)) return null;
+    nodes.set(slot, { slot, id, name, caption, enemyId: validQuestCardId(enemyId) ? enemyId : null, nextSlots });
+  }
+  if (positions.some(({ nextSlots }) => nextSlots.some((slot) => !nodes.has(slot)))) return null;
+  return nodes;
+}
+
+function sameValues(first, second) {
+  return first.length === second.length && first.every((value, index) => value === second[index]);
+}
+
 function questRoster(cardIds, damage) {
   if (cardIds.length < 1 || cardIds.length > 3) throw new SessionError('protocol');
   return {
@@ -714,7 +745,7 @@ function questRoster(cardIds, damage) {
   };
 }
 
-function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySettlement) {
+function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement) {
   let phase = 'encounter';
   let turn = null;
   let startDistance = null;
@@ -739,9 +770,12 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
   let questFinish = null;
   let questDeleted = false;
   let settlement = null;
-  const settlementAvatar = { exp: null, gems: null, level: null, energy: null, energyMax: null };
-  const settlementMap = { questFlag: null, questClearNum: null, progress: null };
-  const awards = new Map();
+  const { avatar: settlementAvatar, map: settlementMap, awards } = run;
+  const previousProgress = run.progress ?? 0;
+  let progress = null;
+  let arrivedDamage = null;
+  let routeRequests = 0;
+  let loadingRoute = false;
   let nextCombatReply;
   let combatDeadline;
   let readyParts = {};
@@ -1070,6 +1104,34 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     return { ...settlement, bonusPending, canReturn: bonusPending === false && duelResult === settlement.result };
   }
 
+  function nextLands() {
+    if (!routeReceiptReady()) return [];
+    const position = run.positions?.get(slot);
+    return (position?.nextSlots ?? [])
+      .filter((next) => (progress & (1 << next)) === 0)
+      .map((next) => run.positions.get(next))
+      .filter((next) => next.enemyId !== null)
+      .map(({ slot, id, name, caption, enemyId }) => ({ slot, id, name, caption, enemyId }));
+  }
+
+  function routeReceiptReady() {
+    return duelFinish?.result === 0 && !duelFinish.bonus && !questDeleted && !questFinish && !settlement
+      && progress !== null && arrivedDamage !== null && phase !== 'uncertain' && phase !== 'closed';
+  }
+
+  function loadRoute() {
+    if (run.positions || loadingRoute || routeRequests >= 2 || catalogRequests.signal.aborted) return;
+    routeRequests += 1;
+    loadingRoute = true;
+    const signal = AbortSignal.any([catalogRequests.signal, AbortSignal.timeout(3500)]);
+    void readQuestRoute(questId, signal).then((positions) => {
+      if (!signal.aborted && positions?.has(slot)) run.positions = positions;
+    }).catch(() => {}).finally(() => {
+      loadingRoute = false;
+      if (routeReceiptReady()) loadRoute();
+    });
+  }
+
   function receiveSettlement(reply) {
     if (settlement) return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
@@ -1097,8 +1159,22 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
         break;
       }
       case QUEST_PROGRESS_REPLY: {
-        const progress = readQuestProgressReply(reply);
-        if (progress.inventoryId === inventoryId) settlementMap.progress = progress.progress;
+        const update = readQuestProgressReply(reply);
+        if (update.inventoryId === inventoryId && duelFinish?.result === 0 && (previousProgress & (1 << slot)) === 0
+            && update.progress === (previousProgress | (1 << slot))) {
+          progress ??= update.progress;
+          run.progress = progress;
+        }
+        break;
+      }
+      case QUEST_DECK_STATE_REPLY: {
+        const update = readQuestDeckStateReply(reply);
+        // This packet has no inventory ID; correlate only after this land's own progress.
+        if (progress !== null && !questDeleted && update.deckIndex === deckIndex && update.status === QUEST_IN_PROGRESS) {
+          arrivedDamage ??= update.damage;
+          run.damage = arrivedDamage;
+          queueMicrotask(() => { if (routeReceiptReady()) loadRoute(); });
+        }
         break;
       }
       case QUEST_CHARACTER_AWARD_REPLY: {
@@ -1118,7 +1194,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     }
     if (questDeleted && questFinish) {
       settlement = applySettlement({
-        ...questFinish, questId, avatar: { ...settlementAvatar }, map: { ...settlementMap }, cards: [...awards.values()],
+        ...questFinish, questId, avatar: { ...settlementAvatar }, map: { ...settlementMap, progress },
+        cards: [...awards.values()],
       });
     }
   }
@@ -1200,12 +1277,13 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     }
   }
 
-  const unsubscribe = socket.observe([
+  const replies = [
     ...QUEST_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
     QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ERROR_REPLY,
     QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
     ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
-  ], (reply) => {
+  ];
+  function receiveReply(reply) {
     if (phase === 'closed') return;
     try {
       if (QUEST_SETTLEMENT_REPLIES.includes(reply.command)) {
@@ -1314,8 +1392,10 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     } catch {
       uncertain();
     }
-  });
+  }
+  let unsubscribe = socket.observe(replies, receiveReply);
   void loadStartingHp().catch(() => {});
+  loadRoute();
   void socket.closed.then(() => {
     catalogRequests.abort();
     uncertain();
@@ -1398,6 +1478,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
   return {
     get busy() { return pending !== null; },
     get settlement() { return structuredClone(settlementSnapshot()); },
+    get nextLands() { return nextLands(); },
+    resume() { unsubscribe = socket.observe(replies, receiveReply); },
     snapshot() {
       const choices = characterChoices();
       return structuredClone({
@@ -1508,18 +1590,19 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function maintainAdventure() {
     const current = adventure;
-    if (!current?.connected || questRequest || current.battle?.busy
+    if (!current?.connected || questRequest || current.heartbeat || current.battle?.busy
         || !['encounter', 'progress', 'uncertain'].includes(current.state)) return;
     const { socket } = current.channel;
-    void socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch(() => {
-      if (current.state === 'encounter' || current.state === 'progress') current.state = 'uncertain';
+    current.heartbeat = socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch(() => {
+      if (['encounter', 'progress', 'entering'].includes(current.state)) current.state = 'uncertain';
       if (current.state === 'uncertain') return closeChannel(current.channel);
-    });
+    }).finally(() => { current.heartbeat = null; });
   }
 
   function activeBattle() {
     if (!initialData) throw new SessionError('network');
     if (adventure?.state === 'uncertain') throw new SessionError('quest-battle-uncertain');
+    if (questRequest) throw new SessionError('busy');
     if (adventure?.state !== 'encounter' || !adventure.battle) {
       throw new SessionError('quest-battle-unavailable');
     }
@@ -1583,8 +1666,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     get initialData() { return initialData; },
     get questAdventure() {
       if (!adventure) return null;
-      const { inventoryId, slot, state, channel } = adventure;
-      return { inventoryId, slot, state, closed: channel.socket.closed };
+      const { inventoryId, slot, state, channel, run } = adventure;
+      const nextLands = state === 'encounter' ? adventure.battle?.nextLands ?? [] : [];
+      return {
+        inventoryId, slot, state: nextLands.length ? 'between-lands' : state, closed: channel.socket.closed,
+        nextLands, progress: run.progress, damage: run.damage?.slice() ?? null,
+      };
     },
     get questBattle() { return adventure?.battle?.snapshot() ?? null; },
     get questSettlement() { return adventure?.battle?.settlement ?? null; },
@@ -1725,8 +1812,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       try {
         return await readFromQuest(
           async (socket, confirm, questSignal, channel) => {
-            const result = await submitQuestLand(socket, confirm, questSignal, selected, slot, () => {
-              current = { inventoryId, slot, channel, connected: true, state: 'entering' };
+            const rows = await readQuestInventoryPushes(socket, confirm, questSignal);
+            if (!rows.some((row) => row.inventoryId === inventoryId && row.questId === selected.questId
+                && row.status === QUEST_IN_PROGRESS)) throw new SessionError('quest-land-unavailable');
+            const result = await submitQuestLand(socket, questSignal, selected, slot, () => {
+              current = { inventoryId, slot, channel, connected: true, state: 'entering', run: questRun() };
               channel.retained = true;
               adventure = current;
               void socket.closed.then(() => {
@@ -1734,7 +1824,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
                 if (['entering', 'encounter', 'progress'].includes(current.state)) current.state = 'uncertain';
               });
             }, (encounter) => {
-              current.battle = observeQuestBattle(socket, selected, encounter, (receipt) => reconcileQuestSettlement(selected, receipt));
+              current.selected = selected;
+              current.playerCards = encounter.playerCardIds.slice();
+              current.battle = observeQuestBattle(socket, selected, slot, encounter, current.run,
+                (receipt) => reconcileQuestSettlement(selected, receipt));
             });
             if (result.rejection !== undefined) {
               adventure = null;
@@ -1765,6 +1858,72 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           throw new SessionError('quest-land-uncertain');
         }
         throw error;
+      }
+    },
+    async enterNextQuestLand(slot, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (questRequest || questReturn || adventure?.battle?.busy) throw new SessionError('busy');
+      if (adventure?.state === 'uncertain') throw new SessionError('quest-land-uncertain');
+      const current = adventure;
+      const previous = current?.battle;
+      if (!validQuestSlot(slot) || current?.state !== 'encounter' || !current.connected
+          || !previous?.nextLands.some((land) => land.slot === slot)) {
+        throw new SessionError('quest-land-unavailable');
+      }
+
+      auth.assertOpen();
+      for (const { socket } of channels) socket.assertOpen();
+      const { socket } = current.channel;
+      const controller = new AbortController();
+      const cancel = () => controller.abort(new SessionError('cancelled'));
+      signal?.addEventListener('abort', cancel, { once: true });
+      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+      let dispatched = false;
+      current.state = 'entering';
+      const task = (async () => {
+        if (current.heartbeat) await bounded(current.heartbeat, controller.signal);
+        const pong = await socket.ask(3, [], [3], { signal: controller.signal, allowOther: true });
+        pong.done();
+        if (current.state !== 'entering' || !previous.nextLands.some((land) => land.slot === slot)) {
+          throw new SessionError('quest-land-unavailable');
+        }
+
+        const damage = current.run.damage.slice();
+        const result = await submitQuestLand(socket, controller.signal, current.selected, slot,
+          () => { dispatched = true; }, (encounter) => {
+            if (!sameValues(encounter.playerCardIds, current.playerCards) || !sameValues(encounter.playerDamage, damage)) {
+              throw new SessionError('protocol');
+            }
+            current.battle = observeQuestBattle(socket, current.selected, slot, encounter, current.run,
+              (receipt) => reconcileQuestSettlement(current.selected, receipt));
+            current.slot = slot;
+            void previous.stop('closed');
+          });
+        controller.signal.throwIfAborted();
+        if (result.rejection !== undefined && !result.deleted) throw new SessionError('quest-land-rejected', result.rejection);
+        if (!result.encounter) throw new SessionError('protocol');
+        return result;
+      })();
+      questRequest = { controller, task };
+      try {
+        const result = await task;
+        if (current.state !== 'entering') throw new SessionError('network');
+        current.state = 'encounter';
+        return result;
+      } catch (error) {
+        if (current.state === 'closed') throw error;
+        if (current.battle === previous) previous.resume();
+        if (dispatched && error.kind !== 'quest-land-rejected') {
+          current.state = 'uncertain';
+          throw new SessionError('quest-land-uncertain');
+        }
+        if (current.state === 'entering') current.state = 'encounter';
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', cancel);
+        questRequest = null;
       }
     },
     async readyQuestBattle({ signal } = {}) {

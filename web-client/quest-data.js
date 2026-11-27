@@ -35,6 +35,7 @@ export const QUEST_DELETED_REPLY = 22;
 export const QUEST_NEXT_LAND_REQUEST = 16;
 export const QUEST_NEXT_LAND_REPLY = 128;
 export const QUEST_PROGRESS_REPLY = 19;
+export const QUEST_DECK_STATE_REPLY = 20;
 export const QUEST_FINISH_REPLY = 24;
 export const QUEST_ENCOUNTER_REPLY = 37;
 export const QUEST_DUEL_START_REPLY = 40;
@@ -274,6 +275,16 @@ export function readQuestProgressReply(reply) {
     throw new Error('Invalid quest progress reply.');
   }
   return { inventoryId, progress };
+}
+
+export function readQuestDeckStateReply(reply) {
+  if (reply.command !== QUEST_DECK_STATE_REPLY) throw new Error('Unexpected quest deck state reply.');
+  const deckIndex = reply.byte();
+  const status = reply.byte();
+  const damage = [reply.byte(), reply.byte(), reply.byte()];
+  reply.done();
+  if (deckIndex < 0 || status < 0 || status > 6) throw new Error('Invalid quest deck state reply.');
+  return { deckIndex, status, damage };
 }
 
 export function readQuestFinishReply(reply) {

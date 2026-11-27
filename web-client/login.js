@@ -71,6 +71,12 @@ const questLandUi = {
   battleFields: document.querySelectorAll('#session-quest-land-duel [data-field]'),
 };
 
+const questNextLandUi = {
+  section: document.querySelector('#session-quest-next-land'),
+  status: document.querySelector('#session-quest-next-land-status'),
+  options: document.querySelector('#session-quest-next-land-options'),
+};
+
 const questBattleUi = {
   section: document.querySelector('#session-quest-battle'),
   status: document.querySelector('#session-quest-battle-status'),
@@ -388,6 +394,9 @@ function updateLiveQuestButtons() {
   }
   for (const { button } of questCountdowns) button.disabled = networkBlocked;
   for (const button of questUi.rows.querySelectorAll('.quest-land-enter')) button.disabled = networkBlocked;
+  const nextLandBlocked = busy || active?.questAdventure?.state !== 'between-lands'
+    || !['ready', 'rejected'].includes(questNextLandUi.status.dataset.state);
+  for (const button of questNextLandUi.options.querySelectorAll('button')) button.disabled = nextLandBlocked;
   questSettlementUi.returnButton.disabled = busy || questSettlementUi.section.hidden
     || questSettlementUi.status.dataset.state !== 'ready';
   updateQuestBattleButtons();
@@ -396,6 +405,7 @@ function updateLiveQuestButtons() {
 function beginLiveQuestRequest(kind) {
   const session = active;
   const blocked = kind === 'return' ? questSettlementUi.returnButton.disabled
+    : kind === 'next-land' ? session?.questAdventure?.state !== 'between-lands'
     : kind === 'battle' ? questLandUi.status.dataset.state !== 'encounter' : questLandLocked();
   if (!session?.initialData?.avatar || liveQuestRequest || blocked) return null;
   liveQuestRequest = { kind, session, controller: new AbortController() };
@@ -480,7 +490,8 @@ function findServiceQuestRow(inventoryId, questId) {
 
 function updateQuestBattleButtons() {
   const phase = questBattleUi.section.dataset.phase;
-  const locked = questBattleUi.section.hidden || liveQuestRequest !== null || questLandUi.status.dataset.state !== 'encounter'
+  const locked = questBattleUi.section.hidden || !questNextLandUi.section.hidden || liveQuestRequest !== null
+    || questLandUi.status.dataset.state !== 'encounter'
     || questBattleUi.status.dataset.state === 'uncertain';
   questBattleUi.start.disabled = locked || phase !== 'encounter';
   questBattleUi.select.disabled = locked || phase !== 'move';
@@ -1102,6 +1113,7 @@ function displayQuestSettlement(settlement, session) {
   questSettlementKey = key;
 
   const { inventoryId, questId, result, avatar, deltas, map, deckRestored } = settlement;
+  if (!questLandUi.progress.hidden && Number.isSafeInteger(map.progress)) displayQuestLandProgress(map.progress);
   section.dataset.inventoryId = String(inventoryId);
   section.hidden = false;
   const resultLabel = questResultLabels[result];
@@ -1172,6 +1184,9 @@ async function returnFromQuest() {
 function syncQuestBattle(session, force = false) {
   clearTimeout(questBattleTimer);
   if (active !== session || questBattleUi.section.hidden || questLandUi.status.dataset.state !== 'encounter') return;
+  const adventure = session.questAdventure;
+  if (Number.isInteger(adventure?.slot) && adventure.slot !== Number(questLandUi.result.dataset.slot)) return;
+  if (adventure?.state === 'between-lands') displayQuestNextLands(adventure);
   const snapshot = session.questBattle;
   if (!snapshot || !Object.hasOwn(questBattlePhases, snapshot.phase)) return;
   const focused = document.activeElement;
@@ -1228,7 +1243,7 @@ function syncQuestBattle(session, force = false) {
       : phase === 'moved' && !questCombatUi.section.hidden ? questCombatUi.status : questBattleUi.status;
     status.focus({ preventScroll: true });
   }
-  const exchangePending = exchange && !['uncertain', 'closed'].includes(exchange.phase)
+  const exchangePending = adventure?.state !== 'between-lands' && exchange && !['uncertain', 'closed'].includes(exchange.phase)
     && (!exchange.questFinish || !settlement || !settlement.canReturn);
   if (!document.hidden && (['encounter', 'preparing', 'move', 'committing', 'settling', 'between-turns', 'character-change'].includes(phase)
       || exchangePending)) {
@@ -1287,6 +1302,7 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
 
 function clearQuestLand() {
   clearQuestBattle();
+  clearQuestNextLand();
   questLandUi.section.hidden = true;
   questLandUi.result.hidden = true;
   questLandUi.encounter.hidden = true;
@@ -1302,6 +1318,51 @@ function clearQuestLand() {
     field.textContent = '';
   }
   showQuestActionStatus(questLandUi.status, 'idle');
+}
+
+function clearQuestNextLand() {
+  const { section, status, options } = questNextLandUi;
+  section.hidden = true;
+  for (const key of ['inventoryId', 'fromSlot', 'progress']) delete section.dataset[key];
+  options.replaceChildren();
+  showQuestActionStatus(status, 'idle');
+}
+
+function displayQuestNextLands({ inventoryId, slot, progress, nextLands }) {
+  const { section, status, options } = questNextLandUi;
+  if (!section.hidden || inventoryId !== Number(questLandUi.result.dataset.inventoryId)
+      || !Number.isSafeInteger(progress) || !nextLands?.length) return;
+
+  section.dataset.inventoryId = String(inventoryId);
+  section.dataset.fromSlot = String(slot);
+  section.dataset.progress = String(progress);
+  displayQuestLandProgress(progress);
+  options.replaceChildren(...nextLands.map(land => {
+    const item = document.createElement('li');
+    item.dataset.slot = String(land.slot);
+    item.dataset.landId = String(land.id);
+    const description = document.createElement('div');
+    const name = document.createElement('p');
+    name.className = 'quest-land-name';
+    name.id = `quest-next-land-name-${land.slot}`;
+    name.textContent = land.name;
+    const caption = document.createElement('p');
+    caption.className = 'quest-land-caption quest-original-text';
+    setOriginalText(caption, land.caption);
+    description.append(name, caption);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'button primary quest-next-land-enter';
+    button.textContent = '進入地形';
+    button.setAttribute('aria-controls', 'session-quest-land-result');
+    button.setAttribute('aria-describedby', name.id);
+    button.addEventListener('click', () => void enterNextQuestLand(land.slot, button));
+    item.append(description, button);
+    return item;
+  }));
+  section.hidden = false;
+  showQuestActionStatus(status, 'ready', '已通過本格，可以選擇下一格。');
+  updateLiveQuestButtons();
 }
 
 function appendQuestLandOption(row) {
@@ -1329,6 +1390,11 @@ function appendQuestLandOption(row) {
   button.addEventListener('click', () => void enterQuestLand(row, inventoryId, land, button));
 }
 
+function displayQuestLandProgress(progress) {
+  questLandUi.progress.hidden = progress == null;
+  questLandUi.progress.lastElementChild.textContent = progress ?? '';
+}
+
 function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish }) {
   const battleFields = encounter?.duel ? { ...encounter, ...encounter.duel } : null;
   const battleValues = battleFields && [...questLandUi.battleFields].map(field => battleFields[field.dataset.field]);
@@ -1348,8 +1414,7 @@ function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish
   questLandUi.result.dataset.inventoryId = String(inventoryId);
   questLandUi.result.dataset.landId = String(land.id);
   questLandUi.result.dataset.slot = String(slot);
-  questLandUi.progress.hidden = progress == null;
-  questLandUi.progress.lastElementChild.textContent = progress ?? '';
+  displayQuestLandProgress(progress);
   questLandUi.finish.hidden = !finish;
   questLandUi.finish.lastElementChild.textContent = finish?.result ?? '';
   if (battleValues) {
@@ -1365,6 +1430,13 @@ function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish
     : '伺服器已確認進入地形，並回傳任務進度或結算。其他任務服務操作已暫停。');
 }
 
+function openQuestBattle(session, encounter) {
+  if (!encounter || typeof session.readyQuestBattle !== 'function') return;
+  questBattleUi.section.hidden = false;
+  questBattleUi.section.dataset.initialDistance = String(encounter.duel.distance);
+  syncQuestBattle(session);
+}
+
 function watchQuestLandConnection(session) {
   const closed = session.questAdventure?.closed;
   if (!closed) return;
@@ -1378,6 +1450,9 @@ function watchQuestLandConnection(session) {
       ? '任務連線已中斷。未能確認本次進入結果，請勿重送。'
       : '任務連線已中斷。已確認的資料仍可查看，本次登入的任務服務操作已暫停。';
     showQuestActionStatus(questLandUi.status, 'lost', message, 'network');
+    if (!questNextLandUi.section.hidden) {
+      showQuestActionStatus(questNextLandUi.status, 'lost', '任務連線已中斷。已確認的地形與進度仍可查看。', 'network');
+    }
     if (!questBattleUi.section.hidden) {
       clearTimeout(questBattleTimer);
       cancelQuestMovementAnimations();
@@ -1440,11 +1515,7 @@ async function enterQuestLand(row, inventoryId, land, button) {
     const result = await session.enterQuestLand(inventoryId, land.slot, { signal: controller.signal });
     if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
     displayQuestLand(inventoryId, land, result);
-    if (result.encounter && typeof session.readyQuestBattle === 'function') {
-      questBattleUi.section.hidden = false;
-      questBattleUi.section.dataset.initialDistance = String(result.encounter.duel.distance);
-      syncQuestBattle(session);
-    }
+    openQuestBattle(session, result.encounter);
     if (result.finish) await reconcileFinishedQuest(inventoryId, Number(row.dataset.questId), session, controller.signal);
     else watchQuestLandConnection(session);
   } catch (error) {
@@ -1464,6 +1535,49 @@ async function enterQuestLand(row, inventoryId, land, button) {
     finishLiveQuestRequest(request);
     if (restoreFocus && active === session && (document.activeElement === document.body || document.activeElement === button)) {
       questLandUi.status.focus();
+    }
+  }
+}
+
+async function enterNextQuestLand(slot, button) {
+  if (button.disabled || !button.isConnected) return;
+  const adventure = active?.questAdventure;
+  const land = adventure?.nextLands?.find(option => option.slot === slot);
+  if (!land || adventure.inventoryId !== Number(questLandUi.result.dataset.inventoryId)
+      || adventure.slot !== Number(questLandUi.result.dataset.slot)) return;
+  const restoreFocus = document.activeElement === button;
+  const request = beginLiveQuestRequest('next-land');
+  if (!request) return;
+  const { session, controller } = request;
+  const { status, section } = questNextLandUi;
+  showQuestActionStatus(status, 'entering', '正在等待伺服器確認下一格地形…');
+  try {
+    const result = await session.enterNextQuestLand(slot, { signal: controller.signal });
+    if (!isCurrentLiveQuestRequest(request)) return;
+    const current = session.questAdventure;
+    if (current?.inventoryId !== adventure.inventoryId || current.slot !== slot || current.state !== 'encounter'
+        || current.closed !== adventure.closed || !result?.encounter || result.finish) {
+      throw new SessionError('quest-land-uncertain');
+    }
+    displayQuestLand(adventure.inventoryId, land, { ...result, progress: current.progress ?? adventure.progress });
+    clearQuestNextLand();
+    clearQuestBattle();
+    openQuestBattle(session, result.encounter);
+  } catch (error) {
+    if (!isCurrentLiveQuestRequest(request) || status.dataset.state === 'lost') return;
+    const kind = error instanceof SessionError ? error.kind : 'quest-land-uncertain';
+    if (kind === 'quest-land-rejected') {
+      const reason = questLandRejected[error.code];
+      showQuestActionStatus(status, 'rejected', reason ? `${reason}。` : '伺服器拒絕進入這格地形。', kind, error.code);
+    } else if (kind === 'quest-land-unavailable' || kind === 'busy') {
+      showQuestActionStatus(status, 'rejected', '目前無法進入這格地形。', kind);
+    } else {
+      showQuestActionStatus(status, 'uncertain', '未能確認是否進入下一格。已確認的地形可查看，本次登入無法重送。', kind);
+    }
+  } finally {
+    finishLiveQuestRequest(request);
+    if (restoreFocus && active === session && [document.body, button].includes(document.activeElement)) {
+      (section.hidden ? questBattleUi.start : status).focus();
     }
   }
 }

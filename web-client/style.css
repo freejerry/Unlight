@@ -411,6 +411,24 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-board .quest-move-result > .session-metadata { margin: 0; }
 .quest-board .quest-move-result .session-metadata > div { min-width: 0; border-color: var(--native-edge); background: var(--native-tint); }
 
+.quest-next-land { margin-top: .85rem; }
+.quest-next-land h5 { margin: 0; font-size: 1.05rem; }
+.quest-next-land .quest-status { margin: 0; line-height: 1.5; }
+.quest-next-land-options { display: grid; gap: .55rem; margin: .65rem 0 0; padding: 0; list-style: none; }
+.quest-next-land-options > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem .85rem;
+  align-items: center;
+  padding: .6rem .72rem;
+  border: 1px solid var(--native-edge);
+  border-radius: .45rem;
+  background: var(--native-tint);
+}
+.quest-next-land-options > li > div { flex: 1 1 15rem; min-width: 0; }
+.quest-next-land-options .quest-land-name { color: var(--native-ink); font-size: .98rem; font-weight: 680; }
+.quest-next-land-options .button { min-height: 44px; max-width: 100%; white-space: normal; }
+
 @media (max-width: 35rem) {
   .native-client .session-fields button { justify-self: stretch; }
   .quest-board .quest-move-card-item .quest-card-label { flex-basis: 100%; }
