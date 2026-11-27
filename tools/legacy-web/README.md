@@ -61,4 +61,26 @@ python3 tools/legacy-web/check_browser.py --port 4330 --software \
 
 與未修改的原版 SWF 核對時，使用同一入口的 `--client` 參數指向本倉庫編譯的 `dist/Unlight.swf`，再在驗收指令加上 `--original-swf`。這個選項在獨立的 Chromium 頁面啟用原版的 JavaScript 日誌橋接。測試頁的請求限於本機的測試來源。[原版日誌呼叫](../../app/client/lib/log.as#L95) · [原版 SWF 建置](../legacy-build/README.md)
 
-雲端 Ruffle Desktop 實際打完「落日大蝙蝠」並看到通關結算。獨立 Chromium 實測到第二回合抽牌，並確認原始 `bgm000.mp3` 和 Web Audio 混音輸出。相容版需要重新編譯才能套用任務列表的內嵌繁中字型。瀏覽器內的單場完整結算、各別戰鬥音效及其他畫面的缺字仍待驗收。[重新建置](../legacy-build/README.md) · [實機畫面與驗收紀錄](../../docs/playtest/README.md)
+### 首場 PvE 及音效
+
+以 `--playtest-first-quest` 啟動隔離的原版 Ruby。登入後進入魔女山谷，選擇「落日大蝙蝠」。移動後依距離選擇槍牌或劍牌，按 OK 確認出牌。獲勝後依序關閉勝利與 `QUEST CLEAR`，確認地圖進度及 Gem、Exp。雲端 Ruffle Desktop 和獨立 Chromium 都已跑完這場測例。[隔離測試帳號](../legacy-server/README.md#首場-pve-驗收資料) · [瀏覽器通關紀錄](../../docs/playtest/README.md#首場-pve-結算)
+
+要比對個別音效，可在 Playwright 的隔離測試頁載入取樣程式，再進入關卡。`drain()` 取出並清空最近約 75 秒的聲音樣本。可在擲骰後和結算時，分別在測試工作區保存一份。
+
+```python
+import json
+from pathlib import Path
+
+page.add_init_script(path=Path("tools/legacy-web/capture_quest_mix.js"))
+# 開啟測試頁並準備進入戰鬥後執行
+page.evaluate("() => { questMix.enabled = true }")
+# 播放待驗收的片段後執行
+Path("/tmp/unlight-quest-mix.json").write_text(json.dumps(page.evaluate("() => questMix.drain()")))
+```
+
+使用 FFmpeg、NumPy 和 SciPy 解析原版 MP3，並輸出混音和原始片段的相關係數。核對同一音效的多個區段是否對上同一個播放起點。
+
+```bash
+python3 tools/legacy-web/check_quest_mix.py /tmp/unlight-quest-mix.json \
+  --sound-directory "$unlight_build/assets/public/sound" --asset dice --asset win
+```

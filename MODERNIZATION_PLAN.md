@@ -10,7 +10,7 @@
 
 原生驗收頁用同一張原版圖及原始切片座標實作 Canvas 2D 九宮格繪製，已測三種面板高度、窄欄與兩種裝置像素比。登入後已唯讀驗證原版 Data 服務的兩種初始回應，有角色的摘要對照 SQLite，未創角的起始選項數量對照原版設定。原生遊玩流程、動畫流暢度與整體視覺一致性仍待驗收。[面板截圖](docs/playtest/native/03-native-panel-slices.png) · [角色資料截圖](docs/playtest/native/04-native-initial-data.png) · [未創角資料截圖](docs/playtest/native/05-native-starter-data.png)
 
-原版相容入口的 Chromium 試玩已進到首場 PvE 的第二回合，並以原有內嵌明體恢復任務列表的繁中名稱。相容版已用原圖恢復登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫已有可重跑的觀察工具，記錄 SWF 宣告幀率、瀏覽器回呼與實際取得的畫面變化。取樣使用軟體 WebGL，完整遊玩過程的動畫流暢度仍待驗收。[原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
+原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖恢復了登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫可重跑 SWF 宣告幀率、瀏覽器回呼和可見畫面變化的量測。目標硬體上的動畫流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
 
 《霧潮航線》位於 `modern/`，是一個獨立的技術試驗，已驗證 Rust／Wasm 回放、Axum、WebSocket 和瀏覽器端出牌流程。[技術試驗](modern/README.md)
 
@@ -24,7 +24,7 @@
 
 雲端 Ruffle Desktop 已用軟體 Vulkan 跑通原版登入、繁中開場、創角、初始卡牌、布勞教學、大廳及魔女山谷任務，並實際打完「落日大蝙蝠」。第一回合在中距離打出兩張槍牌，發動「精密射擊」，擲骰後勝利。原版結算給予 10 Gem 和 25 Exp，角色升至 2 級，返回地圖時魔女山谷進度為 1/3。資料庫確認通關和獎勵已寫入。測試用 Flash 編譯副本加入 `ExternalInterface` 檢查，Ruby 執行副本套用 Open Unlight 的加密回覆補丁、Sequel 的 `blank` 擴充與 AI 名稱的 Ruby 字串相容修正。雲端 Chrome 的 Canvas 後備渲染仍缺少 `BitmapData.draw`，桌面環境未提供音訊輸出。[原版編譯說明](tools/legacy-build/README.md) · [階段截圖](docs/playtest/README.md)
 
-第一個瀏覽器相容移植已使用 Ruffle Web 的 Wasm 與 WGPU WebGL 後端執行繁中原版程式。獨立 Chromium 測試從標題登入，通過 Auth、Data、GlobalChat 與 Lobby，再進入魔女山谷和「落日大蝙蝠」對戰開場。原版標題及戰鬥 BGM 成功載入，標題播放和對戰場景都有可測的 Web Audio 訊號。共享 Chrome 的 WebGL 2 能力仍受雲端環境限制，測試使用獨立 Chromium 軟體 WebGL。動畫依原始程式的事件與時間軸驗收。瀏覽器的擲骰個別音效、整場結算與所有動畫場景的覆蓋仍待驗證。[移植說明](tools/legacy-web/README.md) · [瀏覽器對戰開場](docs/playtest/browser/04-browser-battle.png)
+瀏覽器相容入口使用 Ruffle Web 的 Wasm 與 WGPU WebGL 後端執行繁中原版程式。獨立 Chromium 測試從標題登入，通過 Auth、Data、GlobalChat 與 Lobby，再進入魔女山谷。共享 Chrome 的 WebGL 2 能力仍受雲端環境限制，試玩使用獨立 Chromium 軟體 WebGL。其他關卡及動畫場景的覆蓋仍待驗證。[相容入口說明](tools/legacy-web/README.md) · [瀏覽器對戰開場](docs/playtest/browser/04-browser-battle.png)
 
 ## 技術設計
 

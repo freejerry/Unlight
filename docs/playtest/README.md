@@ -10,13 +10,21 @@
 
 ## 瀏覽器 Ruffle
 
-在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳及魔女山谷。啟動「落日大蝙蝠」後實際經過抽牌、移動、防禦、擲骰、玩家攻擊和第二回合抽牌。攻擊截圖當下的攻擊力為 0。原版標題及戰鬥 BGM 成功載入，並測到 Web Audio 混音輸出。擲骰和勝利音效檔皆回傳 HTTP 200，屬於戰前預載。個別音效的觸發和瀏覽器通關結算仍待驗收。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
+在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳及魔女山谷。早期「落日大蝙蝠」試玩經過抽牌、移動、防禦、擲骰、玩家攻擊和第二回合抽牌，當時攻擊截圖的攻擊力為 0。後續試玩已完成首場通關。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
 
 Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯示 780 × 680 的播放器，390 × 844 視窗顯示 390 × 340。兩個播放器都維持原版比例，頁面沒有溢出。這次標題取樣在 1.20 秒收到 9 次瀏覽器畫面回呼，回呼間隔中位數為 175.1 毫秒，p95 與最大值均為 233.3 毫秒。這組結果記錄軟體渲染環境的瀏覽器排程，無法據此驗收 SWF 動畫流暢度。[量測腳本](../../tools/legacy-web/check_browser.py)
 
 [標題](browser/01-browser-title.png) · [大廳](browser/02-browser-lobby.png) · [任務地圖](browser/03-browser-quest.png) · [對戰開場](browser/04-browser-battle.png) · [展示入口標題](browser/05-demo-title.png)
 
 [任務啟動](browser/06-browser-quest-start.png) · [第一回合抽牌](browser/07-browser-draw.png) · [移動](browser/08-browser-move.png) · [玩家攻擊](browser/09-browser-attack.png)
+
+### 首場 PvE 結算
+
+在 Chromium 156、ANGLE SwiftShader、Ruffle Web 0.8.0 和合併相容 SWF `789ab2b8` 上，用新建的隔離測試帳號跑完魔女山谷的「落日大蝙蝠」。選取任務時可讀到繁中關卡名稱和描述。第一回合留在中距離，出一張槍牌後攻擊力為 5，原版 Ruby 回報獲勝。按下勝利畫面和通關提示的兩處 OK 後，回到魔女山谷，地圖進度由 0/3 變為 1/3。[關卡名稱與描述](browser/18-browser-pve-selected.png) · [首回合出牌](browser/19-browser-pve-attack.png) · [勝利畫面](browser/20-browser-pve-victory.png) · [通關提示](browser/21-browser-pve-clear.png) · [返回地圖](browser/22-browser-pve-map.png)
+
+回到地圖後，Gem 由 100 變為 111、Exp 由 0 變為 15，角色從 Lv.1 升到 Lv.2。瀏覽器關閉後以唯讀 SQLite 複查，一筆勝利及一點任務進度已寫入，原任務從庫存移除。畫面上仍可看到地圖提示留在戰鬥與勝利動畫上方。[首戰隔離帳號](../../tools/legacy-server/README.md#首場-pve-驗收資料)
+
+在 Web Audio 的混音中辨認出原始戰鬥 BGM、擲骰和勝利音效。依排定播放時間重組取樣後，各片段與原 MP3 的最高正規化相關係數分別為 0.988、0.959 和 0.966。另一輪進到移動階段時，階段切換音效為 0.530。每個判定都有多個 0.45 秒區段對上同一播放起點。這些數值來自瀏覽器混音取樣。[音訊取樣重跑方式](../../tools/legacy-web/README.md#首場-pve-及音效)
 
 ### 標題動畫取樣
 
