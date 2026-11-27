@@ -15,7 +15,7 @@
       "sourceSymbol": "btn_k",
       "animation": {
         "file": "btn_k-frames.png",
-        "frameCount": 4,
+        "frameCount": 8,
         "frameMs": 41.666666666666664,
         "loop": true
       }
@@ -32,7 +32,7 @@
       "sourceSymbol": "btn_b",
       "animation": {
         "file": "btn_b-frames.png",
-        "frameCount": 24,
+        "frameCount": 48,
         "frameMs": 41.666666666666664,
         "loop": true
       }
@@ -49,7 +49,7 @@
       "sourceSymbol": "btn_f",
       "animation": {
         "file": "btn_f-frames.png",
-        "frameCount": 60,
+        "frameCount": 120,
         "frameMs": 41.666666666666664,
         "loop": true
       }
@@ -66,10 +66,10 @@
       "sourceSymbol": "btn_e",
       "animation": {
         "file": "btn_e-frames.png",
-        "frameCount": 58,
+        "frameCount": 60,
         "frameMs": 41.666666666666664,
         "loop": true,
-        "loopStart": 28
+        "loopStart": 15
       }
     },
     "btn_g": {

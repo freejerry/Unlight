@@ -58,13 +58,8 @@ const layout = `
         <li class="serial" data-symbol="btn_serial"><span class="sr-only">序號</span></li>
       </ul>
       <div class="lower-slot ranking" role="img" aria-label="排行榜外框" data-source="entrance_rank.swf"></div>
-      <div class="source-lobby-actions">
-        <button id="lobby-news-open" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-news">最新消息</button>
-        <button id="lobby-logout" class="source-lobby-button" type="button">登出</button>
-      </div>
     </div>
     <div class="lower-slot chat" aria-hidden="true"></div>
-    <p id="lobby-status" class="source-lobby-status" role="status" aria-atomic="true"></p>
     <dialog id="lobby-quest" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-quest-title" data-state="idle">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-quest-title" class="stage-panel-title">任務清單</h2>
@@ -284,14 +279,12 @@ async function loadNews(view, signal) {
 }
 
 function bindDialog(entry, dialog, signal, didOpen) {
-  const open = () => {
+  entry.addEventListener('click', () => {
     if (signal.aborted || dialog.open || dialog.parentElement.querySelector('dialog[open]')) return;
     dialog.showModal();
     didOpen();
-  };
-  entry.addEventListener('click', open, { signal });
+  }, { signal });
   dialog.addEventListener('close', () => entry.focus({ preventScroll: true }), { signal });
-  return open;
 }
 
 function createQuestRow({ inventoryId, questId, status }) {
@@ -368,7 +361,7 @@ function bindQuestInventory(view, session, signal) {
   retry.addEventListener('click', read, { signal });
 }
 
-export function mountLobby(host, { session, onLogout }) {
+export function mountLobby(host, { session }) {
   const avatar = session.initialData?.avatar;
   if (!avatar || !Number.isSafeInteger(session.playerId) || session.playerId < 1) {
     throw new Error('A verified player and avatar are required.');
@@ -381,32 +374,9 @@ export function mountLobby(host, { session, onLogout }) {
   const { signal } = lifetime;
   const title = view.querySelector('#lobby-title');
   const news = view.querySelector('#lobby-news');
-  const logout = view.querySelector('#lobby-logout');
-  const status = view.querySelector('#lobby-status');
   displayProfile(view, session.playerId, avatar);
   bindQuestInventory(view, session, signal);
-  const requestNews = async () => {
-    const available = await loadNews(view, signal);
-    if (available && news.open) newsSeen.add(session.playerId);
-    return available;
-  };
-  const openNews = bindDialog(view.querySelector('#lobby-news-open'), news, signal, () => {
-    if (news.dataset.state === 'ready') newsSeen.add(session.playerId);
-    if (news.dataset.state === 'error') void requestNews();
-  });
-
-  logout.addEventListener('click', async () => {
-    logout.disabled = true;
-    status.textContent = '正在登出…';
-    try {
-      await onLogout();
-    } catch {
-      if (signal.aborted) return;
-      status.textContent = '暫時無法登出。';
-      logout.disabled = false;
-      if (document.activeElement === document.body) logout.focus({ preventScroll: true });
-    }
-  }, { signal });
+  news.addEventListener('close', () => title.focus({ preventScroll: true }), { signal });
 
   host.append(view);
   void prepareLobbyHover(view, signal);
@@ -415,9 +385,13 @@ export function mountLobby(host, { session, onLogout }) {
   });
   void displayExperienceTarget(view, avatar, signal);
   title.focus({ preventScroll: true });
-  void requestNews().then(available => {
-    if (available && !newsSeen.has(session.playerId) && document.activeElement === title) openNews();
-  });
+  if (!newsSeen.has(session.playerId)) {
+    void loadNews(view, signal).then(available => {
+      if (!available || signal.aborted || document.activeElement !== title) return;
+      news.showModal();
+      newsSeen.add(session.playerId);
+    });
+  }
 
   return () => {
     lifetime.abort();

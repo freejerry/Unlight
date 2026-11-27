@@ -39,6 +39,16 @@
       "height": 216,
       "sha256": "ebd86ce8aef8e2c5a7559ab1709c9d4dbf2584f66eb2f408f42f5ebd88d66f34"
     },
+    "header.png": {
+      "source": "data/image/common/gene.swf",
+      "sourceSha256": "36f72e7de76860b18414b8331bdfed6432a3c83a1205a7d33dbf90fbc41dc3f0",
+      "sourceFrame": 1,
+      "x": 0,
+      "y": 0,
+      "width": 760,
+      "height": 32,
+      "sha256": "3a399aa4cf3e5905c66a9d37151a370e247681caab40e29764a44ab781bd85f3"
+    },
     "status.png": {
       "source": "data/image/common/gene.swf",
       "sourceSha256": "36f72e7de76860b18414b8331bdfed6432a3c83a1205a7d33dbf90fbc41dc3f0",

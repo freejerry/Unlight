@@ -143,7 +143,7 @@ function requestLogout(session) {
 function showLobby(session) {
   if (activeSession !== session || !session.initialData?.avatar) return;
   changeScreen('lobby');
-  cleanupScreen = mountLobby(postLogin, { session, onLogout: () => requestLogout(session) });
+  cleanupScreen = mountLobby(postLogin, { session });
 }
 
 function showPostLogin(session) {

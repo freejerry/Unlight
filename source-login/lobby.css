@@ -5,7 +5,28 @@
   width: 780px;
   height: 680px;
   overflow: hidden;
-  background: #111720;
+  /* The 760px artwork leaves the original Flex Halo background visible at right. */
+  background:
+    url("./lobby-art/header.png") left top no-repeat,
+    linear-gradient(
+      #0f0f0f 0 3px,
+      #0e0e0e 3px 48px,
+      #0d0d0d 48px 93px,
+      #0c0c0c 93px 138px,
+      #0b0b0b 138px 183px,
+      #0a0a0a 183px 228px,
+      #090909 228px 274px,
+      #080808 274px 319px,
+      #070707 319px 364px,
+      #060606 364px 409px,
+      #050505 409px 454px,
+      #040404 454px 499px,
+      #030303 499px 545px,
+      #020202 545px 590px,
+      #010101 590px 635px,
+      #000000 635px
+    ) right top / 20px 100% no-repeat,
+    #000;
   color: #e6ebf2;
   font: 14px/1.35 var(--interface-font);
 }
@@ -237,36 +258,6 @@
   outline: 2px solid #ffdf9c;
   outline-offset: 2px;
 }
-
-.source-lobby-actions {
-  position: absolute;
-  inset: 3px 20px auto auto;
-  display: flex;
-  gap: 6px;
-}
-
-.source-lobby-actions .source-lobby-button {
-  min-block-size: 25px;
-  padding: 2px 7px;
-  border-color: #707984;
-  background: #1b2029;
-  color: #eef3fb;
-  font-size: 12px;
-}
-
-.source-lobby-actions .source-lobby-button:hover:not(:disabled) { background: #343e4b; }
-
-.source-lobby-status {
-  position: absolute;
-  inset: 3px 145px auto auto;
-  margin: 0;
-  padding: 4px 6px;
-  background: #111720;
-  color: #e5edf9;
-  font-size: 13px;
-}
-
-.source-lobby-status:empty { padding: 0; }
 
 .source-lobby-dialog {
   inset: auto;

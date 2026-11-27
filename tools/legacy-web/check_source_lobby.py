@@ -4,6 +4,7 @@ import argparse
 import sqlite3
 import struct
 from contextlib import closing
+from math import isclose
 from pathlib import Path
 from secrets import token_hex
 from time import monotonic
@@ -21,14 +22,15 @@ STARTER_CARD = 21
 TIMEOUT = 16000
 LOBBY_ART_PATH = "/source-login/lobby-art/"
 LOBBY_ART = {
-    "ap", "ap-fill", "ap-frame", "ap-mask", "background", "duel-stars-3", "entrances", "favorite", "friend", "item",
+    "ap", "ap-fill", "ap-frame", "ap-mask", "background", "duel-stars-3", "entrances", "favorite", "friend", "header", "item",
     "ranking", "record", "status",
 }
 LOBBY_ENTRY_SYMBOLS = {
     "btn_b", "btn_c", "btn_d", "btn_e", "btn_f", "btn_g", "btn_h", "btn_i", "btn_j", "btn_k", "btn_serial",
 }
 LOBBY_SIDE_SYMBOLS = {"record", "friend", "item"}
-ANIMATED_LOBBY_SYMBOLS = {"btn_b", "btn_e", "btn_f", "btn_g", "btn_k"}
+# Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
+LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
 
 def query(database, statement, *parameters):
@@ -77,11 +79,11 @@ def active_session_traffic(sockets, live, start, player_id):
         frames_for(received, 4, 4 if urlsplit(url).path == "/socket/12003" else 2)
 
 
-def wait_logout(page, live, database, name, player_id):
+def wait_logout(page, database, player_id):
     deadline = monotonic() + 3
-    # Ruby can finish its unbind after Chromium observes the WebSocket closure.
-    while not all(socket.is_closed() for socket in live) or player(database, name) != [(player_id, 0)]:
-        assert monotonic() < deadline, "Original session did not close after logout"
+    # Navigation destroys the old document's browser socket observers. Use Ruby's teardown state.
+    while query(database, "SELECT state & 3, logout_at >= login_at FROM players WHERE id = ?", player_id) != [(0, 1)]:
+        assert monotonic() < deadline, "Original session did not close after navigation"
         page.wait_for_timeout(50)
 
 
@@ -115,8 +117,8 @@ def check_avatar_assets(responses, parts):
     expected_art = {LOBBY_ART_PATH + name + ".png" for name in LOBBY_ART}
     expected_art.add(hover_path + hover["entrancesBase"])
     expected_art.update(hover_path + frames[state] for frames in buttons.values() for state in ("up", "over"))
-    assert {symbol for symbol, frames in buttons.items() if frames.get("animation")} == ANIMATED_LOBBY_SYMBOLS
-    expected_art.update(hover_path + buttons[symbol]["animation"]["file"] for symbol in ANIMATED_LOBBY_SYMBOLS)
+    assert {symbol for symbol, frames in buttons.items() if frames.get("animation")} == LOBBY_HOVER_TIMELINES.keys()
+    expected_art.update(hover_path + buttons[symbol]["animation"]["file"] for symbol in LOBBY_HOVER_TIMELINES)
     assert art.keys() == expected_art, (sorted(art.keys() - expected_art), sorted(expected_art - art.keys()))
     catalog = by_path["/source-login/avatar-catalog.json"]
     wardrobe = by_path["/source-login/avatar-wardrobe/index.json"]
@@ -190,23 +192,19 @@ def check_lobby(page, player_id, profile):
       return image?.complete && image.naturalWidth === 43 && image.naturalHeight === 13;
     }""", timeout=TIMEOUT)
     expect(page.locator("#lobby-view")).to_have_attribute("data-hover-art", "ready", timeout=TIMEOUT)
-    expect(page.locator("#lobby-view .lobby-art-motion")).to_have_count(len(ANIMATED_LOBBY_SYMBOLS), timeout=TIMEOUT)
+    expect(page.locator("#lobby-view .lobby-art-motion")).to_have_count(len(LOBBY_HOVER_TIMELINES), timeout=TIMEOUT)
     expect(page.locator("#lobby-exp-next")).to_have_text("/10")
     entries = page.locator("#lobby-entries")
     quest_entry = entries.get_by_role("button", name="任務", exact=True)
-    news_entry = entries.get_by_role("button", name="最新消息", exact=True)
     expect(quest_entry).to_be_visible()
-    expect(news_entry).to_be_visible()
+    expect(page.locator("#lobby-logout, #lobby-news-open")).to_have_count(0)
     shell = page.locator("#lobby-view").bounding_box()
     quest = quest_entry.bounding_box()
-    news = news_entry.bounding_box()
-    logout = page.locator("#lobby-logout").bounding_box()
     status = page.locator("#lobby-profile").bounding_box()
     ap_box = page.locator("#lobby-profile .ap").bounding_box()
     stars_box = stars.bounding_box()
     center = (quest["x"] + quest["width"] / 2 - shell["x"], quest["y"] + quest["height"] / 2 - shell["y"])
     assert center == (464, 240) and (quest["width"], quest["height"]) == (156, 156), quest
-    assert news["x"] + news["width"] <= logout["x"] and news["y"] - shell["y"] == 3, news
     assert (status["x"] - shell["x"], status["y"] - shell["y"], status["width"], status["height"]) == (0, 660, 760, 20), status
     assert (ap_box["x"] - shell["x"], ap_box["y"] - shell["y"], ap_box["width"], ap_box["height"]) == (
         659, 615, 90, 65
@@ -216,26 +214,28 @@ def check_lobby(page, player_id, profile):
     ), stars_box
 
 
-def check_lobby_dialogs(page, stage, directory):
+def close_lobby_news(page, stage, directory):
     news = page.locator("#lobby-news")
-    news_open = page.locator("#lobby-news-open")
     news_close = page.locator("#lobby-news-close")
-    quest = page.locator("#lobby-quest")
-    quest_open = page.locator("#lobby-quest-load")
-    quest_close = page.locator("#lobby-quest-close")
-
     expect(news).to_have_attribute("data-state", "ready")
     expect(news).to_be_visible()
     expect(news_close).to_be_focused()
     news_box = news.bounding_box()
     assert tuple(news_box[key] for key in ("x", "y", "width", "height")) == (246, 158, 378, 342), news_box
     expect(page.locator("#lobby-news-content li")).to_have_count(3)
-    expect(quest).to_be_hidden()
+    expect(page.locator("#lobby-quest")).to_be_hidden()
     capture(stage, directory, "11a-lobby-news.png")
     check_button_hover(page, news_close)
     news_close.press("Escape")
     expect(news).to_be_hidden()
-    expect(news_open).to_be_focused()
+    expect(page.locator("#lobby-title")).to_be_focused()
+
+
+def check_lobby_dialogs(page, stage, directory):
+    close_lobby_news(page, stage, directory)
+    quest = page.locator("#lobby-quest")
+    quest_open = page.locator("#lobby-quest-load")
+    quest_close = page.locator("#lobby-quest-close")
 
     quest_open.press("Enter")
     expect(quest).to_be_visible()
@@ -250,12 +250,6 @@ def check_lobby_dialogs(page, stage, directory):
     expect(quest).to_be_hidden()
     expect(quest_open).to_be_focused()
 
-    news_open.click()
-    expect(news).to_be_visible()
-    news_close.click()
-    expect(news).to_be_hidden()
-    expect(news_open).to_be_focused()
-
 
 def check_button_hover(page, button):
     # The dedicated game fixture is centered in its matching 780×680 viewport.
@@ -265,6 +259,48 @@ def check_button_hover(page, button):
     assert button.evaluate("element => getComputedStyle(element).backgroundColor") != resting
     page.mouse.move(770, 340)
     expect(button).to_have_css("background-color", resting)
+
+
+def check_hover_timing(motion, symbol):
+    frames, intro = LOBBY_HOVER_TIMELINES[symbol]
+    frame_ms = 1000 / 24
+    samples = [(0.75, 0), (1.25, 1), (frames - 0.25, frames - 1), (frames + 0.25, intro)]
+    if intro:
+        samples.extend([(intro - 0.25, intro - 1), (intro + 0.25, intro), (frames + 1.25, intro + 1)])
+    result = motion.evaluate("""(image, times) => {
+      const animations = image.getAnimations();
+      const timing = animations.map(animation => {
+        const { duration, delay, iterations } = animation.effect.getTiming();
+        animation.pause();
+        return { duration, delay, repeats: iterations === Infinity };
+      });
+      const height = image.parentElement.offsetHeight;
+      const frames = times.map(time => {
+        for (const animation of animations) animation.currentTime = time;
+        const transform = getComputedStyle(image).transform;
+        return transform === 'none' ? 0 : -new DOMMatrixReadOnly(transform).m42 / height;
+      });
+      return { timing, frames };
+    }""", [point * frame_ms for point, _ in samples])
+    expected_phases = [((frames - intro) * frame_ms, intro * frame_ms, True)]
+    if intro:
+        expected_phases.insert(0, (intro * frame_ms, 0, False))
+    assert len(result["timing"]) == len(expected_phases), (symbol, result)
+    for actual, (duration, delay, repeats) in zip(result["timing"], expected_phases):
+        assert isclose(actual["duration"], duration, abs_tol=0.01), (symbol, actual)
+        assert isclose(actual["delay"], delay, abs_tol=0.01) and actual["repeats"] == repeats, (symbol, actual)
+    assert result["frames"] == [frame for _, frame in samples], (symbol, result["frames"])
+
+
+def lobby_screenshot_pixels(page, clip, points):
+    image = page.screenshot(clip=clip, scale="css", animations="disabled")
+    return page.evaluate("""async ({png, points}) => {
+      const frame = await createImageBitmap(new Blob([Uint8Array.from(png)], {type: 'image/png'}));
+      const context = new OffscreenCanvas(frame.width, frame.height).getContext('2d');
+      context.drawImage(frame, 0, 0);
+      frame.close();
+      return points.map(([x, y]) => Array.from(context.getImageData(x, y, 1, 1).data).slice(0, 3));
+    }""", {"png": list(image), "points": points})
 
 
 def check_lobby_hover(page, stage, directory):
@@ -279,6 +315,13 @@ def check_lobby_hover(page, stage, directory):
     box = stage.bounding_box()
     outside_entries = (box["x"] + 770, box["y"] + 340)
     page.mouse.move(*outside_entries)
+    page.locator("#lobby-title").focus()
+    header = {"x": box["x"] + 300, "y": box["y"], "width": 460, "height": 1}
+    gutter = {"x": box["x"] + 779, "y": box["y"], "width": 1, "height": 680}
+    assert lobby_screenshot_pixels(page, header, [(0, 0), (459, 0)]) == [[58, 76, 86], [41, 41, 44]]
+    assert lobby_screenshot_pixels(page, gutter, [(0, y) for y in (0, 160, 320, 640, 679)]) == [
+        [15, 15, 15], [11, 11, 11], [7, 7, 7], [0, 0, 0], [0, 0, 0],
+    ]
     capture(stage, directory, "11-lobby.png")
     if directory is not None:
         page.screenshot(path=directory / "11d-lobby-hud.png", scale="css", animations="disabled",
@@ -296,7 +339,7 @@ def check_lobby_hover(page, stage, directory):
         entry.hover()
         expect(up).to_be_hidden()
         expect(over).to_be_visible()
-        if symbol in ANIMATED_LOBBY_SYMBOLS:
+        if symbol in LOBBY_HOVER_TIMELINES:
             motion = entry.locator(".lobby-art-motion")
             expect(motion).to_have_count(1)
             expect(motion).to_be_hidden()
@@ -310,18 +353,16 @@ def check_lobby_hover(page, stage, directory):
 
     quest = page.locator("#lobby-quest-load")
     quest_over = lobby.locator("[data-symbol='btn_b'] .lobby-art-over")
-    page.keyboard.press("Shift+Tab")
+    page.locator("#lobby-title").focus()
+    page.keyboard.press("Tab")
     expect(quest).to_be_focused()
     expect(quest_over).to_be_visible()
     expect(page.locator("#lobby-quest")).to_be_hidden()
-    page.keyboard.press("Tab")
-    expect(page.locator("#lobby-news-open")).to_be_focused()
+    page.locator("#lobby-title").focus()
     expect(quest_over).to_be_hidden()
-    for selector in ("#lobby-news-open", "#lobby-logout"):
-        check_button_hover(page, page.locator(selector))
 
     page.emulate_media(reduced_motion="no-preference")
-    for symbol in sorted(ANIMATED_LOBBY_SYMBOLS):
+    for symbol in sorted(LOBBY_HOVER_TIMELINES):
         entry = lobby.locator(f"[data-symbol='{symbol}']")
         motion = entry.locator(".lobby-art-motion")
         entry.hover()
@@ -335,6 +376,7 @@ def check_lobby_hover(page, stage, directory):
         assert entry.evaluate("item => item.matches(':hover')"), symbol
         if symbol == "btn_b" and directory is not None:
             stage.screenshot(path=directory / "11e-lobby-quest-motion.png", scale="css")
+        check_hover_timing(motion, symbol)
         page.mouse.move(*outside_entries)
         expect(motion).to_be_hidden()
         assert motion.evaluate("image => image.getAnimations().length") == 0, symbol
@@ -390,6 +432,13 @@ def check(page, origin, database, directory, selected_parts):
         secret.fill(password)
         submit.click()
         return start
+
+    def reload_title():
+        assert page.reload(wait_until="domcontentloaded").ok
+        screen(stage, "title")
+        expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
+        expect(secret).to_have_value("")
+        wait_logout(page, database, player_id)
 
     first = sign_in()
     screen(stage, "onboarding")
@@ -448,7 +497,7 @@ def check(page, origin, database, directory, selected_parts):
     check_lobby_dialogs(page, stage, directory)
     first_portrait = check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses)
     assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
-        "lobby-logout", "lobby-news-open", "lobby-quest-load",
+        "lobby-quest-load",
     ]
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
@@ -458,10 +507,8 @@ def check(page, origin, database, directory, selected_parts):
     hover_requests = {urlsplit(request.url).path for request in requests[hover_start:]}
     assert hover_requests <= {"/public/sound/bgm/ulbgm02.mp3"}, sorted(hover_requests)
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
-    page.locator("#lobby-logout").click()
-    screen(stage, "title")
-    expect(secret).to_have_value("")
-    wait_logout(page, live, database, name, player_id)
+    reload_title()
+    username.click()
     music(page, "ulbgm01.mp3")
     capture(stage, directory, "12-return-to-title.png")
 
@@ -475,8 +522,7 @@ def check(page, origin, database, directory, selected_parts):
     screen(stage, "lobby")
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
-    expect(page.locator("#lobby-news")).to_have_attribute("data-state", "ready")
-    expect(page.locator("#lobby-news")).to_be_hidden()
+    close_lobby_news(page, stage, None)
     assert "onboarding" not in page.evaluate("window.reloginScreens")
     active_session_traffic(sockets, live, second, player_id)
     assert avatar(database, player_id) == [profile]
@@ -484,11 +530,9 @@ def check(page, origin, database, directory, selected_parts):
     assert check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses) == first_portrait
     music(page, "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
-    page.locator("#lobby-logout").click()
-    screen(stage, "title")
-    wait_logout(page, live, database, name, player_id)
+    reload_title()
     assert page.url == origin + ENTRY and not errors, errors
-    assert [request.url for request in requests if request.resource_type == "document"] == [origin + ENTRY]
+    assert [request.url for request in requests if request.resource_type == "document"] == [origin + ENTRY] * 3
     assert all(urlsplit(request.url).netloc == urlsplit(origin).netloc for request in requests)
     ensure_no_password(requests, sockets, [password])
     return first_portrait

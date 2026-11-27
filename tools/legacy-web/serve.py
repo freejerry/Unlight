@@ -532,8 +532,8 @@ def create_app(
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             for name in (
-                "ap", "ap-fill", "ap-frame", "ap-mask", "background", "entrances", "favorite", "friend", "item",
-                "ranking", "record", "status", *(f"duel-stars-{count}" for count in range(4)),
+                "ap", "ap-fill", "ap-frame", "ap-mask", "background", "entrances", "favorite", "friend", "header",
+                "item", "ranking", "record", "status", *(f"duel-stars-{count}" for count in range(4)),
             ):
                 filename = f"lobby-art/{name}.png"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
