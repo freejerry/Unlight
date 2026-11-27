@@ -18,7 +18,11 @@
 #replay-toggle { min-width: 5.5rem; }
 .replay-position { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 .replay-position strong { color: #172933; font-variant-numeric: tabular-nums; }
-.replay-seek-field { display: grid; gap: .2rem; font-size: .9rem; }
+.replay-seek-field, .replay-record-meter { display: grid; gap: .2rem; font-size: .9rem; }
+#replay-record-progress { display: block; width: 100%; height: .4rem; border: 0; border-radius: .25rem; overflow: hidden; appearance: none; background: #dbe7e7; accent-color: var(--accent); }
+#replay-record-progress::-webkit-progress-bar { background: #dbe7e7; }
+#replay-record-progress::-webkit-progress-value { background: var(--accent); }
+#replay-record-progress::-moz-progress-bar { background: var(--accent); }
 #replay-seek { width: 100%; min-height: 1.9rem; margin: 0; accent-color: var(--accent); }
 
 .replay-content { display: grid; align-items: start; grid-template-columns: minmax(0, 1.13fr) minmax(0, 1fr); gap: .8rem; margin-top: .8rem; }

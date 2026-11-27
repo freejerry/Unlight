@@ -46,6 +46,10 @@
             </div>
             <p class="replay-position">目前紀錄 <strong id="replay-index"></strong></p>
           </div>
+          <div class="replay-record-meter">
+            <label for="replay-record-progress">本筆播放進度</label>
+            <progress id="replay-record-progress" max="600" value="0"></progress>
+          </div>
           <div class="replay-seek-field">
             <label for="replay-seek">定位紀錄</label>
             <input id="replay-seek" type="range" min="0" max="0" step="1" value="0" aria-describedby="replay-pace" />

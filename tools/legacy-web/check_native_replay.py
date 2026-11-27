@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
+from math import ceil
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -19,6 +20,7 @@ ARCHIVE_SHA256 = "04d860ddb7034170c3e7c666a6992a2dc8234a6e514a1a76343bbd4f99ac23
 REPLAY_PATH = "/replay/"
 FIXTURE_PATH = "/api/replay-baseline"
 PLAYBACK_INTERVAL_MS = 600
+PROGRESS_ID = "replay-record-progress"
 
 
 def original_trace():
@@ -94,60 +96,129 @@ def check_event(page, events, ordinal):
     assert json.dumps(state, sort_keys=True) == json.dumps(expected, sort_keys=True), (ordinal, state, expected)
 
 
+def playback_progress(page):
+    return page.locator(f"#{PROGRESS_ID}").evaluate("meter => meter.value")
+
+
+def check_stopped(page, events, ordinal, *, reset=False):
+    expect(page.locator("#replay")).to_have_attribute("data-playback", "paused")
+    progress = playback_progress(page)
+    if reset:
+        assert progress == 0, "Selecting a record should reset the meter"
+    page.clock.fast_forward(3 * PLAYBACK_INTERVAL_MS)
+    check_event(page, events, ordinal)
+    assert playback_progress(page) == progress, "The paused meter changed"
+    return progress
+
+
+def set_test_visibility(page, hidden):
+    # Headless Chromium keeps both tabs visible when it switches foreground tabs.
+    page.evaluate("""hidden => {
+        if (hidden) {
+            Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+            Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+        } else {
+            delete document.hidden;
+            delete document.visibilityState;
+        }
+        document.dispatchEvent(new Event('visibilitychange'));
+    }""", hidden)
+
+
 def check_playback(page, events):
     app = page.locator("#replay")
     toggle = page.locator("#replay-toggle")
     seek = page.locator("#replay-seek")
+    meter = page.get_by_role("progressbar", name="本筆播放進度")
+    expect(meter).to_be_visible()
+    expect(meter).to_have_attribute("id", PROGRESS_ID)
+    assert meter.evaluate("meter => meter.max") == PLAYBACK_INTERVAL_MS
     expect(app).to_have_attribute("data-playback", "paused")
     expect(page.locator("#replay-prev")).to_be_disabled()
-    toggle.click()
-    expect(app).to_have_attribute("data-playback", "playing")
-    page.clock.run_for(PLAYBACK_INTERVAL_MS - 1)
-    check_event(page, events, 0)
-    page.clock.run_for(1)
-    check_event(page, events, 1)
-    # Same-tick records advance separately, followed by tick 132 on the same UI cadence.
-    for ordinal in (2, 3, 4):
-        page.clock.run_for(PLAYBACK_INTERVAL_MS)
-        check_event(page, events, ordinal)
-    toggle.click()
-    expect(app).to_have_attribute("data-playback", "paused")
-    page.clock.run_for(2 * PLAYBACK_INTERVAL_MS)
-    check_event(page, events, 4)
 
-    page.locator("#replay-prev").click()
-    check_event(page, events, 3)
+    toggle.click()
+    expect(app).to_have_attribute("data-playback", "playing")
+    page.clock.run_for(250)
+    check_event(page, events, 0)
+    animated = playback_progress(page)
+    assert 0 < animated <= 250, animated
+    toggle.click()
+    frozen = check_stopped(page, events, 0)
+    assert animated <= frozen < PLAYBACK_INTERVAL_MS, frozen
+    toggle.click()
+    remaining = ceil(PLAYBACK_INTERVAL_MS - frozen)
+    page.clock.run_for(remaining - 5)
+    check_event(page, events, 0)
+    page.clock.run_for(10)
+    check_event(page, events, 1)
+
+    page.clock.run_for(100)
     page.locator("#replay-next").click()
-    check_event(page, events, 4)
+    check_stopped(page, events, 2, reset=True)
+    toggle.click()
+    page.clock.run_for(100)
+    page.locator("#replay-prev").click()
+    check_stopped(page, events, 1, reset=True)
+    toggle.click()
     seek.press("End")
-    check_event(page, events, len(events) - 1)
+    check_stopped(page, events, len(events) - 1, reset=True)
     expect(page.locator("#replay-next")).to_be_disabled()
+
     toggle.click()
     check_event(page, events, 0)
     expect(app).to_have_attribute("data-playback", "playing")
-    seek.press("End")
-    expect(app).to_have_attribute("data-playback", "paused")
-    seek.press("ArrowLeft")
-    check_event(page, events, len(events) - 2)
+    page.clock.fast_forward(5 * PLAYBACK_INTERVAL_MS)
+    check_event(page, events, 1)
+    page.clock.run_for(PLAYBACK_INTERVAL_MS - 1)
+    check_event(page, events, 1)
+    page.clock.run_for(1)
+    check_event(page, events, 2)
+
+    page.clock.run_for(150)
+    set_test_visibility(page, True)
+    frozen = check_stopped(page, events, 2)
+    assert 0 < frozen < PLAYBACK_INTERVAL_MS
+    set_test_visibility(page, False)
+    assert check_stopped(page, events, 2) == frozen
     toggle.click()
-    page.clock.run_for(PLAYBACK_INTERVAL_MS)
-    check_event(page, events, len(events) - 1)
-    expect(app).to_have_attribute("data-playback", "paused")
-    page.clock.run_for(2 * PLAYBACK_INTERVAL_MS)
-    check_event(page, events, len(events) - 1)
+    page.clock.run_for(100)
+    page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))")
+    frozen = check_stopped(page, events, 2)
+    assert 0 < frozen < PLAYBACK_INTERVAL_MS
+    page.evaluate("window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))")
+    assert check_stopped(page, events, 2) == frozen
+
+    seek.press("Home")
+    check_stopped(page, events, 0, reset=True)
+    toggle.click()
+    # Exercise all records through automatic playback, including four separate tick-0 entries.
+    for ordinal in range(1, len(events)):
+        page.clock.run_for(PLAYBACK_INTERVAL_MS - 1)
+        check_event(page, events, ordinal - 1)
+        page.clock.run_for(1)
+        check_event(page, events, ordinal)
+    check_stopped(page, events, len(events) - 1)
+
+
+def install_clock(page):
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    page.clock.install(time=start)
+    page.clock.pause_at(start + timedelta(seconds=1))
+
+
+def open_replay(page, origin, original):
+    with page.expect_response(origin + FIXTURE_PATH) as response:
+        page.goto(origin + REPLAY_PATH)
+    check_fixture_response(response.value, original)
+    expect(page.locator("#replay")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
 
 
 def check_replay(browser, origin, original, fixture, screenshot):
     page = browser.new_page(viewport={"width": 1200, "height": 920})
     try:
         observation = observe_replay(page)
-        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
-        page.clock.install(time=start)
-        page.clock.pause_at(start + timedelta(seconds=1))
-        with page.expect_response(origin + FIXTURE_PATH) as response:
-            page.goto(origin + REPLAY_PATH)
-        check_fixture_response(response.value, original)
-        expect(page.locator("#replay")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+        install_clock(page)
+        open_replay(page, origin, original)
         expect(page.locator("#replay-seed")).to_have_text(str(fixture["seed"]))
         expect(page.locator("#replay-phase")).to_be_visible()
         seek = page.get_by_role("slider")
@@ -155,11 +226,6 @@ def check_replay(browser, origin, original, fixture, screenshot):
         expect(seek).to_have_attribute("max", str(len(events) - 1))
         check_playback(page, events)
 
-        seek.press("Home")
-        for ordinal in range(len(events)):
-            check_event(page, events, ordinal)
-            if ordinal < len(events) - 1:
-                seek.press("ArrowRight")
         check_read_only(page, origin, observation, 1)
         if screenshot:
             screenshot.parent.mkdir(parents=True, exist_ok=True)
@@ -167,7 +233,62 @@ def check_replay(browser, origin, original, fixture, screenshot):
     finally:
         page.close()
     print("All 68 original records matched in order, including four separate tick-0 events and final HP 5 / 0 at 92.1 simulated seconds.")
-    print("Playback, pause, seeking, terminal stop, and restart worked at the UI interval, independent of Ruby ticks.")
+    print("A stalled clock advanced one record. Pause/resume, stepping, seeking, simulated visibility/pagehide, and terminal stop kept record order and meter state.")
+
+
+def check_reduced_motion(browser, origin, original, events):
+    page = browser.new_page(reduced_motion="reduce")
+    try:
+        observation = observe_replay(page)
+        install_clock(page)
+        open_replay(page, origin, original)
+        assert page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
+        page.locator("#replay-toggle").click()
+        for duration, value in ((150, 0), (100, 200), (200, 400)):
+            page.clock.run_for(duration)
+            check_event(page, events, 0)
+            assert playback_progress(page) == value, "Reduced motion should paint only discrete values"
+        page.clock.run_for(150)
+        check_event(page, events, 1)
+        assert playback_progress(page) == 0
+        check_read_only(page, origin, observation, 1)
+    finally:
+        page.close()
+    print("Reduced-motion mode painted discrete 200 ms increments while preserving the 600 ms event interval.")
+
+
+def check_rendered_motion(browser, origin, original, events, directory):
+    sample = f"""([lower, upper]) => {{
+        const value = document.querySelector('#{PROGRESS_ID}').value;
+        return document.querySelector('#replay-seek').valueAsNumber === 1 && value > lower && value < upper
+            ? value : false;
+    }}"""
+    for width, height, label in ((1120, 900, "desktop"), (320, 830, "mobile")):
+        page = browser.new_page(viewport={"width": width, "height": height}, reduced_motion="no-preference")
+        try:
+            observation = observe_replay(page)
+            open_replay(page, origin, original)
+            page.locator("#replay-next").click()
+            check_event(page, events, 1)
+            assert page.evaluate("innerWidth === document.documentElement.scrollWidth"), f"Overflow at {width}px"
+            for selector in ("#replay-prev", "#replay-toggle", "#replay-next", "#replay-seek", f"#{PROGRESS_ID}"):
+                node = page.locator(selector)
+                expect(node).to_be_visible()
+                assert node.evaluate("""node => {
+                    const box = node.getBoundingClientRect();
+                    return box.left >= 0 && box.right <= innerWidth + 0.5;
+                }"""), f"{selector} is clipped at {width}px"
+            page.locator("#replay-toggle").click()
+            earlier = page.wait_for_function(sample, arg=[60, 320], timeout=PLAYBACK_INTERVAL_MS * 2).json_value()
+            page.wait_for_function(sample, arg=[max(180, earlier + 50), 500], timeout=PLAYBACK_INTERVAL_MS * 2)
+            if directory:
+                directory.mkdir(parents=True, exist_ok=True)
+                filename = f"{'01' if label == 'desktop' else '02'}-{label}-playback.png"
+                page.screenshot(path=directory / filename, full_page=True)
+            check_read_only(page, origin, observation, 1)
+        finally:
+            page.close()
+    print("Normal-motion Chromium painted a partial meter on the same draw record at 1120px and 320px with no horizontal clipping.")
 
 
 def check_retry(browser, origin, original, events):
@@ -220,6 +341,7 @@ def main():
     parser.add_argument("--chromium", default="/usr/bin/chromium")
     parser.add_argument("--port", type=int, default=4348, help="Loopback port serving the native replay")
     parser.add_argument("--screenshot", type=Path, help="Save the verified terminal replay view")
+    parser.add_argument("--playback-screenshot-dir", type=Path, help="Save desktop and 320px playback screenshots")
     options = parser.parse_args()
     origin = f"http://127.0.0.1:{options.port}"
     original, fixture = original_trace()
@@ -231,6 +353,8 @@ def main():
         try:
             check_replay(browser, origin, original, fixture, options.screenshot)
             check_retry(browser, origin, original, fixture["trace"])
+            check_reduced_motion(browser, origin, original, fixture["trace"])
+            check_rendered_motion(browser, origin, original, fixture["trace"], options.playback_screenshot_dir)
         finally:
             browser.close()
 

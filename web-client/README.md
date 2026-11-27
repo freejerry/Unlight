@@ -1,6 +1,6 @@
 # 原生瀏覽器連線、登入與素材驗收
 
-這個 HTML／JavaScript 入口連接既有 Ruby 服務，並直接載入原版 PNG 和 MP3。可以驗收服務連線、登入憑證、角色與任務初始資料，以及面板九宮格縮放。角色建立、大廳操作和對局可透過原版相容入口試玩。[現代化計畫](../MODERNIZATION_PLAN.md) · [原版相容入口](../tools/legacy-web/README.md)
+原生入口的首頁 `/` 連接既有 Ruby 服務，可驗收服務連線、登入憑證、角色與任務快照，以及原版素材和面板九宮格。`/replay/` 可獨立讀取保存的 Ruby 對局紀錄。角色建立、大廳操作和對局可透過原版相容入口試玩。[可啟動入口](../MODERNIZATION_PLAN.md#可啟動入口) · [原版相容入口](../tools/legacy-web/README.md)
 
 另有可獨立啟動的 [原生搜尋倒數示範](#原生搜尋倒數示範)。
 
@@ -76,14 +76,15 @@ python3 tools/legacy-web/check_native_session.py --port 4334 --username playtest
 python3 tools/legacy-web/serve.py --native --port 4348
 ```
 
-另開終端機，以 Chromium 和 Python Playwright 驗收 68 筆事件、操作、窄版及錯誤重試，並存下結算畫面。
+另開終端機，以 Chromium 和 Python Playwright 驗收 68 筆事件、操作、窄版及錯誤重試，並存下結算和播放畫面。
 
 ```bash
 python3 tools/legacy-web/check_native_replay.py --port 4348 \
-  --screenshot /tmp/unlight-native-replay.png
+  --screenshot /tmp/unlight-native-replay.png \
+  --playback-screenshot-dir /tmp/unlight-native-replay-playback
 ```
 
-驗收頁固定每 600 毫秒前進一筆。畫面中的 Ruby tick 每格為 0.1 秒的模擬時間，同一 tick 的各筆事件仍照原始順序顯示。[Ruby 時鐘](../tools/legacy-server/duel.rb#L44) · [回放驗收紀錄](../docs/playtest/README.md#原生對局紀錄回放)
+「本筆播放進度」顯示目前事件的 600 毫秒播放區間。暫停會保留進度，再按播放時從剩餘時間接續。手動前後跳轉會重設本筆進度。切到背景分頁會暫停，回到頁面後可手動接續。啟用減少動態效果時，進度條以 200 毫秒為單位更新。畫面中的 Ruby tick 每格是 0.1 秒模擬時間，同一 tick 的各筆事件仍照原始順序顯示。[Ruby 時鐘](../tools/legacy-server/duel.rb#L44) · [回放驗收紀錄](../docs/playtest/README.md#原生對局紀錄回放)
 
 ## 原生搜尋倒數示範
 

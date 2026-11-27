@@ -2,6 +2,18 @@
 
 在 Codex 雲端工作區現代化《Unlight》。以現有 Ruby 後端、繁中資料和 Flash 原始碼建立工程基準，再驗證 Rust 戰鬥核心和 TypeScript／WebGL2 前端。產品名稱沿用《Unlight》。視覺更新以現代網頁介面為範圍。第一個里程碑是讓現有 Ruby 引擎跑完一場單人 PvE，留下可重播的對局紀錄。
 
+## 可啟動入口
+
+| 入口 | 範圍及啟動方式 |
+| --- | --- |
+| 原生服務驗收 | `serve.py --native` 的首頁 `/`。連到隔離 Ruby 後可操作連線檢查、登入及唯讀角色與任務快照。範例埠為 4334。[啟動方式](web-client/README.md#啟動) |
+| 原生對局回放 | `serve.py --native` 的 `/replay/`。獨立讀取保存的 68 筆 Ruby 基準事件，範例埠為 4348。[回放方式](web-client/README.md#原版對局紀錄回放) |
+| 原生搜尋示範 | `tools/native-deadlines` 提供固定 8 秒的搜尋、結果及最近紀錄，使用隔離 SQLite，預設埠為 4356。[搜尋方式](web-client/README.md#原生搜尋倒數示範) |
+| 《霧潮航線》 | `modern/` 的獨立 Rust／Wasm 卡牌技術原型，可操作出牌、AI 和對局結算，預設埠為 3000。[原型啟動方式](modern/README.md#雲端建置與啟動) |
+| 原版相容客戶端 | 透過 Ruffle 執行相容 SWF，連接隔離 Ruby，可重跑原版登入、任務與 PvE。範例埠為 4330。[啟動及 SWF 版本核對](tools/legacy-web/README.md) |
+
+完整原生版仍需串起登入後的角色與大廳操作、任務及戰鬥結算，並通過完整 PvE 驗收。
+
 ## 目前進度
 
 原生 HTML／JavaScript 驗收入口已接上原版 Ruby。認證、大廳、資料、戰鬥、任務及全域聊天六項 KeepAlive 按原版 ActionScript 的命令碼逐位元組驗收。原版道具 PNG 和標題 MP3 直接載入，與原版入口的 SHA-256 相同，並通過 Chromium 解碼及播放測試。這一階段涵蓋連線和原版素材的載入。[啟動與驗收](web-client/README.md) · [實測截圖](docs/playtest/native/01-native-check.png)
@@ -16,17 +28,17 @@
 
 原生九宮格連續縮放時會重用同一個 WebGL 2 繪圖緩衝區，把同次更新的面板合併繪製，再各自裁回可見畫布。已驗證連續變更尺寸時的像素與繪製次數。[連續縮放驗收](docs/playtest/README.md#原生九宮格連續縮放) · [批次驗收](docs/playtest/README.md#原生九宮格批次繪製)
 
-原生對局紀錄頁已驗收固定種子 `2026` 的 68 筆原版 Ruby 事件。Chromium 逐筆核對順序、回合、抽牌數、HP 及勝負，並驗證時間軸的播放、暫停和定位。[回放驗收](docs/playtest/README.md#原生對局紀錄回放)
+原生對局紀錄頁已驗收固定種子 `2026` 的 68 筆原版 Ruby 事件。Chromium 逐筆核對順序、回合、抽牌數、HP 及勝負，並驗證事件播放進度、暫停接續和定位。瀏覽器主執行緒暫停後，播放會依順序逐筆繼續。[回放驗收](docs/playtest/README.md#原生對局紀錄回放)
 
 獨立的 Rust 搜尋示範已用 Chromium 驗收固定 8 秒的倒數、伺服器確認結果、重新整理和斷線重試。桌面及 320 像素窄版都可完成操作。重啟 Rust 程序並沿用原 SQLite 檔後，可查回相同結果。原生任務、戰鬥與結算的串接仍待完成。[啟動與驗收](web-client/README.md#原生搜尋倒數示範) · [搜尋完成截圖](docs/playtest/native/16-native-search-ready.png)
 
 搜尋示範已用 Chromium 驗收最近紀錄。展開先前結果時，目前搜尋繼續倒數。重新整理會恢復儲存的紀錄，包括舊版只保存一筆編號的情況。批次查詢失敗時，畫面會保留已確認的結果供查閱及重試。[最近搜尋紀錄](web-client/README.md#最近搜尋紀錄) · [倒數中查看舊結果](docs/playtest/native/18-native-search-history-during.png)
 
-原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖恢復了登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫可重跑 SWF 宣告幀率、瀏覽器回呼和可見畫面變化的量測。目標硬體上的動畫流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
+原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖修正登入、錯誤提示和標題頁消息的九宮格。標題頁消息及登入後的「更新情報」已用測試 XML 驗收，實際繁中公告仍需原始 XML。標題動畫已量測軟體渲染下的畫面更新，目標硬體的流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
 
 大廳淡出時會清理它持有的提示框。Chromium 實測直接點擊仍顯示提示的「任務」按鈕，進入地圖與戰鬥時提示都已清除。正常的地圖懸停提示也已驗證。[提示退場驗收](docs/playtest/README.md#大廳提示退場)
 
-相容版的地形名稱與描述使用既有內嵌明體。可從編譯後的 SWF 核對原版繁中任務、地圖和地形共 5,557 筆資料所需的字形。[繁中地形文字驗收](docs/playtest/README.md#繁中關卡地形文字)
+相容版的地形名稱與描述使用既有內嵌明體。首場任務已驗證地形名稱和兩行描述，並從編譯後的 SWF 核對 5,557 筆繁中任務、地圖和地形資料所需的字形。其他關卡的文字欄寬和圖層仍待逐畫面驗收。[繁中地形文字驗收](docs/playtest/README.md#繁中關卡地形文字)
 
 《霧潮航線》位於 `modern/`，是一個獨立的技術試驗，已驗證 Rust／Wasm 回放、Axum、WebSocket 和瀏覽器端出牌流程。[技術試驗](modern/README.md)
 
