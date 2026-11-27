@@ -196,13 +196,11 @@ function requestLogout(session) {
 function showLobby(session, returningFromOptions = false) {
   if (activeSession !== session || !session.initialData?.avatar) return;
   changeScreen('lobby');
-  cleanupScreen = mountLobby(postLogin, { session, onOptions: () => switchOptions(session, true) });
+  const fadeIn = returningFromOptions && !reducedMotion.matches
+    ? view => view.animate([{ opacity: 0 }, { opacity: 1 }], { duration: lobbyFadeMs, easing: sineOut })
+    : undefined;
+  cleanupScreen = mountLobby(postLogin, { session, fadeIn, onOptions: () => switchOptions(session, true) });
   if (returningFromOptions) {
-    if (!reducedMotion.matches) {
-      postLogin.firstElementChild.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: lobbyFadeMs, easing: sineOut,
-      });
-    }
     postLogin.querySelector('#lobby-option-open').focus({ preventScroll: true });
   }
 }
@@ -211,6 +209,7 @@ async function switchOptions(session, opening) {
   const current = opening ? 'lobby' : 'options';
   const view = postLogin.firstElementChild;
   if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit) return;
+  if (opening) session.refreshLobbyAvatar?.();
 
   if (!reducedMotion.matches) {
     view.inert = true;

@@ -1,12 +1,14 @@
 """Exercise a fresh fixed-stage player lifecycle against an isolated original Ruby server."""
 
 import argparse
+import os
 import sqlite3
 import struct
 from contextlib import closing
 from math import isclose
 from pathlib import Path
 from secrets import token_hex
+from subprocess import run
 from time import monotonic
 from urllib.parse import urljoin, urlsplit
 
@@ -32,6 +34,7 @@ LOBBY_SIDE_SYMBOLS = {"record", "friend", "item"}
 OPTION_DEFAULTS = {"bgm": 50, "se": 50, "cv": 50, "toolTip": True, "arrow": True}
 OPTION_EDITS = {"bgm": 0, "se": 99, "cv": 1, "toolTip": False, "arrow": False}
 OPTION_STORAGE = "unlight.source-login.preferences"
+LOBBY_REFRESH = [0, 2, 0, 17, 10]
 # Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
 LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
@@ -87,6 +90,26 @@ def account_registration_traffic(sockets, live, start, result):
     assert urlsplit(live[start].url).path == "/socket/12001"
     assert command_ids(frames_for(sockets[start][1], 2, 1, exact=True)) == [5]
     assert frames_for(sockets[start][2], 4, 1, exact=True) == [struct.pack("!Hi", 0, result)]
+
+
+def observe_lobby_refresh_codec(page, origin):
+    # Keep the production encoding and original Ruby wire. Capture only the fixture's command shape.
+    page.route(origin + "/wire.js", lambda route: route.fulfill(content_type="text/javascript", body="""
+      import { encodeCommand as encode } from './wire.js?refresh-qa-original';
+      export * from './wire.js?refresh-qa-original';
+      export function encodeCommand(command, fields, key) {
+        const frame = encode(command, fields, key);
+        const isRefresh = command === 17 && fields?.length === 0;
+        if (isRefresh) window.qaLastLobbyRefresh = performance.now();
+        window.refreshQASends?.push(isRefresh ? [...encode(command, [])] : command);
+        return frame;
+      }
+    """))
+
+
+def wait_refresh_cooldown(page):
+    page.wait_for_function("""() => Number.isFinite(window.qaLastLobbyRefresh)
+      && performance.now() - window.qaLastLobbyRefresh >= 2050""", timeout=TIMEOUT)
 
 
 def wait_logout(page, database, player_id):
@@ -498,6 +521,8 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     page.on("request", lambda request: requests.append(request))
     page.on("response", lambda response: responses.append(response))
     page.on("websocket", lambda socket: live.append(socket))
+    if verify_login_rose:
+        observe_lobby_refresh_codec(page, origin)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     screen(stage, "title")
@@ -660,16 +685,27 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
 
     def verify_options(*, edit):
+        wait_refresh_cooldown(page)
         active = len(sockets) - 4
         sent_before = [len(sent) for _, sent, _ in sockets[active:]]
         request_start = len(requests)
+        page.evaluate("() => { window.refreshQASends = []; }")
         check_options_scene(page, stage, profile, parts, first_portrait, directory, edit=edit)
-        assert len(sockets) == len(live) == active + 4 and all(not socket.is_closed() for socket in live[active:])
-        assert [len(sent) for _, sent, _ in sockets[active:]] == sent_before
-        assert all(request.method == "GET" for request in requests[request_start:])
         assert avatar(database, player_id) == [profile] and equipped_parts(database, profile[0]) == parts
         check_lobby(page, player_id, profile)
         assert check_avatar_canvas(page, stage, parts, responses) == first_portrait
+        assert len(sockets) == len(live) == active + 4 and all(not socket.is_closed() for socket in live[active:])
+        refresh_packets = []
+        for start, (url, sent, _) in zip(sent_before, sockets[active:]):
+            if urlsplit(url).path == "/socket/12002":
+                refresh_packets = sent[start:]
+            else:
+                assert len(sent) == start
+        assert 1 <= len(refresh_packets) <= 2 and all(frame[:2] == b"\x00\x02" and len(frame) == 5
+                                                     and frame[-1:] == b"\n" for frame in refresh_packets)
+        assert page.evaluate("window.refreshQASends") == [LOBBY_REFRESH] * len(refresh_packets)
+        page.evaluate("() => { window.refreshQASends = null; }")
+        assert all(request.method == "GET" for request in requests[request_start:])
         if edit:
             capture(stage, directory, "11h-lobby-returned-from-options.png")
 
@@ -746,20 +782,99 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     return first_portrait
 
 
+def check_ap_recovery(page, origin, database, name, password, directory):
+    server = database.parent.parent
+    if database != server / "data/game_dev2.db" or not (server / ".legacy-server-staging").is_file():
+        raise ValueError("AP recovery requires a disposable Ruby stage created by run.py")
+    ((player_id, flags),) = player(database, name)
+    (before,) = avatar(database, player_id)
+    assert flags == 0 and before[5:7] == (4, 5), "Use a signed-out --playtest-first-quest fixture"
+    sockets = []
+    page.on("websocket", lambda socket: sockets.append(socket))
+    observe_lobby_refresh_codec(page, origin)
+
+    assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
+    stage = page.locator("#stage")
+    expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
+    page.locator("#username").fill(name)
+    page.locator("#password").fill(password)
+    page.locator("#login-submit").click()
+    screen(stage, "lobby")
+    close_lobby_news(page, stage, None)
+    expect(page.locator("#lobby-energy")).to_have_text("4/5")
+    (before,) = avatar(database, player_id)
+    assert before[5:7] == (4, 5)
+    parts = equipped_parts(database, before[0])
+    portrait = page.locator("#lobby-avatar")
+    expect(portrait).to_have_attribute("data-avatar-state", "ready")
+    image = portrait_sha(portrait)
+    wait_refresh_cooldown(page)
+
+    # Only arm the existing Ruby recovery rule. The next authenticated Lobby command restores AP.
+    run(["ruby", "-e", """
+        $SERVER_NAME = 'legacy-lobby-refresh-check'
+        require ARGV.shift
+        include Unlight
+        player = Player.first(name: ARGV.fetch(0))
+        abort 'Expected an authenticated fixture player.' unless player && (player.state & 1) == 1
+        avatar = Avatar.first(player_id: player.id)
+        abort 'Expected exactly 4/5 AP.' unless avatar&.energy == 4 && avatar.energy_max == 5
+        seconds = avatar.get_recovery_interval
+        abort 'Missing original recovery interval.' unless seconds > 0
+        avatar.last_recovery_at = Time.now.utc - seconds - 2
+        avatar.save_changes
+    """, "--", str(Path(__file__).resolve().parents[1] / "legacy-server/isolated_server.rb"), name],
+        cwd=server, env={**os.environ, "UNLIGHT_LEGACY_STAGE": str(server), "TZ": "UTC"}, check=True, timeout=30)
+    assert avatar(database, player_id) == [before]
+    capture(stage, directory, "ap-recovery-before.png")
+    page.evaluate("() => { window.refreshQASends = []; }")
+    page.locator("#lobby-option-open").click()
+    screen(stage, "options")
+    expect(page.locator("#options-energy")).to_have_text("5/5", timeout=TIMEOUT)
+    assert page.evaluate("window.refreshQASends") == [LOBBY_REFRESH]
+    portrait = page.locator("#options-avatar")
+    expect(portrait).to_have_attribute("data-avatar-state", "ready")
+    assert portrait_sha(portrait) == image
+    assert avatar(database, player_id) == [before[:5] + (5,) + before[6:]]
+    assert equipped_parts(database, before[0]) == parts
+    assert len(sockets) == 4 and {urlsplit(socket.url).path for socket in sockets} == SESSION_PORTS
+    assert all(not socket.is_closed() for socket in sockets)
+    capture(stage, directory, "ap-recovery-options.png")
+    page.locator("#options-back").click()
+    screen(stage, "lobby")
+    expect(page.locator("#lobby-energy")).to_have_text("5/5")
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=4389)
     parser.add_argument("--database", type=lambda path: Path(path).resolve(), required=True,
-                        help="Read-only verification of the disposable Ruby SQLite fixture")
+                        help="SQLite database of the disposable Ruby stage")
     parser.add_argument("--screens", type=Path, help="Save verified 780×680 screenshots in this directory")
     parser.add_argument("--chromium", default="/usr/bin/chromium")
+    parser.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
+    parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
     args = parser.parse_args()
+    if (args.refresh_user is None) != (args.refresh_password_file is None):
+        parser.error("--refresh-user and --refresh-password-file must be supplied together")
+    origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
             "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
         ])
         portraits = []
         try:
+            if args.refresh_user is not None:
+                if args.screens is not None:
+                    args.screens.mkdir(parents=True, exist_ok=True)
+                page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
+                                        reduced_motion="reduce")
+                check_ap_recovery(page, origin, args.database, args.refresh_user,
+                                  args.refresh_password_file.read_text().rstrip("\r\n"), args.screens)
+                print("Original Ruby AP recovered from 4/5 to 5/5 on the existing Lobby connection.")
+                return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):
                 directory = args.screens / f"avatar-{number}" if args.screens is not None else None
                 if directory is not None:
@@ -767,7 +882,7 @@ def main():
                 page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
                                         reduced_motion="reduce")
                 try:
-                    portraits.append(check(page, f"http://127.0.0.1:{args.port}", args.database, directory, selected_parts,
+                    portraits.append(check(page, origin, args.database, directory, selected_parts,
                                            verify_login_rose=number == 1))
                 finally:
                     page.close()

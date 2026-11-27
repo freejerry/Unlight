@@ -34,8 +34,9 @@ function starterIds(list) {
 }
 
 async function readAvatar(compressed, signal, includeDeckCollection = false) {
+  const receivedAt = performance.now();
   // Keep the fixed-size avatar header and selected appearance, deck and quest fields only.
-  const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 5 * 4);
+  const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 7 * 4);
   let prefixLength = 0;
   let total = 0;
   let reader;
@@ -91,11 +92,25 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       level: fields.int(),
       energy: fields.int(),
       energyMax: fields.int(),
+      energyRecoveryInterval: null,
+      energyRemainingSeconds: null,
+      energyReceivedAt: null,
       freeDuelCount: quests?.freeDuelCount() ?? null,
       equippedPartIds: quests?.equippedPartIds() ?? equippedPartIds,
       questDecks: quests?.deckChoices() ?? [],
     };
     if (avatar.id < 1) throw new Error('Invalid avatar ID.');
+    try {
+      const interval = fields.int();
+      const remaining = fields.int();
+      if (interval > 0) avatar.energyRecoveryInterval = interval;
+      if (remaining >= 0) {
+        avatar.energyRemainingSeconds = remaining;
+        avatar.energyReceivedAt = receivedAt;
+      }
+    } catch {
+      // A shorter legacy header still provides the existing avatar snapshot.
+    }
     let questData = null;
     try {
       questData = quests?.result() ?? null;

@@ -72,6 +72,10 @@
 
 ## 優先整合與驗收
 
+固定舞台第一個驗收案例由大廳 `btn_b` 進真正的普通任務地圖。新角色應看到魔女山谷 `0/3`、空庫存 `0/4`、實際 Deck 1、角色與 AP。既有角色另驗已發現和搜尋中列共存，依持有 ID 把 Quest 登入重播與角色快照對位。Back 使用 `(712,0)` 的原圖，播放 `ulse01.mp3`，退場後送一次 `Quest CS2` 並等該連線關閉。回大廳驗既有四條連線和任務入口焦點。[原版進入](../../../app/client/src/view/QuestView.as#L288) · [原版退出](../../../app/client/src/view/QuestView.as#L466) · [Ruby 登入重播](../../../app/server/src/controller/quest_controller.rb#L515)
+
+第一區 `map01_ch.swf` 原底圖是 `(0,32)` 的 760×444 JPEG，主地標及 Up／Over 位於 `(239,214)`。`quest_base.swf` 提供上下框與導航，`questlist_ch.swf` 在 `(464,36)` 依容量選固定幀，任務列從 `(464,44)` 起每排 16 px。兩個畫面的 AP 共享原封包狀態。任務角色為 `(525,230)`，大廳的右側三個入口在任務模式隱藏。[地圖來源](../../../app/client/src/view/image/quest/WorldMapImage.as#L381) · [清單初始化](../../../app/client/src/view/scene/quest/QuestList.as#L184) · [共用角色模式](../../../app/client/src/view/scene/common/AvatarView.as#L221)
+
 1. 在 `cc2ef53` 的同一固定舞台增加唯讀普通任務場景。沿用既有 `SessionSocket`、`confirmChannel`、`readQuestInventoryPushes`、資料快照和 catalog。負責單一 Quest 的開啟、登入重播 fence、保留、Back CS2/peer close 和登入受控的取消。明確驗收四條既存連線繼續、Quest 重入沒有重疊、新角色及既有角色狀態不同、pending 被保留、獲授權區域與原版 36 地圖邊界。保持現有大廳、登入和共用 Workbench 入口。若需新增 catalog 回覆，維持既有單筆/缺值相容。用協定行為增量處理中繼 EOF bug。暫停分支的場景有參考價值，但它的 scene lock 會封鎖一般 Quest 方法，合併它也不會產生可玩完整流程。
 2. 在已保留的**一條** Quest 上把原版三分鐘魔女山谷搜尋、pending、已發現和真 AP 接入固定舞台，再串同一張手牌可判定的 CS13 + 首格 CS16。把認證與 read/write 區分可重用，短 socket 診斷仍可維持。入口和遞進共用租期，不能為同一個在進行冒險再開第二條。實測時間要包含真 180 秒或分開標明 Ruby 原模型的可控 fixture 係數，故障測例只留真回覆不把未知成功算進。之後接實際對戰 phase、局結果和 Quest 結算，保留 SC24 ↔ inventory 準確關聯。其他搜尋索引、舊區和額外分支按各自證據擴展。
 3. 回歸優先順序。首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。不要在測試的記錄內寫帳密或會話憑證。

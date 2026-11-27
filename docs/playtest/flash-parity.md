@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**原版與新版設定的進入、修改及返回。新版 BGM／SE 即時生效，五項偏好可保存。**部分**大廳其他入口及共用提示。 | 補上原版角色刷新與其推送。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **部分**固定舞台任務庫存與共用 Ruby 協定。歷史首戰證據依入口分開記錄。 | 同次登入進真實任務地圖並返回，再逐次接上探索和首戰。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -55,4 +55,9 @@
 ### 大廳選項設定
 
 - `/source-login/` 大廳的 `OPTION` 開啟固定舞台的設定頁，使用原版設定背景、Back 圖樣、面板切片及角色裝備。角色在設定使用 `(525,230)` 與約 294 ms 淡入。Back 返回大廳的 `(489,230)` 與原入場位移。進入及返回分別觸發 `ulse02.mp3`、`ulse01.mp3`。[原始素材及座標](../../source-login/option-art/sources.json) · [角色入場來源](../../app/client/src/view/scene/common/AvatarClip.as#L315)
-- 在隔離 Ruby 連線中驗證大廳→設定→大廳，包含滑鼠拖曳、鍵盤、偏好重新載入、原角色與四條既有連線，以及歸零後仍繼續的 BGM 播放位置。Flex 控件外觀、場景各圖層的淡出、全域工具提示與原版角色刷新仍有待對齊的項目。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/options-native/option-side-by-side.png) · [逐項驗收](flash-parity/options-reference.md) · [可重跑腳本](../../tools/legacy-web/check_source_lobby.py)
+- 在隔離 Ruby 連線中驗證大廳→設定→大廳，包含滑鼠拖曳、鍵盤、偏好重新載入、原角色與四條既有連線，以及歸零後仍繼續的 BGM 播放位置。Flex 控件外觀、場景各圖層的淡出與全域工具提示仍有待對齊的項目。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/options-native/option-side-by-side.png) · [逐項驗收](flash-parity/options-reference.md) · [可重跑腳本](../../tools/legacy-web/check_source_lobby.py)
+
+### 大廳角色與 AP 刷新
+
+- 原版與新版都在開啟設定時用已登入的 Lobby 執行 Ruby 恢復檢查，從 `4/5` 回復至 `5/5`。新版暫緩真 `SC17` 時可進入設定且保持 `4/5`，放行後同時更新數字和心形。驗收保留原四條連線、BGM 播放和原裝備。約 328 ms 返回大廳未再送請求，約 2115 ms 返回時只再送一次無參數 `CS17`。[階段畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/ap-refresh-comparison.png) · [封包與時序](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/qa-native-refresh-evidence.json)
+- 原版有一次設定進出時心形滿值但數字暫留 `4/5`，回大廳後為 `5/5`。新版取同一次已確認更新繪製數字和心形。原版 AP 滑入提示的繁中文字與畫面已留存，倒數及到期檢查仍待移植。[原版重跑及差異](flash-parity/options-reference.md#原版-ap-回復的顯示差異) · [重跑設定頁 AP 回復](flash-parity/qa.md#重跑設定頁-ap-回復)

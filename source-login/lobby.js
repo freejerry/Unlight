@@ -182,7 +182,7 @@ function bindQuestInventory(view, session, signal) {
   retry.addEventListener('click', read, { signal });
 }
 
-export function mountLobby(host, { session, onOptions }) {
+export function mountLobby(host, { session, fadeIn, onOptions }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -190,7 +190,7 @@ export function mountLobby(host, { session, onOptions }) {
   const { signal } = lifetime;
   const title = view.querySelector('#lobby-title');
   const news = view.querySelector('#lobby-news');
-  mountAvatarLayer(view.querySelector('.avatar-layer'), { session, signal });
+  const avatarArrival = mountAvatarLayer(view.querySelector('.avatar-layer'), { session, signal });
   const options = view.querySelector('#lobby-option-open');
   options.disabled = typeof onOptions !== 'function';
   if (!options.disabled) {
@@ -205,9 +205,13 @@ export function mountLobby(host, { session, onOptions }) {
   host.append(view);
   void prepareLobbyArt(view, signal);
   title.focus({ preventScroll: true });
+  const entrance = fadeIn?.(view) ?? host.getAnimations().find(animation => animation.animationName === 'login-destination-in');
+  // LobbyView asks for an avatar update after its entrance threads have joined.
+  const ready = Promise.allSettled([avatarArrival, entrance?.finished]).then(() => {
+    if (!signal.aborted) session.refreshLobbyAvatar?.();
+  });
   if (!newsSeen.has(session.playerId)) {
-    const entrance = host.getAnimations().find(animation => animation.animationName === 'login-destination-in');
-    void Promise.all([loadNews(view, signal), entrance?.finished.catch(() => {})]).then(([available]) => {
+    void Promise.all([loadNews(view, signal), ready]).then(([available]) => {
       if (!available || signal.aborted || document.activeElement !== title) return;
       news.showModal();
       newsSeen.add(session.playerId);

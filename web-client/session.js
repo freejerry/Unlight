@@ -54,6 +54,12 @@ const LOBBY_MOVE_DECK_CARD_FAILED_REPLY = 10;
 const LOBBY_ERROR_REPLY = 34;
 const LOBBY_MOVE_DECK_CARD_FINISH_REPLY = 67;
 const LOBBY_PONG = 35;
+const LOBBY_REFRESH_AVATAR = 17;
+const LOBBY_ENERGY_REPLY = 17;
+const LOBBY_ENERGY_MAX_REPLY = 18;
+const LOBBY_GEMS_REPLY = 25;
+const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
+const LOBBY_REFRESH_INTERVAL = 2000;
 const AVATAR_REGISTRATION_REPLIES = [LOBBY_AVATAR_COMMAND, LOBBY_CREATE_AVATAR_REPLY, LOBBY_CHECK_NAME_REPLY];
 // Original AvatarParts.csv types, in the order sent by AvatarStyleEditor.
 const AVATAR_STARTER_PART_GROUPS = [
@@ -196,9 +202,11 @@ class SessionSocket {
   #cleanPeerClose = false;
   #expireCommand = null;
   #onStartupFailure;
+  #onPushedReply;
 
-  constructor(port, onStartupFailure) {
+  constructor(port, onStartupFailure, onPushedReply) {
     this.#onStartupFailure = onStartupFailure;
+    this.#onPushedReply = onPushedReply;
     const address = new URL(`/socket/${port}`, location.href);
     address.protocol = address.protocol === 'https:' ? 'wss:' : 'ws:';
     try {
@@ -315,14 +323,14 @@ class SessionSocket {
         const reply = readReply(body);
         const waiter = this.#waiting;
         if (waiter?.replies.includes(reply.command)) {
-          waiter.onReply?.();
+          waiter.onReply?.(reply);
           this.#waiting = null;
           waiter.resolve(reply);
         } else if (this.#observer?.commands.includes(reply.command)) {
           this.#observer.receive(reply);
         } else if (reply.command === this.#expireCommand) {
           this.#fail(new SessionError('network'), 'expired');
-        } else if (waiter && !waiter.allowOther && !waiter.skip?.includes(reply.command)) {
+        } else if (!this.#onPushedReply?.(reply) && waiter && !waiter.allowOther && !waiter.skip?.includes(reply.command)) {
           throw new SessionError('protocol');
         }
       });
@@ -350,6 +358,7 @@ class SessionSocket {
     this.#key?.fill(0);
     this.#key = null;
     this.#observer = null;
+    this.#onPushedReply = null;
     this.#parser.reset();
     this.#resolveOpen(false);
     const error = this.#fault ?? new SessionError('network');
@@ -357,6 +366,45 @@ class SessionSocket {
     if (this.#reason !== 'closed') this.#onStartupFailure?.(error);
     this.#resolveClose(this.#reason ?? 'network');
   }
+}
+
+function observeLobbyAvatar(reply, publish) {
+  let patch;
+  try {
+    switch (reply.command) {
+      case LOBBY_ENERGY_REPLY: {
+        const energy = reply.int();
+        const energyRemainingSeconds = reply.int();
+        if (energy >= 0 && energyRemainingSeconds >= 0) {
+          patch = { energy, energyRemainingSeconds, energyReceivedAt: performance.now() };
+        }
+        break;
+      }
+      case LOBBY_ENERGY_MAX_REPLY: {
+        const energyMax = reply.int();
+        if (energyMax > 0) patch = { energyMax };
+        break;
+      }
+      case LOBBY_GEMS_REPLY: {
+        const gems = reply.int();
+        if (gems >= 0) patch = { gems };
+        break;
+      }
+      case LOBBY_FREE_DUEL_COUNT_REPLY: {
+        const freeDuelCount = reply.byte();
+        if (freeDuelCount >= 0 && freeDuelCount <= 3) patch = { freeDuelCount };
+        break;
+      }
+      default:
+        return false;
+    }
+    reply.done();
+  } catch {
+    // A malformed optional status update does not affect the other Lobby replies.
+    return true;
+  }
+  if (patch) publish(patch);
+  return true;
 }
 
 function authReply(reply, expected) {
@@ -419,13 +467,16 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
   // This service sends the bootstrap immediately after its certificate in the same TCP stream.
   const initial = channel.port === DATA_PORT ? observeInitialData(socket, signal) : null;
   try {
-    const login = socket.ask(1, ['yes, ok.', sign], [1, 2], { signal }).then((certificate) => {
-      if (certificate.command !== 1) throw new SessionError('protocol');
-      channel.verified = true;
-      certificate.discardString(4096);
-      certificate.discardString(4096);
-      certificate.done();
-      socket.expireOn(2);
+    const login = socket.ask(1, ['yes, ok.', sign], [1, 2], {
+      signal,
+      onReply(certificate) {
+        if (certificate.command !== 1) throw new SessionError('protocol');
+        certificate.discardString(4096);
+        certificate.discardString(4096);
+        certificate.done();
+        channel.verified = true;
+        socket.expireOn(2);
+      },
     });
     const [, initialData] = await Promise.all([login, initial?.received]);
     return initialData;
@@ -482,7 +533,7 @@ async function requestAvatarName(socket, name, signal, markSent) {
   }
 }
 
-async function submitAvatarRegistration(socket, fields, signal, markSent) {
+async function submitAvatarRegistration(socket, fields, signal, { markSent, markProfile }) {
   let accepted;
   let receivedAt;
   let profileStarted = false;
@@ -501,6 +552,7 @@ async function submitAvatarRegistration(socket, fields, signal, markSent) {
         } else if (reply.command === LOBBY_AVATAR_COMMAND && accepted && !profileStarted) {
           profileStarted = true;
           receivedAt = performance.now();
+          markProfile();
           resolve(readLobbyAvatar(reply, signal));
         } else throw new SessionError('protocol');
       } catch {
@@ -1808,12 +1860,15 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   };
 }
 
-function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
+function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const data = channels.find(({ port }) => port === DATA_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
   let registrationState = registrationOptions ? 'available' : 'unavailable';
   let confirmedAvatar = null;
+  let registrationLobbyPatch = null;
+  let lastLobbyRefresh = -Infinity;
+  const avatarSubscriptions = new Set();
   let profileRequest;
   let deckEditState;
   let closing;
@@ -1826,12 +1881,41 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
+  function publishAvatar() {
+    if (!avatarSubscriptions.size) return;
+    const avatar = initialData.avatar;
+    const questDecks = Object.freeze(avatar.questDecks.map((deck) => Object.freeze({ ...deck })));
+    const snapshot = Object.freeze({ ...avatar, questDecks });
+    for (const { listener } of avatarSubscriptions) {
+      try {
+        void Promise.resolve(listener(snapshot)).catch(() => {});
+      } catch {
+        // Presentation callbacks cannot interrupt the verified Lobby stream.
+      }
+    }
+  }
+
+  attachLobbyAvatar((patch) => {
+    if (!initialData) return;
+    const avatar = initialData.avatar;
+    if (avatar) {
+      if (Object.entries(patch).every(([field, value]) => avatar[field] === value)) return;
+      Object.assign(avatar, patch);
+      publishAvatar();
+    } else if (confirmedAvatar) {
+      Object.assign(confirmedAvatar.avatar, patch);
+    } else if (registrationLobbyPatch) {
+      Object.assign(registrationLobbyPatch, patch);
+    }
+  });
+
   function stop(reason) {
     if (!closing) {
       clearInterval(timer);
       initialData = null;
       questData = null;
       confirmedAvatar = null;
+      for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       boundQuestDecks.clear();
       sessionKey.fill(0);
       const request = questRequest;
@@ -2022,6 +2106,32 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     dataVerified: true,
     chatVerified: true,
     get initialData() { return initialData; },
+    refreshLobbyAvatar() {
+      const now = performance.now();
+      if (!initialData?.avatar || profileRequest || questRequest || questReturn
+          || now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
+      try {
+        auth.assertOpen();
+        lobby.socket.send(LOBBY_REFRESH_AVATAR, []);
+        lastLobbyRefresh = now;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    subscribeAvatar(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      const subscription = {
+        listener,
+        unsubscribe() {
+          avatarSubscriptions.delete(subscription);
+          signal?.removeEventListener('abort', subscription.unsubscribe);
+        },
+      };
+      avatarSubscriptions.add(subscription);
+      signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+      return subscription.unsubscribe;
+    },
     get avatarRegistrationState() { return initialData ? registrationState : 'unavailable'; },
     get avatarRegistrationOptions() { return initialData?.registration ? registrationOptions : null; },
     async checkAvatarName(name, { signal } = {}) {
@@ -2054,12 +2164,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           const code = await requestAvatarName(socket, fields[0], requestSignal, () => { namePending = true; });
           namePending = false;
           if (code !== 0) throw new SessionError(code === 1 ? 'avatar-name-taken' : 'avatar-name-invalid', code);
-          const reply = await submitAvatarRegistration(socket, fields, requestSignal, () => { createSent = true; });
+          const reply = await submitAvatarRegistration(socket, fields, requestSignal, {
+            markSent() { createSent = true; },
+            markProfile() { registrationLobbyPatch = {}; },
+          });
           requestSignal.throwIfAborted();
           if (!reply) {
             createSent = false;
             throw new SessionError('avatar-create-rejected');
           }
+          Object.assign(reply.avatar, registrationLobbyPatch);
           confirmedAvatar = reply;
           registrationState = 'confirmed';
           return { avatarId: reply.avatar.id, name: reply.avatar.name };
@@ -2069,6 +2183,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (createSent) throw new SessionError('avatar-create-uncertain');
         if (namePending) throw new SessionError('avatar-name-uncertain');
         throw error;
+      } finally {
+        registrationLobbyPatch = null;
       }
     },
     async enterAvatarTutorial({ signal } = {}) {
@@ -2090,7 +2206,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           questData = profileQuests;
           confirmedAvatar = null;
           registrationState = 'active';
-          return initialData.avatar;
+          publishAvatar();
+          return profile.avatar;
         });
       } catch (error) {
         registrationState = notified ? 'uncertain' : 'confirmed';
@@ -2580,6 +2697,8 @@ export async function startSession(username, password, { signal, onAuthenticated
   let auth;
   let sessionKeyBytes;
   const channels = [];
+  const startupAvatarPatch = {};
+  let publishLobbyAvatar = (patch) => Object.assign(startupAvatarPatch, patch);
   const startup = new AbortController();
   const startupSignal = startup.signal;
   const rejectStartup = (error) => startup.abort(error);
@@ -2633,7 +2752,11 @@ export async function startSession(username, password, { signal, onAuthenticated
     let initialData;
     for (const { port, pong } of CHANNELS) {
       startupSignal.throwIfAborted();
-      const channel = { socket: new SessionSocket(port, rejectStartup), port, pong, verified: false };
+      const channel = { port, pong, verified: false };
+      const onPushedReply = port === LOBBY_PORT
+        ? (reply) => channel.verified && observeLobbyAvatar(reply, publishLobbyAvatar)
+        : undefined;
+      channel.socket = new SessionSocket(port, rejectStartup, onPushedReply);
       channels.push(channel);
       const data = await confirmChannel(channel, playerId, sessionKeyBytes, startupSignal);
       if (data) initialData = data;
@@ -2642,7 +2765,10 @@ export async function startSession(username, password, { signal, onAuthenticated
     auth.assertOpen();
     for (const { socket } of channels) socket.assertOpen();
     finishStartup();
-    return activeSession(auth, channels, playerId, sessionKeyBytes, initialData);
+    if (initialData.avatar) Object.assign(initialData.avatar, startupAvatarPatch);
+    return activeSession(auth, channels, playerId, sessionKeyBytes, initialData, (receiver) => {
+      publishLobbyAvatar = receiver;
+    });
   } catch (error) {
     finishStartup();
     sessionKeyBytes?.fill(0);

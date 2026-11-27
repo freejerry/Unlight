@@ -18,6 +18,8 @@
 - `LobbyView.as` 501–507、706–744、817–845。原入口播放 `ulse02`，依既有節流做角色資料更新，切到 `STATE_OPTION=6`。先退出大廳再顯示設定。`OptionView.as` 81–84、122–165、179–253 規定 `Option` 放在 `(15,5)`、「選項設定」放在 `(100,12)`，進頁標題淡入約 471 ms，離頁 1 秒再清理共用角色約 294 ms。Back 播放 `ulse01`，回 `STATE_LOBBY`。原版共享控制與設定值的驗收可分開。
 - `HelpPanel.as` 44–51、115–169 與 `SoundPanel.as` 53–149。實際繁中建置開啟 `VOICE_ON`。三個滑桿範圍 0–100，刻度間隔 10，標籤為 0／50／100，拖曳和提交均更新音量。兩個勾選預設開啟，三種音量各預設 50。`Option.as` 27–38、66–104、113–173 使用本機 `volume`，鍵為 `bgm`、`se`、`cv`、`toolTip`、`arrow`。工具提示更新 `ToolTipManager.enabled`。箭頭開關作用於 `ActionCardButton.as` 58–76、116–134 的戰鬥行動牌導引。驗收應包含重開後保留、各通道獨立、拖動時即時更新、歸零再恢復，以及 Back 保留原登入。
 - `LobbyCtrl.as` 303–326、`LobbyView.as` 308–315 與 `SoundCtrl.as` 29–39、70–94。大廳 `ulbgm02.mp3` 在設定進出沿用既有通道與播放位置，音量值除以 100 即時更新，滑到零仍保留播放。設定資料本身沒有送到 Ruby。另一路的標題與角色建立各有自己的 `ulbgm01.mp3` 播放實例，標題在確認登入後兩秒淡出，角色建立開始時從零播相同檔案。
+- 原版開啟設定依序播放入口音、試送無參數 `Lobby CS17`，再淡出大廳。Back 先退出設定，大廳自身等背景、立繪、角色和入口顯示後進行同一個刷新，接著檢查公告。`LobbyCtrl` 跨場景共用 2 秒節流。Ruby 在可回復 AP 時更新資料庫並可能連送多筆 `SC17`，每筆同時攜帶目前 AP 與恢復秒數。`SC18` 是 AP 上限，`SC25` 是 Gem，`SC42` 是 `i8` 免費決鬥次數。Flash 的 Lobby `SC21` Exp 更新停在註解，`SC22` 等級只有紀錄。[大廳顯示後刷新](../../../app/client/src/view/LobbyView.as#L308) · [設定入口](../../../app/client/src/view/LobbyView.as#L501) · [兩秒節流](../../../app/client/src/controller/LobbyCtrl.as#L619) · [原版處理推送](../../../app/client/src/net/server/LobbyServer.as#L1039) · [Ruby 恢復與推送](../../../app/server/src/model/avatar.rb#L1451)
+- AP 恢復時間另有專用滑入提示。原版從 `y=610`、右緣 `x=760` 淡入，200 ms，繁中顯示「到下一次回復還剩…。」或「現在的AP是最大值。」倒數到期只請求 Ruby 更新，由伺服器決定 AP。[AP 原版計時及指標事件](../../../app/client/src/view/image/common/ActionPointGauge.as#L224)
 - 原始 `data/image/option/config.swf` 為單幀，內含 760×680 JPEG。SWF SHA-256 `2e9e56e2e17697194309e6fe37f73fcff5d6e5c460a18d8841e79f59ca65f077`，JPEG SHA-256 `a95d64dd4156d50f7dcbdcb6b7ebbd8af60a5ce9fb1faa33f835f7c7da350416`。共用框架與 Back 來自 `data/image/common/gene.swf`。`UL.css.cn` 35–45 的面板圖為 120×96 原始 `panel_gene.png`，X 分界 42／78、Y 分界 60／64。可用原始檔與座標直接追溯背景、面板和共用導覽。
 
 ## 新版操作與差異
@@ -28,7 +30,13 @@
 | 轉場 | 大廳設定入口淡出約 471 ms，設定標題淡入約 471 ms，角色為約 294 ms 純淡入。Back 的場景淡出約 1 秒，清理約 294 ms，再返回大廳。測例涵蓋轉場中輸入鎖定及縮減動態效果。大廳各圖層離場目前合成為場景淡出，原有立繪滑出仍待移植。[原版大廳離場](../../../app/client/src/view/LobbyView.as#L706) · [新版切場](../../../source-login/login.js) |
 | 操作與音訊 | 支援滑鼠拖曳、勾選、Back，以及鍵盤方向鍵／Home／End 和 Enter。BGM 即時套用音量，進出設定和調到 0 時保持同一播放實例。SE 立即套用於點擊聲，進入 `ulse02`、返回 `ulse01`。三種音量與兩個勾選儲存在瀏覽器，在同一來源重新載入可復原。VOICE、箭頭待有對應場景後驗收，工具提示目前涵蓋大廳與設定的既有角色名稱、免費決鬥次數。[新版音訊](../../../source-login/bgm.js) · [偏好儲存](../../../source-login/preferences.js) |
 | 控件細節 | 面板按原始九宮格切線繪製。滑桿與勾選為瀏覽器控件，外觀、焦點框、數字顏色與 Ruffle 的 Flex Halo 繪製仍有差異。方向鍵目前移動 1 個百分點，原版 Flex 按軌道像素移動。 |
-| 服務同步 | 實跑 `Auth`、`Data`、`Lobby`、`GlobalChat` 保持連線，角色及裝備資料一致。原版進入與返回會按 2 秒節流送 `Lobby CS17`，可觸發 AP 恢復及 `SC17`／`SC42` 等推送。待接持續接收與資料合併後驗收即時狀態。[原版刷新入口](../../../app/client/src/controller/LobbyCtrl.as#L619) · [原版推送](../../../app/client/src/net/server/LobbyServer.as#L1039) |
+| 服務同步 | 開設定時在轉場前試送 `Lobby CS17`。初次進大廳與 Back 返回則在入場後試送，兩處共用同一條 Lobby 連線及兩秒節流。切頁不依賴回覆。有效的 AP、AP 上限、Gem 及免費決鬥次數推送會更新共用 HUD。AP 的原始恢復秒數隨資料保留，AP 滑入倒數及到期請求尚待移植。[新版切場](../../../source-login/login.js) · [新版會話](../../../web-client/session.js) |
+
+### 原版 AP 回復的顯示差異
+
+在同一次原版登入，大廳顯示 `4/5`。把隔離測試角色的 `last_recovery_at` 設為已到期，按下 OPTION 後由 Ruby 依原規則回復到 `5/5`。第一次設定畫面的心形已填滿，數字仍為 `4/5`。Back 回大廳後及第二次進設定時均顯示 `5/5`。原版共用 AvatarView 離場暫時移除 HUD 的更新監聽，重掛已初始化的畫面時沿用既有數字。原始數字和心形可在切場期間各自更新的情形已留存。新版由共用會話接收 AP，畫面消費同一份已確認的數值，切場後重新掛載的數字和心形也使用同一份資料。[大廳原版 `4/5`](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/01-flash-lobby-ap4.png) · [第一次設定的原版差異](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/02-flash-option-full-gauge-stale-ap4.png) · [原版 Back 後 `5/5`](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/03-flash-lobby-back-ap5.png) · [原版顯示監聽](../../../app/client/src/view/scene/common/AvatarView.as#L277)
+
+原版獨立重跑在點擊標記約 111 ms 後收到三筆真正的 `SC17(5,0)`，接著收到 `SC42(3)`。這批收包時間與前一組截圖分屬兩次執行。[原版回覆紀錄](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/07-flash-authenticated-wire.json) · [原版倒數提示](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/04-flash-lobby-ap-countdown.png) · [原版 AP 滿值提示](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/05-flash-lobby-ap-full-tooltip.png)
 
 用隔離 Ruby、原版繁中客戶端及 Chromium 的固定舞台重跑。新版測例從註冊與登入開始，實際操作入口、滑桿及 Back，也核對偏好保存、角色資料與連線。[隔離環境與指令](qa.md#可重跑的隔離環境) · [正式測例](../../../tools/legacy-web/check_source_lobby.py)
 

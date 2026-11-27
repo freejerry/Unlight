@@ -139,7 +139,7 @@ export async function prepareLobbyArt(view, signal) {
 function displayProfile(layer, idPrefix, playerId, avatar) {
   const { id, name, level, gems, exp, energy, energyMax, freeDuelCount, questDecks } = avatar;
   const hasEnergyRange = Number.isSafeInteger(energy) && Number.isSafeInteger(energyMax) &&
-    energy >= 0 && energyMax > 0 && energy <= energyMax;
+    energy >= 0 && energyMax > 0;
   const fields = {
     'player-id': playerId,
     'avatar-name': name,
@@ -153,38 +153,41 @@ function displayProfile(layer, idPrefix, playerId, avatar) {
     layer.querySelector(`#${idPrefix}-${field}`).textContent = value ?? '—';
   }
   layer.querySelector(`#${idPrefix}-level-label`).hidden = !Number.isSafeInteger(level);
+  const gauge = layer.querySelector('.ap');
   if (hasEnergyRange) {
-    // The original ActionPointGauge leaves a small margin at full AP.
-    layer.querySelector('.ap').style.setProperty('--lobby-ap-ratio', 0.98 * energy / energyMax);
+    // The original scales the liquid by AP and clips it to the heart, including forced recovery above cap.
+    gauge.style.setProperty('--lobby-ap-ratio', 0.98 * energy / energyMax);
+  } else {
+    gauge.style.removeProperty('--lobby-ap-ratio');
   }
-  if (Number.isSafeInteger(freeDuelCount) && freeDuelCount >= 0 && freeDuelCount <= 3) {
-    const count = layer.querySelector(`#${idPrefix}-free-duel-count`);
-    count.textContent = freeDuelCount;
-    layer.querySelector(`#${idPrefix}-free-duel-stars`).src = `/source-login/lobby-art/duel-stars-${freeDuelCount}.png`;
-    count.closest('.free-duel').hidden = false;
+  const count = layer.querySelector(`#${idPrefix}-free-duel-count`);
+  const stars = layer.querySelector(`#${idPrefix}-free-duel-stars`);
+  const hasCount = Number.isSafeInteger(freeDuelCount) && freeDuelCount >= 0 && freeDuelCount <= 3;
+  count.textContent = hasCount ? freeDuelCount : '';
+  count.closest('.free-duel').hidden = !hasCount;
+  if (hasCount) {
+    const art = `/source-login/lobby-art/duel-stars-${freeDuelCount}.png`;
+    if (stars.getAttribute('src') !== art) stars.src = art;
+  } else {
+    stars.removeAttribute('src');
   }
   const firstDeck = questDecks?.find(deck => deck.index === 1);
-  if (typeof firstDeck?.name === 'string' && firstDeck.name.trim()) {
-    layer.querySelector(`#${idPrefix}-deck-name`).textContent = firstDeck.name;
-  }
+  layer.querySelector(`#${idPrefix}-deck-name`).textContent =
+    typeof firstDeck?.name === 'string' && firstDeck.name.trim() ? firstDeck.name : '';
 }
 
-async function displayExperienceTarget(layer, idPrefix, { level, exp }, signal) {
-  if (!Number.isSafeInteger(level) || level < 1 || !Number.isSafeInteger(exp)) return;
+async function loadExperienceTable(signal) {
   try {
     const response = await fetch('/source-login/avatar-levels.json', {
       redirect: 'error',
       signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
     });
-    if (!response.ok) return;
+    if (!response.ok) return null;
     const { levelMax, thresholds } = await response.json();
-    if (signal.aborted || !Number.isSafeInteger(levelMax) || levelMax < 1) return;
-    const target = level >= levelMax ? 0 : thresholds?.[level];
-    if (Number.isSafeInteger(target) && target >= 0) {
-      layer.querySelector(`#${idPrefix}-exp-next`).textContent = `/${target || '-----'}`;
-    }
+    return Number.isSafeInteger(levelMax) && levelMax > 0 ? { levelMax, thresholds } : null;
   } catch {
     // The current experience value is available even without the original table.
+    return null;
   }
 }
 
@@ -196,26 +199,51 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
   if (idPrefix !== 'lobby' && idPrefix !== 'options') {
     throw new Error('Unknown avatar layer.');
   }
+  if (signal.aborted) return Promise.resolve();
 
   layer.innerHTML = avatarMarkup(idPrefix);
-  displayProfile(layer, idPrefix, session.playerId, avatar);
-  const hints = [
-    [layer.querySelector(`#${idPrefix}-avatar-name`), avatar.name ?? ''],
-    [layer.querySelector('.free-duel'), '不消耗AP可進行的對戰次數'],
-  ];
+  const avatarName = layer.querySelector(`#${idPrefix}-avatar-name`);
+  const freeDuel = layer.querySelector('.free-duel');
+  const expNext = layer.querySelector(`#${idPrefix}-exp-next`);
+  let experienceTable;
+  let displayedExperienceLevel;
   const applyHints = ({ toolTip }) => {
-    for (const [element, title] of hints) {
-      if (toolTip) element.title = title;
-      else element.removeAttribute('title');
+    if (toolTip) {
+      avatarName.title = avatarName.textContent;
+      freeDuel.title = '不消耗AP可進行的對戰次數';
+    } else {
+      avatarName.removeAttribute('title');
+      freeDuel.removeAttribute('title');
     }
   };
-  applyHints(getPreferences());
+  const paint = snapshot => {
+    if (signal.aborted || snapshot?.id !== avatar.id) return;
+    displayProfile(layer, idPrefix, session.playerId, snapshot);
+    applyHints(getPreferences());
+    const { level, exp } = snapshot;
+    const nextLevel = Number.isSafeInteger(level) && level > 0 && Number.isSafeInteger(exp) ? level : null;
+    if (nextLevel === displayedExperienceLevel) return;
+    displayedExperienceLevel = nextLevel;
+    expNext.textContent = '';
+    if (nextLevel === null) return;
+    experienceTable ??= loadExperienceTable(signal);
+    void experienceTable.then(table => {
+      if (!table || signal.aborted || displayedExperienceLevel !== nextLevel) return;
+      const target = nextLevel >= table.levelMax ? 0 : table.thresholds?.[nextLevel];
+      if (Number.isSafeInteger(target) && target >= 0) expNext.textContent = `/${target || '-----'}`;
+    });
+  };
+  paint(avatar);
+  session.subscribeAvatar?.(paint, { signal });
   const unsubscribe = subscribePreferences(applyHints);
   signal.addEventListener('abort', unsubscribe, { once: true });
-  void displayExperienceTarget(layer, idPrefix, avatar, signal);
-  void renderLobbyAvatar(layer.querySelector('.avatar-portrait'), avatar.equippedPartIds, {
+
+  const portrait = layer.querySelector('.avatar-portrait');
+  return renderLobbyAvatar(portrait, avatar.equippedPartIds, {
     signal,
     fadeOnly: idPrefix === 'options',
+  }).then(() => {
+    return Promise.allSettled(portrait.getAnimations().map(animation => animation.finished));
   }).catch(() => {
     // The portrait renderer marks its own failure; the signed-in view remains usable.
   });
