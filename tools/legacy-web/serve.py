@@ -527,8 +527,8 @@ def create_app(
             app.router.add_get("/source-login/avatar-levels.json", avatar_level_curve)
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
-                "onboarding.js", "onboarding.css", "lobby.js", "lobby.css",
-                "lobby-avatar.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
+                "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
+                "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             for name in (
@@ -541,6 +541,9 @@ def create_app(
             app.router.add_get("/source-login/lobby-art/hover/index.json", serve_file(hover_root / "index.json"))
             for image in sorted(hover_root.glob("*.png")):
                 app.router.add_get(f"/source-login/lobby-art/hover/{image.name}", serve_file(image))
+            for name in ("background.jpg", "back.png", "back-over.png"):
+                filename = f"option-art/{name}"
+                app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             for sheet in sorted((SOURCE_LOGIN_ROOT / "avatar-wardrobe").glob("sheet-*.png")):
                 app.router.add_get(f"/source-login/avatar-wardrobe/{sheet.name}", serve_file(sheet))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))

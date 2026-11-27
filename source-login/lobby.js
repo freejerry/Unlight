@@ -1,5 +1,6 @@
 import { readNews } from '/news.js';
-import { renderLobbyAvatar } from './lobby-avatar.js';
+import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
+import { playLobbyClick } from './bgm.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -7,34 +8,7 @@ const layout = `
     <!-- LobbyView.as: PRIO_BG, PRIO_CHARA, PRIO_AVATAR, PRIO_ENTRANCE. -->
     <div class="lobby-backdrop" data-source="entrance_bg.swf" aria-hidden="true"></div>
     <div class="art-slot standing-character" role="img" aria-label="艾伯李斯特立繪" data-source="standchara01.swf"></div>
-    <div class="avatar-layer">
-      <div class="art-slot avatar" aria-hidden="true"></div>
-      <canvas id="lobby-avatar" width="290" height="450" aria-label="虛擬人物"></canvas>
-      <ul class="side-entries" aria-label="角色入口">
-        <li data-symbol="record"><span class="sr-only">紀錄</span><img class="record-art" src="/source-login/lobby-art/record.png" width="48" height="32" alt="" /></li>
-        <li data-symbol="friend"><span class="sr-only">好友</span><img class="friend-art" src="/source-login/lobby-art/friend.png" width="48" height="37" alt="" /></li>
-        <li data-symbol="item"><span class="sr-only">道具</span><img class="item-art" src="/source-login/lobby-art/item.png" width="48" height="32" alt="" /></li>
-      </ul>
-      <dl id="lobby-profile" class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
-        <div class="name">
-          <dt class="sr-only">Name</dt>
-          <dd><span id="lobby-level-label" hidden>Lv.<span id="lobby-level"></span> </span><span id="lobby-avatar-name"></span></dd>
-        </div>
-        <div class="gem"><dt class="sr-only">Gem</dt><dd id="lobby-gems"></dd></div>
-        <div class="exp"><dt class="sr-only">Exp</dt><dd><span id="lobby-exp"></span><span id="lobby-exp-next"></span></dd></div>
-        <div class="ap">
-          <dt class="sr-only">AP</dt>
-          <dd><span class="lobby-ap-liquid" aria-hidden="true"></span><span id="lobby-energy"></span></dd>
-        </div>
-        <div class="free-duel" title="不消耗AP可進行的對戰次數" hidden>
-          <dt class="sr-only">不消耗AP可進行的對戰次數</dt>
-          <dd><span id="lobby-free-duel-count" class="sr-only"></span><img id="lobby-free-duel-stars" width="43" height="13" alt="" /></dd>
-        </div>
-        <div id="lobby-deck-row" hidden><dt>牌組</dt><dd id="lobby-deck-name"></dd></div>
-      </dl>
-      <span id="lobby-player-id" hidden></span>
-      <span id="lobby-avatar-id" hidden></span>
-    </div>
+    <div class="avatar-layer"></div>
     <div id="lobby-entries" class="entrance-layer" role="group" aria-label="大廳入口">
       <img class="entrance-art" src="/source-login/lobby-art/entrances.png" width="760" height="680" alt="" />
       <!-- EntranceSet.as binds these instance names from the TCN entrance SWF. -->
@@ -53,7 +27,9 @@ const layout = `
         <li class="raid" data-symbol="btn_k"><span class="sr-only">襲擊</span></li>
       </ul>
       <ul class="utility-entries" aria-label="輔助入口">
-        <li class="options" data-symbol="btn_h"><span class="sr-only">設定</span></li>
+        <li class="options" data-symbol="btn_h">
+          <button id="lobby-option-open" class="source-lobby-option-entry" type="button" aria-label="設定"></button>
+        </li>
         <li class="tutorial" data-symbol="btn_d"><span class="sr-only">教學</span></li>
         <li class="serial" data-symbol="btn_serial"><span class="sr-only">序號</span></li>
       </ul>
@@ -89,161 +65,6 @@ const layout = `
 
 const questStates = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '受贈'];
 const newsSeen = new Set();
-const hoverArtPath = '/source-login/lobby-art/hover/';
-
-async function loadHoverImage(filename, width, height) {
-  if (typeof filename !== 'string' || !/^[a-zA-Z0-9_-]+\.png$/.test(filename)) {
-    throw new Error('Invalid lobby artwork filename.');
-  }
-  const image = new Image(width, height);
-  image.alt = '';
-  image.src = hoverArtPath + filename;
-  await image.decode();
-  if (image.naturalWidth !== width || image.naturalHeight !== height) {
-    throw new Error('Invalid lobby artwork size.');
-  }
-  return image;
-}
-
-async function prepareHoverMotion(target, { file, frameCount, frameMs, loop, loopStart = 0 }, width, height, signal) {
-  if (!Number.isSafeInteger(frameCount) || frameCount < 2 ||
-      !Number.isSafeInteger(loopStart) || loopStart < 0 || loopStart >= frameCount ||
-      !Number.isFinite(frameMs) || frameMs <= 0) return;
-  try {
-    const sprite = await loadHoverImage(file, width, height * frameCount);
-    if (signal.aborted) return;
-    const intro = loop === true ? loopStart : 0;
-    const steps = loop === true ? frameCount - intro : frameCount - 1;
-    sprite.className = 'lobby-art-motion';
-    sprite.style.setProperty('--lobby-art-motion-start', `${-height * intro}px`);
-    sprite.style.setProperty('--lobby-art-motion-end', `${-height * (intro + steps)}px`);
-    sprite.style.animationDuration = `${frameMs * steps}ms`;
-    sprite.style.animationTimingFunction = `steps(${steps}, end)`;
-    sprite.style.animationIterationCount = loop === true ? 'infinite' : '1';
-    if (intro) {
-      const introDuration = `${frameMs * intro}ms`;
-      sprite.style.animationName = 'lobby-art-over-intro, lobby-art-over-frames';
-      sprite.style.animationDuration = `${introDuration}, ${sprite.style.animationDuration}`;
-      sprite.style.animationTimingFunction = `steps(${intro}, end), ${sprite.style.animationTimingFunction}`;
-      sprite.style.animationDelay = `0ms, ${introDuration}`;
-      sprite.style.animationIterationCount = '1, infinite';
-      sprite.style.animationFillMode = 'forwards, none';
-    }
-    target.append(sprite);
-  } catch {
-    // The exact static hover frame remains usable without its optional animation.
-  }
-}
-
-async function prepareLobbyHover(view, signal) {
-  try {
-    const response = await fetch(hoverArtPath + 'index.json', {
-      redirect: 'error',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
-    });
-    if (!response.ok) return;
-    const { entrancesBase, buttons } = await response.json();
-    const anchors = view.querySelectorAll('[data-symbol]');
-    const [base, ...sprites] = await Promise.all([
-      loadHoverImage(entrancesBase, 760, 680),
-      ...Array.from(anchors, async anchor => {
-        const { x, y, width, height, up, over, animation } = buttons[anchor.dataset.symbol];
-        if (![x, y, width, height].every(Number.isSafeInteger) ||
-            x < 0 || y < 0 || width < 1 || height < 1 || x + width > 780 || y + height > 680) {
-          throw new Error('Invalid lobby artwork bounds.');
-        }
-        const [idle, hovered] = await Promise.all([loadHoverImage(up, width, height), loadHoverImage(over, width, height)]);
-        return { anchor, x, y, idle, hovered, animation };
-      }),
-    ]);
-    if (signal.aborted) return;
-
-    const scene = view.getBoundingClientRect();
-    for (const { anchor, x, y, idle, hovered, animation } of sprites) {
-      const bounds = anchor.getBoundingClientRect();
-      const oldArt = anchor.querySelector(':scope > img');
-      const overLayer = document.createElement('span');
-      idle.className = 'lobby-art-up';
-      overLayer.className = 'lobby-art-over';
-      hovered.className = 'lobby-art-still';
-      overLayer.append(hovered);
-      for (const layer of [idle, overLayer]) {
-        layer.style.left = `${x - (bounds.left - scene.left)}px`;
-        layer.style.top = `${y - (bounds.top - scene.top)}px`;
-      }
-      if (oldArt) {
-        idle.classList.add(...oldArt.classList);
-        oldArt.replaceWith(idle, overLayer);
-      } else {
-        anchor.append(idle, overLayer);
-      }
-      if (animation) {
-        overLayer.style.width = `${hovered.width}px`;
-        overLayer.style.height = `${hovered.height}px`;
-        void prepareHoverMotion(overLayer, animation, hovered.width, hovered.height, signal);
-      }
-    }
-    base.className = 'entrance-art';
-    view.querySelector('.entrance-art').replaceWith(base);
-    view.dataset.hoverArt = 'ready';
-  } catch {
-    // Keep the approved default artwork if the optional state bundle is incomplete.
-  }
-}
-
-function displayProfile(view, playerId, avatar) {
-  const { id, name, level, gems, exp, energy, energyMax, freeDuelCount, questDecks } = avatar;
-  const hasEnergyRange = Number.isSafeInteger(energy) && Number.isSafeInteger(energyMax) &&
-    energy >= 0 && energyMax > 0 && energy <= energyMax;
-  const fields = {
-    'player-id': playerId,
-    'avatar-name': name,
-    'avatar-id': id,
-    level,
-    gems,
-    exp,
-    energy: hasEnergyRange ? `${energy}/${energyMax}` : energy,
-  };
-  for (const [field, value] of Object.entries(fields)) {
-    view.querySelector(`#lobby-${field}`).textContent = value ?? '—';
-  }
-  view.querySelector('#lobby-level-label').hidden = !Number.isSafeInteger(level);
-  view.querySelector('#lobby-avatar-name').title = name ?? '';
-  if (hasEnergyRange) {
-    // The original ActionPointGauge leaves a small margin at full AP.
-    view.querySelector('.ap').style.setProperty('--lobby-ap-ratio', 0.98 * energy / energyMax);
-  }
-  if (Number.isSafeInteger(freeDuelCount) && freeDuelCount >= 0 && freeDuelCount <= 3) {
-    const count = view.querySelector('#lobby-free-duel-count');
-    count.textContent = freeDuelCount;
-    view.querySelector('#lobby-free-duel-stars').src = `/source-login/lobby-art/duel-stars-${freeDuelCount}.png`;
-    count.closest('.free-duel').hidden = false;
-  }
-  const firstDeck = questDecks?.find(deck => deck.index === 1);
-  if (typeof firstDeck?.name === 'string' && firstDeck.name.trim()) {
-    view.querySelector('#lobby-deck-name').textContent = firstDeck.name;
-  }
-}
-
-async function displayExperienceTarget(view, { level, exp }, signal) {
-  if (!Number.isSafeInteger(level) || level < 1 || !Number.isSafeInteger(exp)) return;
-  try {
-    const response = await fetch('/source-login/avatar-levels.json', {
-      redirect: 'error',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
-    });
-    if (!response.ok) return;
-    const { levelMax, thresholds } = await response.json();
-    if (signal.aborted || !Number.isSafeInteger(levelMax) || levelMax < 1) return;
-    const target = level >= levelMax ? 0 : thresholds?.[level];
-    if (Number.isSafeInteger(target) && target >= 0) {
-      view.querySelector('#lobby-exp-next').textContent = `/${target || '-----'}`;
-    }
-  } catch {
-    // The current experience value is available even without the original table.
-  }
-}
-
 async function loadNews(view, signal) {
   const panel = view.querySelector('#lobby-news');
   const status = panel.querySelector('#lobby-news-status');
@@ -361,12 +182,7 @@ function bindQuestInventory(view, session, signal) {
   retry.addEventListener('click', read, { signal });
 }
 
-export function mountLobby(host, { session }) {
-  const avatar = session.initialData?.avatar;
-  if (!avatar || !Number.isSafeInteger(session.playerId) || session.playerId < 1) {
-    throw new Error('A verified player and avatar are required.');
-  }
-
+export function mountLobby(host, { session, onOptions }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -374,16 +190,20 @@ export function mountLobby(host, { session }) {
   const { signal } = lifetime;
   const title = view.querySelector('#lobby-title');
   const news = view.querySelector('#lobby-news');
-  displayProfile(view, session.playerId, avatar);
+  mountAvatarLayer(view.querySelector('.avatar-layer'), { session, signal });
+  const options = view.querySelector('#lobby-option-open');
+  options.disabled = typeof onOptions !== 'function';
+  if (!options.disabled) {
+    options.addEventListener('click', () => {
+      playLobbyClick();
+      onOptions();
+    }, { signal });
+  }
   bindQuestInventory(view, session, signal);
   news.addEventListener('close', () => title.focus({ preventScroll: true }), { signal });
 
   host.append(view);
-  void prepareLobbyHover(view, signal);
-  void renderLobbyAvatar(view.querySelector('#lobby-avatar'), avatar.equippedPartIds, { signal }).catch(() => {
-    // The portrait renderer marks its own failure; the signed-in view remains usable.
-  });
-  void displayExperienceTarget(view, avatar, signal);
+  void prepareLobbyArt(view, signal);
   title.focus({ preventScroll: true });
   if (!newsSeen.has(session.playerId)) {
     const entrance = host.getAnimations().find(animation => animation.animationName === 'login-destination-in');

@@ -104,14 +104,16 @@ function drawLayer(context, image, { sx, sy, x, y, width, height, color: [red, g
   context.drawImage(canvas, x, y);
 }
 
-function showAvatarArrival(canvas, request, signal) {
+function showAvatarArrival(canvas, request, signal, fadeOnly) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || typeof canvas.animate !== "function") return;
-  // AvatarClip slides and fades into place using a sine ease-in.
+  // AvatarClip uses sine-out opacity in Match mode and a sine-in slide in the Lobby.
   const frames = Array.from({ length: 13 }, (_, step) => {
-    const opacity = 1 - Math.cos(step * Math.PI / 24);
+    const angle = step * Math.PI / 24;
+    if (fadeOnly) return { opacity: Math.sin(angle) };
+    const opacity = 1 - Math.cos(angle);
     return { opacity, transform: `translateX(${200 * (1 - opacity)}px)` };
   });
-  const animation = canvas.animate(frames, 2100 / 1.7);
+  const animation = canvas.animate(frames, (fadeOnly ? 500 : 2100) / 1.7);
   request.animation = animation;
   const stop = () => animation.cancel();
   signal?.addEventListener("abort", stop, { once: true });
@@ -119,7 +121,7 @@ function showAvatarArrival(canvas, request, signal) {
   void animation.finished.then(cleanup, cleanup);
 }
 
-export async function renderLobbyAvatar(canvas, equippedPartIds, { signal } = {}) {
+export async function renderLobbyAvatar(canvas, equippedPartIds, { signal, fadeOnly = false } = {}) {
   if (signal?.aborted) return null;
   const partIds = Array.isArray(equippedPartIds) && equippedPartIds.every(id => Number.isSafeInteger(id) && id > 0)
     ? equippedPartIds.slice() : [];
@@ -165,7 +167,7 @@ export async function renderLobbyAvatar(canvas, equippedPartIds, { signal } = {}
     if (missingPartIds.length) canvas.dataset.avatarMissingParts = missingPartIds.join(",");
     canvas.dataset.avatarLayers = String(layerCount);
     canvas.dataset.avatarState = !layerCount ? "unavailable" : missingPartIds.length ? "partial" : "ready";
-    if (layerCount) showAvatarArrival(canvas, request, signal);
+    if (layerCount) showAvatarArrival(canvas, request, signal, fadeOnly);
     return { partIds, missingPartIds, layerCount };
   } catch (error) {
     if (!current()) return null;

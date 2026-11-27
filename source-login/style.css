@@ -23,6 +23,24 @@
 body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top); }
 
 #stage {
+  --source-stage-gutter: linear-gradient(
+    #0f0f0f 0 3px,
+    #0e0e0e 3px 48px,
+    #0d0d0d 48px 93px,
+    #0c0c0c 93px 138px,
+    #0b0b0b 138px 183px,
+    #0a0a0a 183px 228px,
+    #090909 228px 274px,
+    #080808 274px 319px,
+    #070707 319px 364px,
+    #060606 364px 409px,
+    #050505 409px 454px,
+    #040404 454px 499px,
+    #030303 499px 545px,
+    #020202 545px 590px,
+    #010101 590px 635px,
+    #000000 635px
+  );
   position: relative;
   isolation: isolate;
   inline-size: 780px;
@@ -49,6 +67,7 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 }
 
 #post-login { position: absolute; inset: 0; }
+#stage[data-option-transition] { background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000; }
 
 @media (prefers-reduced-motion: no-preference) {
   #stage[data-login-transition="revealing"] > #post-login {

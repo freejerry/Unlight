@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **部分**大廳 14 個入口圖示與公告。已實跑原版設定頁、修改及返回。 | 接入原版設定頁並驗證音量、偏好保存及同一登入。[原版設定畫面與待驗項目](flash-parity/options-reference.md) |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**原版與新版設定的進入、修改及返回。新版 BGM／SE 即時生效，五項偏好可保存。**部分**大廳其他入口及共用提示。 | 補上原版角色刷新與其推送。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **部分**固定舞台任務庫存與共用 Ruby 協定。歷史首戰證據依入口分開記錄。 | 同次登入進真實任務地圖並返回，再逐次接上探索和首戰。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -51,3 +51,8 @@
 - Login、Register、News 與 Alert 使用 `panel_gene.png` 的四條原始切線，半透明及透明像素按原圖與舞台合成。DPR 1、1.25、2 各比對正常置中及半像素偏移，共 24 組。Login、Register 與 News 的底圖與切片基準一致。Alert 在整數 DPR 最多 4 個像素差 1 個 RGB 色階。測例涵蓋實際頁面的登入／註冊狀態和原版 Ruby 拒絕彈窗。[實際標題](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/21-native-title-transparent-780.png) · [分數比例註冊](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/24-native-register-dpr125.png) · [24 組像素比對](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/panel-raster-metrics.json)
 - 真實 Auth 通過後，標題音樂觀測到從 0.50 到 0 的十一個音量狀態，對應十次 200 ms 衰減。新手開場在另一聲道從頭播原本的 `ulbgm01.mp3`，接續原版教學與大廳曲。Auth 拒絕時，標題聲道維持 0.50 並繼續播放。嚴格與允許自動播放的 Chromium 驗收均通過。[原版音量衰減](../../app/client/src/sound/BaseSound.as#L268) · [新版登入驗收](../../tools/legacy-web/check_source_lobby.py)
 - 原版設定頁已用隔離帳號進入，實際拖曳 BGM、切換工具提示及按 Back 返回。畫面、來源和下一階段的偏好驗收都記在設定頁交接。[設定頁交接](flash-parity/options-reference.md) · [原版設定畫面](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/08-flash-option-settled.png)
+
+### 大廳選項設定
+
+- `/source-login/` 大廳的 `OPTION` 開啟固定舞台的設定頁，使用原版設定背景、Back 圖樣、面板切片及角色裝備。角色在設定使用 `(525,230)` 與約 294 ms 淡入。Back 返回大廳的 `(489,230)` 與原入場位移。進入及返回分別觸發 `ulse02.mp3`、`ulse01.mp3`。[原始素材及座標](../../source-login/option-art/sources.json) · [角色入場來源](../../app/client/src/view/scene/common/AvatarClip.as#L315)
+- 在隔離 Ruby 連線中驗證大廳→設定→大廳，包含滑鼠拖曳、鍵盤、偏好重新載入、原角色與四條既有連線，以及歸零後仍繼續的 BGM 播放位置。Flex 控件外觀、場景各圖層的淡出、全域工具提示與原版角色刷新仍有待對齊的項目。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/options-native/option-side-by-side.png) · [逐項驗收](flash-parity/options-reference.md) · [可重跑腳本](../../tools/legacy-web/check_source_lobby.py)

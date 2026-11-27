@@ -8,24 +8,7 @@
   /* The 760px artwork leaves the original Flex Halo background visible at right. */
   background:
     url("./lobby-art/header.png") left top no-repeat,
-    linear-gradient(
-      #0f0f0f 0 3px,
-      #0e0e0e 3px 48px,
-      #0d0d0d 48px 93px,
-      #0c0c0c 93px 138px,
-      #0b0b0b 138px 183px,
-      #0a0a0a 183px 228px,
-      #090909 228px 274px,
-      #080808 274px 319px,
-      #070707 319px 364px,
-      #060606 364px 409px,
-      #050505 409px 454px,
-      #040404 454px 499px,
-      #030303 499px 545px,
-      #020202 545px 590px,
-      #010101 590px 635px,
-      #000000 635px
-    ) right top / 20px 100% no-repeat,
+    var(--source-stage-gutter) right top / 20px 100% no-repeat,
     #000;
   color: #e6ebf2;
   font: 14px/1.35 var(--interface-font);
@@ -33,15 +16,16 @@
 
 .lobby-backdrop,
 .source-lobby .art-slot,
-.source-lobby .avatar-layer,
 .source-lobby .entrance-layer,
 .source-lobby .top-entries,
 .source-lobby .play-entries li,
 .source-lobby .utility-entries li,
 .source-lobby .lower-slot,
-.source-lobby .side-entries,
-.source-lobby .avatar-status,
-.source-lobby .avatar-status > div { position: absolute; }
+.avatar-layer,
+.avatar-layer .avatar,
+.avatar-layer .side-entries,
+.avatar-layer .avatar-status,
+.avatar-layer .avatar-status > div { position: absolute; }
 
 /* EntranceBG's bitmap is placed at (0, 160) in the 760-wide authored scene. */
 .lobby-backdrop {
@@ -52,11 +36,13 @@
   background: #202a36 url("./lobby-art/background.png") no-repeat;
 }
 
-.source-lobby .avatar-layer, .source-lobby .entrance-layer { inset: 0; }
+.avatar-layer, .source-lobby .entrance-layer { inset: 0; }
+.source-options .avatar-layer { pointer-events: none; }
+.source-options .avatar-layer :is(.avatar-status, .side-entries > li) { pointer-events: auto; }
 .source-lobby .entrance-layer { pointer-events: none; }
 .source-lobby .entrance-layer :is([data-symbol], button) { pointer-events: auto; }
 
-.source-lobby .entrance-layer ul, .source-lobby .side-entries {
+.source-lobby .entrance-layer ul, .avatar-layer .side-entries {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -73,8 +59,10 @@
   content: "";
 }
 
-.source-lobby .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
-#lobby-avatar { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
+.avatar-layer .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
+.avatar-layer .avatar-portrait { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
+/* OptionView uses AvatarView's Match anchor (785 - 260). */
+.source-options .avatar-portrait { left: 525px; }
 
 .source-lobby .entrance-art { position: absolute; top: 0; left: 0; display: block; }
 .source-lobby .top-entries {
@@ -96,7 +84,7 @@
 .source-lobby .quest { left: 464px; top: 240px; }
 .source-lobby .raid { left: 368px; top: 368px; }
 
-.source-lobby-quest-entry {
+.source-lobby-quest-entry, .source-lobby-option-entry {
   display: block;
   width: 100%;
   height: 100%;
@@ -107,40 +95,42 @@
   cursor: pointer;
 }
 
+.source-lobby-option-entry:disabled { cursor: default; }
+
 .source-lobby .utility-entries li { height: 27px; }
 .source-lobby .options { left: 536px; top: 160px; width: 104px; }
 .source-lobby .tutorial { left: 640.05px; top: 159.95px; width: 119.95px; }
 .source-lobby .serial { left: 652px; top: 200px; width: 108px; }
 
-.source-lobby .side-entries {
+.avatar-layer .side-entries {
   left: 713px;
   top: 480px;
   width: 44px;
 }
-.source-lobby .side-entries > li { position: absolute; left: -1px; width: 48px; }
-.source-lobby .side-entries > [data-symbol="record"] { top: 0; height: 32px; }
-.source-lobby .side-entries > [data-symbol="friend"] { top: 43px; height: 37px; }
-.source-lobby .side-entries > [data-symbol="item"] { top: 96px; height: 32px; }
-.source-lobby .side-entries :is(.record-art, .friend-art, .item-art) {
+.avatar-layer .side-entries > li { position: absolute; left: -1px; width: 48px; }
+.avatar-layer .side-entries > [data-symbol="record"] { top: 0; height: 32px; }
+.avatar-layer .side-entries > [data-symbol="friend"] { top: 43px; height: 37px; }
+.avatar-layer .side-entries > [data-symbol="item"] { top: 96px; height: 32px; }
+.avatar-layer .side-entries :is(.record-art, .friend-art, .item-art) {
   position: absolute;
   inset: 0 auto auto 0;
 }
 
-.source-lobby :is(.lobby-art-up, .lobby-art-over) {
+:is(.source-lobby, .source-options) :is(.lobby-art-up, .lobby-art-over) {
   position: absolute;
   pointer-events: none;
 }
-.source-lobby .lobby-art-up { display: var(--lobby-art-up, block); }
-.source-lobby .lobby-art-over { display: var(--lobby-art-over, none); overflow: hidden; }
-.source-lobby .lobby-art-still { display: block; }
-.source-lobby .lobby-art-motion { display: none; }
+:is(.source-lobby, .source-options) .lobby-art-up { display: var(--lobby-art-up, block); }
+:is(.source-lobby, .source-options) .lobby-art-over { display: var(--lobby-art-over, none); overflow: hidden; }
+:is(.source-lobby, .source-options) .lobby-art-still { display: block; }
+:is(.source-lobby, .source-options) .lobby-art-motion { display: none; }
 .source-lobby [data-symbol]:has(> button:focus-visible) { --lobby-art-up: none; --lobby-art-over: block; }
 @media (any-hover: hover) {
-  .source-lobby [data-symbol]:hover { --lobby-art-up: none; --lobby-art-over: block; }
+  :is(.source-lobby, .source-options) [data-symbol]:hover { --lobby-art-up: none; --lobby-art-over: block; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .source-lobby .lobby-art-over:has(> .lobby-art-motion) > .lobby-art-still { display: none; }
-  .source-lobby .lobby-art-motion {
+  :is(.source-lobby, .source-options) .lobby-art-over:has(> .lobby-art-motion) > .lobby-art-still { display: none; }
+  :is(.source-lobby, .source-options) .lobby-art-motion {
     display: block;
     animation-name: lobby-art-over-frames;
     animation-fill-mode: both;
@@ -167,15 +157,15 @@
 .source-lobby .chat { left: 262px; top: 567px; width: 247px; height: 89px; pointer-events: none; }
 
 /* AvatarView's status sits at the lower edge. */
-.source-lobby .avatar-status { top: 660px; width: 760px; height: 20px; margin: 0; isolation: isolate; }
-.source-lobby .avatar-status::before {
+.avatar-layer .avatar-status { top: 660px; width: 760px; height: 20px; margin: 0; isolation: isolate; }
+.avatar-layer .avatar-status::before {
   position: absolute;
   z-index: -1;
   inset: -4px 0 0;
   background: #263243 url("./lobby-art/status.png") no-repeat;
   content: "";
 }
-.source-lobby .avatar-status > div {
+.avatar-layer .avatar-status > div {
   top: 0;
   min-height: 20px;
   padding-inline: 8px;
@@ -185,13 +175,13 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.source-lobby .avatar-status dd { margin: 0; }
-.source-lobby .avatar-status .name { left: 0; width: 185px; font-size: 11.5px; }
-.source-lobby .avatar-status .name dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.source-lobby .avatar-status .gem { left: 185px; width: 195px; }
-.source-lobby .avatar-status .exp { left: 380px; width: 218px; }
+.avatar-layer .avatar-status dd { margin: 0; }
+.avatar-layer .avatar-status .name { left: 0; width: 185px; font-size: 11.5px; }
+.avatar-layer .avatar-status .name dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar-layer .avatar-status .gem { left: 185px; width: 195px; }
+.avatar-layer .avatar-status .exp { left: 380px; width: 218px; }
 /* social_ap's visible pixels begin at (-46, -31) from its (705, 646) origin. */
-.source-lobby .avatar-status .ap {
+.avatar-layer .avatar-status .ap {
   left: 659px;
   top: -45px;
   width: 90px;
@@ -201,26 +191,26 @@
   pointer-events: none;
   background: url("./lobby-art/ap.png") no-repeat;
 }
-.source-lobby .avatar-status .ap::after,
-.source-lobby .lobby-ap-liquid,
-.source-lobby .lobby-ap-liquid::before {
+.avatar-layer .avatar-status .ap::after,
+.avatar-layer .lobby-ap-liquid,
+.avatar-layer .lobby-ap-liquid::before {
   position: absolute;
   inset: 0;
 }
-.source-lobby .avatar-status .ap::after {
+.avatar-layer .avatar-status .ap::after {
   background: url("./lobby-art/ap-frame.png") no-repeat;
   content: "";
 }
-.source-lobby .lobby-ap-liquid {
+.avatar-layer .lobby-ap-liquid {
   mask: url("./lobby-art/ap-mask.png") no-repeat;
 }
-.source-lobby .lobby-ap-liquid::before {
+.avatar-layer .lobby-ap-liquid::before {
   background: url("./lobby-art/ap-fill.png") no-repeat;
   transform: scaleY(var(--lobby-ap-ratio, 0));
   transform-origin: 46px 59.5px;
   content: "";
 }
-#lobby-energy {
+.avatar-layer .avatar-energy {
   position: absolute;
   z-index: 1;
   top: 18px;
@@ -232,13 +222,13 @@
   font: 28px/1 "Bradley Gratis", Georgia, serif;
   letter-spacing: 1px;
 }
-.source-lobby .avatar-status .free-duel {
+.avatar-layer .avatar-status .free-duel {
   top: 4px;
   left: 717px;
   min-height: 0;
   padding: 0;
 }
-#lobby-free-duel-stars { display: block; }
+.avatar-layer .avatar-free-duel-stars { display: block; }
 
 .source-lobby-button {
   min-block-size: 28px;

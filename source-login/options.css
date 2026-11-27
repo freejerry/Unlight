@@ -1,0 +1,230 @@
+.source-options {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  width: 780px;
+  height: 680px;
+  overflow: hidden;
+  background:
+    url("./option-art/background.jpg") left top no-repeat,
+    var(--source-stage-gutter) right top / 20px 100% no-repeat,
+    #000;
+  color: #eef3fb;
+  font: 14px/1.35 var(--interface-font);
+}
+
+.source-options::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 760px;
+  height: 32px;
+  background: url("./lobby-art/header.png") left top no-repeat;
+  pointer-events: none;
+  content: "";
+}
+
+#options-title {
+  position: absolute;
+  top: 5px;
+  left: 15px;
+  margin: 0;
+  color: #fff;
+  font: 24px/1.2 "Bradley Gratis", Georgia, serif;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}
+
+.options-title-tcn {
+  position: absolute;
+  top: 7px;
+  left: 85px;
+  color: #151719;
+  font: 10px/1.3 Verdana, var(--interface-font);
+  white-space: nowrap;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+#options-help, #options-sound {
+  left: 230px;
+  width: 300px;
+}
+
+#options-help { top: 100px; height: 100px; }
+#options-sound { top: 210px; height: 275px; }
+
+.source-options .stage-panel-title {
+  padding: 5px 12px 8px;
+  font: 12px/1.3 Georgia, serif;
+  color: #16191f;
+}
+
+.options-help-fields {
+  position: absolute;
+  top: 46px;
+  left: 60px;
+  display: grid;
+  gap: 4px;
+}
+
+.options-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  color: #fff;
+  font: 12px/1.2 "Noto Serif TC", "Noto Serif CJK TC", var(--interface-font);
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.options-check input {
+  display: grid;
+  place-content: center;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1px solid #75808b;
+  border-radius: 2px;
+  background: linear-gradient(#f2f3f5, #a6afb9);
+  cursor: pointer;
+}
+
+.options-check input:checked::after {
+  width: 8px;
+  height: 5px;
+  border: solid #2b333c;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
+  content: "";
+}
+
+.options-volume-fields {
+  position: absolute;
+  top: 53px;
+  left: 50px;
+  width: 200px;
+}
+
+.option-volume { position: relative; height: 70px; }
+.option-volume label {
+  display: block;
+  color: #fff;
+  font: 16px/1.3 "Bradley Gratis", Georgia, serif;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.option-scale {
+  position: absolute;
+  top: 21px;
+  left: 6px;
+  right: 6px;
+  color: #e5e9f0;
+  font: 11px/1.3 Verdana, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.option-scale span { position: absolute; left: 0; transform: translateX(-50%); }
+.option-scale span:nth-child(2) { left: 50%; }
+.option-scale span:last-child { left: 100%; }
+
+.option-ticks, .option-rail {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  pointer-events: none;
+}
+
+.option-ticks {
+  top: 37px;
+  height: 3px;
+  border-right: 1px solid #6f7777;
+  background: repeating-linear-gradient(to right, #6f7777 0 1px, transparent 1px 10%);
+}
+
+.option-rail {
+  top: 46px;
+  height: 2px;
+  background:
+    linear-gradient(#d90b11, #f00006) left top / var(--option-volume, 50%) 100% no-repeat,
+    linear-gradient(#919999, #e7e7e7);
+}
+
+.option-volume input {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  appearance: none;
+  width: 200px;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.option-volume input::-webkit-slider-runnable-track { height: 24px; }
+.option-volume input::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 11px;
+  background: linear-gradient(#dae0e7, #b6bcc5);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.option-volume input::-moz-range-track { height: 24px; background: transparent; }
+.option-volume input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  background: linear-gradient(#dae0e7, #b6bcc5);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform: translateY(5px);
+}
+
+#options-back {
+  position: absolute;
+  top: 0;
+  left: 712px;
+  display: grid;
+  place-content: center;
+  width: 48px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: #18232f;
+  color: #fff;
+  cursor: pointer;
+}
+
+#options-back img { position: absolute; inset: 0; }
+#options-back .options-back-over { visibility: hidden; }
+#options-back:is(:hover, :focus-visible, :active) .options-back-over { visibility: visible; }
+#options-back:disabled { cursor: default; }
+.source-options :is(button, input):focus-visible { outline: 2px solid #ffdf9c; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  #options-title,
+  .source-options::before,
+  .source-options > .avatar-layer,
+  #options-back {
+    animation: option-enter 470.588ms ease-out both;
+    animation-timing-function: linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1);
+  }
+
+  /* AvatarView.getShowThread moves the authored HUD in separately from the title. */
+  .source-options::before,
+  .source-options > .avatar-layer,
+  #options-back {
+    animation-duration: 882.353ms;
+    animation-delay: 117.647ms;
+  }
+}
+
+@keyframes option-enter { from { opacity: 0; } }
+
+@media (forced-colors: active) {
+  .options-check input, .option-volume input { appearance: auto; }
+  .options-check input:checked::after, .option-ticks, .option-rail { display: none; }
+}

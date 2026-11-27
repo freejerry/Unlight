@@ -1,0 +1,43 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "layers": {
+    "background.jpg": {
+      "source": "data/image/option/config_ch.swf",
+      "sourceSha256": "2e9e56e2e17697194309e6fe37f73fcff5d6e5c460a18d8841e79f59ca65f077",
+      "sourceFrame": 1,
+      "x": 0,
+      "y": 0,
+      "width": 760,
+      "height": 680,
+      "sha256": "a95d64dd4156d50f7dcbdcb6b7ebbd8af60a5ce9fb1faa33f835f7c7da350416"
+    },
+    "back.png": {
+      "source": "data/image/common/gene.swf",
+      "sourceSha256": "36f72e7de76860b18414b8331bdfed6432a3c83a1205a7d33dbf90fbc41dc3f0",
+      "sourceFrame": 1,
+      "sourceInstance": "back",
+      "sourceState": "up",
+      "bitmapId": 22,
+      "x": 712,
+      "y": 0,
+      "width": 48,
+      "height": 32,
+      "sha256": "11dc5124f2920c73a9f9681c86da467c93b0fe1cb35256def3fc15715f34e210"
+    },
+    "back-over.png": {
+      "source": "data/image/common/gene.swf",
+      "sourceSha256": "36f72e7de76860b18414b8331bdfed6432a3c83a1205a7d33dbf90fbc41dc3f0",
+      "sourceFrame": 1,
+      "sourceInstance": "back",
+      "sourceState": "over",
+      "bitmapId": 24,
+      "x": 712,
+      "y": 0,
+      "width": 48,
+      "height": 32,
+      "sha256": "44b8de5e27ad836ee422e8b39d6abada6f89703d7f2a56a20ffd9bd11063a410"
+    }
+  }
+}

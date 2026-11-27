@@ -29,6 +29,9 @@ LOBBY_ENTRY_SYMBOLS = {
     "btn_b", "btn_c", "btn_d", "btn_e", "btn_f", "btn_g", "btn_h", "btn_i", "btn_j", "btn_k", "btn_serial",
 }
 LOBBY_SIDE_SYMBOLS = {"record", "friend", "item"}
+OPTION_DEFAULTS = {"bgm": 50, "se": 50, "cv": 50, "toolTip": True, "arrow": True}
+OPTION_EDITS = {"bgm": 0, "se": 99, "cv": 1, "toolTip": False, "arrow": False}
+OPTION_STORAGE = "unlight.source-login.preferences"
 # Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
 LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
@@ -159,9 +162,14 @@ def check_avatar_canvas(page, stage, parts, responses):
     assert expected_layers > 0
     expect(canvas).to_have_attribute("data-avatar-layers", str(expected_layers))
     assert canvas.get_attribute("data-avatar-missing-parts") is None
+    canvas.evaluate("node => Promise.allSettled(node.getAnimations().map(animation => animation.finished))")
     art = canvas.bounding_box()
     stage_box = stage.bounding_box()
     assert (art["x"] - stage_box["x"], art["y"] - stage_box["y"], art["width"], art["height"]) == (489, 230, 290, 450), art
+    return portrait_sha(canvas)
+
+
+def portrait_sha(canvas):
     return canvas.evaluate("""async image => {
       if (image.width !== 290 || image.height !== 450) throw new Error('Invalid source canvas size');
       const { data } = image.getContext('2d').getImageData(0, 0, image.width, image.height);
@@ -335,7 +343,7 @@ def check_lobby_hover(page, stage, directory):
                         clip={"x": box["x"] + 646, "y": box["y"] + 605, "width": 124, "height": 75})
     for entry in entries.all():
         symbol = entry.get_attribute("data-symbol")
-        if symbol != "btn_b":
+        if symbol not in {"btn_b", "btn_h"}:
             expect(entry.locator("button, a[href], [role='button'], [tabindex]")).to_have_count(0)
         up = entry.locator(".lobby-art-up")
         over = entry.locator(".lobby-art-over")
@@ -388,6 +396,96 @@ def check_lobby_hover(page, stage, directory):
         expect(motion).to_be_hidden()
         assert motion.evaluate("image => image.getAnimations().length") == 0, symbol
     page.emulate_media(reduced_motion="reduce")
+
+
+def check_option_values(page, settings):
+    for name in ("bgm", "se", "cv"):
+        expect(page.locator(f"#option-{name}")).to_have_value(str(settings[name]))
+    assert page.locator("#option-tooltip").is_checked() == settings["toolTip"]
+    assert page.locator("#option-arrow").is_checked() == settings["arrow"]
+
+
+def check_options_scene(page, stage, profile, parts, portrait, directory, *, edit):
+    launcher = page.locator("#lobby-option-open")
+    audio = page.locator("#stage > audio[data-bgm-scene='lobby']")
+    clock = audio.evaluate("""element => {
+      window.optionSessionMusic = element;
+      window.optionAudioBreaks = [];
+      for (const type of ['pause', 'play', 'loadstart', 'seeking', 'emptied']) {
+        element.addEventListener(type, () => window.optionAudioBreaks.push(type));
+      }
+      return element.currentTime;
+    }""")
+    settings = OPTION_DEFAULTS if edit else OPTION_EDITS
+    expect(audio).to_have_js_property("volume", settings["bgm"] / 100)
+    if edit:
+        page.emulate_media(reduced_motion="no-preference")
+    launcher.click()
+    if edit:
+        expect(stage).to_have_attribute("data-option-transition", "to-options")
+        assert page.locator("#lobby-view").evaluate("node => node.inert && node.getAnimations().some(a => "
+                                                      "Math.abs(a.effect.getTiming().duration - 800 / 1.7) < .01)")
+    screen(stage, "options")
+    expect(stage).to_have_attribute("data-soundscape", "lobby")
+    expect(page.locator("#lobby-view")).to_be_hidden()
+    title = page.locator("#options-title")
+    expect(title).to_be_visible()
+    assert "Option" in title.inner_text() and "選項設定" in title.inner_text()
+    back = page.locator("#options-back")
+    assert back.bounding_box() == {"x": 712, "y": 0, "width": 48, "height": 32}
+    assert page.locator("#options-help").bounding_box() == {"x": 230, "y": 100, "width": 300, "height": 100}
+    assert page.locator("#options-sound").bounding_box() == {"x": 230, "y": 210, "width": 300, "height": 275}
+    check_option_values(page, settings)
+
+    canvas = page.locator("#options-avatar")
+    expect(canvas).to_have_attribute("data-avatar-state", "ready", timeout=TIMEOUT)
+    expect(canvas).to_have_attribute("data-avatar-parts", ",".join(map(str, parts)))
+    assert portrait_sha(canvas) == portrait
+    _, name, level, gems, exp, ap, ap_max, stars = profile
+    for field, value in (("avatar-name", name), ("level", level), ("gems", gems), ("exp", exp),
+                         ("energy", f"{ap}/{ap_max}"), ("free-duel-count", stars)):
+        expect(page.locator(f"#options-{field}")).to_have_text(str(value))
+    expect(page.locator("#options-free-duel-stars")).to_have_attribute("src", f"{LOBBY_ART_PATH}duel-stars-{stars}.png")
+    page.wait_for_function("""() => document.querySelector('#options-view').getAnimations({subtree: true})
+      .every(a => a.playState !== 'running' || a.effect.getTiming().iterations === Infinity)""", timeout=TIMEOUT)
+    assert canvas.bounding_box() == {"x": 525, "y": 230, "width": 290, "height": 450}
+
+    if edit:
+        capture(stage, directory, "11f-options-default.png")
+        slider = page.locator("#option-bgm")
+        box = slider.bounding_box()
+        y = box["y"] + box["height"] / 2
+        page.mouse.move(box["x"] + box["width"] / 2, y)
+        page.mouse.down()
+        page.mouse.move(box["x"] + 1, y, steps=9)
+        page.mouse.up()
+        page.locator("#option-se").press("End")
+        page.locator("#option-se").press("ArrowLeft")
+        page.locator("#option-cv").press("Home")
+        page.locator("#option-cv").press("ArrowRight")
+        page.locator("#option-tooltip").uncheck()
+        page.locator("#option-arrow").uncheck()
+        check_option_values(page, OPTION_EDITS)
+        capture(stage, directory, "11g-options-edited.png")
+    else:
+        capture(stage, directory, "13a-options-persisted.png")
+    assert page.evaluate("key => JSON.parse(localStorage.getItem(key))", OPTION_STORAGE) == OPTION_EDITS
+    back.press("Enter")
+    if edit:
+        expect(stage).to_have_attribute("data-option-transition", "to-lobby")
+        assert page.locator("#options-view").evaluate("node => node.inert && node.getAnimations().some(a => "
+                                                        "Math.abs(a.effect.getTiming().duration - 1000 - 500 / 1.7) < .01)")
+    screen(stage, "lobby")
+    expect(launcher).to_be_focused()
+    expect(page.locator("#lobby-news")).to_be_hidden()
+    page.wait_for_function("""time => {
+      const audio = window.optionSessionMusic;
+      return audio === document.querySelector('#stage > audio[data-bgm-scene=lobby]') && !audio.paused
+        && audio.loop && audio.volume === 0 && audio.currentTime > time;
+    }""", arg=clock, timeout=TIMEOUT)
+    assert not page.evaluate("window.optionAudioBreaks")
+    if edit:
+        page.emulate_media(reduced_motion="reduce")
 
 
 def check(page, origin, database, directory, selected_parts, *, verify_login_rose):
@@ -496,7 +594,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
         assert page.locator("#stage > audio[data-bgm-scene='onboarding']").evaluate(
             "audio => audio !== window.outgoingTitleMusic && audio.volume === 0.5"
         )
-        page.wait_for_function("window.outgoingTitleMusic.paused && window.outgoingTitleMusic.volume === 0", timeout=TIMEOUT)
+        page.wait_for_function("() => window.outgoingTitleMusic.paused && window.outgoingTitleMusic.volume === 0", timeout=TIMEOUT)
         levels = list(dict.fromkeys(round(level, 2) for level in page.evaluate("window.titleFadeVolumes")))
         assert levels == [round(step / 20, 2) for step in range(10, -1, -1)], levels
     capture(stage, directory, "03-first-login-guidance.png")
@@ -547,9 +645,10 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
     check_lobby_dialogs(page, stage, directory)
-    first_portrait = check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses)
+    parts = equipped_parts(database, profile[0])
+    first_portrait = check_avatar_canvas(page, stage, parts, responses)
     assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
-        "lobby-quest-load",
+        "lobby-option-open", "lobby-quest-load",
     ]
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
@@ -559,6 +658,23 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     hover_requests = {urlsplit(request.url).path for request in requests[hover_start:]}
     assert hover_requests <= {"/public/sound/bgm/ulbgm02.mp3"}, sorted(hover_requests)
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
+
+    def verify_options(*, edit):
+        active = len(sockets) - 4
+        sent_before = [len(sent) for _, sent, _ in sockets[active:]]
+        request_start = len(requests)
+        check_options_scene(page, stage, profile, parts, first_portrait, directory, edit=edit)
+        assert len(sockets) == len(live) == active + 4 and all(not socket.is_closed() for socket in live[active:])
+        assert [len(sent) for _, sent, _ in sockets[active:]] == sent_before
+        assert all(request.method == "GET" for request in requests[request_start:])
+        assert avatar(database, player_id) == [profile] and equipped_parts(database, profile[0]) == parts
+        check_lobby(page, player_id, profile)
+        assert check_avatar_canvas(page, stage, parts, responses) == first_portrait
+        if edit:
+            capture(stage, directory, "11h-lobby-returned-from-options.png")
+
+    if verify_login_rose:
+        verify_options(edit=True)
     reload_title()
     username.click()
     music(page, "title", "ulbgm01.mp3")
@@ -582,6 +698,8 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     assert check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses) == first_portrait
     music(page, "lobby", "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
+    if verify_login_rose:
+        verify_options(edit=False)
     reload_title()
 
     checked_passwords = [password]

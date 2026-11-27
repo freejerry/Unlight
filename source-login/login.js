@@ -2,6 +2,7 @@ import { registerAccount, SessionError, startSession } from '/session.js';
 import { fadeTitleMusic, playTitleAlert } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
+import { mountOptions } from './options.js';
 import { startLoginTransition } from './stage.js';
 
 const stage = document.querySelector('#stage');
@@ -48,6 +49,12 @@ let currentAttempt = null;
 let alertReturnFocus = null;
 let activeSession = null;
 let cleanupScreen;
+let optionExit;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const lobbyFadeMs = 800 / 1.7;
+const sineOut = CSS.supports('animation-timing-function', 'linear(0, .7071, 1)')
+  ? 'linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1)'
+  : 'cubic-bezier(.39, .575, .565, 1)';
 
 function showStatus(state, message = '', kind) {
   const authenticating = state === 'working' && form.dataset.mode === 'login';
@@ -153,14 +160,17 @@ function changeSoundscape(soundscape) {
   stage.dispatchEvent(new Event('game-screen-change'));
 }
 
-function changeScreen(screen) {
+function changeScreen(screen, soundscape = screen) {
+  optionExit?.cancel();
+  optionExit = undefined;
+  delete stage.dataset.optionTransition;
   cleanupScreen?.();
   cleanupScreen = undefined;
   postLogin.replaceChildren();
   postLogin.hidden = screen === 'title';
   postLogin.dataset.screen = screen;
   stage.dataset.screen = screen;
-  changeSoundscape(screen);
+  changeSoundscape(soundscape);
 }
 
 function returnToTitle(session, reason, focus = true) {
@@ -183,10 +193,45 @@ function requestLogout(session) {
   void session.close().catch(() => returnToTitle(session, 'network'));
 }
 
-function showLobby(session) {
+function showLobby(session, returningFromOptions = false) {
   if (activeSession !== session || !session.initialData?.avatar) return;
   changeScreen('lobby');
-  cleanupScreen = mountLobby(postLogin, { session });
+  cleanupScreen = mountLobby(postLogin, { session, onOptions: () => switchOptions(session, true) });
+  if (returningFromOptions) {
+    if (!reducedMotion.matches) {
+      postLogin.firstElementChild.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: lobbyFadeMs, easing: sineOut,
+      });
+    }
+    postLogin.querySelector('#lobby-option-open').focus({ preventScroll: true });
+  }
+}
+
+async function switchOptions(session, opening) {
+  const current = opening ? 'lobby' : 'options';
+  const view = postLogin.firstElementChild;
+  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit) return;
+
+  if (!reducedMotion.matches) {
+    view.inert = true;
+    stage.dataset.optionTransition = opening ? 'to-options' : 'to-lobby';
+    const duration = opening ? lobbyFadeMs : 1000;
+    // OptionView.hide2 removes the avatar after the scene has faded to black.
+    const total = duration + (opening ? 0 : 500 / 1.7);
+    const frames = [{ opacity: 1, easing: sineOut }, { opacity: 0, offset: duration / total }];
+    if (!opening) frames.push({ opacity: 0 });
+    const animation = view.animate(frames, { duration: total, fill: 'forwards' });
+    optionExit = animation;
+    await animation.finished.catch(() => {});
+    if (optionExit !== animation || activeSession !== session) return;
+  }
+
+  if (opening) {
+    changeScreen('options', 'lobby');
+    cleanupScreen = mountOptions(postLogin, { session, onBack: () => switchOptions(session, false) });
+  } else {
+    showLobby(session, true);
+  }
 }
 
 function showPostLogin(session) {

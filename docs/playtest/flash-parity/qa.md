@@ -1,6 +1,6 @@
 # 驗收基線與證據 · `cc2ef535b6d3416f3c5796d9ccbbf2e802e90151`
 
-本節以該提交的 `/source-login/` 為固定舞台目標。正式 native gateway 有三個可開啟的頁面，`/source-login/` 必須在啟動時提供解碼 Wasm、`/` 是原生診斷與試玩入口、`/replay/` 播放已提交的 Ruby 事件。原版 Ruffle gateway 在另一 HTTP 埠提供 `/`。固定舞台登入、註冊、建角、新手指引與大廳均在 `/source-login/` 同一 URL 切換。大廳有 14 個可懸停的原版美術位置，其中 5 個播放動畫，1 個有入口動作。任務按鈕只開啟由已取得的 Data 快照提供的持有任務對話框，原始地圖場景與戰鬥仍待接到這條路徑。公告自動開啟，關閉後回到大廳標題。 [Gateway 註冊](../../../tools/legacy-web/serve.py#L464) · [固定舞台切換](../../../source-login/login.js) · [任務清單掛載](../../../source-login/lobby.js#L326)
+正式 native gateway 的 `/source-login/` 是固定舞台遊戲，啟動時需要解碼 Wasm。`/` 是原生診斷與試玩入口，`/replay/` 播放已提交的 Ruby 事件。原版 Ruffle gateway 在另一 HTTP 埠提供 `/`。登入、註冊、建角、新手指引、大廳與設定在 `/source-login/` 同一 URL 切換。大廳有 14 個可懸停的原版美術位置，其中 5 個播放動畫。OPTION 開啟全場景設定，Back 回同一登入的大廳。任務按鈕開啟 Data 快照的持有任務對話框，原版地圖及戰鬥待接入。公告自動開啟，關閉後回到大廳標題。[Gateway 註冊](../../../tools/legacy-web/serve.py#L464) · [固定舞台切換](../../../source-login/login.js) · [設定驗收](options-reference.md)
 
 | 範圍 | 有效證據與判讀 | 原件 |
 | --- | --- | --- |

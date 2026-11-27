@@ -1,12 +1,13 @@
+import { getPreferences, subscribePreferences } from "./preferences.js";
+
 const stage = document.getElementById("stage");
-const defaultVolume = 0.5; // Original Option.as defaults BGM and SE volume to 50.
 const theme = "/public/sound/bgm/ulbgm01.mp3";
 const sceneTracks = {
   tutorial: "/public/sound/bgm/bgm011.mp3",
   lobby: "/public/sound/bgm/ulbgm02.mp3",
 };
-const titleMusic = titleAudio(theme);
-const clickSound = titleAudio("/public/sound/se/ulse01.mp3");
+const titleMusic = createAudio(theme, audioVolume("bgm"));
+const clickSound = createAudio("/public/sound/se/ulse01.mp3", audioVolume("se"));
 const alertBytes = fetch("/public/sound/se/ulse02.mp3", { redirect: "error" })
   .then(response => {
     if (!response.ok) throw new Error(`Title alert returned HTTP ${response.status}`);
@@ -25,10 +26,14 @@ let musicRequest = 0;
 let alertPlayback;
 const entryObserver = new MutationObserver(playSceneMusic);
 
-function titleAudio(path) {
+function audioVolume(key) {
+  return getPreferences()[key] / 100;
+}
+
+function createAudio(path, volume) {
   const audio = document.createElement("audio");
   audio.preload = "auto";
-  audio.volume = defaultVolume;
+  audio.volume = volume;
   audio.src = path;
   return audio;
 }
@@ -58,6 +63,11 @@ function setMusicVolume(audio, volume) {
   else audio.volume = volume;
 }
 
+function updateMusicVolume(audio) {
+  const fade = audio === titleMusic && titleFade ? (10 - titleFade.step) / 10 : 1;
+  setMusicVolume(audio, warmingMusic ? 0 : audioVolume("bgm") * fade);
+}
+
 function discardSceneMusic(audio) {
   audio.pause();
   const output = musicOutputs.get(audio);
@@ -74,28 +84,27 @@ function clearTitleFade() {
 
 export function fadeTitleMusic() {
   if (!active || music !== titleMusic || titleFade) return;
-  const departure = {};
+  const departure = { step: 0 };
   titleFade = departure;
   if (!titleMusic.paused) {
     // TitleCtrl.stopBGM delegates to BaseSound.fade(0, 2), which ticks ten times.
-    const volume = musicOutputs.get(titleMusic)?.gain.gain.value ?? titleMusic.volume;
-    let step = 0;
     departure.timer = setInterval(() => {
-      step += 1;
-      setMusicVolume(titleMusic, volume * (10 - step) / 10);
-      if (step === 10) {
+      departure.step += 1;
+      updateMusicVolume(titleMusic);
+      if (departure.step === 10) {
         clearInterval(departure.timer);
         titleMusic.pause();
         if (music === titleMusic) delete stage.dataset.musicState;
       }
     }, 200);
   } else {
+    departure.step = 10;
     delete stage.dataset.musicState;
   }
   return () => {
     if (titleFade !== departure || music !== titleMusic) return;
     clearTitleFade();
-    setMusicVolume(titleMusic, defaultVolume);
+    updateMusicVolume(titleMusic);
     playSceneMusic();
   };
 }
@@ -122,7 +131,7 @@ function confirmMusicPlaying(audio = music) {
   if (!active || audio !== music || !sceneEntered() || audio.paused || audio.seeking
       || audio.readyState < audio.HAVE_FUTURE_DATA) return;
   if (musicOutputs.has(audio) && musicContext.state !== "running") return;
-  if (audio !== titleMusic || !titleFade) setMusicVolume(audio, defaultVolume);
+  updateMusicVolume(audio);
   stage.dataset.musicState = "playing";
 }
 
@@ -150,17 +159,17 @@ function playSceneMusic() {
     discardSceneMusic(music);
     music = titleMusic;
     clearTitleFade();
-    setMusicVolume(titleMusic, defaultVolume);
+    updateMusicVolume(titleMusic);
     titleMusic.currentTime = 0;
     delete stage.dataset.musicState;
   } else if (scene !== "title" && music === titleMusic) {
     // Registration uses the title MP3 on its own channel, starting at frame zero.
     musicRequest += 1;
     if (!titleFade) titleMusic.pause();
-    music = titleAudio(path);
+    music = createAudio(path, audioVolume("bgm"));
     if (musicContext) {
       try {
-        connectMusic(music, defaultVolume);
+        connectMusic(music, audioVolume("bgm"));
       } catch (error) {
         reportAudioError(error);
       }
@@ -217,7 +226,7 @@ function armTitleAlert() {
 
   const context = new AudioContext();
   const gain = context.createGain();
-  gain.gain.value = defaultVolume;
+  gain.gain.value = audioVolume("se");
   gain.connect(context.destination);
   // The login reply can arrive after the button's browser activation expires.
   const buffer = Promise.all([
@@ -232,15 +241,31 @@ function armTitleAlert() {
 
 export function playTitleAlert() {
   const playback = alertPlayback;
-  if (!active || !playback) return;
+  if (!active || !playback || !audioVolume("se")) return;
   void playback.buffer.then(buffer => {
-    if (playback !== alertPlayback || !buffer) return;
+    if (playback !== alertPlayback || !buffer || !audioVolume("se")) return;
     const sound = playback.context.createBufferSource();
     sound.buffer = buffer;
     sound.connect(playback.gain);
     sound.onended = () => sound.disconnect();
     sound.start();
   }).catch(reportAudioError);
+}
+
+export function playLobbyClick() {
+  if (!active || !audioVolume("se")) return;
+  try {
+    armTitleAlert(); // The original lobby click and alert both use Click2SE.
+  } catch (error) {
+    reportAudioError(error);
+  }
+  playTitleAlert();
+}
+
+export function playBackClick() {
+  if (!active || clickSound.error || !audioVolume("se")) return;
+  clickSound.currentTime = 0;
+  playAudio(clickSound);
 }
 
 function watchEntry() {
@@ -267,10 +292,7 @@ document.getElementById("login-submit").addEventListener("click", event => {
   } catch (error) {
     reportAudioError(error);
   }
-  if (!clickSound.error) {
-    clickSound.currentTime = 0;
-    playAudio(clickSound);
-  }
+  playBackClick();
 });
 window.addEventListener("pagehide", () => {
   active = false;
@@ -292,6 +314,17 @@ window.addEventListener("pageshow", event => {
   if (event.persisted) {
     active = true;
     watchEntry();
+  }
+});
+
+subscribePreferences((next, previous) => {
+  if (next.bgm !== previous.bgm && active) {
+    updateMusicVolume(titleMusic);
+    if (music !== titleMusic) updateMusicVolume(music);
+  }
+  if (next.se !== previous.se) {
+    clickSound.volume = audioVolume("se");
+    if (alertPlayback) alertPlayback.gain.gain.value = audioVolume("se");
   }
 });
 
