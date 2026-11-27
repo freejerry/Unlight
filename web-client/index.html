@@ -66,13 +66,31 @@
             <button id="play-audio" type="button" class="button secondary" disabled hidden>播放</button>
           </div>
         </div>
+        <section id="panel-check" class="panel-check" aria-labelledby="panel-title">
+          <h3 id="panel-title">面板九宮格</h3>
+          <p id="panel-status" data-state="loading" role="status">讀取設定中…</p>
+          <div id="panel-previews" class="panel-previews" hidden>
+            <figure>
+              <figcaption>高度 96 px</figcaption>
+              <canvas data-panel-width="220" data-panel-height="96" aria-hidden="true"></canvas>
+            </figure>
+            <figure>
+              <figcaption>高度 215 px</figcaption>
+              <canvas data-panel-width="220" data-panel-height="215" aria-hidden="true"></canvas>
+            </figure>
+            <figure>
+              <figcaption>高度 300 px</figcaption>
+              <canvas data-panel-width="220" data-panel-height="300" aria-hidden="true"></canvas>
+            </figure>
+          </div>
+        </section>
       </section>
 
       <section class="session-panel" aria-labelledby="session-title">
         <div class="session-heading">
           <div>
             <h2 id="session-title" tabindex="-1">本機登入驗證</h2>
-            <p id="session-description">用測試帳號登入，驗證大廳、資料與全域聊天連線。</p>
+            <p id="session-description">用測試帳號登入，驗證原版連線與登入後的初始資料。</p>
           </div>
           <p id="session-status" class="session-status" data-state="idle" role="status" aria-atomic="true">尚未登入</p>
         </div>
@@ -100,6 +118,21 @@
           </dl>
           <button id="session-signout" type="button" class="button secondary" hidden>登出</button>
         </div>
+        <section id="session-bootstrap" class="session-bootstrap" data-state="idle" aria-labelledby="session-bootstrap-title" hidden>
+          <h3 id="session-bootstrap-title">登入初始資料</h3>
+          <dl id="session-avatar-data" class="session-metadata bootstrap-metadata" hidden>
+            <div><dt>角色</dt><dd id="session-avatar-name"></dd></div>
+            <div><dt>角色 ID</dt><dd id="session-avatar-id"></dd></div>
+            <div><dt>等級</dt><dd id="session-avatar-level"></dd></div>
+            <div><dt>Gem</dt><dd id="session-avatar-gems"></dd></div>
+            <div><dt>經驗值</dt><dd id="session-avatar-exp"></dd></div>
+            <div><dt>行動力</dt><dd id="session-avatar-energy"></dd></div>
+          </dl>
+          <dl id="session-registration-data" class="session-metadata bootstrap-metadata" hidden>
+            <div><dt>起始外觀部件</dt><dd id="session-starter-parts"></dd></div>
+            <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
+          </dl>
+        </section>
         <p id="session-detail" class="session-detail" aria-live="polite"></p>
       </section>
 

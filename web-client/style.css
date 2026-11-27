@@ -83,6 +83,18 @@ main { padding-block: 1.6rem 1.8rem; }
 .image-preview { display: grid; place-items: center; flex: 0 0 3rem; min-height: 3rem; border-radius: .35rem; background: #fff; }
 .image-preview img { display: block; width: 3rem; height: 3rem; object-fit: contain; }
 
+.panel-check { margin-top: .8rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.panel-check h3 { font-size: .94rem; }
+.panel-check p { margin-top: .18rem; color: var(--muted); font-size: .88rem; }
+.panel-check p[data-state="failed"] { color: var(--failure); }
+.panel-previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: .75rem; margin-top: .65rem; }
+.panel-previews figure { min-width: 0; margin: 0; }
+.panel-previews figcaption { margin-bottom: .28rem; color: var(--muted); font-size: .84rem; font-variant-numeric: tabular-nums; }
+.panel-previews canvas { display: block; width: 220px; max-width: 100%; }
+.panel-previews canvas[data-panel-height="96"] { height: 96px; }
+.panel-previews canvas[data-panel-height="215"] { height: 215px; }
+.panel-previews canvas[data-panel-height="300"] { height: 300px; }
+
 .session-heading, .session-result { display: flex; align-items: center; justify-content: space-between; gap: .65rem 1rem; }
 .session-heading h2 { font-size: 1.1rem; }
 #session-description { margin-top: .25rem; color: var(--muted); font-size: .93rem; }
@@ -100,6 +112,10 @@ main { padding-block: 1.6rem 1.8rem; }
 .session-metadata dt { margin-bottom: .12rem; color: var(--muted); font-size: .86rem; }
 .session-metadata dd { font-variant-numeric: tabular-nums; font-weight: 680; overflow-wrap: anywhere; }
 .session-metadata [data-verified="true"] { color: var(--accent); }
+.session-bootstrap { margin-top: .8rem; }
+.session-bootstrap h3 { font-size: 1rem; margin-bottom: .4rem; }
+.bootstrap-metadata { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#session-registration-data { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 24rem; }
 .session-detail, .session-format { margin-top: .55rem; color: var(--muted); font-size: .9rem; }
 .session-detail:empty { margin-top: 0; }
 

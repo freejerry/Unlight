@@ -8,6 +8,8 @@
 
 原生登入以同一個隔離帳號對照原版 Flash 畫面的輸入，核對未註冊、錯誤密碼及成功三種認證回應。瀏覽器驗證 Ruby 的 SRP 憑證後，使用同一玩家 ID 完成大廳、資料與全域聊天交握。實測涵蓋登出和重新登入。[登入驗收紀錄](docs/playtest/README.md#原生瀏覽器登入) · [登入截圖](docs/playtest/native/02-native-session.png)
 
+原生驗收頁用同一張原版圖及原始切片座標實作 Canvas 2D 九宮格繪製，已測三種面板高度、窄欄與兩種裝置像素比。登入後已唯讀驗證原版 Data 服務的兩種初始回應，有角色的摘要對照 SQLite，未創角的起始選項數量對照原版設定。原生遊玩流程、動畫流暢度與整體視覺一致性仍待驗收。[面板截圖](docs/playtest/native/03-native-panel-slices.png) · [角色資料截圖](docs/playtest/native/04-native-initial-data.png) · [未創角資料截圖](docs/playtest/native/05-native-starter-data.png)
+
 原版相容入口的 Chromium 試玩已進到首場 PvE 的第二回合，並以原有內嵌明體恢復任務列表的繁中名稱。相容版已用原圖恢復登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。軟體 WebGL 的標題回呼取樣仍不足以驗收動畫流暢度。[原版畫面驗收](docs/playtest/README.md#畫面驗收項目)
 
 《霧潮航線》位於 `modern/`，是一個獨立的技術試驗，已驗證 Rust／Wasm 回放、Axum、WebSocket 和瀏覽器端出牌流程。[技術試驗](modern/README.md)

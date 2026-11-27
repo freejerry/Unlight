@@ -88,19 +88,18 @@ export function createFrameParser() {
   };
 }
 
-export function readReply(body) {
+export function readFields(body, offset = 0) {
   const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
-  let offset = 2;
 
-  function uint() {
-    const value = view.getUint32(offset);
+  function integer(signed) {
+    const value = signed ? view.getInt32(offset) : view.getUint32(offset);
     offset += 4;
     return value;
   }
 
-  function stringBytes(limit) {
-    const length = uint();
-    if (length === 0 || length > limit || length > body.length - offset) {
+  function stringBytes(limit, allowEmpty = false) {
+    const length = integer(false);
+    if ((!allowEmpty && length === 0) || length > limit || length > body.length - offset) {
       throw new Error('Invalid string length.');
     }
     const value = body.subarray(offset, offset + length);
@@ -109,12 +108,25 @@ export function readReply(body) {
   }
 
   return {
-    command: view.getUint16(0),
-    uint,
-    string: (limit) => decoder.decode(stringBytes(limit)),
+    uint: () => integer(false),
+    int: () => integer(true),
+    string: (limit, allowEmpty) => decoder.decode(stringBytes(limit, allowEmpty)),
     discardString: (limit) => stringBytes(limit).fill(0),
+    takeRest(limit) {
+      const value = body.subarray(offset);
+      if (value.length === 0 || value.length > limit) throw new Error('Invalid body length.');
+      offset = body.length;
+      return value;
+    },
     done() {
       if (offset !== body.length) throw new Error('Unexpected response fields.');
     },
+  };
+}
+
+export function readReply(body) {
+  return {
+    command: new DataView(body.buffer, body.byteOffset, body.byteLength).getUint16(0),
+    ...readFields(body, 2),
   };
 }

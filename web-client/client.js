@@ -1,4 +1,5 @@
 import { ProbeError, probeKeepAlive, toHex } from './transport.js';
+import { drawPanel } from './panel.js';
 
 const services = [
   { port: 12001, label: '認證' },
@@ -34,9 +35,14 @@ const ui = {
   playAudio: document.querySelector('#play-audio'),
   imageStatus: document.querySelector('#image-status'),
   audioStatus: document.querySelector('#audio-status'),
+  panelStatus: document.querySelector('#panel-status'),
+  panelPreviews: document.querySelector('#panel-previews'),
 };
 
 const rows = new Map();
+const panelImage = new Image();
+const panelGuides = { left: 42, top: 60, right: 78, bottom: 64 };
+const renderedPanels = new WeakMap();
 let running = false;
 
 for (const service of services) {
@@ -166,7 +172,7 @@ function updateAsset(status, state, message) {
   status.dataset.state = state;
   status.textContent = message;
 
-  const states = [ui.imageStatus.dataset.state, ui.audioStatus.dataset.state];
+  const states = [ui.imageStatus, ui.audioStatus, ui.panelStatus].map(asset => asset.dataset.state);
   if (states.includes('loading')) ui.assets.dataset.state = 'loading';
   else if (states.includes('failed')) ui.assets.dataset.state = 'failed';
   else if (states.every((value) => value === 'unconfigured')) ui.assets.dataset.state = 'unconfigured';
@@ -214,6 +220,39 @@ function startAsset(media, path, status, readyEvent, onSuccess) {
   media.src = address;
 }
 
+function renderPanelPreviews() {
+  const ratio = window.devicePixelRatio || 1;
+  const firstRender = ui.panelPreviews.hidden;
+  const canvases = ui.panelPreviews.querySelectorAll('canvas');
+  try {
+    if (panelImage.naturalWidth !== 120 || panelImage.naturalHeight !== 96) {
+      throw new Error('Unexpected original panel dimensions');
+    }
+    ui.panelPreviews.hidden = false;
+    for (const canvas of canvases) {
+      const { width, height } = canvas.getBoundingClientRect();
+      const previous = renderedPanels.get(canvas);
+      if (previous?.width === width && previous.height === height && previous.ratio === ratio) continue;
+
+      drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
+      renderedPanels.set(canvas, { width, height, ratio });
+      canvas.dataset.rendered = 'true';
+    }
+    if (firstRender) updateAsset(ui.panelStatus, 'success', '已載入原版 120 × 96 px 面板皮膚。');
+  } catch {
+    ui.panelPreviews.hidden = true;
+    for (const canvas of canvases) {
+      renderedPanels.delete(canvas);
+      delete canvas.dataset.rendered;
+    }
+    updateAsset(ui.panelStatus, 'failed', '無法繪製面板。');
+  }
+}
+
+function redrawLoadedPanels() {
+  if (ui.panelStatus.dataset.state === 'success') renderPanelPreviews();
+}
+
 async function loadAssets() {
   try {
     const config = await requestJson('/api/assets');
@@ -224,9 +263,14 @@ async function loadAssets() {
       ui.playAudio.hidden = false;
       ui.playAudio.disabled = false;
     });
+    startAsset(panelImage, config.panel ?? null, ui.panelStatus, 'load', () => {
+      renderPanelPreviews();
+      new ResizeObserver(redrawLoadedPanels).observe(ui.panelPreviews);
+    });
   } catch {
     updateAsset(ui.imageStatus, 'failed', '無法讀取原始素材設定。');
     updateAsset(ui.audioStatus, 'failed', '無法讀取原始素材設定。');
+    updateAsset(ui.panelStatus, 'failed', '無法讀取原始素材設定。');
   }
 }
 
@@ -258,5 +302,7 @@ ui.audio.addEventListener('ended', () => {
   ui.playAudio.textContent = '播放';
   updateAsset(ui.audioStatus, 'success', '已播放完畢。');
 });
+
+window.addEventListener('resize', redrawLoadedPanels);
 
 void loadAssets();

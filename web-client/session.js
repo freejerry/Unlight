@@ -1,10 +1,14 @@
 import { createAuthExchange } from './srp.js';
 import { applySessionKey, createFrameParser, encodeCommand, readReply } from './wire.js';
+import {
+  AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
+} from './data-bootstrap.js';
 
 const AUTH_PORT = 12001;
+const DATA_PORT = 12003;
 const CHANNELS = [
   { port: 12002, pong: 35 },
-  { port: 12003, pong: 3 },
+  { port: DATA_PORT, pong: 3 },
   { port: 12020, pong: 3 },
 ];
 const TIMEOUT = 8000;
@@ -53,6 +57,7 @@ class SessionSocket {
   #key = null;
   #parser = createFrameParser();
   #waiting = null;
+  #observer = null;
   #opened;
   #resolveOpen;
   #resolveClose;
@@ -112,6 +117,11 @@ class SessionSocket {
     this.#expireCommand = command;
   }
 
+  observe(commands, receive) {
+    this.#observer = { commands, receive };
+    return () => { this.#observer = null; };
+  }
+
   async close(logout) {
     if (!this.#reason) {
       this.#reason = 'closed';
@@ -142,6 +152,8 @@ class SessionSocket {
         if (waiter?.replies.includes(reply.command)) {
           this.#waiting = null;
           waiter.resolve(reply);
+        } else if (this.#observer?.commands.includes(reply.command)) {
+          this.#observer.receive(reply);
         } else if (reply.command === this.#expireCommand) {
           this.#fail(new SessionError('network'), 'expired');
         } else if (waiter && !waiter.allowOther && !waiter.skip?.includes(reply.command)) {
@@ -169,6 +181,7 @@ class SessionSocket {
     this.#socket.onopen = this.#socket.onmessage = this.#socket.onerror = this.#socket.onclose = null;
     this.#key?.fill(0);
     this.#key = null;
+    this.#observer = null;
     this.#parser.reset();
     this.#resolveOpen(false);
     this.#waiting?.reject(this.#fault ?? new SessionError('network'));
@@ -180,6 +193,40 @@ function authReply(reply, expected) {
   if (reply.command === expected) return reply;
   if (reply.command === 4) throw new SessionError('network');
   throw new SessionError('credentials');
+}
+
+function observeInitialData(socket, signal) {
+  const decoding = new AbortController();
+  let versions;
+  let profileStarted = false;
+  let unsubscribe;
+  const received = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe([VERSION_COMMAND, AVATAR_COMMAND, REGISTRATION_COMMAND], (reply) => {
+      try {
+        if (reply.command === VERSION_COMMAND) {
+          if (versions) throw new SessionError('protocol');
+          versions = readVersions(reply);
+        } else {
+          if (!versions || profileStarted) throw new SessionError('protocol');
+          profileStarted = true;
+          readDataProfile(reply, decoding.signal).then(
+            (profile) => resolve({ versions, ...profile }),
+            reject,
+          );
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+    socket.closed.then(() => reject(new SessionError('network')));
+  });
+  return {
+    received: bounded(received, signal),
+    dispose() {
+      unsubscribe();
+      decoding.abort();
+    },
+  };
 }
 
 async function confirmChannel(channel, playerId, sessionKey, signal) {
@@ -194,13 +241,22 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
   }
   negotiation.done();
 
-  const certificate = await socket.ask(1, ['yes, ok.', sign], [1, 2], { signal });
-  if (certificate.command !== 1) throw new SessionError('protocol');
-  channel.verified = true;
-  certificate.discardString(4096);
-  certificate.discardString(4096);
-  certificate.done();
-  socket.expireOn(2);
+  // This service sends the bootstrap immediately after its certificate in the same TCP stream.
+  const initial = channel.port === DATA_PORT ? observeInitialData(socket, signal) : null;
+  try {
+    const login = socket.ask(1, ['yes, ok.', sign], [1, 2], { signal }).then((certificate) => {
+      if (certificate.command !== 1) throw new SessionError('protocol');
+      channel.verified = true;
+      certificate.discardString(4096);
+      certificate.discardString(4096);
+      certificate.done();
+      socket.expireOn(2);
+    });
+    const [, initialData] = await Promise.all([login, initial?.received]);
+    return initialData;
+  } finally {
+    initial?.dispose();
+  }
 }
 
 async function closeSession(auth, channels) {
@@ -209,7 +265,7 @@ async function closeSession(auth, channels) {
   await auth?.close();
 }
 
-function activeSession(auth, channels, playerId) {
+function activeSession(auth, channels, playerId, initialData) {
   let closing;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
@@ -217,6 +273,7 @@ function activeSession(auth, channels, playerId) {
   function stop(reason) {
     if (!closing) {
       clearInterval(timer);
+      initialData = null;
       closing = (async () => {
         await closeSession(auth, channels);
         resolveClosed(reason);
@@ -244,6 +301,7 @@ function activeSession(auth, channels, playerId) {
     lobbyVerified: true,
     dataVerified: true,
     chatVerified: true,
+    get initialData() { return initialData; },
     closed,
     close: () => stop('closed'),
   };
@@ -286,14 +344,16 @@ export async function startSession(username, password, { signal } = {}) {
     }
     auth.expireOn(8);
 
+    let initialData;
     for (const { port, pong } of CHANNELS) {
       if (signal?.aborted) throw new SessionError('cancelled');
-      const channel = { socket: new SessionSocket(port), pong, verified: false };
+      const channel = { socket: new SessionSocket(port), port, pong, verified: false };
       channels.push(channel);
-      await confirmChannel(channel, playerId, sessionKey, signal);
+      const data = await confirmChannel(channel, playerId, sessionKey, signal);
+      if (data) initialData = data;
     }
     if (signal?.aborted) throw new SessionError('cancelled');
-    return activeSession(auth, channels, playerId);
+    return activeSession(auth, channels, playerId, initialData);
   } catch (error) {
     await closeSession(auth, channels);
     throw error instanceof SessionError ? error : new SessionError('protocol');

@@ -28,6 +28,8 @@ NATIVE_ASSETS = {
     "image": "image/rm_shop/item_id020.png",
     "audio": "sound/bgm/ulbgm01.mp3",
 }
+PANEL_SKIN_URL = "/public/panel_gene.png"
+PANEL_SKIN_SHA256 = "81038be00fa27a1143ac651a789d0a665d51a7be326f322685c7f6cddb85ee3b"
 # Historical cwming.ttf pin from tools/legacy-build/build.sh.
 TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
 TCN_FONT_URL = "/tcn-device-font.ttf"
@@ -45,6 +47,21 @@ def native_asset_files(assets):
             raise ValueError(f"--assets must contain a regular file at {filename}")
         files[kind] = path
     return files
+
+
+def native_panel_skin(assets):
+    if assets is None:
+        return None
+    # The build's original asset checkout has public/ and data/ next to each other.
+    root = assets.resolve().parent
+    try:
+        panel = (root / "data/image/panel_gene.png").resolve()
+        if (panel.is_relative_to(root) and panel.is_file()
+                and sha256(panel.read_bytes()).hexdigest() == PANEL_SKIN_SHA256):
+            return panel
+    except (OSError, RuntimeError):
+        pass
+    return None
 
 
 def client_config(server_offset, direct_sockets):
@@ -175,7 +192,7 @@ def create_app(
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
         for filename in (
             "client.js", "style.css", "transport.js", "session.js",
-            "wire.js", "srp.js", "login.js",
+            "wire.js", "srp.js", "login.js", "panel.js", "data-bootstrap.js",
         ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 
@@ -184,6 +201,10 @@ def create_app(
             url = f"/public/{NATIVE_ASSETS[kind]}"
             asset_urls[kind] = url
             app.router.add_get(url, serve_file(path))
+        panel = native_panel_skin(assets)
+        asset_urls["panel"] = PANEL_SKIN_URL if panel else None
+        if panel:
+            app.router.add_get(PANEL_SKIN_URL, serve_file(panel))
 
         async def services(_request):
             return web.json_response({"services": [

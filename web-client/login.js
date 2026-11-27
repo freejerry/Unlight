@@ -13,6 +13,12 @@ const ui = {
   data: document.querySelector('#session-data'),
   chat: document.querySelector('#session-chat'),
   signOut: document.querySelector('#session-signout'),
+  bootstrap: document.querySelector('#session-bootstrap'),
+  bootstrapTitle: document.querySelector('#session-bootstrap-title'),
+  avatarData: document.querySelector('#session-avatar-data'),
+  registrationData: document.querySelector('#session-registration-data'),
+  avatarFields: ['name', 'id', 'level', 'gems', 'exp', 'energy'].map(field => document.querySelector(`#session-avatar-${field}`)),
+  registrationFields: ['parts', 'cards'].map(field => document.querySelector(`#session-starter-${field}`)),
 };
 
 const errors = {
@@ -41,6 +47,23 @@ function clearField(field) {
   field.setCustomValidity('');
 }
 
+function displayBootstrap(initialData) {
+  const avatar = initialData?.avatar;
+  const registration = initialData?.registration;
+  ui.bootstrap.hidden = !initialData;
+  ui.bootstrap.dataset.state = avatar ? 'avatar' : registration ? 'registration' : 'idle';
+  ui.bootstrapTitle.textContent = avatar ? '角色資料' : registration ? '尚未建立角色' : '登入初始資料';
+  ui.avatarData.hidden = !avatar;
+  ui.registrationData.hidden = !registration;
+
+  const avatarValues = avatar
+    ? [avatar.name, avatar.id, avatar.level, avatar.gems, avatar.exp, `${avatar.energy} / ${avatar.energyMax}`]
+    : [];
+  ui.avatarFields.forEach((field, index) => { field.textContent = avatarValues[index] ?? ''; });
+  const registrationValues = registration ? [registration.partCount, registration.cardCount] : [];
+  ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
+}
+
 function show(state, label, detail = '', kind) {
   const signedIn = state === 'signed-in';
   ui.status.dataset.state = state;
@@ -54,6 +77,7 @@ function show(state, label, detail = '', kind) {
   ui.signOut.hidden = !signedIn;
   if (!signedIn) {
     ui.id.textContent = '—';
+    displayBootstrap(null);
     for (const field of [ui.lobby, ui.data, ui.chat]) {
       field.textContent = '—';
       delete field.dataset.verified;
@@ -100,7 +124,9 @@ ui.form.addEventListener('submit', async (event) => {
       await session.close();
       return;
     }
-    if (!Number.isSafeInteger(session.playerId) || session.lobbyVerified !== true || session.dataVerified !== true || session.chatVerified !== true) {
+    const initialData = session.initialData;
+    if (!Number.isSafeInteger(session.playerId) || session.lobbyVerified !== true
+      || session.dataVerified !== true || session.chatVerified !== true || !initialData) {
       await session.close();
       if (pending === controller) showFailure();
       return;
@@ -113,6 +139,7 @@ ui.form.addEventListener('submit', async (event) => {
       field.textContent = '已驗證';
       field.dataset.verified = 'true';
     }
+    displayBootstrap(initialData);
     show('signed-in', '登入成功');
     void session.closed.then((reason) => handleDisconnect(session, reason), () => handleDisconnect(session, 'network'));
   } catch (error) {
