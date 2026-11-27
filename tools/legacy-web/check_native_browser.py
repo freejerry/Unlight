@@ -23,6 +23,20 @@ PANEL_HEIGHTS = (96, 215, 300)
 PORTS = {port for _, port, _, _ in SERVICES}
 FAILED_PORT = 12004
 TIMEOUT = 10000
+PANEL_CONTEXT_MONITOR = """
+(forceUnavailable) => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    const monitor = window.panelContextMonitor = {attempts: 0, contexts: new Set()};
+    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+        if (kind !== 'webgl2') return getContext.call(this, kind, ...args);
+        monitor.attempts++;
+        if (forceUnavailable) return null;
+        const context = getContext.call(this, kind, ...args);
+        if (context) monitor.contexts.add(context);
+        return context;
+    };
+}
+"""
 
 
 def observe(page):
@@ -143,18 +157,30 @@ def check_assets(page, origin, metadata, requests, legacy):
     print("Native browser decoded the original image and played the original MP3 after a click.")
 
 
-def check_panel(page, origin, path, requests, dpr):
+def observe_panel_contexts(page, *, force_unavailable=False):
+    page.add_init_script(f"({PANEL_CONTEXT_MONITOR})({str(force_unavailable).lower()})")
+
+
+def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=220):
     status = page.locator("#panel-status")
-    canvases = page.locator("#panel-previews canvas[data-panel-height][data-panel-width]")
+    grid = page.locator("#panel-previews")
+    canvases = grid.locator("canvas[data-panel-height][data-panel-width]")
     if path is None:
+        assert renderer is None, "The requested renderer needs the archived panel PNG"
         expect(status).to_have_attribute("data-state", "unconfigured")
-        expect(page.locator("#panel-previews")).to_be_hidden()
-        expect(page.locator("#panel-previews canvas[data-rendered='true']")).to_have_count(0)
+        expect(grid).to_be_hidden()
+        expect(grid.locator("canvas[data-rendered='true']")).to_have_count(0)
+        assert grid.get_attribute("data-renderer") is None
+        assert page.evaluate("panelContextMonitor.attempts") == 0
         assert origin + PANEL_PATH not in requests, "Unconfigured client tried to load the panel image"
         return
 
     assert path == PANEL_PATH, path
     expect(status).to_have_attribute("data-state", "success", timeout=TIMEOUT)
+    if renderer:
+        expect(grid).to_have_attribute("data-renderer", renderer)
+    renderer = grid.get_attribute("data-renderer")
+    assert renderer in ("webgl2", "canvas2d"), renderer
     expect(canvases).to_have_count(len(PANEL_HEIGHTS))
     assert origin + PANEL_PATH in requests, "The canvas did not request the original panel image"
     response = page.request.get(origin + PANEL_PATH)
@@ -165,9 +191,9 @@ def check_panel(page, origin, path, requests, dpr):
         expect(canvas).to_have_attribute("data-rendered", "true")
         expect(canvas).to_be_visible()
 
-    # Map each backing pixel into the archived texture independently of the renderer.
-    # Exclude only nearest-neighbor ties on a stretched axis, where either texel is valid.
-    results = canvases.evaluate_all("""async (canvases, {path, dpr}) => {
+    # Map pixel centers into the archived texture. At an exact nearest-neighbor tie,
+    # either adjacent source texel is valid.
+    results = canvases.evaluate_all("""async (canvases, {path, dpr, renderer, cssWidth, heights}) => {
         const image = new Image();
         image.src = path;
         await image.decode();
@@ -178,60 +204,100 @@ def check_panel(page, origin, path, requests, dpr):
         source.drawImage(image, 0, 0);
         const originalPixels = source.getImageData(0, 0, original.width, original.height).data;
 
-        function moveToSource(pos, size, originalSize, leading, trailing) {
-            if (pos < leading * dpr) return Math.floor(pos / dpr);
-            const fromEnd = size - pos - 1;
-            if (fromEnd < trailing * dpr) return originalSize - 1 - Math.floor(fromEnd / dpr);
+        function axisCandidates(size, logical, sourceStops) {
+            const leading = sourceStops[1];
+            const trailing = sourceStops[3] - sourceStops[2];
+            const narrow = logical < leading + trailing;
+            const firstCut = Math.round(size * leading / (narrow ? leading + trailing : logical));
+            const lastCut = narrow ? firstCut : Math.round(size * (logical - trailing) / logical);
+            const stops = [0, firstCut, lastCut, size];
+            const candidates = new Array(size);
+            for (let slice = 0; slice < 3; slice++) {
+                const start = stops[slice];
+                const end = stops[slice + 1];
+                const sourceStart = sourceStops[slice];
+                const sourceSize = sourceStops[slice + 1] - sourceStart;
+                for (let pixel = start; pixel < end; pixel++) {
+                    const numerator = (2 * (pixel - start) + 1) * sourceSize;
+                    const denominator = 2 * (end - start);
+                    const nearest = sourceStart + Math.floor(numerator / denominator);
+                    candidates[pixel] = numerator % denominator ? [nearest] : [nearest - 1, nearest];
+                }
+            }
+            return candidates;
+        }
 
-            const centerWidth = size - (leading + trailing) * dpr;
-            const sourceWidth = originalSize - leading - trailing;
-            const subpixel = (pos + 0.5 - leading * dpr) / centerWidth * sourceWidth;
-            if (Math.abs(subpixel - Math.round(subpixel)) < 1e-8) return -1;
-            return leading + Math.floor(subpixel);
+        function comparePixels(width, height, pixels, cssHeight, flipped = false, premultiplied = false) {
+            const sourceXs = axisCandidates(width, cssWidth, [0, 42, 78, 120]);
+            const sourceYs = axisCandidates(height, cssHeight, [0, 60, 64, 96]);
+            let mismatch = null;
+            for (let y = 0; y < height; y++) {
+                const actualY = flipped ? height - 1 - y : y;
+                for (let x = 0; x < width; x++) {
+                    const actualOffset = 4 * (actualY * width + x);
+                    const allowed = sourceYs[y].some(sourceY => sourceXs[x].some(sourceX => {
+                        const offset = 4 * (sourceY * original.width + sourceX);
+                        const alpha = originalPixels[offset + 3];
+                        return [0, 1, 2, 3].every(channel => {
+                            const original = originalPixels[offset + channel];
+                            const expected = premultiplied && channel < 3 ? Math.round(original * alpha / 255) : original;
+                            return pixels[actualOffset + channel] === expected;
+                        });
+                    }));
+                    if (!allowed) {
+                        mismatch = {x, y, sourceXs: sourceXs[x], sourceYs: sourceYs[y],
+                            actual: [...pixels.slice(actualOffset, actualOffset + 4)]};
+                        return {width, height, mismatch};
+                    }
+                }
+            }
+            return {width, height, mismatch};
+        }
+
+        let webgl = null;
+        if (renderer === 'webgl2') {
+            // The renderer paints to one detached WebGL2 buffer before copying to the gallery.
+            const contexts = [...panelContextMonitor.contexts];
+            const gl = contexts.find(context => !context.isContextLost());
+            if (!(gl instanceof WebGL2RenderingContext)) throw new Error('No live WebGL2 context observed');
+            const {drawingBufferWidth: width, drawingBufferHeight: height} = gl;
+            const pixels = new Uint8Array(width * height * 4);
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            webgl = {
+                ...comparePixels(width, height, pixels, heights.at(-1), true, gl.getContextAttributes().premultipliedAlpha),
+                renderer: gl.getParameter(rendererInfo?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
+            };
         }
 
         return {
             dpr: window.devicePixelRatio,
             source: [original.width, original.height],
-            canvases: canvases.map((canvas) => {
+            canvases: canvases.map((canvas, index) => {
                 const {width, height} = canvas;
                 const bounds = canvas.getBoundingClientRect();
                 const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data;
-                let mismatch = null;
-                let compared = 0;
-                for (let y = 0; y < height; y++) {
-                    const sourceY = moveToSource(y, height, 96, 60, 32);
-                    if (sourceY < 0) continue;
-                    for (let x = 0; x < width; x++) {
-                        const sourceX = moveToSource(x, width, 120, 42, 42);
-                        if (sourceX < 0) continue;
-                        compared++;
-                        const actualOffset = 4 * (y * width + x);
-                        const expectedOffset = 4 * (sourceY * original.width + sourceX);
-                        if (!mismatch && [0, 1, 2, 3].some((channel) =>
-                            pixels[actualOffset + channel] !== originalPixels[expectedOffset + channel])) {
-                            mismatch = {x, y, sourceX, sourceY,
-                                expected: [...originalPixels.slice(expectedOffset, expectedOffset + 4)],
-                                actual: [...pixels.slice(actualOffset, actualOffset + 4)]};
-                        }
-                    }
-                }
-                return {width, height, cssSize: [bounds.width, bounds.height], compared, mismatch};
+                return {...comparePixels(width, height, pixels, heights[index]), cssSize: [bounds.width, bounds.height]};
             }),
+            webgl,
         };
-    }""", {"path": path, "dpr": dpr})
+    }""", {"path": path, "dpr": dpr, "renderer": renderer, "cssWidth": css_width, "heights": PANEL_HEIGHTS})
     assert results["source"] == [120, 96] and results["dpr"] == dpr, results
     for height, result in zip(PANEL_HEIGHTS, results["canvases"], strict=True):
-        assert (result["width"], result["height"]) == (220 * dpr, height * dpr), result
-        assert result["cssSize"] == [220, height], result
-        assert result["compared"] > 0.95 * result["width"] * result["height"], result
+        assert (result["width"], result["height"]) == (int(css_width * dpr + .5), int(height * dpr + .5)), result
+        assert result["cssSize"] == [css_width, height], result
         assert result["mismatch"] is None, (height, dpr, result["mismatch"])
-    print(f"Original panel pixels match the 220×96/215/300 previews at DPR {dpr}.")
+    if webgl := results["webgl"]:
+        assert (webgl["width"], webgl["height"]) == (int(css_width * dpr + .5), int(PANEL_HEIGHTS[-1] * dpr + .5)), webgl
+        assert webgl["mismatch"] is None, (dpr, webgl["mismatch"])
+    print(f"Original panel pixels match the {css_width}×96/215/300 previews at DPR {dpr} using {renderer}.")
+    return results["webgl"]
 
 
-def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None):
+def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None, *, software_webgl=False):
     page = browser.new_page(viewport={"width": 1240, "height": 960}, device_scale_factor=1)
     try:
+        observe_panel_contexts(page)
         traffic = observe(page)
         requests, sockets, _ = traffic
         assets = load_diagnostics(page, origin)
@@ -242,7 +308,11 @@ def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None):
             expect_results(page)
             check_keepalive_frames(sockets[previous:])
         check_assets(page, origin, assets, requests, legacy)
-        check_panel(page, origin, assets["panel"], requests, 1)
+        webgl = check_panel(page, origin, assets["panel"], requests, 1,
+                            renderer="webgl2" if software_webgl else None)
+        if software_webgl:
+            assert "swiftshader" in webgl["renderer"].lower(), webgl["renderer"]
+            print(f"Read actual WebGL2 framebuffer pixels from {webgl['renderer']}.")
         check_native_requests(page, origin, traffic)
         if screenshot:
             if assets["audio"]:
@@ -260,28 +330,87 @@ def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None):
     return assets
 
 
-def check_high_density(browser, origin):
+def resize_panel_grid(page, width):
+    # Constrain this grid independently of the rest of the page.
+    style = "" if width == 220 else f"{width}px"
+    page.locator("#panel-previews").evaluate("(grid, width) => { grid.style.maxWidth = width; }", style)
+    page.wait_for_function("""(expectedWidth) => {
+        const canvases = document.querySelectorAll('#panel-previews canvas');
+        return canvases.length === 3 && Array.from(canvases).every(canvas => {
+            const width = canvas.getBoundingClientRect().width;
+            return canvas.dataset.rendered === 'true' && canvas.width === Math.round(width * devicePixelRatio)
+                && width === expectedWidth;
+        });
+    }""", arg=width, timeout=TIMEOUT)
+
+
+def check_high_density(browser, origin, *, software_webgl=False):
     page = browser.new_page(viewport={"width": 390, "height": 960}, device_scale_factor=2)
     try:
+        observe_panel_contexts(page)
+        page.add_init_script("""(() => {
+            const match = window.matchMedia.bind(window);
+            window.matchMedia = query => {
+                const result = match(query);
+                if (query.startsWith('(resolution:')) window.panelResolutionQuery = result;
+                return result;
+            };
+        })();""")
         traffic = observe(page)
         assets = load_diagnostics(page, origin)
         assert assets["panel"] == PANEL_PATH
-        check_panel(page, origin, assets["panel"], traffic[0], 2)
+        renderer = "webgl2" if software_webgl else None
+        check_panel(page, origin, assets["panel"], traffic[0], 2, renderer=renderer)
         assert page.evaluate("document.documentElement.scrollWidth === innerWidth"), "Compact layout overflowed"
-        # Constrain this grid independently of the rest of the page.
-        panel_fits = """(expectedWidth) => Array.from(document.querySelectorAll('#panel-previews canvas')).every(canvas => {
-            const width = canvas.getBoundingClientRect().width;
-            return canvas.dataset.rendered === 'true' && canvas.width === Math.round(width * 2)
-                && width === expectedWidth;
-        })"""
-        grid = page.locator("#panel-previews")
-        for max_width, expected_width in (("78px", 78), ("", 220)):
-            grid.evaluate("(grid, width) => { grid.style.maxWidth = width; }", max_width)
-            page.wait_for_function(panel_fits, arg=expected_width, timeout=TIMEOUT)
+        for width in (78, 220):
+            resize_panel_grid(page, width)
+            check_panel(page, origin, assets["panel"], traffic[0], 2, renderer=renderer, css_width=width)
+        device = page.context.new_cdp_session(page)
+        try:
+            for dpr in (1, 1.25, 2):
+                device.send("Emulation.setDeviceMetricsOverride", {
+                    "width": 390, "height": 960, "deviceScaleFactor": dpr, "mobile": False,
+                })
+                # Chromium's DPR emulation changes the media match without reliably emitting its event.
+                page.evaluate("""() => {
+                    const query = window.panelResolutionQuery;
+                    if (!query.matches) query.dispatchEvent(new Event('change'));
+                }""")
+                resize_panel_grid(page, 220)
+                check_panel(page, origin, assets["panel"], traffic[0], dpr, renderer=renderer)
+            print("Resolution-change notifications resize panel backing pixels at the same CSS viewport.")
+            if software_webgl:
+                assert page.evaluate("""() => {
+                    const gl = [...panelContextMonitor.contexts].find(context => !context.isContextLost());
+                    const loss = gl?.getExtension('WEBGL_lose_context');
+                    if (!loss) return false;
+                    loss.loseContext();
+                    return true;
+                }"""), "SwiftShader did not expose WEBGL_lose_context"
+                check_panel(page, origin, assets["panel"], traffic[0], 2, renderer="canvas2d")
+                resize_panel_grid(page, 78)
+                check_panel(page, origin, assets["panel"], traffic[0], 2, renderer="canvas2d", css_width=78)
+                print("Losing the real WebGL2 context recovered to Canvas2D and redrew after resizing.")
+        finally:
+            device.detach()
         check_native_requests(page, origin, traffic)
     finally:
         page.close()
     print("Panel backing sizes tracked a narrow grid column and recovered when widened.")
+
+
+def check_canvas_fallback(browser, origin):
+    page = browser.new_page(viewport={"width": 1240, "height": 960})
+    try:
+        observe_panel_contexts(page, force_unavailable=True)
+        traffic = observe(page)
+        assets = load_diagnostics(page, origin)
+        check_panel(page, origin, assets["panel"], traffic[0], 1, renderer="canvas2d")
+        assert page.evaluate("panelContextMonitor.attempts > 0 && panelContextMonitor.contexts.size === 0")
+        check_native_requests(page, origin, traffic)
+    finally:
+        page.close()
+    print("Without WebGL2, the original panel samples render in Canvas2D.")
 
 
 def check_retry(browser, origin):
@@ -327,6 +456,7 @@ def main():
     parser.add_argument("--no-assets-port", type=int, help="Also check a native server running without --assets")
     parser.add_argument("--screenshot", type=Path, help="Save the successful native diagnostics view")
     parser.add_argument("--panel-screenshot", type=Path, help="Save the verified original panel samples")
+    parser.add_argument("--software-webgl", action="store_true", help="Require WebGL2 via ANGLE SwiftShader and exercise context loss")
     options = parser.parse_args()
     origin = f"http://127.0.0.1:{options.port}"
     legacy = f"http://127.0.0.1:{options.legacy_port}" if options.legacy_port else None
@@ -334,12 +464,15 @@ def main():
     with TemporaryDirectory(prefix="unlight-native-chromium-") as profile, sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             executable_path=options.chromium,
+            args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] if options.software_webgl else [],
             env=dict(os.environ, XDG_CONFIG_HOME=profile, XDG_CACHE_HOME=profile),
         )
         try:
-            assets = check_complete(browser, origin, legacy, options.screenshot, options.panel_screenshot)
+            assets = check_complete(browser, origin, legacy, options.screenshot, options.panel_screenshot,
+                                    software_webgl=options.software_webgl)
             if assets["panel"]:
-                check_high_density(browser, origin)
+                check_high_density(browser, origin, software_webgl=options.software_webgl)
+                check_canvas_fallback(browser, origin)
             check_retry(browser, origin)
             if options.no_assets_port:
                 no_assets_origin = f"http://127.0.0.1:{options.no_assets_port}"

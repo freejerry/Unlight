@@ -37,7 +37,7 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 - **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，唯讀解析角色摘要，或彙整未創角帳號收到的起始選項數量。登出或連線中斷時清空摘要。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
 - **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得地圖，並以該地圖門檻為顯示上限。找不到名稱時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
 - **資源。** 從既有素材目錄讀取商店 PNG `item_id020.png` 和標題 MP3 `ulbgm01.mp3`，比對新入口與原版入口交付的位元組，再由 Chromium 解碼圖片並用使用者手勢確認音訊開始播放。[原版標題音樂的載入位置](../app/client/src/sound/bgm/TitleBGM.as)
-- **九宮格。** Canvas 2D 使用 120 × 96 的原版面板圖與原始切片座標，並按可用寬度和裝置像素比重繪。驗收頁對 96、215、300 三種高度比對頂區及四角，也會檢查窄視窗。[原版切片設定](../app/client/data/css/UL.css.cn#L35) · [面板截圖](../docs/playtest/native/03-native-panel-slices.png)
+- **九宮格。** WebGL 2 和 Canvas 2D 共用 120 × 96 的原版面板圖、原始切片座標與幾何計算。預覽共用一個 WebGL 2 繪圖環境，將結果放到原有的可見畫布。WebGL 2 無法繪製或圖形環境中斷時，Canvas 2D 會接手重繪。面板會按可用寬度和裝置像素比更新。[原版切片設定](../app/client/data/css/UL.css.cn#L35) · [繪圖驗收](../docs/playtest/README.md#原生-webgl-2-九宮格)
 - **對局紀錄。** 固定種子 `2026` 的 68 個事件作為日後對照的 Ruby 輸出，包含順序、回合、HP、卡牌、擲骰和勝負。[對局比對方式](../tools/legacy-server/README.md#對局基準)
 
 啟動時提供 `--assets`，另依原版相容入口說明啟動 Ruffle，將兩個 HTTP 埠傳給瀏覽器驗收程式。此範例使用 Chromium 和 Python Playwright。
@@ -47,6 +47,8 @@ python3 tools/legacy-web/check_native_browser.py --port 4334 --legacy-port 4330
 ```
 
 加上 `--screenshot /tmp/unlight-native-check.png` 可存下驗收頁。加上 `--panel-screenshot /tmp/unlight-native-panel.png` 可另存面板樣本。[連線驗收截圖](../docs/playtest/native/01-native-check.png)
+
+加入 `--software-webgl` 可用 Chromium 的 ANGLE SwiftShader 驗收 WebGL 2。腳本會核對實際繪圖緩衝、可見畫布、DPR 變換、窄欄與 Canvas 2D 接手後的像素。
 
 登入驗收程式會提示輸入隔離測試帳號密碼。它會依序驗證未知帳號、錯誤密碼、成功登入、初始資料、登出和再次登入，並比對原版的回應命令。
 

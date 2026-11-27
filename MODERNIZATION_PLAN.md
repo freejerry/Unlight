@@ -12,6 +12,8 @@
 
 原生驗收頁可讀取登入回覆中的任務清單和區域進度，並用原始資料表補上繁中名稱及門檻。新角色與先前完成原版首場 PvE 的角色分別核對到魔女山谷 0/3 與 1/3。兩種快照均已用原版 SQLite 驗證。[任務快照驗收](docs/playtest/README.md#原生瀏覽器任務快照)
 
+原生九宮格已接上 WebGL 2，沿用原版面板圖並與 Canvas 2D 共用切片幾何。Chromium 已驗證窄欄、DPR 變動、像素取樣及圖形環境中斷後的 Canvas 2D 接手。[WebGL 2 面板驗收](docs/playtest/README.md#原生-webgl-2-九宮格)
+
 原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖恢復了登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫可重跑 SWF 宣告幀率、瀏覽器回呼和可見畫面變化的量測。目標硬體上的動畫流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
 
 大廳淡出時會清理它持有的提示框。Chromium 實測直接點擊仍顯示提示的「任務」按鈕，進入地圖與戰鬥時提示都已清除。正常的地圖懸停提示也已驗證。[提示退場驗收](docs/playtest/README.md#大廳提示退場)

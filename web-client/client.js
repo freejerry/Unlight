@@ -1,5 +1,6 @@
 import { ProbeError, probeKeepAlive, toHex } from './transport.js';
 import { drawPanel } from './panel.js';
+import { createWebGLPanelRenderer } from './panel-webgl.js';
 
 const services = [
   { port: 12001, label: '認證' },
@@ -43,6 +44,7 @@ const rows = new Map();
 const panelImage = new Image();
 const panelGuides = { left: 42, top: 60, right: 78, bottom: 64 };
 const renderedPanels = new WeakMap();
+let webglPanelRenderer;
 let running = false;
 
 for (const service of services) {
@@ -220,27 +222,66 @@ function startAsset(media, path, status, readyEvent, onSuccess) {
   media.src = address;
 }
 
+function drawPanelSamples(canvases, ratio, renderer) {
+  for (const canvas of canvases) {
+    const { width, height } = canvas.getBoundingClientRect();
+    const previous = renderedPanels.get(canvas);
+    if (previous?.width === width && previous.height === height && previous.ratio === ratio
+        && previous.renderer === renderer) continue;
+
+    if (renderer) renderer.drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
+    else drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
+    renderedPanels.set(canvas, { width, height, ratio, renderer });
+    canvas.dataset.rendered = 'true';
+  }
+}
+
+function releaseWebGLPanelRenderer() {
+  const renderer = webglPanelRenderer;
+  webglPanelRenderer = null;
+  renderer?.dispose();
+}
+
+function handlePanelContextLoss() {
+  if (!webglPanelRenderer) return;
+  releaseWebGLPanelRenderer();
+  redrawLoadedPanels();
+}
+
 function renderPanelPreviews() {
   const ratio = window.devicePixelRatio || 1;
-  const firstRender = ui.panelPreviews.hidden;
   const canvases = ui.panelPreviews.querySelectorAll('canvas');
   try {
     if (panelImage.naturalWidth !== 120 || panelImage.naturalHeight !== 96) {
       throw new Error('Unexpected original panel dimensions');
     }
     ui.panelPreviews.hidden = false;
-    for (const canvas of canvases) {
-      const { width, height } = canvas.getBoundingClientRect();
-      const previous = renderedPanels.get(canvas);
-      if (previous?.width === width && previous.height === height && previous.ratio === ratio) continue;
-
-      drawPanel(canvas, panelImage, width, height, panelGuides, ratio);
-      renderedPanels.set(canvas, { width, height, ratio });
-      canvas.dataset.rendered = 'true';
+    if (webglPanelRenderer === undefined) {
+      try {
+        webglPanelRenderer = createWebGLPanelRenderer(handlePanelContextLoss);
+      } catch {
+        webglPanelRenderer = null;
+      }
     }
-    if (firstRender) updateAsset(ui.panelStatus, 'success', '已載入原版 120 × 96 px 面板皮膚。');
+
+    const renderer = webglPanelRenderer;
+    try {
+      drawPanelSamples(canvases, ratio, renderer);
+    } catch (error) {
+      if (!renderer) throw error;
+      releaseWebGLPanelRenderer();
+      drawPanelSamples(canvases, ratio, null);
+    }
+
+    const activeRenderer = webglPanelRenderer ? 'webgl2' : 'canvas2d';
+    if (ui.panelPreviews.dataset.renderer !== activeRenderer) {
+      ui.panelPreviews.dataset.renderer = activeRenderer;
+      const label = activeRenderer === 'webgl2' ? 'WebGL 2' : 'Canvas 2D';
+      updateAsset(ui.panelStatus, 'success', `已載入原版 120 × 96 px 面板皮膚，使用 ${label} 繪製。`);
+    }
   } catch {
     ui.panelPreviews.hidden = true;
+    delete ui.panelPreviews.dataset.renderer;
     for (const canvas of canvases) {
       renderedPanels.delete(canvas);
       delete canvas.dataset.rendered;
@@ -251,6 +292,14 @@ function renderPanelPreviews() {
 
 function redrawLoadedPanels() {
   if (ui.panelStatus.dataset.state === 'success') renderPanelPreviews();
+}
+
+function watchPanelDensity() {
+  const resolution = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  resolution.addEventListener('change', () => {
+    watchPanelDensity();
+    redrawLoadedPanels();
+  }, { once: true });
 }
 
 async function loadAssets() {
@@ -266,6 +315,7 @@ async function loadAssets() {
     startAsset(panelImage, config.panel ?? null, ui.panelStatus, 'load', () => {
       renderPanelPreviews();
       new ResizeObserver(redrawLoadedPanels).observe(ui.panelPreviews);
+      watchPanelDensity();
     });
   } catch {
     updateAsset(ui.imageStatus, 'failed', '無法讀取原始素材設定。');

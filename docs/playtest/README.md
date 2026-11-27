@@ -72,6 +72,12 @@ Chromium 直接連到原版 Ruby 的轉接服務。兩輪檢查的六項二進�
 
 原生九宮格驗收以原版 120 × 96 圖片繪製三個高度為 96、215 和 300 CSS 像素的面板。Chromium 在裝置像素比 1 和 2 下比對四角及中間切片，頂部淡色區固定在第 31 個 CSS 像素列附近，切片交界無透明縫隙。也實測了 390 CSS 像素寬的視窗及比原版左右兩側切片總寬還窄的面板縮放。[三種高度截圖](native/03-native-panel-slices.png) · [原版切片設定](../../app/client/data/css/UL.css.cn#L35)
 
+### 原生 WebGL 2 九宮格
+
+Chromium 的 ANGLE SwiftShader 實測使用一個 WebGL 2 繪圖環境。讀回的 WebGL 2 繪圖緩衝和可見畫布都符合原版圖片、切片及最近鄰取樣規則。CSS 欄寬由 220 縮為 78 像素後可恢復。在視窗尺寸相同時，模擬 DPR 變動通知也會觸發重繪。實測 WebGL context loss 與 WebGL 2 不可用，預覽均可由 Canvas 2D 接手。[WebGL 2 截圖](native/09-native-panel-webgl2.png) · [Canvas 2D 接手截圖](native/10-native-panel-canvas-fallback.png) · [重跑方式](../../web-client/README.md)
+
+另在 220 和 78 像素寬、三種面板高度下，比較兩種繪圖方式的 1,195,362 個可見畫布像素。DPR 1、2 的輸出逐像素一致。DPR 1.25 共 1,152 個像素不同，已驗證全都落在兩個來源像素等距的位置，而且各自取到等距的其中一個原色。合成半透明色的測例也通過 RGBA 比對。
+
 ## 原生瀏覽器登入
 
 先用 Ruffle 操作原版登入畫面，再用原生入口在同一套隔離 Ruby 服務上重測。兩者收到的認證命令一致。未註冊帳號收到 `3`，錯誤密碼收到挑戰 `1` 及拒絕 `9`，正確登入收到挑戰 `1` 及憑證 `2`。

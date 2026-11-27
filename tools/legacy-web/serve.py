@@ -213,7 +213,7 @@ def create_app(
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
         for filename in (
             "client.js", "style.css", "transport.js", "session.js",
-            "wire.js", "srp.js", "login.js", "panel.js", "data-bootstrap.js", "quest-data.js",
+            "wire.js", "srp.js", "login.js", "panel.js", "panel-webgl.js", "data-bootstrap.js", "quest-data.js",
         ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 
