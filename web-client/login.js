@@ -268,6 +268,7 @@ const questSearchRejected = {
   31: '錯誤的任務地圖編號',
   32: '你的等級不足以取得地圖',
 };
+const questSearchStarted = '伺服器已開始搜尋。';
 const questStartRejected = {
   1: 'AP不足',
   16: '牌組不存在',
@@ -1115,6 +1116,14 @@ function clearQuestCharacterChange() {
   showQuestActionStatus(status, 'idle');
 }
 
+function questCharacterName({ cardId, name }) {
+  return name || deckCatalog?.get(cardId)?.name;
+}
+
+function questCharacterLabel(choice) {
+  return questCharacterName(choice) || `角色卡 ${choice.cardId}`;
+}
+
 function displayQuestActiveCharacter(roster, lastChange) {
   const { active, slot, card, hp, last } = questCharacterUi;
   const player = roster?.player;
@@ -1126,8 +1135,8 @@ function displayQuestActiveCharacter(roster, lastChange) {
   if (current) {
     active.dataset.slot = String(current.index);
     active.dataset.cardId = String(current.cardId);
-    slot.textContent = String(current.index);
-    card.textContent = String(current.cardId);
+    slot.textContent = `第 ${current.index + 1} 欄`;
+    card.textContent = questCharacterName(current) || String(current.cardId);
   } else {
     delete active.dataset.slot;
     delete active.dataset.cardId;
@@ -1142,7 +1151,7 @@ function displayQuestActiveCharacter(roster, lastChange) {
     last.dataset.turn = String(lastChange.turn);
     last.dataset.slot = String(applied.index);
     last.dataset.cardId = String(applied.cardId);
-    const message = lastChange.kind === 'defeated' ? '已確認倒下後的出戰角色。' : '已確認移動後的出戰角色。';
+    const message = `伺服器確認由第 ${current.index + 1} 欄的${questCharacterLabel(current)}出戰。`;
     if (last.textContent !== message) last.textContent = message;
   } else {
     for (const key of ['kind', 'turn', 'slot', 'cardId']) delete last.dataset[key];
@@ -1150,27 +1159,38 @@ function displayQuestActiveCharacter(roster, lastChange) {
   }
 }
 
+function displayQuestCharacterChoice(item, choice) {
+  const [label, button] = item.children;
+  const { index, hp } = choice;
+  const name = questCharacterLabel(choice);
+  const description = `第 ${index + 1} 欄 · ${name}${Number.isSafeInteger(hp) ? ` · 生命值 ${hp}` : ''}`;
+  if (label.textContent !== description) {
+    label.textContent = description;
+    button.setAttribute('aria-label', `${button.textContent}，第 ${index + 1} 欄，${name}`);
+  }
+}
+
 function appendQuestCharacterChoice(choice, activeIndex) {
-  const { index, cardId, hp } = choice;
+  const { index, cardId } = choice;
   const item = document.createElement('li');
   const current = index === activeIndex;
   item.dataset.slot = String(index);
   item.dataset.cardId = String(cardId);
   item.dataset.current = String(current);
   const label = document.createElement('span');
-  label.textContent = `欄位 ${index} · 角色卡 ${cardId}${Number.isSafeInteger(hp) ? ` · 生命值 ${hp}` : ''}`;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'button secondary quest-character-select';
   button.textContent = current ? '保留出戰角色' : '選擇此角色';
-  button.setAttribute('aria-label', `${button.textContent}，欄位 ${index}，角色卡 ${cardId}`);
   button.disabled = true;
-  button.addEventListener('click', () => void runQuestBattleAction(
-    button, 'choosing', '正在等待伺服器完成換角…',
-    (session, options) => session.chooseQuestCharacter(index, options), { character: true },
-  ));
+  button.addEventListener('click', () => {
+    const latest = active?.questBattle?.characterChange?.choices?.find(entry => entry.index === index && entry.cardId === cardId);
+    const message = `正在等待伺服器確認第 ${index + 1} 欄的${questCharacterLabel(latest ?? choice)}…`;
+    void runQuestBattleAction(button, 'choosing', message,
+      (session, options) => session.chooseQuestCharacter(index, options), { character: true });
+  });
   item.append(label, button);
-  questCharacterUi.choices.append(item);
+  return item;
 }
 
 function syncQuestCharacterChange(snapshot, force) {
@@ -1195,15 +1215,16 @@ function syncQuestCharacterChange(snapshot, force) {
 
   const options = change.canSelect === true && change.playerDone === false && Array.isArray(change.choices) ? change.choices : [];
   const activeIndex = roster?.player?.activeIndex;
-  const version = JSON.stringify([activeIndex, options]);
+  const version = JSON.stringify([activeIndex, options.map(({ index, cardId }) => [index, cardId])]);
   if (choices.dataset.options !== version) {
     choices.dataset.options = version;
-    choices.replaceChildren();
-    for (const choice of options) appendQuestCharacterChoice(choice, activeIndex);
+    choices.replaceChildren(...options.map(choice => appendQuestCharacterChoice(choice, activeIndex)));
   }
+  options.forEach((choice, index) => displayQuestCharacterChoice(choices.children[index], choice));
   choices.hidden = options.length === 0;
   const previousState = status.dataset.state;
-  if (previousState === 'uncertain' || (!force && ['choosing', 'rejected'].includes(previousState))) return;
+  if (previousState === 'uncertain' || (previousState === 'choosing' && liveQuestRequest?.kind === 'battle')
+      || (!force && previousState === 'rejected')) return;
   const state = options.length ? 'ready' : 'waiting';
   const message = options.length ? (change.kind === 'defeated' ? '請選擇接替出戰的角色。' : '請選擇出戰角色。')
     : change.playerDone || change.applied?.player ? '等待伺服器完成換角。' : '伺服器尚未確認可選的角色。';
@@ -1733,6 +1754,9 @@ function syncQuestBattle(session, force = false) {
   if (!snapshot || !Object.hasOwn(questBattlePhases, snapshot.phase)) return;
   const focused = document.activeElement;
   const restoringFocus = questBattleUi.section.contains(focused);
+  const hadCharacterChoices = !questCharacterUi.choices.hidden;
+  const waitingForCharacters = [questBattleUi.status, questBattleUi.commit].includes(focused)
+    || (focused === questCombatUi.status && questCombatUi.section.dataset.role === 'waiting');
   const { phase, direction, ready, result, actionHand, eventHand, moveTable, exchange, previousExchange, startDistance, characterChange } = snapshot;
   const turn = snapshot.turn ?? ready?.turn;
   const opensRound = ready && questBattleUi.section.dataset.readyTurn !== String(ready.turn);
@@ -1780,10 +1804,13 @@ function syncQuestBattle(session, force = false) {
   if (settlement) displayQuestSettlement(settlement, session);
   if (ready) void enrichQuestBattleCards(session);
   updateQuestBattleButtons();
-  if (restoringFocus && !liveQuestRequest && (!focused.isConnected || focused.disabled || focused.closest('[hidden]'))) {
+  if (!liveQuestRequest && !hadCharacterChoices && waitingForCharacters && !questCharacterUi.choices.hidden) {
+    questCharacterUi.status.focus();
+  } else if (restoringFocus && (!liveQuestRequest || focused === questCharacterUi.status)
+      && (!focused.isConnected || focused.disabled || focused.closest('[hidden]'))) {
     const status = !questCharacterUi.section.hidden ? questCharacterUi.status
       : phase === 'moved' && !questCombatUi.section.hidden ? questCombatUi.status : questBattleUi.status;
-    status.focus({ preventScroll: true });
+    status.focus({ preventScroll: focused !== questCharacterUi.status });
   }
   const exchangePending = adventure?.state !== 'between-lands' && exchange && !['uncertain', 'closed'].includes(exchange.phase)
     && (!exchange.questFinish || !settlement || !settlement.canReturn);
@@ -1805,6 +1832,7 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
   const { readyTurn } = questBattleUi.section.dataset;
   const { turn, index } = questCombatUi.section.dataset;
   showQuestActionStatus(status, state, message);
+  if (character && restoreFocus) status.focus();
 
   try {
     const result = action(session, { signal: controller.signal });
@@ -1828,7 +1856,8 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
     }
   } finally {
     finishLiveQuestRequest(request);
-    if (restoreFocus && active === session && (document.activeElement === document.body || document.activeElement === button)) {
+    const focusFallback = character ? status : document.body;
+    if (restoreFocus && active === session && [focusFallback, button].includes(document.activeElement)) {
       let target = button.disabled ? status : button;
       const counterpart = focusAfter?.();
       if (counterpart && !counterpart.disabled) target = counterpart;
@@ -1836,7 +1865,8 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
       if (button === questBattleUi.choose && button.disabled && !questBattleUi.commit.disabled) target = questBattleUi.commit;
       if (button === questBattleUi.commit && !questCombatUi.section.hidden) target = questCombatUi.status;
       if (button === questBattleUi.commit && !questCharacterUi.section.hidden) target = questCharacterUi.status;
-      if (character && questCharacterUi.section.hidden) target = questCombatUi.section.hidden ? questBattleUi.status : questCombatUi.status;
+      if (character) target = questCharacterUi.section.hidden
+        ? questCombatUi.section.hidden ? questBattleUi.status : questCombatUi.status : status;
       target.focus();
     }
   }
@@ -2363,6 +2393,10 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
     try {
       const snapshot = await session.readQuestInventory({ signal: controller.signal });
       if (snapshot && isCurrentLiveQuestRequest(request)) {
+        if (searchUi.status.dataset.state === 'started' && searchUi.status.textContent === questSearchStarted
+            && !snapshot.rows.some(entry => entry.status === QUEST_PENDING)) {
+          showQuestActionStatus(searchUi.status, 'idle');
+        }
         await enrichQuestSnapshot(snapshot, controller.signal, session);
       }
     } catch {
@@ -2553,7 +2587,7 @@ async function startQuestSearch() {
     }
 
     displayAvatarEnergy(energy, session.initialData.avatar.energyMax);
-    showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。');
+    showQuestActionStatus(searchUi.status, 'started', questSearchStarted);
     try {
       const snapshot = await session.readQuestInventory({ signal });
       if (!isCurrentLiveQuestRequest(request)) return;
@@ -2565,7 +2599,7 @@ async function startQuestSearch() {
       countdownTitle = questUi.rows.querySelector(`[data-inventory-id="${row.inventoryId}"] .quest-name`);
     } catch {
       if (isCurrentLiveQuestRequest(request)) {
-        showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。請重新讀取任務資料以查看倒數。');
+        showQuestActionStatus(searchUi.status, 'started', `${questSearchStarted}請重新讀取任務資料以查看倒數。`);
       }
     }
   } catch (error) {

@@ -478,11 +478,17 @@ def create_app(
                 or not 0 < int(value) <= 2**31 - 1 for value in values
             ):
                 raise web.HTTPBadRequest(text="Pass up to six positive character card IDs.")
-            ids = dict.fromkeys(map(int, values))
-            return web.json_response(
-                {"cards": [{"id": card_id, "hp": character_hp[card_id]} for card_id in ids if card_id in character_hp]},
-                headers={"Cache-Control": "no-store"},
-            )
+            definitions = deck_characters or {}
+            cards = []
+            for card_id in dict.fromkeys(map(int, values)):
+                if card_id not in character_hp:
+                    continue
+                card = {"id": card_id, "hp": character_hp[card_id]}
+                definition = definitions.get(card_id)
+                if definition:
+                    card["name"] = definition["name"]
+                cards.append(card)
+            return web.json_response({"cards": cards}, headers={"Cache-Control": "no-store"})
 
         async def avatar_starter_catalog(_request):
             headers = {"Cache-Control": "no-store"}

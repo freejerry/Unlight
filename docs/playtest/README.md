@@ -354,6 +354,16 @@ Chromium 以 1120 及 320 CSS 像素寬、DPR 2 連到隔離 Ruby。開始任務
 
 另一個帳號用 12 字繁中名稱創角，重新登入後在同一次登入實際等待 180 秒、確認結果並打贏第一回合。原版結算及 SQLite 確認獲得 8 Gem 與 5 Exp，角色維持 1 級、行動力 4/5。戰後重新登入，原版 Data 回傳同一角色，任務頁顯示魔女山谷進度 1/3、持有任務 0/4。讀取任務資料時未新增 Quest 命令，SQLite 記錄維持一致。[320 像素原版搜尋倒數](native/82-native-first-role-search-mobile.png) · [320 像素戰後重新登入](native/85-native-first-role-persisted-map-mobile.png)
 
+### 雙角色牌組續遊
+
+以首場已通關且確認牌組變更的角色副本續玩。第一個牌組的兩張卡分別是起始古魯瓦爾多（21）和原版首勝取得的艾伯李斯特（1）。從魔女山谷 1/3 開始，原版搜尋實際經過 180 秒，行動力由 6 降至 5，再次找到「落日大蝙蝠」。原版對局開場送回相同的雙卡順序。[前一階段的牌組確認](#角色牌組加入卡片) · [原版任務抽選](../../app/server/src/model/quest_map.rb#L79)
+
+第一回合用鍵盤選擇換角方向，原版 `49` 開放換角後，瀏覽器只送出一次 `CS35`，索引為 1。延遲交付原版換角回覆時，仍顯示原先的出戰卡 21，攻防操作保持停用。收到我方 `72`、換角結束 `50` 和原版 `51` 後，畫面顯示出戰卡 1 並進入我方防禦。[原版換角流程](../../app/server/src/controller/duel_controller.rb#L511)
+
+第三回合勝利後，原版結算確認獲得 12 Gem、15 Exp，等級從 2 升至 3。SQLite 核對原有兩張牌的位置與第一次通關紀錄，新增第二筆勝利紀錄及一張卡片 21 至卡冊。同一次登入返回任務頁時，魔女山谷顯示 2/3。結算以原版實收回覆為準，原版升級後的行動力 6/6 另外由 SQLite 核對。[原版通關更新](../../app/server/src/model/avatar.rb#L3034)
+
+另一個 320 CSS 像素測例在原版 180 秒期限後，透過重新登入的 Data 回覆取得已發現的任務。換角畫面讀取原始繁中名稱，依序列出古魯瓦爾多和艾伯李斯特，生命值為 7 和 8。用鍵盤送出選擇後，原版確認第二欄的艾伯李斯特出戰。這一場實際獲得 11 Gem、15 Exp，按「返回任務清單」後，在同一次登入確認魔女山谷 2/3、持有任務 0/4，焦點回到「讀取任務資料」。[320 像素換角選項](native/89-native-two-card-switch-mobile.png) · [確認第二欄出戰](native/90-native-two-card-active-mobile.png) · [任務結算](native/91-native-two-card-settlement-mobile.png) · [返回魔女山谷](native/92-native-two-card-return-mobile.png)
+
 ### 區域地圖查詢
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)
