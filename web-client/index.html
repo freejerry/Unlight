@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#112235" />
+    <meta name="description" content="用瀏覽器驗證 Unlight 原版六項服務的 KeepAlive 回覆與原始素材。" />
+    <title>Unlight 連線診斷</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/client.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-content">
+        <span class="wordmark">Unlight</span>
+        <span class="topbar-label">連線診斷</span>
+      </div>
+    </header>
+
+    <main id="diagnostics" class="shell" data-state="idle" aria-labelledby="page-title">
+      <div class="page-heading">
+        <div>
+          <h1 id="page-title">原版協定檢查</h1>
+          <p>以原版 KeepAlive 封包逐一驗證六個服務的二進位回覆。</p>
+        </div>
+        <div class="actions">
+          <button id="run-checks" type="button" class="button primary">開始檢查</button>
+          <button id="retry-failed" type="button" class="button secondary" hidden>重試失敗項目</button>
+        </div>
+      </div>
+
+      <section class="summary" aria-labelledby="overall-status">
+        <div class="summary-heading">
+          <h2 id="overall-status" aria-live="polite" aria-atomic="true">尚未檢查</h2>
+          <span id="progress-label">完成 0 / 6</span>
+        </div>
+        <progress id="progress" max="6" value="0" aria-label="已完成檢查的服務數"></progress>
+        <p id="overall-detail">檢查會送出 5 bytes 並核對 7 bytes 回覆。</p>
+      </section>
+
+      <section class="services" aria-labelledby="services-title">
+        <h2 class="sr-only" id="services-title">服務檢查結果</h2>
+        <div id="service-list" class="service-list"></div>
+      </section>
+
+      <section id="asset-checks" class="assets" data-state="loading" aria-labelledby="assets-title">
+        <h2 id="assets-title">原始素材</h2>
+        <div class="asset-list">
+          <div class="asset">
+            <div id="image-preview" class="image-preview" hidden>
+              <img id="asset-image" alt="Unlight 原版道具圖示" />
+            </div>
+            <div>
+              <h3>道具圖示</h3>
+              <p id="image-status" data-state="loading" role="status">讀取設定中…</p>
+            </div>
+          </div>
+          <div class="asset asset-sound">
+            <div>
+              <h3>背景音樂</h3>
+              <p id="audio-status" data-state="loading" role="status">讀取設定中…</p>
+            </div>
+            <audio id="asset-audio" preload="metadata" hidden></audio>
+            <button id="play-audio" type="button" class="button secondary" disabled hidden>播放</button>
+          </div>
+        </div>
+      </section>
+
+      <template id="service-template">
+        <article class="service" data-state="idle">
+          <header class="service-heading">
+            <h3 class="service-name"></h3>
+            <span class="service-status">待檢查</span>
+          </header>
+          <p class="service-port"></p>
+          <p class="service-detail">等待開始檢查。</p>
+          <div class="response"><span>回覆</span><code class="response-hex" data-testid="response-hex">—</code></div>
+        </article>
+      </template>
+      <noscript><p>請啟用 JavaScript 以執行連線診斷。</p></noscript>
+    </main>
+  </body>
+</html>

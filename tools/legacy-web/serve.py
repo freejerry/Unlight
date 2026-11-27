@@ -1,4 +1,4 @@
-"""Serve the existing Unlight client and forward its sockets to loopback."""
+"""Serve the original Unlight client or native diagnostics with a loopback relay."""
 
 import argparse
 import asyncio
@@ -11,9 +11,36 @@ from yarl import URL
 
 
 HOST = "127.0.0.1"
-PORTS = (12001, 12002, 12003, 12004, 12005, 12020)
+SERVICES = (
+    ("Auth", 12001, 6, 7),
+    ("Lobby", 12002, 3, 35),
+    ("Data", 12003, 3, 3),
+    ("Game", 12004, 3, 3),
+    ("Quest", 12005, 3, 3),
+    ("GlobalChat", 12020, 3, 3),
+)
+PORTS = tuple(port for _, port, _, _ in SERVICES)
 ROOT = Path(__file__).resolve().parent
 PUBLIC_CONFIG = ROOT.parents[1] / "app/client/public"
+NATIVE_ROOT = ROOT.parents[1] / "web-client"
+NATIVE_ASSETS = {
+    "image": "image/rm_shop/item_id020.png",
+    "audio": "sound/bgm/ulbgm01.mp3",
+}
+
+
+def native_asset_files(assets):
+    if assets is None:
+        return {}
+
+    assets = assets.resolve()
+    files = {}
+    for kind, filename in NATIVE_ASSETS.items():
+        path = (assets / filename).resolve()
+        if not path.is_relative_to(assets) or not path.is_file():
+            raise ValueError(f"--assets must contain a regular file at {filename}")
+        files[kind] = path
+    return files
 
 
 def client_config(server_offset, direct_sockets):
@@ -40,7 +67,12 @@ def https_origin(value):
     raise argparse.ArgumentTypeError("use the HTTPS URL from the authenticated preview")
 
 
-def create_app(client, assets, ruffle, listen_port, server_offset, preview_origin=None, direct_sockets=False):
+def create_app(
+    client, assets, ruffle, listen_port, server_offset,
+    preview_origin=None, direct_sockets=False, *, native=False,
+):
+    if native and (preview_origin or direct_sockets):
+        raise ValueError("native mode uses loopback WebSocket clients")
     origins = {f"http://{HOST}:{listen_port}"}
     socket_sources = [f"ws://{HOST}:{listen_port}"]
     if preview_origin:
@@ -48,8 +80,8 @@ def create_app(client, assets, ruffle, listen_port, server_offset, preview_origi
         socket_sources.append("wss://" + URL(preview_origin).host_port_subcomponent)
     csp = "; ".join((
         "default-src 'self'",
-        "script-src 'self' 'wasm-unsafe-eval'",
-        "style-src 'self' 'unsafe-inline'",
+        "script-src 'self'" if native else "script-src 'self' 'wasm-unsafe-eval'",
+        "style-src 'self'" if native else "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "media-src 'self' blob:",
         "worker-src 'self' blob:",
@@ -130,6 +162,32 @@ def create_app(client, assets, ruffle, listen_port, server_offset, preview_origi
 
     app = web.Application()
     app.on_response_prepare.append(add_headers)
+    app.router.add_get(r"/socket/{port:\d+}", relay)
+
+    if native:
+        app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
+        for filename in ("client.js", "style.css", "transport.js"):
+            app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
+
+        asset_urls = dict.fromkeys(NATIVE_ASSETS)
+        for kind, path in native_asset_files(assets).items():
+            url = f"/public/{NATIVE_ASSETS[kind]}"
+            asset_urls[kind] = url
+            app.router.add_get(url, serve_file(path))
+
+        async def services(_request):
+            return web.json_response({"services": [
+                {"name": name, "port": port, "ping": ping, "pong": pong}
+                for name, port, ping, pong in SERVICES
+            ]})
+
+        async def assets_info(_request):
+            return web.json_response(asset_urls)
+
+        app.router.add_get("/api/services", services)
+        app.router.add_get("/api/assets", assets_info)
+        return app
+
     app.router.add_get("/", serve_file(ROOT / "index.html"))
     for filename in ("player.css", "player.js"):
         app.router.add_get(f"/{filename}", serve_file(ROOT / filename))
@@ -140,38 +198,49 @@ def create_app(client, assets, ruffle, listen_port, server_offset, preview_origi
         serve_file(PUBLIC_CONFIG / "news.xml.orig", {"Content-Type": "application/xml"}),
     )
     app.router.add_get("/public/{filename:.*}", static_asset)
-    app.router.add_get(r"/socket/{port:\d+}", relay)
     app.router.add_static("/ruffle/", ruffle)
     return app
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--client", type=Path, required=True, help="Compiled Unlight SWF")
-    parser.add_argument("--assets", type=Path, required=True, help="Original assets' public directory")
-    parser.add_argument("--ruffle", type=Path, required=True, help="Extracted Ruffle Web release")
+    parser.add_argument("--client", type=Path, help="Compiled Unlight SWF")
+    parser.add_argument("--assets", type=Path, help="Original assets' public directory")
+    parser.add_argument("--ruffle", type=Path, help="Extracted Ruffle Web release")
     parser.add_argument("--port", type=int, default=4330, help="HTTP port")
     parser.add_argument("--server-offset", type=int, default=0, help="Offset of legacy TCP ports")
     parser.add_argument("--preview-origin", type=https_origin, help="URL of an authenticated HTTP preview")
-    parser.add_argument("--direct-sockets", action="store_true", help="Use TCP ports for Ruffle Desktop")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--direct-sockets", action="store_true", help="Use TCP ports for Ruffle Desktop")
+    modes.add_argument("--native", action="store_true", help="Serve loopback native diagnostics")
     args = parser.parse_args()
     if args.preview_origin and args.direct_sockets:
         parser.error("--direct-sockets is for a loopback Ruffle Desktop session")
     if not 0 < args.port <= 65535 or any(not 0 < port + args.server_offset <= 65535 for port in PORTS):
         parser.error("ports must be between 1 and 65535")
-    if not args.client.is_file():
-        parser.error("--client must point to a compiled SWF")
-    with args.client.open("rb") as file:
-        if file.read(3) not in (b"FWS", b"CWS", b"ZWS"):
+    if args.native:
+        if args.client or args.ruffle or args.preview_origin:
+            parser.error("--native accepts --assets but cannot use --client, --ruffle, or --preview-origin")
+        try:
+            app = create_app(None, args.assets, None, args.port, args.server_offset, native=True)
+        except ValueError as error:
+            parser.error(str(error))
+    else:
+        if not all((args.client, args.assets, args.ruffle)):
+            parser.error("--client, --assets, and --ruffle are required in Ruffle mode")
+        if not args.client.is_file():
             parser.error("--client must point to a compiled SWF")
-    if not (args.assets / "sound/bgm/ulbgm01.mp3").is_file():
-        parser.error("--assets must point to the original public assets")
-    if not (args.ruffle / "ruffle.js").is_file():
-        parser.error("--ruffle must point to an extracted Ruffle Web release")
-    app = create_app(
-        args.client.resolve(), args.assets.resolve(), args.ruffle.resolve(),
-        args.port, args.server_offset, args.preview_origin, args.direct_sockets,
-    )
+        with args.client.open("rb") as file:
+            if file.read(3) not in (b"FWS", b"CWS", b"ZWS"):
+                parser.error("--client must point to a compiled SWF")
+        if not (args.assets / "sound/bgm/ulbgm01.mp3").is_file():
+            parser.error("--assets must point to the original public assets")
+        if not (args.ruffle / "ruffle.js").is_file():
+            parser.error("--ruffle must point to an extracted Ruffle Web release")
+        app = create_app(
+            args.client.resolve(), args.assets.resolve(), args.ruffle.resolve(),
+            args.port, args.server_offset, args.preview_origin, args.direct_sockets,
+        )
     web.run_app(app, host="0.0.0.0" if args.preview_origin else HOST, port=args.port)
 
 

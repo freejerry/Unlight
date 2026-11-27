@@ -18,6 +18,8 @@ import tempfile
 import time
 import uuid
 
+from compare_trace import BASELINE, decode_trace, describe_difference, load_trace
+
 
 HERE = Path(__file__).resolve().parent
 LOOPBACK = "127.0.0.1"
@@ -235,15 +237,19 @@ def characterize(args, run_dir, server, env):
     )
     if line is None:
         raise error_from_log("The duel did not produce its trace.", log)
-    trace = json.loads(line[len(marker):])
+    raw_trace = line[len(marker):]
     if args.check:
-        baseline = json.loads((HERE / "fixtures/trace-2026.json").read_text())
-        if trace != baseline:
-            raise RuntimeError("Duel trace diverged from the seed-2026 fixture.")
+        trace = decode_trace(raw_trace)
+        difference = describe_difference(load_trace(BASELINE), trace)
+        if difference:
+            raise RuntimeError(f"Duel trace diverged from the seed-2026 fixture at {difference}.")
         print(f"Seed {args.seed} matched all {len(trace['trace'])} trace events.")
+        if not args.output:
+            return
+    trace = json.loads(raw_trace)
     if args.output:
         args.output.write_text(json.dumps(trace, ensure_ascii=False, indent=2) + "\n")
-    elif not args.check:
+    else:
         print(json.dumps(trace, ensure_ascii=False, indent=2))
 
 

@@ -8,15 +8,7 @@ import sys
 
 from aiohttp import ClientSession, ClientTimeout, WSMsgType, WSServerHandshakeError
 
-
-SERVICES = (
-    ("Auth", 12001, 6, 7),
-    ("Lobby", 12002, 3, 35),
-    ("Data", 12003, 3, 3),
-    ("Game", 12004, 3, 3),
-    ("Quest", 12005, 3, 3),
-    ("GlobalChat", 12020, 3, 3),
-)
+from serve import SERVICES
 
 
 async def check_service(session, origin, port, ping, pong):

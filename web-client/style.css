@@ -1,0 +1,94 @@
+:root {
+  color: #172933;
+  background: #eef4f5;
+  font-family: "Noto Sans TC", "Noto Sans CJK TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-synthesis: none;
+  color-scheme: light;
+  --muted: #49636b;
+  --line: #d3e0e3;
+  --white: #fff;
+  --accent: #116451;
+  --teal: #dff4eb;
+  --failure: #8d3529;
+  --danger: #fbe7e2;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 18rem; }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible { outline: 3px solid #007f69; outline-offset: 3px; }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.shell { width: min(70rem, calc(100% - 3rem)); margin-inline: auto; }
+.topbar { background: #112235; color: #f4fcff; }
+.topbar-content { display: flex; align-items: center; gap: .85rem; min-height: 3.45rem; }
+.wordmark { font-size: 1.05rem; font-weight: 780; letter-spacing: .025em; }
+.topbar-label { padding-inline-start: .85rem; border-inline-start: 1px solid #5b7281; color: #c8d8e2; font-size: .9rem; }
+
+main { padding-block: 1.6rem 1.8rem; }
+.page-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.15rem; margin-bottom: 1rem; }
+.page-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); letter-spacing: -.025em; line-height: 1.14; }
+.page-heading p { margin-top: .45rem; color: var(--muted); font-size: 1rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; flex-shrink: 0; }
+.button { min-height: 2.6rem; border: 1px solid transparent; border-radius: .5rem; padding: .4rem .85rem; font-size: .93rem; font-weight: 670; white-space: nowrap; }
+.primary { background: var(--accent); color: var(--white); }
+.primary:hover:not(:disabled) { background: #084c3c; }
+.secondary { background: var(--white); color: #205049; border-color: #98bcb4; }
+.secondary:hover:not(:disabled) { background: #e9f6f0; border-color: var(--accent); }
+
+.summary { display: grid; gap: .55rem; padding: .95rem 1.05rem; border: 1px solid #abc9c5; border-radius: .7rem; background: #e7f3f1; }
+.summary-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+.summary h2 { font-size: 1.1rem; line-height: 1.2; }
+.summary p, .summary-heading span { font-size: .9rem; color: #355953; }
+.summary-heading span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.summary progress { display: block; appearance: none; width: 100%; height: .43rem; overflow: hidden; border: 0; border-radius: .3rem; background: #c5ddda; }
+.summary progress::-webkit-progress-bar { background: #c5ddda; }
+.summary progress::-webkit-progress-value { background: #217f68; border-radius: .3rem; }
+.summary progress::-moz-progress-bar { background: #217f68; border-radius: .3rem; }
+#diagnostics[data-state="failed"] .summary { border-color: #e4b8ad; background: #fcf0eb; }
+#diagnostics[data-state="failed"] .summary p, #diagnostics[data-state="failed"] .summary-heading span { color: #734239; }
+#diagnostics[data-state="failed"] progress { accent-color: #b05b4c; }
+#diagnostics[data-state="failed"] progress::-webkit-progress-value { background: #b05b4c; }
+#diagnostics[data-state="failed"] progress::-moz-progress-bar { background: #b05b4c; }
+
+.services { margin-top: .75rem; }
+.service-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .66rem; }
+.service { min-width: 0; display: grid; gap: .35rem; border: 1px solid var(--line); border-radius: .65rem; padding: .82rem .9rem; background: var(--white); }
+.service-heading { display: flex; justify-content: space-between; align-items: center; gap: .45rem; }
+.service-heading h3 { font-size: 1.07rem; line-height: 1.2; }
+.service-status { display: inline-flex; align-items: center; gap: .36rem; padding: .14rem .46rem; border-radius: .35rem; white-space: nowrap; color: #425762; background: #e9eff3; font-size: .83rem; font-weight: 620; }
+.service-status::before { content: ""; width: .38rem; height: .38rem; border-radius: 50%; background: currentColor; }
+.service[data-state="running"] .service-status, .service[data-state="retrying"] .service-status { color: #245f83; background: #e0f0fa; }
+.service[data-state="success"] .service-status { color: var(--accent); background: var(--teal); }
+.service[data-state="failed"] .service-status { color: var(--failure); background: var(--danger); }
+.service-port { color: var(--muted); font-size: .87rem; font-variant-numeric: tabular-nums; }
+.service-detail { color: #384c56; min-height: 1.35em; font-size: .92rem; line-height: 1.35; }
+.service[data-state="failed"] .service-detail { color: var(--failure); }
+.response { display: flex; justify-content: space-between; gap: .35rem; padding: .26rem .46rem; border-radius: .34rem; background: #f0f5f7; color: #47616c; font-size: .85rem; }
+.response-hex { color: #142a37; font: 600 .84rem/1.4 "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace; text-align: end; overflow-wrap: anywhere; }
+
+.assets { margin-top: .85rem; padding: .75rem .9rem .85rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--white); }
+.assets h2 { margin-bottom: .5rem; font-size: 1.1rem; }
+.asset-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.asset { display: flex; align-items: center; gap: .7rem; min-height: 3.9rem; padding: .45rem .64rem; border: 1px solid #dce7ed; border-radius: .45rem; background: #f2f7f9; }
+.asset h3 { font-size: .94rem; }
+.asset p { margin-top: .18rem; color: var(--muted); font-size: .88rem; }
+.asset p[data-state="failed"] { color: var(--failure); }
+.asset-sound { justify-content: space-between; }
+.image-preview { display: grid; place-items: center; flex: 0 0 3rem; min-height: 3rem; border-radius: .35rem; background: #fff; }
+.image-preview img { display: block; width: 3rem; height: 3rem; object-fit: contain; }
+
+@media (max-width: 52rem) {
+  .service-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-heading { align-items: start; flex-direction: column; gap: .7rem; }
+}
+
+@media (max-width: 35rem) {
+  .shell { width: calc(100% - 1.5rem); }
+  main { padding-block: 1rem; }
+  .service-list, .asset-list { grid-template-columns: minmax(0, 1fr); }
+  .summary { padding: .8rem; }
+}

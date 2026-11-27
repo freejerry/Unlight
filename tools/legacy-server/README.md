@@ -37,3 +37,9 @@ bundle exec python3 tools/legacy-server/run.py serve \
 ```sh
 bundle exec python3 tools/legacy-server/run.py characterize --seed 2026 --output /tmp/unlight-trace.json
 ```
+
+有其他實作產生相同格式的對局紀錄後，可以直接和已提交的 Ruby 輸出比對。比對會核對欄位值、型別及事件順序，並回報第一個差異的位置。需要指定另一份基準時使用 `--baseline`。
+
+```sh
+python3 tools/legacy-server/compare_trace.py /tmp/unlight-trace.json
+```
