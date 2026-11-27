@@ -52,6 +52,8 @@ python3 tools/legacy-web/check_native_browser.py --port 4334 --legacy-port 4330
 
 「面板九宮格」中的內容預覽會隨更新訊息展開而改變高度。驗收程式比對標題區、輸入欄、消息內文與各自畫布的尺寸。用 `--panel-content-screenshot /tmp/unlight-native-panel-content.png` 可存下窄視窗的展開畫面。[內容排版截圖](../docs/playtest/native/13-native-panel-content.png)
 
+驗收也會連續變更欄寬，核對每個面板的畫布尺寸、標題分界及 WebGL 2 緩衝區重用。可用 `--panel-resize-screenshot /tmp/unlight-native-panel-resize.png` 保存最後一次縮放後的畫面。[連續縮放驗收](../docs/playtest/README.md#原生九宮格連續縮放)
+
 登入驗收程式會提示輸入隔離測試帳號密碼。它會依序驗證未知帳號、錯誤密碼、成功登入、初始資料、登出和再次登入，並比對原版的回應命令。
 
 ```bash

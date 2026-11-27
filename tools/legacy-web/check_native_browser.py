@@ -26,16 +26,33 @@ FAILED_PORT = 12004
 TIMEOUT = 10000
 PANEL_CONTEXT_MONITOR = """
 (forceUnavailable) => {
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    const monitor = window.panelContextMonitor = {attempts: 0, contexts: new Set()};
-    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+    const prototype = HTMLCanvasElement.prototype;
+    const getContext = prototype.getContext;
+    const surfaces = new WeakSet();
+    const monitor = window.panelContextMonitor = {attempts: 0, contexts: new Set(), sizeWrites: []};
+    prototype.getContext = function (kind, ...args) {
         if (kind !== 'webgl2') return getContext.call(this, kind, ...args);
         monitor.attempts++;
         if (forceUnavailable) return null;
         const context = getContext.call(this, kind, ...args);
-        if (context) monitor.contexts.add(context);
+        if (context) {
+            monitor.contexts.add(context);
+            surfaces.add(this);
+        }
         return context;
     };
+    for (const axis of ['width', 'height']) {
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, axis);
+        Object.defineProperty(prototype, axis, {
+            ...descriptor,
+            set(value) {
+                const tracked = surfaces.has(this);
+                const before = tracked ? descriptor.get.call(this) : null;
+                descriptor.set.call(this, value);
+                if (tracked) monitor.sizeWrites.push({axis, before, after: descriptor.get.call(this)});
+            },
+        });
+    }
 }
 """
 
@@ -261,12 +278,15 @@ def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=2
             const contexts = [...panelContextMonitor.contexts];
             const gl = contexts.find(context => !context.isContextLost());
             if (!(gl instanceof WebGL2RenderingContext)) throw new Error('No live WebGL2 context observed');
-            const {drawingBufferWidth: width, drawingBufferHeight: height} = gl;
+            const [x, y, width, height] = gl.getParameter(gl.VIEWPORT);
+            const backing = [gl.drawingBufferWidth, gl.drawingBufferHeight];
             const pixels = new Uint8Array(width * height * 4);
-            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
             const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
             webgl = {
                 ...comparePixels(width, height, pixels, heights.at(-1), true, gl.getContextAttributes().premultipliedAlpha),
+                origin: [x, y],
+                backing,
                 renderer: gl.getParameter(rendererInfo?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
             };
         }
@@ -290,6 +310,8 @@ def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=2
         assert result["mismatch"] is None, (height, dpr, result["mismatch"])
     if webgl := results["webgl"]:
         assert (webgl["width"], webgl["height"]) == (int(css_width * dpr + .5), int(PANEL_HEIGHTS[-1] * dpr + .5)), webgl
+        assert webgl["origin"] == [0, 0], webgl
+        assert webgl["width"] <= webgl["backing"][0] and webgl["height"] <= webgl["backing"][1], webgl
         assert webgl["mismatch"] is None, (dpr, webgl["mismatch"])
     print(f"Original panel pixels match the {css_width}×96/215/300 previews at DPR {dpr} using {renderer}.")
     return results["webgl"]
@@ -528,7 +550,85 @@ def resize_panel_grid(page, width):
     }""", arg=width, timeout=TIMEOUT)
 
 
-def check_high_density(browser, origin, *, software_webgl=False, content_screenshot=None):
+def check_continuous_resize(page, origin, path, requests, screenshot):
+    grid = page.locator("#panel-previews")
+    preview = page.locator("#panel-content-preview")
+    details = preview.locator("#panel-preview-details")
+    summary = details.locator("summary")
+    renderer = grid.get_attribute("data-renderer")
+    summary.click()
+    expect(details).to_have_js_property("open", True)
+    panel_content_geometry(preview, 2, True)
+    widths = [206, 185, 164, 143, 122, 101, 84, 78, 91, 107, 124, 148, 173, 198, 220]
+    try:
+        report = grid.evaluate("""async (grid, {widths, renderer}) => {
+            const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+            const canvases = [...grid.querySelectorAll('canvas[data-panel-height], canvas[data-panel-content]')];
+            const content = grid.querySelector('canvas[data-panel-content]');
+            const monitor = panelContextMonitor;
+            const gl = renderer === 'webgl2' ? [...monitor.contexts][0] : null;
+            const startWrites = monitor.sizeWrites.length;
+            const samples = [];
+            const axisSizes = (canvas) => {
+                const box = canvas.getBoundingClientRect();
+                return [Math.round(box.width * devicePixelRatio), Math.round(box.height * devicePixelRatio)];
+            };
+            await frame();
+            for (const width of [...widths, ...widths, ...widths, 164]) {
+                grid.style.maxWidth = `${width}px`;
+                // Layout and ResizeObserver run after the current rAF and before the next one.
+                // Read at the next callback, without an extra settling/polling frame.
+                await frame();
+                for (const canvas of canvases) {
+                    const [expectedWidth, expectedHeight] = axisSizes(canvas);
+                    if (canvas.dataset.rendered !== 'true' || expectedWidth !== width * 2
+                        || canvas.width !== expectedWidth || canvas.height !== expectedHeight) {
+                        throw new Error(`Late backing at ${width}px: ${canvas.width}×${canvas.height}, expected ${expectedWidth}×${expectedHeight}`);
+                    }
+                }
+                const seam = 31 * devicePixelRatio;
+                const [r0, g0, b0, , r1, g1, b1] = content.getContext('2d')
+                    .getImageData(Math.floor(content.width / 2), seam - 1, 1, 2).data;
+                if (!(Math.min(r0, g0, b0) > 140 && Math.max(r0, g0, b0) - Math.min(r0, g0, b0) <= 4
+                    && r1 < 80 && b1 > g1 + 8 && b1 > r1 + 15)) {
+                    throw new Error(`The visible title seam moved from source row 31 at ${width}px`);
+                }
+
+                if (gl) {
+                    const [x, y, activeWidth, activeHeight] = gl.getParameter(gl.VIEWPORT);
+                    const backing = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+                    if (x !== 0 || y !== 0 || activeWidth !== width * 2 || activeHeight !== 600
+                        || backing[0] < activeWidth || backing[1] < Math.max(activeHeight, content.height)) {
+                        throw new Error(`Unexpected WebGL2 viewport/capacity at ${width}px: ${x},${y},${activeWidth},${activeHeight} / ${backing}`);
+                    }
+                    samples.push({width, active: [activeWidth, activeHeight], backing,
+                        writes: monitor.sizeWrites.length - startWrites});
+                }
+            }
+            return {samples, sizeWrites: monitor.sizeWrites, contexts: monitor.contexts.size};
+        }""", {"widths": widths, "renderer": renderer})
+        if renderer == "webgl2":
+            samples, writes = report["samples"], report["sizeWrites"]
+            assert report["contexts"] == 1 and len(samples) == 3 * len(widths) + 1, report
+            assert writes and all(write["after"] > write["before"] for write in writes), writes
+            warmup_writes = samples[len(widths) - 1]["writes"]
+            assert samples[-1]["writes"] == warmup_writes, samples
+            assert any(s["active"][0] < s["backing"][0] or s["active"][1] < s["backing"][1] for s in samples), samples
+            print(f"WebGL2 scratch size writes during continuous resizing: {warmup_writes} in the first cycle, zero after it.")
+        check_panel(page, origin, path, requests, 2, renderer=renderer, css_width=164)
+        panel_content_geometry(preview, 2, True)
+        if screenshot:
+            screenshot.parent.mkdir(parents=True, exist_ok=True)
+            page.locator("#panel-check").screenshot(path=screenshot)
+    finally:
+        summary.click()
+        expect(details).to_have_js_property("open", False)
+        resize_panel_grid(page, 220)
+        panel_content_geometry(preview, 2, False)
+    print("All four panel backings stayed current at the next animation frame, with the original title seam intact.")
+
+
+def check_high_density(browser, origin, *, software_webgl=False, content_screenshot=None, resize_screenshot=None):
     viewport = {"width": 320, "height": 844}
     page = browser.new_page(viewport=viewport, device_scale_factor=2)
     try:
@@ -564,6 +664,7 @@ def check_high_density(browser, origin, *, software_webgl=False, content_screens
                 resize_panel_grid(page, 220)
                 check_panel(page, origin, assets["panel"], traffic[0], dpr, renderer=renderer)
             print("Resolution-change notifications resize panel backing pixels at the same CSS viewport.")
+            check_continuous_resize(page, origin, assets["panel"], traffic[0], resize_screenshot)
             check_panel_content(page, 2, screenshot=content_screenshot, lose_on_expand=software_webgl)
             if software_webgl:
                 check_panel(page, origin, assets["panel"], traffic[0], 2, renderer="canvas2d")
@@ -638,6 +739,7 @@ def main():
     parser.add_argument("--screenshot", type=Path, help="Save the successful native diagnostics view")
     parser.add_argument("--panel-screenshot", type=Path, help="Save the verified original panel samples")
     parser.add_argument("--panel-content-screenshot", type=Path, help="Save the verified expanded panel at 320 px")
+    parser.add_argument("--panel-resize-screenshot", type=Path, help="Save the original samples after continuous resize")
     parser.add_argument("--software-webgl", action="store_true", help="Require WebGL2 via ANGLE SwiftShader and exercise context loss")
     options = parser.parse_args()
     origin = f"http://127.0.0.1:{options.port}"
@@ -654,10 +756,11 @@ def main():
                                     software_webgl=options.software_webgl)
             if assets["panel"]:
                 check_high_density(browser, origin, software_webgl=options.software_webgl,
-                                   content_screenshot=options.panel_content_screenshot)
+                                   content_screenshot=options.panel_content_screenshot,
+                                   resize_screenshot=options.panel_resize_screenshot)
                 check_canvas_fallback(browser, origin)
-            elif options.panel_content_screenshot:
-                raise AssertionError("--panel-content-screenshot requires the archived panel asset")
+            elif options.panel_content_screenshot or options.panel_resize_screenshot:
+                raise AssertionError("Panel screenshots require the archived panel asset")
             check_retry(browser, origin)
             if options.no_assets_port:
                 no_assets_origin = f"http://127.0.0.1:{options.no_assets_port}"

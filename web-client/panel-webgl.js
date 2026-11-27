@@ -56,8 +56,14 @@ function createProgram(gl) {
   }
 }
 
+function growExtent(current, required, maximum) {
+  return Math.min(maximum, Math.max(required, Math.ceil(current * 1.25)));
+}
+
 export function createWebGLPanelRenderer(onContextLost) {
   const surface = document.createElement('canvas');
+  surface.width = 1;
+  surface.height = 1;
   const gl = surface.getContext('webgl2', {
     alpha: true,
     antialias: false,
@@ -92,7 +98,11 @@ export function createWebGLPanelRenderer(onContextLost) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   gl.disable(gl.DITHER);
-  const [maxWidth, maxHeight] = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  gl.enable(gl.SCISSOR_TEST);
+  const [viewportWidth, viewportHeight] = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  const maxSurfaceSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+  const maxWidth = Math.min(viewportWidth, maxSurfaceSize);
+  const maxHeight = Math.min(viewportHeight, maxSurfaceSize);
   let uploadedImage;
   let uploadedSource;
   let disposed = false;
@@ -110,9 +120,9 @@ export function createWebGLPanelRenderer(onContextLost) {
       if (pixelWidth > maxWidth || pixelHeight > maxHeight) {
         throw new RangeError('Panel exceeds the WebGL viewport limit');
       }
-      if (surface.width !== pixelWidth) surface.width = pixelWidth;
-      if (surface.height !== pixelHeight) surface.height = pixelHeight;
-      if (gl.drawingBufferWidth !== pixelWidth || gl.drawingBufferHeight !== pixelHeight) {
+      if (surface.width < pixelWidth) surface.width = growExtent(surface.width, pixelWidth, maxWidth);
+      if (surface.height < pixelHeight) surface.height = growExtent(surface.height, pixelHeight, maxHeight);
+      if (gl.drawingBufferWidth !== surface.width || gl.drawingBufferHeight !== surface.height) {
         throw new Error('Unable to resize the WebGL panel surface');
       }
 
@@ -138,6 +148,7 @@ export function createWebGLPanelRenderer(onContextLost) {
         );
       }
       gl.viewport(0, 0, pixelWidth, pixelHeight);
+      gl.scissor(0, 0, pixelWidth, pixelHeight);
       gl.uniform2f(sizeUniform, pixelWidth, pixelHeight);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -148,11 +159,18 @@ export function createWebGLPanelRenderer(onContextLost) {
       }
 
       // The display canvas stays available for Canvas2D fallback after a context loss.
-      canvas.width = pixelWidth;
-      canvas.height = pixelHeight;
+      const resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
+      if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+      if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Canvas2D is unavailable for panel output');
-      context.drawImage(surface, 0, 0);
+      if (!resized) {
+        if (typeof context.reset === 'function') context.reset();
+        else canvas.width = pixelWidth;
+      }
+      // WebGL draws at the bottom-left; drawImage reads the surface from its top-left.
+      context.drawImage(surface, 0, surface.height - pixelHeight, pixelWidth, pixelHeight,
+        0, 0, pixelWidth, pixelHeight);
     },
     dispose() {
       if (disposed) return;
