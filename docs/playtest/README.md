@@ -74,6 +74,14 @@ Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯�
 
 在 Chromium 和 Ruffle 用同一份隔離 Ruby 資料登入，兩個入口均未指定 `--tcn-device-font`。到魔女山谷選取「落日大蝙蝠」，把游標停在地形上。舊相容版 `602db88d` 的地形名稱只顯示 `1`，描述欄像素和空白狀態完全相同。改用內嵌明體的 `8e88e01f` 顯示「寬廣高原1」及兩行完整的「蝙蝠揮舞翅膀的廣大高原」。游標移開後，兩個欄位都回到原先的畫面。畫面測例涵蓋首場任務的地形欄，其他關卡的實際欄寬仍待驗收。[修正前](browser/30-browser-land-font-before.png) · [修正後](browser/31-browser-land-font-after.png)
 
+### 任務搜尋倒數與提示
+
+在隔離 Ruby 環境用原版模型建立「落日大蝙蝠」的搜尋中任務，兩個相容版入口都指定歷史繁中裝置字型。舊相容版 `8e88e01f` 正常連線時，比到期時間早 327 毫秒送出唯一一次完成查詢。Ruby 留下搜尋中狀態，客戶端停在 `00:00`。重跑舊版時，在測試入口延遲送往 Ruby 的任務訊息 1.1 秒以取得真實的完成回覆。任務列已顯示 `NEW` 與任務名稱，游標原地和移開再移入時依然沒有任務說明。[倒數停住](browser/32-browser-quest-timer-stalled.png) · [舊版完成後](browser/33-browser-quest-tooltip-before.png) · [原版剩餘時間格式](../../app/server/src/model/avatar.rb#L757) · [原版到期檢查](../../app/server/src/model/avatar_quest_inventory.rb#L120)
+
+修正版 `cd228328` 把整秒截斷的誤差納入完成查詢時機，倒數最小顯示為 `00:00`。正常連線時，Ruby 在截止後 849 毫秒收到查詢，約 861 毫秒回覆 `NEW`。游標停在同一列便顯示「飛舞於山谷間的大蝙蝠，今晚也要搜尋犧牲者」。移開游標後，提示區域與未懸停畫面逐像素一致。原版 `BACK` 操作也已回到大廳，任務提示隨場景收起。[修正後](browser/34-browser-quest-tooltip-after.png) · [相容補丁](../../tools/legacy-build/runtime-client.patch)
+
+瀏覽器腳本印出返回大廳的檢查成功後，以狀態 1 結束。另行比對截圖像素及 Ruby 寫入的任務狀態，結果符合預期。
+
 ## 原生瀏覽器驗收
 
 Chromium 直接連到原版 Ruby 的轉接服務。兩輪檢查的六項二進位 KeepAlive 都相符。模擬戰鬥服務無法連線時，該項顯示失敗並可單獨重試。原版道具 PNG 成功解碼，原版標題 MP3 在點擊播放後正常前進，截圖時已暫停。兩個素材的 SHA-256 與原版入口相同。[驗收截圖](native/01-native-check.png) · [重跑方式](../../web-client/README.md)

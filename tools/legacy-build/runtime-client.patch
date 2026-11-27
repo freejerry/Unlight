@@ -8,10 +8,97 @@
                  var str:String;
 --- src/view/scene/quest/QuestItem.as
 +++ src/view/scene/quest/QuestItem.as
-@@ -279,2 +279,3 @@
+@@ -12,2 +12,3 @@
+     import mx.controls.Label;
++    import mx.managers.ToolTipManager;
+
+@@ -179,3 +180,3 @@
+         {
+-            toolTipOwnerArray.push([0,this]);  //
++            _toolTipOwnerArray = [[0, this]];
+         }
+@@ -208,8 +209,5 @@
+
++            initilizeToolTipOwners();
+             itemInitialize(_questInv.quest);
+-
+-            _helpTextArray[0][0] = _questInv.quest.caption;
+-
+-            initilizeToolTipOwners();
+-            updateHelp(_QUEST_HELP);
++            addEventListener(Event.REMOVED_FROM_STAGE, hideQuestTooltip);
+         }
+@@ -219,2 +217,6 @@
+         {
++            super.final();
++            hideQuestTooltip();
++            removeEventListener(Event.REMOVED_FROM_STAGE, hideQuestTooltip);
++            toolTip = null;
+             // ここでハンドラを取り除く
+@@ -227,3 +229,5 @@
+             {
++                _time.stop();
+                 _time.removeEventListener(TimerEvent.TIMER, updateHandler);
++                _time = null;
+             }
+@@ -236,2 +240,3 @@
+         {
++            if (_finished || quest !== _questInv.quest) return;
+             log.writeLog(log.LV_INFO, this, "initialize!!!");
+@@ -240,2 +245,3 @@
+             _name.text = quest.name;
++            refreshQuestTooltip(quest.caption);
+             if (quest.id==0)
+@@ -279,2 +285,3 @@
              _name.height = _NAME_HEIGHT;
 +            _name.setStyle("fontFamily", "minchoB");
              _name.setStyle("color","#AAAAAA");
+@@ -321,3 +328,3 @@
+ //            _remainTime.text = "["+_nowTime.toString()+"]";
+-            _remainTime.text = "["+TimeFormat.toString(_nowTime)+"]";
++            _remainTime.text = "["+TimeFormat.toString(Math.max(0, _nowTime))+"]";
+
+@@ -354,3 +361,4 @@
+             _startTime = now;
+-            if (_nowTime <0)
++            // Ruby rounds the remaining time down to whole seconds.
++            if (_nowTime <= -1000)
+             {
+@@ -364,2 +372,25 @@
+
++        private function refreshQuestTooltip(caption:String):void
++        {
++            if (toolTip === caption) return;
++            var trackedEmpty:Boolean = toolTip === "" && ToolTipManager.currentTarget === this;
++            toolTip = null;
++            _helpTextArray[0][0] = caption;
++            updateHelp(_QUEST_HELP);
++            // Flex can track an empty tip to suppress the parent list tip.
++            if (trackedEmpty && caption && stage && hitTestPoint(stage.mouseX, stage.mouseY, true))
++            {
++                dispatchEvent(new MouseEvent(MouseEvent.MOUSE_OUT, false));
++                dispatchEvent(new MouseEvent(MouseEvent.MOUSE_OVER, false));
++            }
++        }
++
++        private function hideQuestTooltip(e:Event = null):void
++        {
++            if (ToolTipManager.currentTarget === this)
++            {
++                dispatchEvent(new MouseEvent(MouseEvent.MOUSE_OUT, false));
++            }
++        }
++
+         private function overHandler(e:MouseEvent):void
+@@ -384,3 +415,3 @@
+             {
+-                ConfirmPanel.show(_TRANS_CONFIRM, _TRANS_CONFIRM_DELMSG+"["+TimeFormat.toString(_nowTime)+"]", _ctrl.deleteQuest, this);
++                ConfirmPanel.show(_TRANS_CONFIRM, _TRANS_CONFIRM_DELMSG+"["+TimeFormat.toString(Math.max(0, _nowTime))+"]", _ctrl.deleteQuest, this);
+             }
+@@ -459,2 +490,3 @@
+         {
++            _finished = false;
+             _depthAt = at;
 --- data/css/UL.css
 +++ data/css/UL.css
 @@ -38,7 +38,7 @@
