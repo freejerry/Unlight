@@ -1,7 +1,6 @@
 """Exercise a fresh fixed-stage player lifecycle against an isolated original Ruby server."""
 
 import argparse
-import re
 import sqlite3
 import struct
 from contextlib import closing
@@ -20,7 +19,16 @@ SESSION_PORTS = {"/socket/12001", "/socket/12002", "/socket/12003", "/socket/120
 STARTER_CHOICES = ((1, 5, 24, 27), (2, 17, 26, 37))
 STARTER_CARD = 21
 TIMEOUT = 16000
-LOBBY_ART = {"ap", "background", "entrances", "favorite", "friend", "item", "ranking", "record", "status"}
+LOBBY_ART_PATH = "/source-login/lobby-art/"
+LOBBY_ART = {
+    "ap", "ap-fill", "ap-frame", "ap-mask", "background", "duel-stars-3", "entrances", "favorite", "friend", "item",
+    "ranking", "record", "status",
+}
+LOBBY_ENTRY_SYMBOLS = {
+    "btn_b", "btn_c", "btn_d", "btn_e", "btn_f", "btn_g", "btn_h", "btn_i", "btn_j", "btn_k", "btn_serial",
+}
+LOBBY_SIDE_SYMBOLS = {"record", "friend", "item"}
+ANIMATED_LOBBY_SYMBOLS = {"btn_b", "btn_e", "btn_f", "btn_g", "btn_k"}
 
 
 def query(database, statement, *parameters):
@@ -34,7 +42,7 @@ def player(database, name):
 
 def avatar(database, player_id):
     return query(database, """
-        SELECT id, name, level, gems, exp, energy, energy_max
+        SELECT id, name, level, gems, exp, energy, energy_max, free_duel_count
         FROM avatars WHERE player_id = ?
     """, player_id)
 
@@ -97,8 +105,19 @@ def verify_starter(database, avatar_id, selected_parts):
 
 def check_avatar_assets(responses, parts):
     by_path = {urlsplit(response.url).path: response for response in responses}
-    art = {Path(path).stem: response for path, response in by_path.items() if "/lobby-art/" in path}
-    assert set(art) == LOBBY_ART, sorted(art)
+    art = {path: response for path, response in by_path.items() if path.startswith(LOBBY_ART_PATH)}
+    hover_path = LOBBY_ART_PATH + "hover/"
+    manifest = art.pop(hover_path + "index.json")
+    assert manifest.ok
+    hover = manifest.json()
+    buttons = hover["buttons"]
+    assert set(buttons) == LOBBY_ENTRY_SYMBOLS | LOBBY_SIDE_SYMBOLS, sorted(buttons)
+    expected_art = {LOBBY_ART_PATH + name + ".png" for name in LOBBY_ART}
+    expected_art.add(hover_path + hover["entrancesBase"])
+    expected_art.update(hover_path + frames[state] for frames in buttons.values() for state in ("up", "over"))
+    assert {symbol for symbol, frames in buttons.items() if frames.get("animation")} == ANIMATED_LOBBY_SYMBOLS
+    expected_art.update(hover_path + buttons[symbol]["animation"]["file"] for symbol in ANIMATED_LOBBY_SYMBOLS)
+    assert art.keys() == expected_art, (sorted(art.keys() - expected_art), sorted(expected_art - art.keys()))
     catalog = by_path["/source-login/avatar-catalog.json"]
     wardrobe = by_path["/source-login/avatar-wardrobe/index.json"]
     assert catalog.ok and wardrobe.ok
@@ -149,7 +168,7 @@ def check_avatar_canvas(page, stage, parts, responses):
 
 
 def check_lobby(page, player_id, profile):
-    avatar_id, name, level, gems, exp, energy, energy_max = profile
+    avatar_id, name, level, gems, exp, energy, energy_max, free_duel_count = profile
     expect(page.locator("#lobby-view")).to_be_visible()
     expect(page.locator("#lobby-title")).to_have_text("大廳")
     for field, value in (("player-id", player_id), ("avatar-id", avatar_id), ("avatar-name", name),
@@ -158,7 +177,20 @@ def check_lobby(page, player_id, profile):
     expect(page.locator("#lobby-player-id")).to_be_hidden()
     expect(page.locator("#lobby-avatar-id")).to_be_hidden()
     expect(page.locator("#lobby-deck-name")).to_have_text("Deck 1")
-    expect(page.locator("#lobby-energy")).to_have_text(re.compile(rf"{energy}\s*[/／]\s*{energy_max}"))
+    assert (energy, energy_max, free_duel_count) == (5, 5, 3), profile
+    ap = page.locator("#lobby-energy")
+    expect(ap).to_have_text(f"{energy}/{energy_max}")
+    expect(ap).to_be_visible()
+    expect(page.locator("#lobby-free-duel-count")).to_have_text(str(free_duel_count))
+    stars = page.locator("#lobby-free-duel-stars")
+    expect(stars).to_have_attribute("src", f"{LOBBY_ART_PATH}duel-stars-{free_duel_count}.png")
+    expect(stars).to_be_visible()
+    page.wait_for_function("""() => {
+      const image = document.querySelector('#lobby-free-duel-stars');
+      return image?.complete && image.naturalWidth === 43 && image.naturalHeight === 13;
+    }""", timeout=TIMEOUT)
+    expect(page.locator("#lobby-view")).to_have_attribute("data-hover-art", "ready", timeout=TIMEOUT)
+    expect(page.locator("#lobby-view .lobby-art-motion")).to_have_count(len(ANIMATED_LOBBY_SYMBOLS), timeout=TIMEOUT)
     expect(page.locator("#lobby-exp-next")).to_have_text("/10")
     entries = page.locator("#lobby-entries")
     quest_entry = entries.get_by_role("button", name="任務", exact=True)
@@ -170,10 +202,18 @@ def check_lobby(page, player_id, profile):
     news = news_entry.bounding_box()
     logout = page.locator("#lobby-logout").bounding_box()
     status = page.locator("#lobby-profile").bounding_box()
+    ap_box = page.locator("#lobby-profile .ap").bounding_box()
+    stars_box = stars.bounding_box()
     center = (quest["x"] + quest["width"] / 2 - shell["x"], quest["y"] + quest["height"] / 2 - shell["y"])
     assert center == (464, 240) and (quest["width"], quest["height"]) == (156, 156), quest
     assert news["x"] + news["width"] <= logout["x"] and news["y"] - shell["y"] == 3, news
     assert (status["x"] - shell["x"], status["y"] - shell["y"], status["width"], status["height"]) == (0, 660, 760, 20), status
+    assert (ap_box["x"] - shell["x"], ap_box["y"] - shell["y"], ap_box["width"], ap_box["height"]) == (
+        659, 615, 90, 65
+    ), ap_box
+    assert (stars_box["x"] - shell["x"], stars_box["y"] - shell["y"], stars_box["width"], stars_box["height"]) == (
+        717, 664, 43, 13
+    ), stars_box
 
 
 def check_lobby_dialogs(page, stage, directory):
@@ -192,6 +232,7 @@ def check_lobby_dialogs(page, stage, directory):
     expect(page.locator("#lobby-news-content li")).to_have_count(3)
     expect(quest).to_be_hidden()
     capture(stage, directory, "11a-lobby-news.png")
+    check_button_hover(page, news_close)
     news_close.press("Escape")
     expect(news).to_be_hidden()
     expect(news_open).to_be_focused()
@@ -204,6 +245,7 @@ def check_lobby_dialogs(page, stage, directory):
     expect(page.locator("#lobby-quest-status")).to_have_text("持有 0／4 筆任務")
     expect(quest_close).to_be_focused()
     capture(stage, directory, "11b-lobby-quest.png")
+    check_button_hover(page, quest_close)
     quest_close.click()
     expect(quest).to_be_hidden()
     expect(quest_open).to_be_focused()
@@ -213,6 +255,90 @@ def check_lobby_dialogs(page, stage, directory):
     news_close.click()
     expect(news).to_be_hidden()
     expect(news_open).to_be_focused()
+
+
+def check_button_hover(page, button):
+    # The dedicated game fixture is centered in its matching 780×680 viewport.
+    page.mouse.move(770, 340)
+    resting = button.evaluate("element => getComputedStyle(element).backgroundColor")
+    button.hover()
+    assert button.evaluate("element => getComputedStyle(element).backgroundColor") != resting
+    page.mouse.move(770, 340)
+    expect(button).to_have_css("background-color", resting)
+
+
+def check_lobby_hover(page, stage, directory):
+    lobby = page.locator("#lobby-view")
+    expect(lobby).to_have_attribute("data-hover-art", "ready", timeout=TIMEOUT)
+    entries = lobby.locator("li:has(> .lobby-art-over)")
+    expect(entries).to_have_count(len(LOBBY_ENTRY_SYMBOLS | LOBBY_SIDE_SYMBOLS))
+    assert set(entries.evaluate_all("items => items.map(item => item.dataset.symbol)")) == (
+        LOBBY_ENTRY_SYMBOLS | LOBBY_SIDE_SYMBOLS
+    )
+
+    box = stage.bounding_box()
+    outside_entries = (box["x"] + 770, box["y"] + 340)
+    page.mouse.move(*outside_entries)
+    capture(stage, directory, "11-lobby.png")
+    if directory is not None:
+        page.screenshot(path=directory / "11d-lobby-hud.png", scale="css", animations="disabled",
+                        clip={"x": box["x"] + 646, "y": box["y"] + 605, "width": 124, "height": 75})
+    for entry in entries.all():
+        symbol = entry.get_attribute("data-symbol")
+        if symbol != "btn_b":
+            expect(entry.locator("button, a[href], [role='button'], [tabindex]")).to_have_count(0)
+        up = entry.locator(".lobby-art-up")
+        over = entry.locator(".lobby-art-over")
+        expect(up).to_be_visible()
+        expect(over).to_be_hidden()
+        clip = entry.bounding_box()
+        resting = page.screenshot(clip=clip, scale="css", animations="disabled")
+        entry.hover()
+        expect(up).to_be_hidden()
+        expect(over).to_be_visible()
+        if symbol in ANIMATED_LOBBY_SYMBOLS:
+            motion = entry.locator(".lobby-art-motion")
+            expect(motion).to_have_count(1)
+            expect(motion).to_be_hidden()
+        assert page.screenshot(clip=clip, scale="css", animations="disabled") != resting, symbol
+        if symbol == "btn_b":
+            capture(stage, directory, "11c-lobby-quest-hover.png")
+        page.mouse.move(*outside_entries)
+        expect(up).to_be_visible()
+        expect(over).to_be_hidden()
+        assert page.screenshot(clip=clip, scale="css", animations="disabled") == resting, symbol
+
+    quest = page.locator("#lobby-quest-load")
+    quest_over = lobby.locator("[data-symbol='btn_b'] .lobby-art-over")
+    page.keyboard.press("Shift+Tab")
+    expect(quest).to_be_focused()
+    expect(quest_over).to_be_visible()
+    expect(page.locator("#lobby-quest")).to_be_hidden()
+    page.keyboard.press("Tab")
+    expect(page.locator("#lobby-news-open")).to_be_focused()
+    expect(quest_over).to_be_hidden()
+    for selector in ("#lobby-news-open", "#lobby-logout"):
+        check_button_hover(page, page.locator(selector))
+
+    page.emulate_media(reduced_motion="no-preference")
+    for symbol in sorted(ANIMATED_LOBBY_SYMBOLS):
+        entry = lobby.locator(f"[data-symbol='{symbol}']")
+        motion = entry.locator(".lobby-art-motion")
+        entry.hover()
+        expect(motion).to_be_visible()
+        clip = entry.bounding_box()
+        first_frame = page.screenshot(clip=clip, scale="css")
+        deadline = monotonic() + 2
+        while page.screenshot(clip=clip, scale="css") == first_frame:
+            assert monotonic() < deadline, f"{symbol} artwork did not animate on hover"
+            page.wait_for_timeout(40)
+        assert entry.evaluate("item => item.matches(':hover')"), symbol
+        if symbol == "btn_b" and directory is not None:
+            stage.screenshot(path=directory / "11e-lobby-quest-motion.png", scale="css")
+        page.mouse.move(*outside_entries)
+        expect(motion).to_be_hidden()
+        assert motion.evaluate("image => image.getAnimations().length") == 0, symbol
+    page.emulate_media(reduced_motion="reduce")
 
 
 def check(page, origin, database, directory, selected_parts):
@@ -327,7 +453,11 @@ def check(page, origin, database, directory, selected_parts):
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
     music(page, "ulbgm02.mp3")
-    capture(stage, directory, "11-lobby.png")
+    hover_start = len(requests)
+    check_lobby_hover(page, stage, directory)
+    hover_requests = {urlsplit(request.url).path for request in requests[hover_start:]}
+    assert hover_requests <= {"/public/sound/bgm/ulbgm02.mp3"}, sorted(hover_requests)
+    assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     page.locator("#lobby-logout").click()
     screen(stage, "title")
     expect(secret).to_have_value("")
@@ -391,7 +521,7 @@ def main():
         finally:
             browser.close()
     assert len(set(portraits)) == len(STARTER_CHOICES), "Distinct equipped IDs rendered the same avatar"
-    print("Real account creation, guided avatar setup, distinct equipped lobby art and direct relogin passed.")
+    print("Real account creation, equipped lobby art, AP and free-duel stars, entrance hover, and direct relogin passed.")
 
 
 if __name__ == "__main__":

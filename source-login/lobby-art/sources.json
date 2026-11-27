@@ -51,11 +51,78 @@
     "ap.png": {
       "source": "data/image/avatar/social_ap.swf",
       "sourceSha256": "13bd98f25761a79ade8c68b4ccc69547f5ae6715ef639971790c6d71af887639",
-      "x": 705,
-      "y": 646,
-      "width": 44,
-      "height": 34,
-      "sha256": "78d5083a4ba562770a5dd1700483d6d84be009e51eacd34f9849101bd3632b98"
+      "x": 659,
+      "y": 615,
+      "width": 90,
+      "height": 65,
+      "sha256": "35e19cc4e0539d20e0bba2ab2889769282101f934d0f0cbba5cde8b23a0524fe"
+    },
+    "ap-fill.png": {
+      "source": "data/image/avatar/social_ap.swf",
+      "sourceSha256": "13bd98f25761a79ade8c68b4ccc69547f5ae6715ef639971790c6d71af887639",
+      "x": 659,
+      "y": 615,
+      "width": 90,
+      "height": 65,
+      "sha256": "9b4699707a42489f00b7d226f93a0db860ab7c9472a22363a894058e1c16469a"
+    },
+    "ap-frame.png": {
+      "source": "data/image/avatar/social_ap.swf",
+      "sourceSha256": "13bd98f25761a79ade8c68b4ccc69547f5ae6715ef639971790c6d71af887639",
+      "x": 659,
+      "y": 615,
+      "width": 90,
+      "height": 65,
+      "sha256": "49806ef20a5f795c4abb9af765040d03cf53f333a6f4ddac09194ec1c17f489d"
+    },
+    "ap-mask.png": {
+      "source": "data/image/avatar/social_ap.swf",
+      "sourceSha256": "13bd98f25761a79ade8c68b4ccc69547f5ae6715ef639971790c6d71af887639",
+      "x": 659,
+      "y": 615,
+      "width": 90,
+      "height": 65,
+      "sha256": "e3994c19f1cc3590ee7cf4bd070caffaec3e9e85ade4450dc58364c12eee8025"
+    },
+    "duel-stars-0.png": {
+      "source": "data/image/common/star_battle.swf",
+      "sourceSha256": "c46b399256a5b582a84817849014a05149a21520e080a7fd4b269e77ec3cffb9",
+      "sourceFrame": 4,
+      "x": 717,
+      "y": 664,
+      "width": 43,
+      "height": 13,
+      "sha256": "a87e64ce87438573b579aca999fec497e099b6535bc8adcd407234eae8f52f0a"
+    },
+    "duel-stars-1.png": {
+      "source": "data/image/common/star_battle.swf",
+      "sourceSha256": "c46b399256a5b582a84817849014a05149a21520e080a7fd4b269e77ec3cffb9",
+      "sourceFrame": 3,
+      "x": 717,
+      "y": 664,
+      "width": 43,
+      "height": 13,
+      "sha256": "d3a9afb71bef25138f8da41a597a2ad008e0ce44e4d53b37c7ecd7e8188f8642"
+    },
+    "duel-stars-2.png": {
+      "source": "data/image/common/star_battle.swf",
+      "sourceSha256": "c46b399256a5b582a84817849014a05149a21520e080a7fd4b269e77ec3cffb9",
+      "sourceFrame": 2,
+      "x": 717,
+      "y": 664,
+      "width": 43,
+      "height": 13,
+      "sha256": "a019ce5d21d3e1c344deebd78f10c5d61dab7f8d932fc28d529b784aef1a97e6"
+    },
+    "duel-stars-3.png": {
+      "source": "data/image/common/star_battle.swf",
+      "sourceSha256": "c46b399256a5b582a84817849014a05149a21520e080a7fd4b269e77ec3cffb9",
+      "sourceFrame": 1,
+      "x": 717,
+      "y": 664,
+      "width": 43,
+      "height": 13,
+      "sha256": "fd60301b9e8fe81e632a69da52fb28a205772b3ddf9f908b1f1366e0816d2906"
     },
     "record.png": {
       "source": "data/image/achievement/btn_achi.swf",

@@ -1,0 +1,192 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "entrancesBase": "entrances-base.png",
+  "entrancesBaseSha256": "36c6494006c8f306a7013066aff8b38229f03c603c63aabb158aff090f2ec987",
+  "buttons": {
+    "btn_k": {
+      "x": 290,
+      "y": 291,
+      "width": 156,
+      "height": 160,
+      "up": "btn_k-up.png",
+      "over": "btn_k-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_k",
+      "animation": {
+        "file": "btn_k-frames.png",
+        "frameCount": 4,
+        "frameMs": 41.666666666666664,
+        "loop": true
+      }
+    },
+    "btn_b": {
+      "x": 386,
+      "y": 163,
+      "width": 156,
+      "height": 160,
+      "up": "btn_b-up.png",
+      "over": "btn_b-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_b",
+      "animation": {
+        "file": "btn_b-frames.png",
+        "frameCount": 24,
+        "frameMs": 41.666666666666664,
+        "loop": true
+      }
+    },
+    "btn_f": {
+      "x": 194,
+      "y": 163,
+      "width": 156,
+      "height": 160,
+      "up": "btn_f-up.png",
+      "over": "btn_f-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_f",
+      "animation": {
+        "file": "btn_f-frames.png",
+        "frameCount": 60,
+        "frameMs": 41.666666666666664,
+        "loop": true
+      }
+    },
+    "btn_e": {
+      "x": 536,
+      "y": 32,
+      "width": 114,
+      "height": 112,
+      "up": "btn_e-up.png",
+      "over": "btn_e-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_e",
+      "animation": {
+        "file": "btn_e-frames.png",
+        "frameCount": 58,
+        "frameMs": 41.666666666666664,
+        "loop": true,
+        "loopStart": 28
+      }
+    },
+    "btn_g": {
+      "x": 424,
+      "y": 32,
+      "width": 112,
+      "height": 112,
+      "up": "btn_g-up.png",
+      "over": "btn_g-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_g",
+      "animation": {
+        "file": "btn_g-frames.png",
+        "frameCount": 35,
+        "frameMs": 41.666666666666664,
+        "loop": true
+      }
+    },
+    "btn_c": {
+      "x": 648,
+      "y": 32,
+      "width": 112,
+      "height": 112,
+      "up": "btn_c-up.png",
+      "over": "btn_c-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_c"
+    },
+    "btn_d": {
+      "x": 647,
+      "y": 164,
+      "width": 113,
+      "height": 26,
+      "up": "btn_d-up.png",
+      "over": "btn_d-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_d"
+    },
+    "btn_h": {
+      "x": 538,
+      "y": 161,
+      "width": 97,
+      "height": 29,
+      "up": "btn_h-up.png",
+      "over": "btn_h-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_h"
+    },
+    "btn_i": {
+      "x": 0,
+      "y": 32,
+      "width": 208,
+      "height": 112,
+      "up": "btn_i-up.png",
+      "over": "btn_i-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_i"
+    },
+    "btn_j": {
+      "x": 208,
+      "y": 32,
+      "width": 208,
+      "height": 112,
+      "up": "btn_j-up.png",
+      "over": "btn_j-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_j"
+    },
+    "btn_serial": {
+      "x": 652,
+      "y": 200,
+      "width": 104,
+      "height": 24,
+      "up": "btn_serial-up.png",
+      "over": "btn_serial-over.png",
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "sourceSymbol": "btn_serial"
+    },
+    "record": {
+      "x": 712,
+      "y": 480,
+      "width": 48,
+      "height": 32,
+      "up": "record-up.png",
+      "over": "record-over.png",
+      "source": "data/image/achievement/btn_achi.swf",
+      "sourceSha256": "64e954edfd92ad3e5631bab5ff0c56015e2a7204c8d1eff4628c5bcc2880e9fb",
+      "sourceSymbol": "btn_achi"
+    },
+    "friend": {
+      "x": 712,
+      "y": 528,
+      "width": 48,
+      "height": 32,
+      "up": "friend-up.png",
+      "over": "friend-over.png",
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "sourceSymbol": "btn_f_list"
+    },
+    "item": {
+      "x": 712,
+      "y": 576,
+      "width": 48,
+      "height": 32,
+      "up": "item-up.png",
+      "over": "item-over.png",
+      "source": "data/image/quest/btn_item.swf",
+      "sourceSha256": "21403377679ed4ccbb957a425a723e1a1b52a83d1e90a68ce2f40cd87e996561",
+      "sourceSymbol": "btn_map_item"
+    }
+  }
+}

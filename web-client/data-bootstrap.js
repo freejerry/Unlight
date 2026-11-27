@@ -91,6 +91,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       level: fields.int(),
       energy: fields.int(),
       energyMax: fields.int(),
+      freeDuelCount: quests?.freeDuelCount() ?? null,
       equippedPartIds: quests?.equippedPartIds() ?? equippedPartIds,
       questDecks: quests?.deckChoices() ?? [],
     };

@@ -531,9 +531,16 @@ def create_app(
                 "lobby-avatar.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
-            for name in ("ap", "background", "entrances", "favorite", "friend", "item", "ranking", "record", "status"):
+            for name in (
+                "ap", "ap-fill", "ap-frame", "ap-mask", "background", "entrances", "favorite", "friend", "item",
+                "ranking", "record", "status", *(f"duel-stars-{count}" for count in range(4)),
+            ):
                 filename = f"lobby-art/{name}.png"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            hover_root = SOURCE_LOGIN_ROOT / "lobby-art/hover"
+            app.router.add_get("/source-login/lobby-art/hover/index.json", serve_file(hover_root / "index.json"))
+            for image in sorted(hover_root.glob("*.png")):
+                app.router.add_get(f"/source-login/lobby-art/hover/{image.name}", serve_file(image))
             for sheet in sorted((SOURCE_LOGIN_ROOT / "avatar-wardrobe").glob("sheet-*.png")):
                 app.router.add_get(f"/source-login/avatar-wardrobe/{sheet.name}", serve_file(sheet))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))

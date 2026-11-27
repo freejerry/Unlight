@@ -14,6 +14,7 @@ const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
 const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
 const EQUIPPED_PART = 1; // Original PartInventory APS_USED bit.
+const MAX_FREE_DUEL_COUNT = 3; // Original FREE_DUEL_COUNT and FreeDuelCountImage frames.
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
@@ -109,7 +110,7 @@ const settlementFields = {
 };
 
 // Order from DataCommand.scAvatarInfo. Length-prefixed fields can span inflated chunks.
-const fields = [
+const questFields = [
   4, skipString, 11 * 4, // Avatar header.
   { key: 'partCount', width: 4 }, optionalList('partInventoryIds', MAX_PART_LIST_BYTES),
   optionalList('partIds', MAX_PART_LIST_BYTES), optionalList('partUsage', MAX_PART_LIST_BYTES), skipString,
@@ -130,6 +131,7 @@ const fields = [
   { key: 'questFlag', width: 4 },
   { key: 'questClearNum', width: 4 },
 ];
+const fields = [...questFields, 2 * 4, { key: 'freeDuelCount', width: 1 }]; // friend_max, part_max, free_duel_count.
 
 function integerList(csv, signed = false) {
   if (csv === '') return [];
@@ -735,6 +737,10 @@ export function createQuestDataReader() {
         return null;
       }
     },
+    freeDuelCount() {
+      const count = values.freeDuelCount;
+      return count >= 0 && count <= MAX_FREE_DUEL_COUNT ? count : null;
+    },
     deckChoices() {
       try {
         return readyQuestDecks(values);
@@ -743,7 +749,7 @@ export function createQuestDataReader() {
       }
     },
     deckCollection() {
-      if (fieldIndex !== fields.length) return null;
+      if (fieldIndex < questFields.length) return null;
       try {
         return ownedDeckCollection(values);
       } catch {
@@ -751,7 +757,7 @@ export function createQuestDataReader() {
       }
     },
     result() {
-      if (fieldIndex !== fields.length) throw new Error('Incomplete quest data.');
+      if (fieldIndex < questFields.length) throw new Error('Incomplete quest data.');
       const { capacity, count, inventoryIds, questIds, statuses, findTimes, questFlag, questClearNum } = values;
       if (capacity < 0 || count < 0 || questFlag < 0 || questClearNum < 0
         || inventoryIds.length !== count || questIds.length !== count || statuses.length !== count

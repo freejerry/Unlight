@@ -11,9 +11,9 @@ const layout = `
       <div class="art-slot avatar" aria-hidden="true"></div>
       <canvas id="lobby-avatar" width="290" height="450" aria-label="虛擬人物"></canvas>
       <ul class="side-entries" aria-label="角色入口">
-        <li><span class="sr-only">紀錄</span><img class="record-art" src="/source-login/lobby-art/record.png" width="48" height="32" alt="" /></li>
-        <li><span class="sr-only">好友</span><img class="friend-art" src="/source-login/lobby-art/friend.png" width="48" height="37" alt="" /></li>
-        <li><span class="sr-only">道具</span><img class="item-art" src="/source-login/lobby-art/item.png" width="48" height="32" alt="" /></li>
+        <li data-symbol="record"><span class="sr-only">紀錄</span><img class="record-art" src="/source-login/lobby-art/record.png" width="48" height="32" alt="" /></li>
+        <li data-symbol="friend"><span class="sr-only">好友</span><img class="friend-art" src="/source-login/lobby-art/friend.png" width="48" height="37" alt="" /></li>
+        <li data-symbol="item"><span class="sr-only">道具</span><img class="item-art" src="/source-login/lobby-art/item.png" width="48" height="32" alt="" /></li>
       </ul>
       <dl id="lobby-profile" class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
         <div class="name">
@@ -22,7 +22,14 @@ const layout = `
         </div>
         <div class="gem"><dt class="sr-only">Gem</dt><dd id="lobby-gems"></dd></div>
         <div class="exp"><dt class="sr-only">Exp</dt><dd><span id="lobby-exp"></span><span id="lobby-exp-next"></span></dd></div>
-        <div class="ap"><dt class="sr-only">AP</dt><dd id="lobby-energy"></dd></div>
+        <div class="ap">
+          <dt class="sr-only">AP</dt>
+          <dd><span class="lobby-ap-liquid" aria-hidden="true"></span><span id="lobby-energy"></span></dd>
+        </div>
+        <div class="free-duel" title="不消耗AP可進行的對戰次數" hidden>
+          <dt class="sr-only">不消耗AP可進行的對戰次數</dt>
+          <dd><span id="lobby-free-duel-count" class="sr-only"></span><img id="lobby-free-duel-stars" width="43" height="13" alt="" /></dd>
+        </div>
         <div id="lobby-deck-row" hidden><dt>牌組</dt><dd id="lobby-deck-name"></dd></div>
       </dl>
       <span id="lobby-player-id" hidden></span>
@@ -87,9 +94,112 @@ const layout = `
 
 const questStates = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '受贈'];
 const newsSeen = new Set();
+const hoverArtPath = '/source-login/lobby-art/hover/';
+
+async function loadHoverImage(filename, width, height) {
+  if (typeof filename !== 'string' || !/^[a-zA-Z0-9_-]+\.png$/.test(filename)) {
+    throw new Error('Invalid lobby artwork filename.');
+  }
+  const image = new Image(width, height);
+  image.alt = '';
+  image.src = hoverArtPath + filename;
+  await image.decode();
+  if (image.naturalWidth !== width || image.naturalHeight !== height) {
+    throw new Error('Invalid lobby artwork size.');
+  }
+  return image;
+}
+
+async function prepareHoverMotion(target, { file, frameCount, frameMs, loop, loopStart = 0 }, width, height, signal) {
+  if (!Number.isSafeInteger(frameCount) || frameCount < 2 ||
+      !Number.isSafeInteger(loopStart) || loopStart < 0 || loopStart >= frameCount ||
+      !Number.isFinite(frameMs) || frameMs <= 0) return;
+  try {
+    const sprite = await loadHoverImage(file, width, height * frameCount);
+    if (signal.aborted) return;
+    const intro = loop === true ? loopStart : 0;
+    const steps = loop === true ? frameCount - intro : frameCount - 1;
+    sprite.className = 'lobby-art-motion';
+    sprite.style.setProperty('--lobby-art-motion-start', `${-height * intro}px`);
+    sprite.style.setProperty('--lobby-art-motion-end', `${-height * (intro + steps)}px`);
+    sprite.style.animationDuration = `${frameMs * steps}ms`;
+    sprite.style.animationTimingFunction = `steps(${steps}, end)`;
+    sprite.style.animationIterationCount = loop === true ? 'infinite' : '1';
+    if (intro) {
+      const introDuration = `${frameMs * intro}ms`;
+      sprite.style.animationName = 'lobby-art-over-intro, lobby-art-over-frames';
+      sprite.style.animationDuration = `${introDuration}, ${sprite.style.animationDuration}`;
+      sprite.style.animationTimingFunction = `steps(${intro}, end), ${sprite.style.animationTimingFunction}`;
+      sprite.style.animationDelay = `0ms, ${introDuration}`;
+      sprite.style.animationIterationCount = '1, infinite';
+      sprite.style.animationFillMode = 'forwards, none';
+    }
+    target.append(sprite);
+  } catch {
+    // The exact static hover frame remains usable without its optional animation.
+  }
+}
+
+async function prepareLobbyHover(view, signal) {
+  try {
+    const response = await fetch(hoverArtPath + 'index.json', {
+      redirect: 'error',
+      signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
+    });
+    if (!response.ok) return;
+    const { entrancesBase, buttons } = await response.json();
+    const anchors = view.querySelectorAll('[data-symbol]');
+    const [base, ...sprites] = await Promise.all([
+      loadHoverImage(entrancesBase, 760, 680),
+      ...Array.from(anchors, async anchor => {
+        const { x, y, width, height, up, over, animation } = buttons[anchor.dataset.symbol];
+        if (![x, y, width, height].every(Number.isSafeInteger) ||
+            x < 0 || y < 0 || width < 1 || height < 1 || x + width > 780 || y + height > 680) {
+          throw new Error('Invalid lobby artwork bounds.');
+        }
+        const [idle, hovered] = await Promise.all([loadHoverImage(up, width, height), loadHoverImage(over, width, height)]);
+        return { anchor, x, y, idle, hovered, animation };
+      }),
+    ]);
+    if (signal.aborted) return;
+
+    const scene = view.getBoundingClientRect();
+    for (const { anchor, x, y, idle, hovered, animation } of sprites) {
+      const bounds = anchor.getBoundingClientRect();
+      const oldArt = anchor.querySelector(':scope > img');
+      const overLayer = document.createElement('span');
+      idle.className = 'lobby-art-up';
+      overLayer.className = 'lobby-art-over';
+      hovered.className = 'lobby-art-still';
+      overLayer.append(hovered);
+      for (const layer of [idle, overLayer]) {
+        layer.style.left = `${x - (bounds.left - scene.left)}px`;
+        layer.style.top = `${y - (bounds.top - scene.top)}px`;
+      }
+      if (oldArt) {
+        idle.classList.add(...oldArt.classList);
+        oldArt.replaceWith(idle, overLayer);
+      } else {
+        anchor.append(idle, overLayer);
+      }
+      if (animation) {
+        overLayer.style.width = `${hovered.width}px`;
+        overLayer.style.height = `${hovered.height}px`;
+        void prepareHoverMotion(overLayer, animation, hovered.width, hovered.height, signal);
+      }
+    }
+    base.className = 'entrance-art';
+    view.querySelector('.entrance-art').replaceWith(base);
+    view.dataset.hoverArt = 'ready';
+  } catch {
+    // Keep the approved default artwork if the optional state bundle is incomplete.
+  }
+}
 
 function displayProfile(view, playerId, avatar) {
-  const { id, name, level, gems, exp, energy, energyMax, questDecks } = avatar;
+  const { id, name, level, gems, exp, energy, energyMax, freeDuelCount, questDecks } = avatar;
+  const hasEnergyRange = Number.isSafeInteger(energy) && Number.isSafeInteger(energyMax) &&
+    energy >= 0 && energyMax > 0 && energy <= energyMax;
   const fields = {
     'player-id': playerId,
     'avatar-name': name,
@@ -97,14 +207,23 @@ function displayProfile(view, playerId, avatar) {
     level,
     gems,
     exp,
-    energy: Number.isSafeInteger(energy) && Number.isSafeInteger(energyMax) && energyMax >= energy
-      ? `${energy}／${energyMax}` : energy,
+    energy: hasEnergyRange ? `${energy}/${energyMax}` : energy,
   };
   for (const [field, value] of Object.entries(fields)) {
     view.querySelector(`#lobby-${field}`).textContent = value ?? '—';
   }
   view.querySelector('#lobby-level-label').hidden = !Number.isSafeInteger(level);
   view.querySelector('#lobby-avatar-name').title = name ?? '';
+  if (hasEnergyRange) {
+    // The original ActionPointGauge leaves a small margin at full AP.
+    view.querySelector('.ap').style.setProperty('--lobby-ap-ratio', 0.98 * energy / energyMax);
+  }
+  if (Number.isSafeInteger(freeDuelCount) && freeDuelCount >= 0 && freeDuelCount <= 3) {
+    const count = view.querySelector('#lobby-free-duel-count');
+    count.textContent = freeDuelCount;
+    view.querySelector('#lobby-free-duel-stars').src = `/source-login/lobby-art/duel-stars-${freeDuelCount}.png`;
+    count.closest('.free-duel').hidden = false;
+  }
   const firstDeck = questDecks?.find(deck => deck.index === 1);
   if (typeof firstDeck?.name === 'string' && firstDeck.name.trim()) {
     view.querySelector('#lobby-deck-name').textContent = firstDeck.name;
@@ -290,6 +409,7 @@ export function mountLobby(host, { session, onLogout }) {
   }, { signal });
 
   host.append(view);
+  void prepareLobbyHover(view, signal);
   void renderLobbyAvatar(view.querySelector('#lobby-avatar'), avatar.equippedPartIds, { signal }).catch(() => {
     // The portrait renderer marks its own failure; the signed-in view remains usable.
   });
