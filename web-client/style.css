@@ -15,10 +15,10 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 18rem; }
-h1, h2, h3, p { margin: 0; }
+h1, h2, h3, p, dl, dd { margin: 0; }
 button { font: inherit; cursor: pointer; }
 button:disabled { opacity: .55; cursor: default; }
-button:focus-visible { outline: 3px solid #007f69; outline-offset: 3px; }
+button:focus-visible, input:focus-visible { outline: 3px solid #007f69; outline-offset: 3px; }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
@@ -27,6 +27,8 @@ button:focus-visible { outline: 3px solid #007f69; outline-offset: 3px; }
 .topbar-content { display: flex; align-items: center; gap: .85rem; min-height: 3.45rem; }
 .wordmark { font-size: 1.05rem; font-weight: 780; letter-spacing: .025em; }
 .topbar-label { padding-inline-start: .85rem; border-inline-start: 1px solid #5b7281; color: #c8d8e2; font-size: .9rem; }
+.topbar-link { margin-inline-start: auto; padding: .45rem .15rem; color: #def7f3; font-size: .9rem; text-decoration-thickness: 1px; text-underline-offset: .3em; }
+.topbar-link:focus-visible { outline: 2px solid #def7f3; outline-offset: 3px; }
 
 main { padding-block: 1.6rem 1.8rem; }
 .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.15rem; margin-bottom: 1rem; }
@@ -70,7 +72,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .response { display: flex; justify-content: space-between; gap: .35rem; padding: .26rem .46rem; border-radius: .34rem; background: #f0f5f7; color: #47616c; font-size: .85rem; }
 .response-hex { color: #142a37; font: 600 .84rem/1.4 "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace; text-align: end; overflow-wrap: anywhere; }
 
-.assets { margin-top: .85rem; padding: .75rem .9rem .85rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--white); }
+.assets, .session-panel { margin-top: .85rem; padding: .75rem .9rem .85rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--white); }
 .assets h2 { margin-bottom: .5rem; font-size: 1.1rem; }
 .asset-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
 .asset { display: flex; align-items: center; gap: .7rem; min-height: 3.9rem; padding: .45rem .64rem; border: 1px solid #dce7ed; border-radius: .45rem; background: #f2f7f9; }
@@ -80,6 +82,26 @@ main { padding-block: 1.6rem 1.8rem; }
 .asset-sound { justify-content: space-between; }
 .image-preview { display: grid; place-items: center; flex: 0 0 3rem; min-height: 3rem; border-radius: .35rem; background: #fff; }
 .image-preview img { display: block; width: 3rem; height: 3rem; object-fit: contain; }
+
+.session-heading, .session-result { display: flex; align-items: center; justify-content: space-between; gap: .65rem 1rem; }
+.session-heading h2 { font-size: 1.1rem; }
+#session-description { margin-top: .25rem; color: var(--muted); font-size: .93rem; }
+.session-status { padding: .22rem .55rem; border-radius: .35rem; color: #425762; background: #e9eff3; font-size: .9rem; font-weight: 630; white-space: nowrap; }
+.session-status[data-state="working"] { color: #245f83; background: #e0f0fa; }
+.session-status[data-state="signed-in"] { color: var(--accent); background: var(--teal); }
+.session-status[data-state="failed"] { color: var(--failure); background: var(--danger); }
+.session-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: .66rem; border: 0; padding: 0; margin: .7rem 0 0; min-width: 0; max-width: 44rem; }
+.session-fields label { display: grid; gap: .25rem; color: #2d444f; font-size: .92rem; font-weight: 620; }
+.session-fields input { width: 100%; min-height: 2.6rem; padding: .45rem .6rem; border: 1px solid #9eb8bf; border-radius: .5rem; background: #fcfdfe; color: #172933; font: inherit; font-size: 1rem; font-weight: 440; }
+.session-fields input:disabled { background: #eef3f5; }
+.session-result { max-width: 44rem; margin-top: .7rem; }
+.session-metadata { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; flex: 1; max-width: 39rem; }
+.session-metadata > div { padding: .45rem .6rem; border: 1px solid var(--line); border-radius: .4rem; background: #f2f7f9; }
+.session-metadata dt { margin-bottom: .12rem; color: var(--muted); font-size: .86rem; }
+.session-metadata dd { font-variant-numeric: tabular-nums; font-weight: 680; overflow-wrap: anywhere; }
+.session-metadata [data-verified="true"] { color: var(--accent); }
+.session-detail, .session-format { margin-top: .55rem; color: var(--muted); font-size: .9rem; }
+.session-detail:empty { margin-top: 0; }
 
 @media (max-width: 52rem) {
   .service-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -91,4 +113,8 @@ main { padding-block: 1.6rem 1.8rem; }
   main { padding-block: 1rem; }
   .service-list, .asset-list { grid-template-columns: minmax(0, 1fr); }
   .summary { padding: .8rem; }
+  .session-heading, .session-result { align-items: start; flex-wrap: wrap; }
+  .session-fields { grid-template-columns: minmax(0, 1fr); }
+  .session-fields button { justify-self: start; }
+  .session-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
 }

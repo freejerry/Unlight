@@ -4,16 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#112235" />
-    <meta name="description" content="用瀏覽器驗證 Unlight 原版六項服務的 KeepAlive 回覆與原始素材。" />
+    <meta name="description" content="用瀏覽器驗證 Unlight 原版六項服務的 KeepAlive 回覆、測試登入與原始素材。" />
     <title>Unlight 連線診斷</title>
     <link rel="stylesheet" href="/style.css" />
     <script type="module" src="/client.js"></script>
+    <script type="module" src="/login.js"></script>
   </head>
   <body>
     <header class="topbar">
       <div class="shell topbar-content">
         <span class="wordmark">Unlight</span>
         <span class="topbar-label">連線診斷</span>
+        <a class="topbar-link" href="#session-title">登入驗證</a>
       </div>
     </header>
 
@@ -64,6 +66,41 @@
             <button id="play-audio" type="button" class="button secondary" disabled hidden>播放</button>
           </div>
         </div>
+      </section>
+
+      <section class="session-panel" aria-labelledby="session-title">
+        <div class="session-heading">
+          <div>
+            <h2 id="session-title" tabindex="-1">本機登入驗證</h2>
+            <p id="session-description">用測試帳號登入，驗證大廳、資料與全域聊天連線。</p>
+          </div>
+          <p id="session-status" class="session-status" data-state="idle" role="status" aria-atomic="true">尚未登入</p>
+        </div>
+
+        <form id="session-form" method="post" autocomplete="off" aria-describedby="session-description session-detail">
+          <fieldset id="session-fields" class="session-fields" disabled>
+            <legend class="sr-only">測試帳號</legend>
+            <label for="session-username">帳號
+              <input id="session-username" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
+            </label>
+            <label for="session-password">密碼
+              <input id="session-password" type="password" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
+            </label>
+            <button type="submit" class="button primary">驗證登入</button>
+          </fieldset>
+          <p id="session-format" class="session-format">帳號與密碼可用 1 至 16 個英文字母、數字、底線、句點或連字號。</p>
+        </form>
+
+        <div id="session-result" class="session-result" hidden>
+          <dl class="session-metadata">
+            <div><dt>玩家 ID</dt><dd id="session-player-id">—</dd></div>
+            <div><dt>大廳連線</dt><dd id="session-lobby">—</dd></div>
+            <div><dt>資料連線</dt><dd id="session-data">—</dd></div>
+            <div><dt>全域聊天</dt><dd id="session-chat">—</dd></div>
+          </dl>
+          <button id="session-signout" type="button" class="button secondary" hidden>登出</button>
+        </div>
+        <p id="session-detail" class="session-detail" aria-live="polite"></p>
       </section>
 
       <template id="service-template">

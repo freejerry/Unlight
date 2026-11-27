@@ -166,7 +166,10 @@ def create_app(
 
     if native:
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
-        for filename in ("client.js", "style.css", "transport.js"):
+        for filename in (
+            "client.js", "style.css", "transport.js", "session.js",
+            "wire.js", "srp.js", "login.js",
+        ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 
         asset_urls = dict.fromkeys(NATIVE_ASSETS)
