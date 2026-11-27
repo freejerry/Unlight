@@ -180,7 +180,7 @@
             <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
             <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
           </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形支援原版的回合移動與攻防。換角與後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
+          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形支援原版的回合移動、換角與攻防。後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>
@@ -218,13 +218,23 @@
               </section>
               <section id="session-quest-battle" class="quest-first-turn" aria-labelledby="session-quest-battle-title" hidden>
                 <h5 id="session-quest-battle-title">回合操作</h5>
-                <p class="quest-status">可選取行動卡或空手送出移動與攻防。事件卡出牌尚未接通。</p>
+                <p class="quest-status">可選取行動卡或空手送出移動與攻防。伺服器開放時可換角。事件卡出牌尚未接通。</p>
                 <p id="session-quest-battle-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
                 <button id="session-quest-battle-ready" class="button primary" type="button" aria-controls="session-quest-battle-turn session-quest-battle-hand" disabled>開始第一回合</button>
                 <dl class="session-metadata quest-land-metadata" id="session-quest-battle-turn" hidden>
                   <div><dt>伺服器回合</dt><dd id="session-quest-battle-turn-number"></dd></div>
                   <div><dt>階段</dt><dd id="session-quest-battle-phase"></dd></div>
                 </dl>
+                <dl id="session-quest-active-character" class="session-metadata quest-land-metadata" aria-label="伺服器確認的我方出戰角色" hidden>
+                  <div><dt>我方出戰欄位代碼</dt><dd id="session-quest-active-slot"></dd></div>
+                  <div><dt>我方出戰角色卡 ID</dt><dd id="session-quest-active-card"></dd></div>
+                </dl>
+                <p id="session-quest-character-last" class="quest-status" role="status" hidden></p>
+                <section id="session-quest-character-change" class="quest-character-switch" aria-labelledby="session-quest-character-title" hidden>
+                  <h6 id="session-quest-character-title">換角</h6>
+                  <p id="session-quest-character-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                  <ol id="session-quest-character-choices" class="quest-character-choices" aria-label="伺服器開放選擇的角色" role="list" hidden></ol>
+                </section>
                 <section id="session-quest-battle-hand" class="quest-hand" aria-labelledby="session-quest-battle-hand-title" hidden>
                   <h6 id="session-quest-battle-hand-title">本回合手牌</h6>
                   <div class="quest-hand-piles">
@@ -249,6 +259,7 @@
                     <option value="-1">前進</option>
                     <option value="0">原地待機</option>
                     <option value="1">後退</option>
+                    <option value="3" hidden disabled>換角</option>
                   </select>
                   <button id="session-quest-move-choose" class="button secondary" type="button" aria-controls="session-quest-move-confirmation" disabled>確認移動方向</button>
                   <p id="session-quest-move-confirmation" class="quest-status">伺服器確認方向 <strong id="session-quest-move-confirmed-direction">尚未選擇</strong></p>

@@ -191,6 +191,11 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-move-card-item .button { min-height: 2.15rem; padding: .18rem .4rem; font-size: .81rem; }
 .quest-hand-cards .quest-move-card-face { max-width: 100%; min-width: 0; min-height: 2.15rem; padding: .15rem .25rem; border: 1px solid #9eb8bf; border-radius: .35rem; background: #fcfdfe; color: #172933; font: inherit; font-size: .81rem; }
 .quest-opponent-draw { color: var(--muted); }
+.quest-character-switch { min-width: 0; margin-top: .65rem; padding: .45rem .55rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: #f2f7f9; }
+.quest-character-switch h6 { margin-top: 0; }
+.quest-character-choices { display: grid; gap: .32rem; margin: .45rem 0 0; padding: 0; list-style: none; }
+.quest-character-choices li { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .28rem .5rem; padding: .32rem .4rem; border: 1px solid var(--line); border-radius: .35rem; background: #fff; color: #2d444f; font-size: .86rem; overflow-wrap: anywhere; }
+.quest-character-choices .button { min-height: 2.15rem; padding: .18rem .44rem; font-size: .83rem; }
 .quest-move { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin-top: .65rem; }
 .quest-move label { color: #2d444f; font-size: .9rem; font-weight: 680; }
 .quest-move select { max-width: 100%; min-height: 2.35rem; padding: .32rem .5rem; border: 1px solid #9eb8bf; border-radius: .4rem; background: #fcfdfe; color: #172933; font: inherit; font-size: .9rem; }

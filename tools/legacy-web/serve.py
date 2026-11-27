@@ -29,6 +29,7 @@ REPLAY_BASELINE = ROOT.parent / "legacy-server/fixtures/trace-2026.json"
 SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
+MAX_QUEST_CHARACTER_CARD_IDS = 6  # Two rosters have at most three slots each.
 TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
 QUEST_LAND_FIELDS = tuple(
     f"quest_land_id_{column}_{row}" for column in range(5) for row in range(3)
@@ -136,6 +137,12 @@ def native_action_card_catalog():
             }
             for row in DictReader(source)
         }
+
+
+def native_quest_character_card_catalog():
+    # The Traditional Chinese import uses this shared master when no TCN override exists.
+    with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        return {int(row["id"]): int(row["hp"]) for row in DictReader(source)}
 
 
 def client_config(server_offset, direct_sockets):
@@ -315,6 +322,9 @@ def create_app(
         cards = {}
         with suppress(OSError):
             cards = native_action_card_catalog()
+        character_hp = {}
+        with suppress(OSError):
+            character_hp = native_quest_character_card_catalog()
 
         async def quest_catalog(request):
             values = request.query.getall("id", [])
@@ -344,10 +354,27 @@ def create_app(
             ids = dict.fromkeys(map(int, values))
             return web.json_response({"cards": [cards[card_id] for card_id in ids if card_id in cards]})
 
+        async def quest_character_cards(request):
+            query = request.query.getall("ids", [])
+            if len(query) != 1:
+                raise web.HTTPBadRequest(text="Pass one comma-separated list of character card IDs.")
+            values = query[0].split(",", MAX_QUEST_CHARACTER_CARD_IDS)
+            if len(values) > MAX_QUEST_CHARACTER_CARD_IDS or any(
+                not value.isascii() or not value.isdecimal() or len(value) > 10
+                or not 0 < int(value) <= 2**31 - 1 for value in values
+            ):
+                raise web.HTTPBadRequest(text="Pass up to six positive character card IDs.")
+            ids = dict.fromkeys(map(int, values))
+            return web.json_response(
+                {"cards": [{"id": card_id, "hp": character_hp[card_id]} for card_id in ids if card_id in character_hp]},
+                headers={"Cache-Control": "no-store"},
+            )
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
         app.router.add_get("/api/quest-catalog", quest_catalog)
         app.router.add_get("/api/action-card-catalog", action_card_catalog)
+        app.router.add_get("/api/quest-character-cards", quest_character_cards)
         return app
 
     index_path = ROOT / "index.html"

@@ -86,6 +86,7 @@ const questBattleUi = {
   })),
   move: document.querySelector('#session-quest-move'),
   select: document.querySelector('#session-quest-move-direction'),
+  changeDirection: document.querySelector('#session-quest-move-direction option[value="3"]'),
   choose: document.querySelector('#session-quest-move-choose'),
   direction: document.querySelector('#session-quest-move-confirmed-direction'),
   moveTable: document.querySelector('#session-quest-move-table'),
@@ -102,6 +103,16 @@ const questBattleUi = {
   committed: document.querySelector('#session-quest-committed'),
   committedCards: document.querySelector('#session-quest-committed-cards'),
   emptyCommitted: document.querySelector('#session-quest-committed-empty'),
+};
+
+const questCharacterUi = {
+  active: document.querySelector('#session-quest-active-character'),
+  slot: document.querySelector('#session-quest-active-slot'),
+  card: document.querySelector('#session-quest-active-card'),
+  last: document.querySelector('#session-quest-character-last'),
+  section: document.querySelector('#session-quest-character-change'),
+  status: document.querySelector('#session-quest-character-status'),
+  choices: document.querySelector('#session-quest-character-choices'),
 };
 
 function questExchangeFields(kind) {
@@ -239,14 +250,17 @@ const questBattlePhases = {
   uncertain: ['結果待確認', '未能確認本次操作結果。本次任務無法重送。'],
   closed: ['任務連線中斷', '任務連線已中斷，已確認的回合資料仍可查看。'],
 };
-const questMoveDirections = { '-1': '前進', 0: '原地待機', 1: '後退' };
+const questMoveDirections = { '-1': '前進', 0: '原地待機', 1: '後退', 3: '換角' };
 const questBattleDistances = { 1: '近距離', 2: '中距離', 3: '遠距離', 4: '距離不明' };
 const questCardTypes = { 0: '空白', 1: '劍', 2: '槍', 3: '防禦', 4: '移動', 5: '特殊', 6: '事件' };
+const QUEST_BATTLE_CARD_SELECTOR = 'li[data-card-id][data-up]';
 const questBattleRejections = {
   'quest-direction-rejected': '伺服器未接受這個移動方向。',
   'quest-card-rejected': '伺服器未接受這次卡片操作。',
   'quest-card-unavailable': '目前無法操作這張卡片。',
   'quest-battle-unavailable': '伺服器目前無法接受這項操作。',
+  'quest-character-unavailable': '目前無法選擇這個角色。',
+  'quest-character-overridden': '伺服器回覆了不同的出戰角色。',
   busy: '伺服器目前無法接受這項操作。',
 };
 const questCombatPhases = {
@@ -468,7 +482,8 @@ function updateQuestBattleButtons() {
   questBattleUi.start.disabled = locked || phase !== 'encounter';
   questBattleUi.select.disabled = locked || phase !== 'move';
   const selection = questBattleUi.select.value;
-  questBattleUi.choose.disabled = questBattleUi.select.disabled || selection === '' || selection === questBattleUi.direction.dataset.direction;
+  questBattleUi.choose.disabled = questBattleUi.select.disabled || selection === '' || selection === questBattleUi.direction.dataset.direction
+    || (selection === '3' && questBattleUi.changeDirection.disabled);
   questBattleUi.commit.disabled = questBattleUi.select.disabled;
   const combatOpen = phase === 'moved' && ['attack', 'defense'].includes(questCombatUi.section.dataset.role)
     && !questCombatUi.section.hidden;
@@ -477,6 +492,8 @@ function updateQuestBattleButtons() {
     const combat = control.closest('[data-card-zone^="combat-"]');
     control.disabled = combat ? questCombatUi.commit.disabled : questBattleUi.select.disabled;
   }
+  const canSelectCharacter = phase === 'character-change' && ['ready', 'rejected'].includes(questCharacterUi.status.dataset.state);
+  for (const button of questCharacterUi.choices.querySelectorAll('button')) button.disabled = locked || !canSelectCharacter;
 }
 
 function clearQuestMoveResult() {
@@ -498,6 +515,12 @@ function clearQuestBattle() {
   clearQuestSettlement();
   clearQuestCombat();
   clearQuestPreviousExchange();
+  clearQuestCharacterChange();
+  for (const field of [questCharacterUi.active, questCharacterUi.last]) {
+    field.hidden = true;
+    for (const key of ['kind', 'turn', 'slot', 'cardId']) delete field.dataset[key];
+  }
+  for (const field of [questCharacterUi.slot, questCharacterUi.card, questCharacterUi.last]) field.textContent = '';
   clearQuestMoveResult();
   for (const section of [questBattleUi.section, questBattleUi.turn, questBattleUi.hand, questBattleUi.move, questBattleUi.moveTable,
     questBattleUi.playerPower.parentElement, questBattleUi.opponentPower.parentElement]) {
@@ -512,6 +535,8 @@ function clearQuestBattle() {
   delete questBattleUi.direction.dataset.direction;
   questBattleUi.direction.textContent = '尚未選擇';
   questBattleUi.select.value = '';
+  questBattleUi.changeDirection.hidden = true;
+  questBattleUi.changeDirection.disabled = true;
   questBattleUi.commit.hidden = false;
   questBattleUi.commit.textContent = '不出牌並送出移動';
   questBattleUi.moveCards.replaceChildren();
@@ -530,7 +555,7 @@ function clearQuestBattle() {
 function showQuestBattlePhase(phase, characterChange) {
   const [label, standard] = questBattlePhases[phase];
   const message = phase === 'character-change' && characterChange?.playerDone === false
-    ? '原版伺服器要求我方換角。換角操作尚未接通。' : standard;
+    ? '原版伺服器要求我方換角。' : standard;
   questBattleUi.section.dataset.phase = phase;
   questBattleUi.phase.textContent = label;
   const preparingFirstTurn = phase === 'preparing' && Number(questBattleUi.section.dataset.turn ?? 1) === 1;
@@ -538,6 +563,108 @@ function showQuestBattlePhase(phase, characterChange) {
   if (phase === 'moved') questBattleUi.commit.hidden = true;
   if (phase === 'move') questBattleUi.move.hidden = false;
   showQuestActionStatus(questBattleUi.status, phase, message, phase === 'closed' ? 'network' : undefined);
+}
+
+function clearQuestCharacterChange() {
+  const { section, status, choices } = questCharacterUi;
+  section.hidden = true;
+  choices.hidden = true;
+  choices.replaceChildren();
+  for (const key of ['kind', 'turn', 'playerDone', 'opponentDone']) delete section.dataset[key];
+  delete choices.dataset.options;
+  showQuestActionStatus(status, 'idle');
+}
+
+function displayQuestActiveCharacter(roster, lastChange) {
+  const { active, slot, card, last } = questCharacterUi;
+  const player = roster?.player;
+  const current = player?.cards?.find(choice => choice.index === player.activeIndex);
+  active.hidden = !current;
+  if (current) {
+    active.dataset.slot = String(current.index);
+    active.dataset.cardId = String(current.cardId);
+    slot.textContent = String(current.index);
+    card.textContent = String(current.cardId);
+  } else {
+    delete active.dataset.slot;
+    delete active.dataset.cardId;
+    slot.textContent = '';
+    card.textContent = '';
+  }
+  const applied = lastChange?.player;
+  const confirmed = applied && current && current.index === applied.index && current.cardId === applied.cardId;
+  last.hidden = !confirmed;
+  if (confirmed) {
+    last.dataset.kind = lastChange.kind;
+    last.dataset.turn = String(lastChange.turn);
+    last.dataset.slot = String(applied.index);
+    last.dataset.cardId = String(applied.cardId);
+    const message = lastChange.kind === 'defeated' ? '已確認倒下後的出戰角色。' : '已確認移動後的出戰角色。';
+    if (last.textContent !== message) last.textContent = message;
+  } else {
+    for (const key of ['kind', 'turn', 'slot', 'cardId']) delete last.dataset[key];
+    last.textContent = '';
+  }
+}
+
+function appendQuestCharacterChoice(choice, activeIndex) {
+  const { index, cardId, hp } = choice;
+  const item = document.createElement('li');
+  const current = index === activeIndex;
+  item.dataset.slot = String(index);
+  item.dataset.cardId = String(cardId);
+  item.dataset.current = String(current);
+  const label = document.createElement('span');
+  label.textContent = `欄位 ${index} · 角色卡 ${cardId}${Number.isSafeInteger(hp) ? ` · 生命值 ${hp}` : ''}`;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button secondary quest-character-select';
+  button.textContent = current ? '保留出戰角色' : '選擇此角色';
+  button.setAttribute('aria-label', `${button.textContent}，欄位 ${index}，角色卡 ${cardId}`);
+  button.disabled = true;
+  button.addEventListener('click', () => void runQuestBattleAction(
+    button, 'choosing', '正在等待伺服器完成換角…',
+    (session, options) => session.chooseQuestCharacter(index, options), { character: true },
+  ));
+  item.append(label, button);
+  questCharacterUi.choices.append(item);
+}
+
+function syncQuestCharacterChange(snapshot, force) {
+  const { phase, characterChange: change, roster, lastCharacterChange, canRequestCharacterChange, turn } = snapshot;
+  const directionAllowed = phase === 'move' && canRequestCharacterChange === true;
+  questBattleUi.changeDirection.hidden = !directionAllowed;
+  questBattleUi.changeDirection.disabled = !directionAllowed;
+  if (phase === 'move' && !directionAllowed && questBattleUi.select.value === '3') questBattleUi.select.value = '';
+  displayQuestActiveCharacter(roster, lastCharacterChange);
+
+  const { section, status, choices } = questCharacterUi;
+  if (phase !== 'character-change' || !change) {
+    if (!section.hidden) clearQuestCharacterChange();
+    return;
+  }
+  if (section.dataset.kind !== change.kind || section.dataset.turn !== String(turn)) clearQuestCharacterChange();
+  section.hidden = false;
+  section.dataset.kind = change.kind;
+  section.dataset.turn = String(turn);
+  section.dataset.playerDone = String(change.playerDone);
+  section.dataset.opponentDone = String(change.opponentDone);
+
+  const options = change.canSelect === true && change.playerDone === false && Array.isArray(change.choices) ? change.choices : [];
+  const activeIndex = roster?.player?.activeIndex;
+  const version = JSON.stringify([activeIndex, options]);
+  if (choices.dataset.options !== version) {
+    choices.dataset.options = version;
+    choices.replaceChildren();
+    for (const choice of options) appendQuestCharacterChoice(choice, activeIndex);
+  }
+  choices.hidden = options.length === 0;
+  const previousState = status.dataset.state;
+  if (previousState === 'uncertain' || (!force && ['choosing', 'rejected'].includes(previousState))) return;
+  const state = options.length ? 'ready' : 'waiting';
+  const message = options.length ? (change.kind === 'defeated' ? '請選擇接替出戰的角色。' : '請選擇出戰角色。')
+    : change.playerDone || change.applied?.player ? '等待伺服器完成換角。' : '伺服器尚未確認可選的角色。';
+  if (previousState !== state || status.textContent !== message) showQuestActionStatus(status, state, message);
 }
 
 function getQuestCardFace(id, up) {
@@ -619,7 +746,7 @@ function createQuestBattleCard({ id, up }, zone = '') {
 
 async function enrichQuestBattleCards(session) {
   if (questBattleCatalogRequest) return;
-  const ids = new Set([...questBattleUi.section.querySelectorAll('[data-card-id]')].map(element => element.dataset.cardId)
+  const ids = new Set([...questBattleUi.section.querySelectorAll(QUEST_BATTLE_CARD_SELECTOR)].map(element => element.dataset.cardId)
     .filter(id => !questCardCatalogRequested.has(id)).slice(0, 64));
   if (!ids.size) return;
   for (const id of ids) questCardCatalogRequested.add(id);
@@ -633,7 +760,7 @@ async function enrichQuestBattleCards(session) {
     const { cards } = await response.json();
     if (active !== session || signal.aborted || !Array.isArray(cards)) return;
     for (const card of cards) if (ids.has(String(card?.id))) questCardCatalog.set(String(card.id), card);
-    for (const element of questBattleUi.section.querySelectorAll('[data-card-id]')) showQuestCardMetadata(element);
+    for (const element of questBattleUi.section.querySelectorAll(QUEST_BATTLE_CARD_SELECTOR)) showQuestCardMetadata(element);
   } catch {
     // The server's hand IDs and orientations remain available without the optional catalog.
   } finally {
@@ -1035,6 +1162,7 @@ function syncQuestBattle(session, force = false) {
   const locallyUncertain = questBattleUi.status.dataset.state === 'uncertain';
   if ((force || phase !== questBattleUi.section.dataset.phase)
       && (!locallyUncertain || phase === 'moved' || phase === 'closed')) showQuestBattlePhase(phase, characterChange);
+  syncQuestCharacterChange(snapshot, force);
   if (exchange && result) syncQuestCombat(exchange, force, session, phase === 'moved');
   displayQuestPreviousExchange(previousExchange);
   const settlement = exchange?.settlement ?? session.questSettlement;
@@ -1042,7 +1170,9 @@ function syncQuestBattle(session, force = false) {
   if (ready) void enrichQuestBattleCards(session);
   updateQuestBattleButtons();
   if (restoringFocus && !liveQuestRequest && (!focused.isConnected || focused.disabled || focused.closest('[hidden]'))) {
-    (phase === 'moved' && !questCombatUi.section.hidden ? questCombatUi.status : questBattleUi.status).focus({ preventScroll: true });
+    const status = !questCharacterUi.section.hidden ? questCharacterUi.status
+      : phase === 'moved' && !questCombatUi.section.hidden ? questCombatUi.status : questBattleUi.status;
+    status.focus({ preventScroll: true });
   }
   const exchangePending = exchange && !['uncertain', 'closed'].includes(exchange.phase)
     && (!exchange.questFinish || !settlement || !settlement.canReturn);
@@ -1053,14 +1183,14 @@ function syncQuestBattle(session, force = false) {
   }
 }
 
-async function runQuestBattleAction(button, state, message, action, { focusAfter, combat = false } = {}) {
+async function runQuestBattleAction(button, state, message, action, { focusAfter, combat = false, character = false } = {}) {
   if (button.disabled || !button.isConnected) return;
   const restoreFocus = document.activeElement === button;
   const request = beginLiveQuestRequest('battle');
   if (!request) return;
   const { session, controller } = request;
   const isCurrent = () => isCurrentLiveQuestRequest(request) && questLandUi.status.dataset.state === 'encounter';
-  const status = combat ? questCombatUi.status : questBattleUi.status;
+  const status = character ? questCharacterUi.status : combat ? questCombatUi.status : questBattleUi.status;
   const { readyTurn } = questBattleUi.section.dataset;
   const { turn, index } = questCombatUi.section.dataset;
   showQuestActionStatus(status, state, message);
@@ -1075,8 +1205,9 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
     syncQuestBattle(session, true);
     if (readyTurn !== questBattleUi.section.dataset.readyTurn || (combat && (turn !== questCombatUi.section.dataset.turn
       || index !== questCombatUi.section.dataset.index))) return;
-    const finished = combat ? ['complete', 'terminal', 'closed'].includes(questCombatUi.section.dataset.phase)
-      : questBattleUi.section.dataset.phase === 'moved';
+    const finished = character ? questBattleUi.section.dataset.phase !== 'character-change'
+      : combat ? ['complete', 'terminal', 'closed'].includes(questCombatUi.section.dataset.phase)
+        : questBattleUi.section.dataset.phase === 'moved';
     if (finished) return;
     const kind = error instanceof SessionError ? error.kind : 'quest-battle-uncertain';
     if (Object.hasOwn(questBattleRejections, kind)) {
@@ -1093,6 +1224,8 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
       if (button === questBattleUi.start && !questBattleUi.select.disabled) target = questBattleUi.select;
       if (button === questBattleUi.choose && button.disabled && !questBattleUi.commit.disabled) target = questBattleUi.commit;
       if (button === questBattleUi.commit && !questCombatUi.section.hidden) target = questCombatUi.status;
+      if (button === questBattleUi.commit && !questCharacterUi.section.hidden) target = questCharacterUi.status;
+      if (character && questCharacterUi.section.hidden) target = questCombatUi.section.hidden ? questBattleUi.status : questCombatUi.status;
       target.focus();
     }
   }
@@ -1194,6 +1327,7 @@ function watchQuestLandConnection(session) {
     if (!questBattleUi.section.hidden) {
       clearTimeout(questBattleTimer);
       showQuestBattlePhase('closed');
+      clearQuestCharacterChange();
       if (!questCombatUi.section.hidden) showQuestCombatPhase('closed');
     }
     updateLiveQuestButtons();
@@ -1904,7 +2038,7 @@ questBattleUi.start.addEventListener('click', () => void runQuestBattleAction(
 ));
 questBattleUi.choose.addEventListener('click', () => {
   const direction = questBattleUi.select.value;
-  if (!Object.hasOwn(questMoveDirections, direction)) return;
+  if (!Object.hasOwn(questMoveDirections, direction) || (direction === '3' && questBattleUi.changeDirection.disabled)) return;
   void runQuestBattleAction(questBattleUi.choose, 'choosing', '正在等待伺服器確認移動方向…',
     (session, options) => session.chooseQuestMove(Number(direction), options));
 });

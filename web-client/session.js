@@ -19,6 +19,8 @@ import {
   QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY,
   QUEST_DAMAGE_REPLY, QUEST_HIT_POINT_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
   QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
+  QUEST_CHARA_CHANGE_REQUEST, QUEST_CHARA_CHANGE_REPLY, QUEST_ROSTER_HP_REPLIES, QUEST_CHARA_REVIVE_REPLY,
+  QUEST_CHARA_TRANSFORM_REPLY,
   QUEST_HAND_EFFECT_REPLIES,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY,
@@ -29,8 +31,9 @@ import {
   readQuestTurnReply, readQuestRefillReply, readQuestMovePhaseReply,
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
-  readQuestDamageReply, readQuestHitPointReply, readQuestDuelFinishReply, readQuestCombatBoundaryReply,
+  readQuestDuelFinishReply, readQuestCombatBoundaryReply,
   readQuestHandEffectReply,
+  readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
   readQuestSettlementValueReply, readQuestCharacterAwardReply,
 } from './quest-data.js';
 
@@ -49,6 +52,7 @@ const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start
 const QUEST_LAND_REJECTIONS = new Set([16, 41, 42, 43]); // Before the original next-land commit.
 const QUEST_MISSING_ERROR = 40;
 const DIRECTION_PENDING = 2;
+const DIRECTION_CHARA_CHANGE = 3;
 const QUEST_TURN_REPLIES = [
   QUEST_TURN_REPLY, QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
 ];
@@ -66,8 +70,8 @@ const QUEST_COMBAT_COMMANDS = {
 };
 const QUEST_COMBAT_REPLIES = [
   QUEST_ATTACK_PHASE_START_REPLY, QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_DEFENCE_PHASE_START_REPLY,
-  QUEST_DEFENCE_PHASE_FINISH_REPLY, QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_DAMAGE_REPLY,
-  QUEST_HIT_POINT_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
+  QUEST_DEFENCE_PHASE_FINISH_REPLY, QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY,
+  QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
   QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
 ];
 const QUEST_SETTLEMENT_REPLIES = [
@@ -100,6 +104,8 @@ const messages = {
   'quest-direction-rejected': '遊戲服務未接受這個移動方向。',
   'quest-card-unavailable': '目前無法移動這張卡。',
   'quest-card-rejected': '遊戲服務未接受移動這張卡。',
+  'quest-character-unavailable': '目前無法選擇這張角色卡。',
+  'quest-character-overridden': '原版伺服器選擇了其他角色。',
   'quest-return-unavailable': '任務服務尚未確認可返回地圖。',
   'quest-return-uncertain': '未能確認原版任務連線已釋放。',
 };
@@ -631,8 +637,9 @@ async function submitQuestLand(socket, confirm, signal, selected, slot, markDisp
             if (!encounter) throw new SessionError('protocol');
             const duel = readQuestDuelStartReply(reply);
             unsubscribe();
-            markEncounter();
-            resolve({ slot, encounter: { ...encounter, duel }, progress: null, finish: null });
+            encounter = { ...encounter, duel };
+            markEncounter(encounter);
+            resolve({ slot, encounter, progress: null, finish: null });
             break;
           }
           case QUEST_PROGRESS_REPLY: {
@@ -696,7 +703,18 @@ function validQuestCardId(cardId) {
   return Number.isInteger(cardId) && cardId > 0 && cardId <= 0x7fffffff;
 }
 
-function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
+function questRoster(cardIds, damage) {
+  if (cardIds.length < 1 || cardIds.length > 3) throw new SessionError('protocol');
+  return {
+    activeIndex: 0, // The original Entrant begins in slot zero.
+    cards: cardIds.map((cardId, index) => ({
+      index, cardId, seedDamage: damage[index], hp: null,
+      alive: null,
+    })),
+  };
+}
+
+function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySettlement) {
   let phase = 'encounter';
   let turn = null;
   let startDistance = null;
@@ -708,6 +726,13 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   let exchange = null;
   let previousExchange = null;
   let characterChange = null;
+  let lastCharacterChange = null;
+  const roster = {
+    player: questRoster(encounter.playerCardIds, encounter.playerDamage),
+    opponent: questRoster(encounter.opponentCardIds, encounter.opponentDamage),
+  };
+  const changedHp = new Set();
+  const rosterFetch = new AbortController();
   let duelFinish = null;
   let questFinish = null;
   let questDeleted = false;
@@ -722,6 +747,29 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   let pending = null;
   let moveDeadline;
   let settlementTimer;
+
+  async function loadStartingHp() {
+    const ids = new Set(roster.player.cards.map((card) => card.cardId));
+    const signal = AbortSignal.any([rosterFetch.signal, AbortSignal.timeout(3500)]);
+    const params = new URLSearchParams({ ids: [...ids].join(',') });
+    const response = await fetch(`/api/quest-character-cards?${params}`, { signal });
+    if (!response.ok) return;
+    const { cards } = await response.json();
+    if (signal.aborted || !Array.isArray(cards) || cards.length > ids.size) return;
+    const bases = new Map();
+    for (const { id, hp } of cards) {
+      if (!ids.has(id) || !Number.isInteger(hp) || hp < 0 || hp > 0x7fffffff || bases.has(id)) return;
+      bases.set(id, hp);
+    }
+    // Quest passes the enemy-only HP adjustment separately; local HP uses the published base and SC37 damage.
+    for (const card of roster.player.cards) {
+      if (!bases.has(card.cardId) || changedHp.has(card)) continue;
+      const hp = bases.get(card.cardId) - card.seedDamage;
+      if (card.alive === true && hp <= 0) continue;
+      card.hp = hp;
+      card.alive = hp > 0;
+    }
+  }
 
   function uncertain() {
     if (phase === 'closed') return;
@@ -770,6 +818,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         clearTimeout(settlementTimer);
         moveDeadline = performance.now() + QUEST_MOVE_WAIT + TIMEOUT;
         phase = 'move';
+        completeCharacterChange();
+        confirmActiveCharacters();
         if (pending?.kind === 'ready') pending.resolve(ready);
         break;
     }
@@ -853,6 +903,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   }
 
   function openAttack(playerAttacks) {
+    confirmActiveCharacters();
     exchange.playerAttacks = playerAttacks;
     exchange.phase = playerAttacks ? 'attack' : 'awaiting-defense';
     waitForCombat(QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
@@ -866,27 +917,120 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     waitForCombat(QUEST_TURN_REPLY);
   }
 
+  function confirmActiveCharacters() {
+    // The original movement, voluntary-change and attack phase guards require living active characters.
+    for (const side of Object.values(roster)) {
+      const active = side.cards[side.activeIndex];
+      if (active.hp !== null && active.hp <= 0) {
+        active.hp = null;
+        changedHp.add(active);
+      }
+      active.alive = true;
+    }
+  }
+
+  function canRequestCharacterChange() {
+    return phase === 'move' && encounter.duel.multi && roster.player.cards.filter((card) => card.alive === true).length > 1;
+  }
+
+  function characterChoices() {
+    if (phase !== 'character-change' || !characterChange || characterChange.closed || characterChange.playerDone) return [];
+    return roster.player.cards.filter((card) => card.alive === true
+      && (characterChange.kind === 'movement' || card.index !== roster.player.activeIndex));
+  }
+
+  function openCharacterChange(kind, { playerDone, opponentDone }) {
+    characterChange = {
+      kind, turn, playerDone, opponentDone, closed: false, requestedIndex: null, applied: { player: null, opponent: null },
+    };
+    phase = 'character-change';
+    waitForCombat(kind === 'movement' ? QUEST_CHARA_CHANGE_FINISH_REPLY : QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
+      QUEST_COMBAT_WAIT + TIMEOUT);
+  }
+
+  function receiveChangedCharacter(reply) {
+    const update = readQuestCharaChangeReply(reply);
+    if (phase !== 'character-change' || !characterChange || characterChange.closed) return;
+    const side = update.player ? 'player' : 'opponent';
+    if (!roster[side].cards[update.index]) throw new SessionError('protocol');
+    characterChange.applied[side] = update;
+  }
+
+  function completeCharacterChange() {
+    if (!characterChange?.closed) return;
+    const { kind, applied } = characterChange;
+    for (const side of ['player', 'opponent']) {
+      const update = applied[side];
+      if (!update) continue;
+      const selected = roster[side].cards[update.index];
+      if (selected.cardId !== update.cardId) {
+        selected.cardId = update.cardId;
+        selected.hp = null;
+        changedHp.add(selected);
+      }
+      selected.alive = true;
+      roster[side].activeIndex = update.index;
+    }
+    lastCharacterChange = { kind, turn: characterChange.turn, ...applied };
+    characterChange = null;
+    if (pending?.kind !== 'character') return;
+    if (applied.player?.index === pending.character.index && applied.player.cardId === pending.character.cardId) {
+      pending.resolve(applied.player);
+    } else pending.reject(new SessionError('quest-character-overridden'));
+  }
+
   function receiveCharacterChange(reply) {
     const state = readQuestCombatBoundaryReply(reply);
     if (reply.command === QUEST_CHARA_CHANGE_START_REPLY) {
       if (phase !== 'moved' || nextCombatReply !== QUEST_ATTACK_PHASE_START_REPLY) throw new SessionError('protocol');
-      characterChange = { kind: 'movement', ...state };
-      phase = 'character-change';
-      waitForCombat(QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+      confirmActiveCharacters();
+      openCharacterChange('movement', state);
     } else if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
-      if (phase !== 'moved' || !exchange.dice || !finishCombat('complete')) throw new SessionError('protocol');
-      characterChange = { kind: 'defeated', ...state };
-      phase = 'character-change';
-      waitForCombat(QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+      if (phase !== 'moved' || !finishCombat('complete')) throw new SessionError('protocol');
+      const discarded = new Set(state.playerCards);
+      hand = hand.filter((card) => !discarded.has(card.id));
+      openCharacterChange('defeated', state);
     } else {
       if (phase !== 'character-change' || nextCombatReply !== reply.command) throw new SessionError('protocol');
-      const { kind } = characterChange;
-      characterChange = null;
+      const { kind, playerDone, opponentDone, applied } = characterChange;
+      if ((!playerDone && !applied.player) || (!opponentDone && !applied.opponent)) throw new SessionError('protocol');
+      characterChange.closed = true;
       if (kind === 'defeated') beginNextTurn();
-      else {
-        phase = 'moved';
-        waitForCombat(QUEST_ATTACK_PHASE_START_REPLY);
+      else waitForCombat(QUEST_ATTACK_PHASE_START_REPLY);
+    }
+  }
+
+  function observeRosterHp(update, revival) {
+    const side = update.player ? 'player' : 'opponent';
+    const position = roster[side];
+    // An unindexed HP event emitted while the real character is switching can target either slot.
+    if (update.index === null && characterChange && update.value !== 0) {
+      const applied = characterChange.applied[side];
+      if (!applied && !characterChange[update.player ? 'playerDone' : 'opponentDone']) {
+        for (const card of position.cards) {
+          changedHp.add(card);
+          card.hp = null;
+          card.alive = null;
+        }
+        return;
       }
+    }
+    const card = position.cards[update.index ?? characterChange?.applied[side]?.index ?? position.activeIndex];
+    if (!card) throw new SessionError('protocol');
+    if (revival && card.alive !== false) {
+      if (card.alive === null && update.value > 0) {
+        changedHp.add(card);
+        card.alive = true;
+      }
+      return;
+    }
+    if (update.kind === 'absolute' || update.value !== 0) changedHp.add(card);
+    if (update.kind === 'absolute') card.hp = update.value;
+    else if (card.hp !== null) card.hp += update.kind === 'heal' ? update.value : -update.value;
+    if (card.hp !== null) card.alive = card.hp > 0;
+    else if (update.value !== 0) {
+      const raises = update.kind === 'heal' ? update.value > 0 : update.value < 0;
+      card.alive = raises ? true : card.alive === false ? false : null;
     }
   }
 
@@ -958,18 +1102,6 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     }
     if (['complete', 'terminal', 'uncertain'].includes(exchange.phase)) return;
 
-    if (reply.command === QUEST_DAMAGE_REPLY || reply.command === QUEST_HIT_POINT_REPLY) {
-      if (exchange.playerAttacks === null) return;
-      if (reply.command === QUEST_DAMAGE_REPLY) {
-        if (exchange.damage.length >= 64) throw new SessionError('protocol');
-        exchange.damage.push(readQuestDamageReply(reply));
-      } else {
-        const { player, hp } = readQuestHitPointReply(reply);
-        exchange.hitPoints[player ? 'player' : 'opponent'] = hp;
-      }
-      return;
-    }
-
     if (reply.command === QUEST_TURN_FINISH_REPLY) {
       readQuestCombatBoundaryReply(reply);
       if (exchange.index === 2 && exchange.dice) beginNextTurn();
@@ -994,9 +1126,15 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     }
     if (reply.command !== nextCombatReply) throw new SessionError('protocol');
     switch (reply.command) {
-      case QUEST_ATTACK_PHASE_START_REPLY:
-        openAttack(readQuestAttackPhaseReply(reply));
+      case QUEST_ATTACK_PHASE_START_REPLY: {
+        const attacker = readQuestAttackPhaseReply(reply);
+        if (characterChange?.closed && characterChange.kind === 'movement') {
+          phase = 'moved';
+          completeCharacterChange();
+        }
+        openAttack(attacker);
         break;
+      }
       case QUEST_ATTACK_PHASE_FINISH_REPLY:
         exchange.attackCards = readQuestBattleCardsReply(reply);
         if (!closeCombatDrop()) break;
@@ -1037,7 +1175,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     ...QUEST_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
     QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ERROR_REPLY,
     QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
-    ...QUEST_HAND_EFFECT_REPLIES,
+    ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
   ], (reply) => {
     if (phase === 'closed') return;
     try {
@@ -1046,6 +1184,28 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         return;
       }
       if (phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return;
+      if (reply.command === QUEST_CHARA_CHANGE_REPLY) {
+        receiveChangedCharacter(reply);
+        return;
+      }
+      if (reply.command === QUEST_CHARA_TRANSFORM_REPLY) {
+        readQuestCharaTransformReply(reply);
+        uncertain();
+        return;
+      }
+      if (QUEST_ROSTER_HP_REPLIES.includes(reply.command)) {
+        const hp = readQuestRosterHpReply(reply);
+        observeRosterHp(hp, reply.command === QUEST_CHARA_REVIVE_REPLY);
+        if (phase === 'moved' && exchange && exchange.playerAttacks !== null && exchange.phase !== 'complete') {
+          if (reply.command === QUEST_DAMAGE_REPLY) {
+            if (exchange.damage.length >= 64) throw new SessionError('protocol');
+            exchange.damage.push({ player: hp.player, damage: hp.value, nonHostile: hp.nonHostile });
+          } else if (reply.command === QUEST_HIT_POINT_REPLY) {
+            exchange.hitPoints[hp.player ? 'player' : 'opponent'] = hp.value;
+          }
+        }
+        return;
+      }
       if (QUEST_HAND_EFFECT_REPLIES.includes(reply.command)) {
         if (readQuestHandEffectReply(reply)) uncertain();
         return;
@@ -1126,22 +1286,34 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
       uncertain();
     }
   });
-  void socket.closed.then(uncertain);
+  void loadStartingHp().catch(() => {});
+  void socket.closed.then(() => {
+    rosterFetch.abort();
+    uncertain();
+  });
 
   async function send(kind, command, fields, signal, details = {}) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (phase === 'uncertain' || exchange?.phase === 'uncertain') throw new SessionError('quest-battle-uncertain');
     if (pending) throw new SessionError('busy');
     const combat = kind === 'battle-card' || kind === 'battle-commit';
+    const choosingCharacter = kind === 'character';
     const transferring = kind === 'card' || kind === 'battle-card';
     const combatCommands = combat ? QUEST_COMBAT_COMMANDS[exchange?.phase] : null;
+    const character = choosingCharacter && characterChange?.requestedIndex === null
+      ? characterChoices().find(({ index }) => index === details.index) : null;
+    const directionChange = kind === 'direction' && details.direction === DIRECTION_CHARA_CHANGE;
+    if ((choosingCharacter && !character) || (directionChange && !canRequestCharacterChange())) {
+      throw new SessionError('quest-character-unavailable');
+    }
+    const expectedPhase = choosingCharacter ? 'character-change' : kind === 'ready' ? 'encounter' : 'move';
     const allowed = !duelFinish && !questFinish && (combat ? phase === 'moved' && Boolean(combatCommands)
-      : phase === (kind === 'ready' ? 'encounter' : 'move'));
+      : phase === expectedPhase);
     if (!allowed) {
       throw new SessionError(transferring ? 'quest-card-unavailable' : 'quest-battle-unavailable');
     }
-    const remaining = (combat ? combatDeadline : moveDeadline) - performance.now();
-    if ((combat || phase === 'move') && remaining <= 0) {
+    const remaining = (combat || choosingCharacter ? combatDeadline : moveDeadline) - performance.now();
+    if ((combat || choosingCharacter || phase === 'move') && remaining <= 0) {
       uncertain();
       throw new SessionError('quest-battle-uncertain');
     }
@@ -1151,7 +1323,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     const controller = new AbortController();
     const cancel = () => controller.abort(new SessionError('cancelled'));
     signal?.addEventListener('abort', cancel, { once: true });
-    const action = { kind, direction: details.direction, cardTransfer, controller, answered: false };
+    const action = { kind, direction: details.direction, cardTransfer, controller, answered: false,
+      character: character && { index: character.index, cardId: character.cardId } };
     const notification = new Promise((resolve, reject) => {
       action.resolve = resolve;
       action.reject = reject;
@@ -1165,9 +1338,11 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         if (kind === 'ready') phase = 'preparing';
         else if (kind === 'commit') phase = 'committing';
         else if (kind === 'battle-commit') exchange.phase = 'committing';
+        else if (choosingCharacter) characterChange.requestedIndex = character.index;
         // A commit waits for both entrants or the source phase timer.
         let timeout = TIMEOUT;
         if (kind === 'commit') timeout = remaining;
+        if (choosingCharacter) timeout = remaining + 2 * TIMEOUT;
         if (kind === 'battle-commit') {
           // The combat observer separately bounds each original stage; this caps the whole action.
           timeout = remaining + (exchange.playerAttacks ? QUEST_COMBAT_WAIT : 0) + 5 * TIMEOUT;
@@ -1177,7 +1352,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
           ? { ...acknowledged, settlement: settlementSnapshot() } : acknowledged);
       } catch (error) {
         if (sent && phase !== 'closed' && error.kind !== 'quest-direction-rejected'
-            && error.kind !== 'quest-card-rejected' && error.kind !== 'quest-battle-unavailable') {
+            && error.kind !== 'quest-card-rejected' && error.kind !== 'quest-battle-unavailable'
+            && error.kind !== 'quest-character-overridden') {
           uncertain();
           throw new SessionError('quest-battle-uncertain');
         }
@@ -1193,14 +1369,22 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   return {
     get busy() { return pending !== null; },
     get settlement() { return structuredClone(settlementSnapshot()); },
-    snapshot: () => structuredClone({
-      phase, turn, startDistance, direction, ready, result, previousExchange, characterChange, moveTable,
-      actionHand: hand && hand.filter((card) => !card.event),
-      eventHand: hand && hand.filter((card) => card.event).map(({ id, up }) => ({ id, up })),
-      exchange: exchange && { ...exchange, settlement: settlementSnapshot() },
-    }),
+    snapshot() {
+      const choices = characterChoices();
+      return structuredClone({
+        phase, turn, startDistance, direction, ready, result, previousExchange, lastCharacterChange, moveTable, roster,
+        canRequestCharacterChange: canRequestCharacterChange(),
+        characterChange: characterChange && {
+          ...characterChange, choices, canSelect: characterChange.requestedIndex === null && choices.length > 0,
+        },
+        actionHand: hand && hand.filter((card) => !card.event),
+        eventHand: hand && hand.filter((card) => card.event).map(({ id, up }) => ({ id, up })),
+        exchange: exchange && { ...exchange, settlement: settlementSnapshot() },
+      });
+    },
     ready: (signal) => send('ready', QUEST_READY_REQUEST, [], signal),
     choose: (chosen, signal) => send('direction', QUEST_DIRECTION_REQUEST, [signedByte(chosen)], signal, { direction: chosen }),
+    chooseCharacter: (index, signal) => send('character', QUEST_CHARA_CHANGE_REQUEST, [signedByte(index)], signal, { index }),
     addCard: (id, up, signal) => send('card', QUEST_MOVE_CARD_ADD_REQUEST, null, signal, { id, up }),
     removeCard: (id, signal) => send('card', QUEST_MOVE_CARD_REMOVE_REQUEST, null, signal, { id }),
     commit: (signal) => send('commit', QUEST_MOVE_COMMIT_REQUEST, ['', ''], signal),
@@ -1209,6 +1393,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     commitBattle: (signal) => send('battle-commit', 'done', ['', ''], signal),
     async stop(reason) {
       phase = 'closed';
+      rosterFetch.abort();
       if (exchange) exchange.phase = 'closed';
       clearTimeout(settlementTimer);
       unsubscribe();
@@ -1518,8 +1703,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
                 current.connected = false;
                 if (['entering', 'encounter', 'progress'].includes(current.state)) current.state = 'uncertain';
               });
-            }, () => {
-              current.battle = observeQuestBattle(socket, selected, (receipt) => reconcileQuestSettlement(selected, receipt));
+            }, (encounter) => {
+              current.battle = observeQuestBattle(socket, selected, encounter, (receipt) => reconcileQuestSettlement(selected, receipt));
             });
             if (result.rejection !== undefined) {
               adventure = null;
@@ -1556,8 +1741,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       return activeBattle().ready(signal);
     },
     async chooseQuestMove(direction, { signal } = {}) {
-      if (!Number.isInteger(direction) || direction < -1 || direction > 1) throw new SessionError('protocol');
+      if (!Number.isInteger(direction) || direction < -1 || direction > DIRECTION_CHARA_CHANGE
+          || direction === DIRECTION_PENDING) throw new SessionError('protocol');
       return activeBattle().choose(direction, signal);
+    },
+    async chooseQuestCharacter(index, { signal } = {}) {
+      if (!Number.isInteger(index) || index < 0 || index > 2) throw new SessionError('quest-character-unavailable');
+      return activeBattle().chooseCharacter(index, signal);
     },
     async addQuestMoveCard(cardId, up, { signal } = {}) {
       if (!validQuestCardId(cardId) || typeof up !== 'boolean') {

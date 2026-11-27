@@ -7,6 +7,7 @@ const MAX_DIALOGUE_BYTES = 64 * 1024;
 const MAX_DECK_INDEX = 127;
 const LAND_SLOT_COUNT = 15;
 const MAX_LAND_PROGRESS = (1 << LAND_SLOT_COUNT) - 1;
+const ROSTER_SLOT_COUNT = 3;
 const REFILL_ORIENTATION_BITS = 32;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
@@ -49,6 +50,7 @@ export const QUEST_DEFENCE_CARD_ADD_REQUEST = 30;
 export const QUEST_DEFENCE_CARD_REMOVE_REQUEST = 31;
 export const QUEST_ATTACK_DONE_REQUEST = 33;
 export const QUEST_DEFENCE_DONE_REQUEST = 34;
+export const QUEST_CHARA_CHANGE_REQUEST = 35;
 export const QUEST_TURN_REPLY = 43;
 export const QUEST_ACTION_REFILL_REPLY = 44;
 export const QUEST_EVENT_REFILL_REPLY = 45;
@@ -71,8 +73,18 @@ export const QUEST_MOVE_CARD_ADD_REPLY = 61;
 export const QUEST_MOVE_CARD_REMOVE_REPLY = 62;
 export const QUEST_BATTLE_CARD_ADD_REPLY = 65;
 export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
+export const QUEST_CHARA_CHANGE_REPLY = 72;
 export const QUEST_DAMAGE_REPLY = 73;
+export const QUEST_CHARA_REVIVE_REPLY = 75;
 export const QUEST_HIT_POINT_REPLY = 79;
+export const QUEST_CHARA_TRANSFORM_REPLY = 112;
+
+const PARTY_DAMAGE_REPLY = 74;
+const HEAL_REPLY = 77;
+const PARTY_HEAL_REPLY = 78;
+export const QUEST_ROSTER_HP_REPLIES = Object.freeze([
+  QUEST_DAMAGE_REPLY, PARTY_DAMAGE_REPLY, QUEST_CHARA_REVIVE_REPLY, HEAL_REPLY, PARTY_HEAL_REPLY, QUEST_HIT_POINT_REPLY,
+]);
 
 const CARD_ROTATE_REPLIES = [63, 64];
 const CARD_REMOVE_REPLIES = [84, 85, 86];
@@ -465,6 +477,26 @@ export function readQuestBattleDiceReply(reply) {
   return { playerAttacks, attackDice, defenceDice };
 }
 
+export function readQuestCharaChangeReply(reply) {
+  if (reply.command !== QUEST_CHARA_CHANGE_REPLY) throw new Error('Unexpected quest character change reply.');
+  const player = readDuelBoolean(reply);
+  const index = reply.byte();
+  const cardId = reply.int();
+  reply.discardString(MAX_ID_LIST_BYTES, true); // Original weapon modifiers and passives.
+  reply.done();
+  if (index < 0 || index >= ROSTER_SLOT_COUNT || cardId <= 0) throw new Error('Invalid quest character change reply.');
+  return { player, index, cardId };
+}
+
+export function readQuestCharaTransformReply(reply) {
+  if (reply.command !== QUEST_CHARA_TRANSFORM_REPLY) throw new Error('Unexpected quest character transform reply.');
+  const player = readDuelBoolean(reply);
+  const cardId = reply.int();
+  reply.done();
+  if (cardId <= 0) throw new Error('Invalid quest character transform reply.');
+  return { player, cardId };
+}
+
 export function readQuestDamageReply(reply) {
   if (reply.command !== QUEST_DAMAGE_REPLY) throw new Error('Unexpected quest damage reply.');
   const player = readDuelBoolean(reply);
@@ -482,16 +514,41 @@ export function readQuestHitPointReply(reply) {
   return { player, hp };
 }
 
+export function readQuestRosterHpReply(reply) {
+  const { command } = reply;
+  if (command === QUEST_DAMAGE_REPLY) {
+    const { player, damage, nonHostile } = readQuestDamageReply(reply);
+    return { player, index: null, kind: 'damage', value: damage, nonHostile };
+  }
+  if (command === QUEST_HIT_POINT_REPLY) {
+    const { player, hp } = readQuestHitPointReply(reply);
+    return { player, index: null, kind: 'absolute', value: hp };
+  }
+  if (!QUEST_ROSTER_HP_REPLIES.includes(command)) throw new Error('Unexpected quest roster HP reply.');
+  const player = readDuelBoolean(reply);
+  const index = command === HEAL_REPLY ? null : reply.int();
+  if (index !== null && (index < 0 || index >= ROSTER_SLOT_COUNT)) throw new Error('Invalid quest character slot.');
+  if (command === PARTY_DAMAGE_REPLY) {
+    const value = reply.int();
+    const nonHostile = readDuelBoolean(reply);
+    reply.done();
+    return { player, index, kind: 'damage', value, nonHostile };
+  }
+  const kind = command === QUEST_CHARA_REVIVE_REPLY ? 'absolute' : 'heal';
+  const value = command === QUEST_CHARA_REVIVE_REPLY ? reply.int() : reply.byte();
+  reply.done();
+  return { player, index, kind, value };
+}
+
 export function readQuestCombatBoundaryReply(reply) {
   if (reply.command === QUEST_CHARA_CHANGE_START_REPLY || reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
-    const playerDone = readDuelBoolean(reply);
-    const opponentDone = readDuelBoolean(reply);
+    const change = { playerDone: readDuelBoolean(reply), opponentDone: readDuelBoolean(reply) };
     if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
-      reply.discardString(MAX_ID_LIST_BYTES, true);
+      change.playerCards = readDuelCardIds(reply);
       reply.discardString(MAX_ID_LIST_BYTES, true);
     }
     reply.done();
-    return { playerDone, opponentDone };
+    return change;
   }
   if (reply.command !== QUEST_CHARA_CHANGE_FINISH_REPLY && reply.command !== QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY
     && reply.command !== QUEST_TURN_FINISH_REPLY) {
