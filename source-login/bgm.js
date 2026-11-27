@@ -15,6 +15,7 @@ music.loop = true;
 stage.append(music);
 
 let active = true;
+let musicWarmup;
 let alertPlayback;
 const entryObserver = new MutationObserver(playAtTitle);
 
@@ -36,10 +37,37 @@ function playAudio(audio) {
   void audio.play().catch(reportAudioError);
 }
 
+function titleEntered() {
+  return stage.dataset.entry === "entering" || stage.dataset.entry === "ready";
+}
+
 function playAtTitle() {
-  if (!active || (stage.dataset.entry !== "entering" && stage.dataset.entry !== "ready")) return;
+  if (!active || !titleEntered()) return;
   entryObserver.disconnect();
+  if (musicWarmup) {
+    musicWarmup = undefined;
+    music.currentTime = 0;
+  }
+  music.volume = defaultVolume;
   if (music.paused && !music.error) playAudio(music);
+}
+
+function warmMusic() {
+  if (musicWarmup || music.error) return;
+
+  // Use an early trusted gesture to prepare the player silently.
+  music.volume = 0;
+  const attempt = music.play();
+  musicWarmup = attempt;
+  void attempt.then(() => {
+    if (musicWarmup === attempt) {
+      music.pause();
+      music.currentTime = 0;
+    }
+  }, error => {
+    if (musicWarmup === attempt) musicWarmup = undefined;
+    reportAudioError(error);
+  });
 }
 
 function armTitleAlert() {
@@ -79,7 +107,9 @@ function watchEntry() {
 }
 
 function playOnGesture(event) {
-  if (event.isTrusted) playAtTitle();
+  if (!active || !event.isTrusted) return;
+  if (titleEntered()) playAtTitle();
+  else warmMusic();
 }
 
 window.addEventListener("pointerdown", playOnGesture, true);
@@ -98,6 +128,7 @@ document.getElementById("login-submit").addEventListener("click", event => {
 });
 window.addEventListener("pagehide", () => {
   active = false;
+  musicWarmup = undefined;
   entryObserver.disconnect();
   music.pause();
   clickSound.pause();

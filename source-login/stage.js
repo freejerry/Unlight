@@ -5,6 +5,12 @@ const STAGE_WIDTH = 780;
 const STAGE_HEIGHT = 680;
 const ART_WIDTH = 760;
 const ART_HEIGHT = 680;
+const GLOW_RECT_Y = 340;
+const GLOW_RECT_HEIGHT = 50;
+const GLOW_BLUR_Y = 110;
+const GLOW_STRENGTH = 4;
+const GLOW_TOP = GLOW_RECT_Y - GLOW_BLUR_Y / 2;
+const GLOW_HEIGHT = GLOW_RECT_HEIGHT + GLOW_BLUR_Y;
 const canvas = document.getElementById("stage-background");
 const stage = document.getElementById("stage");
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -159,7 +165,7 @@ function showTitle(renderer, background, title) {
     renderer.paint(drawLayer => {
       drawLayer(background, 0, 0, ART_WIDTH, ART_HEIGHT, intro);
       if (!title) return;
-      drawLayer(title.glow, 0, 285, ART_WIDTH, 160, state.glowOpacity);
+      drawLayer(title.glow, 0, GLOW_TOP, ART_WIDTH, GLOW_HEIGHT, state.glowOpacity);
       drawAsset(drawLayer, title.logo, 390, 370, 0.7, state.logoOpacity);
       if (state.butterfly) {
         const { x, y, frame } = state.butterfly;
@@ -188,18 +194,23 @@ function drawAsset(drawLayer, frame, x, y, scale, alpha) {
 }
 
 function createLogoGlow() {
-  // Logo.as applies a vertical GlowFilter to a 760 × 50 rectangle at y=340.
+  // Logo.as applies one vertical blur pass, then multiplies its alpha by strength.
   const image = document.createElement("canvas");
   image.width = 1;
-  image.height = 160;
+  image.height = GLOW_HEIGHT;
   const context = image.getContext("2d");
-  const glow = context.createLinearGradient(0, 0, 0, image.height);
-  glow.addColorStop(0, "rgba(238, 238, 238, 0)");
-  glow.addColorStop(55 / 160, "#eee");
-  glow.addColorStop(105 / 160, "#eee");
-  glow.addColorStop(1, "rgba(238, 238, 238, 0)");
-  context.fillStyle = glow;
-  context.fillRect(0, 0, image.width, image.height);
+  const pixels = context.createImageData(1, image.height);
+  const radius = GLOW_BLUR_Y / 2;
+  const taps = GLOW_BLUR_Y + 1; // Both endpoints of the 110-pixel filter span.
+  const rectBottom = GLOW_RECT_Y + GLOW_RECT_HEIGHT;
+  for (let row = 0; row < image.height; row += 1) {
+    const y = GLOW_TOP + row + 0.5;
+    const overlap = Math.min(rectBottom, y + radius) - Math.max(GLOW_RECT_Y, y - radius);
+    const blurredAlpha = Math.round(255 * overlap / taps);
+    const alpha = Math.min(255, blurredAlpha * GLOW_STRENGTH);
+    pixels.data.set([238, 238, 238, alpha], row * 4);
+  }
+  context.putImageData(pixels, 0, 0);
   return image;
 }
 

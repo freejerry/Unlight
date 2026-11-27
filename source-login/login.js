@@ -41,10 +41,41 @@ function showStatus(state, message = '', kind) {
   else delete status.dataset.errorKind;
 }
 
+function showError(kind, message, field) {
+  showStatus('error', '', kind);
+  loginAlertMessage.textContent = message;
+  alertReturnFocus = field;
+  loginAlert.showModal();
+  playTitleAlert();
+}
+
+function showInputError(registering) {
+  if (!username.validity.valid) {
+    if (username.validity.valueMissing) showError('name-required', '請輸入名字。', username);
+    else showError('name-invalid', '請確認帳號格式。', username);
+    return true;
+  }
+  if (!password.validity.valid) {
+    const kind = password.validity.valueMissing ? 'password-required' : 'password-invalid';
+    const message = registering ? '請確認密碼欄位。' : failureMessages.credentials;
+    showError(kind, message, password);
+    return true;
+  }
+  if (registering && !email.validity.valid) {
+    if (email.validity.valueMissing) showError('email-required', '請輸入 Email。', email);
+    else showError('email-invalid', '請確認 Email 格式。', email);
+    return true;
+  }
+  if (registering && confirmation.value !== password.value) {
+    showError('password-mismatch', '兩次輸入的密碼不一致。', confirmation);
+    return true;
+  }
+  return false;
+}
+
 function clearPasswords() {
   password.value = '';
   confirmation.value = '';
-  confirmation.setCustomValidity('');
 }
 
 function setMode(mode) {
@@ -83,22 +114,14 @@ loginAlert.addEventListener('close', () => {
   alertReturnFocus = null;
 });
 
-for (const field of [password, confirmation]) {
-  field.addEventListener('input', () => confirmation.setCustomValidity(''));
-}
-
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  if (currentAttempt || loginAlert.open || !form.reportValidity()) return;
+  if (currentAttempt || loginAlert.open) return;
 
   const registering = form.dataset.mode === 'register';
+  if (showInputError(registering)) return;
   const accountName = username.value;
   const secret = password.value;
-  if (registering && confirmation.value !== secret) {
-    confirmation.setCustomValidity('兩次輸入的密碼不一致。');
-    confirmation.reportValidity();
-    return;
-  }
 
   const attempt = { controller: new AbortController(), session: null, closing: null };
   currentAttempt = attempt;
@@ -147,11 +170,7 @@ form.addEventListener('submit', async event => {
       fields.disabled = false;
       accountMode.disabled = false;
       if (loginFailure) {
-        showStatus('error', '', loginFailure);
-        loginAlertMessage.textContent = failureMessages[loginFailure];
-        alertReturnFocus = target;
-        loginAlert.showModal();
-        playTitleAlert();
+        showError(loginFailure, failureMessages[loginFailure], target);
       } else if (restoreFocus && document.activeElement === status) {
         target.focus({ preventScroll: true });
       }

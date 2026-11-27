@@ -37,6 +37,8 @@ def main():
         page.add_init_script("""(() => {
           window.titleAudio = [];
           window.titleEffects = [];
+          window.nativeValidationEvents = 0;
+          addEventListener("invalid", () => { window.nativeValidationEvents += 1; }, true);
           const play = HTMLMediaElement.prototype.play;
           HTMLMediaElement.prototype.play = function (...args) {
             window.titleAudio.push(this);
@@ -55,6 +57,7 @@ def main():
         stage = page.locator("#stage")
         expect(stage).to_have_attribute("data-entry", "ready")
         assert stage.evaluate("node => [node.offsetWidth, node.offsetHeight]") == [780, 680]
+        assert page.evaluate("getComputedStyle(document.documentElement).backgroundColor") == "rgb(8, 8, 8)"
         expect(page.locator("#stage-background")).to_have_attribute("data-title-state", "ready")
 
         news = page.locator("#news")
@@ -74,6 +77,10 @@ def main():
         expect(toggle).to_be_visible()
         submit = page.get_by_role("button", name="Login", exact=True)
         submit_box = submit.bounding_box()
+        login_box = page.locator("#login").bounding_box()
+        assert submit_box["x"] + submit_box["width"] / 2 == login_box["x"] + login_box["width"] / 2
+        button_skin = submit.evaluate("node => getComputedStyle(node).backgroundImage")
+        assert button_skin.startswith("linear-gradient(")
         assert toggle.bounding_box()["y"] >= submit_box["y"] + submit_box["height"]
         toggle.click()
         expect(page.locator("#login-title")).to_have_text("Register")
@@ -99,13 +106,34 @@ def main():
         page.set_viewport_size({"width": 1040, "height": 900})
         bounds = stage.bounding_box()
         assert [bounds[key] for key in ("x", "y", "width", "height")] == [130, 110, 780, 680]
-        page.locator("#username").fill("smoke" + token_hex(5))
-        page.locator("#password").fill("testonly")
-        submit.click()
         dialog = page.get_by_role("alertdialog", name="Error", exact=True)
-        expect(dialog).to_be_visible()
-        expect(dialog.locator("#login-alert-message")).to_have_text("認證失敗")
+        message = dialog.locator("#login-alert-message")
         ok = dialog.get_by_role("button", name="OK", exact=True)
+        username = page.locator("#username")
+        password = page.locator("#password")
+
+        submit.click()
+        expect(message).to_have_text("請輸入名字。")
+        expect(ok).to_be_focused()
+        ok.click()
+        expect(dialog).to_be_hidden()
+        expect(username).to_be_focused()
+
+        username.fill("smoke" + token_hex(5))
+        password.press("Enter")
+        expect(message).to_have_text("認證失敗")
+        expect(ok).to_be_focused()
+        page.mouse.move(4, 4)
+        assert ok.evaluate("node => getComputedStyle(node).backgroundImage") == button_skin
+        ok.press("Escape")
+        expect(dialog).to_be_hidden()
+        expect(password).to_be_focused()
+        assert not sockets and page.evaluate("window.nativeValidationEvents") == 0
+
+        password.fill("testonly")
+        submit.click()
+        expect(dialog).to_be_visible()
+        expect(message).to_have_text("認證失敗")
         expect(ok).to_be_focused()
         box = dialog.bounding_box()
         assert [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2] == [520, 450]

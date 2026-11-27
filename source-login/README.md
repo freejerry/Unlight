@@ -1,6 +1,6 @@
 # 原始素材登入頁
 
-舞台固定為 780 × 680。Rust 編譯成 WebAssembly，從原始背景 SWF 讀取內嵌 JPEG，WebGL 2 繪製原始 760 × 680 背景。Logo、蝴蝶和載入動畫直接讀取三份原始 SWF 的向量及時序，並在 WebGL 2 合成。Logo 與標題面板採用 ActionScript 指定的入場曲線，蝴蝶依 24 FPS 舞台節奏振翅和追蹤游標。光暈依原始色彩及範圍繪製，使用網頁漸層近似 Flash 濾鏡。
+舞台固定為 780 × 680。Rust 編譯成 WebAssembly，從原始背景 SWF 讀取內嵌 JPEG，WebGL 2 繪製原始 760 × 680 背景。Logo、蝴蝶和載入動畫直接讀取三份原始 SWF 的向量及時序，並在 WebGL 2 合成。Logo 與標題面板採用 ActionScript 指定的入場曲線，蝴蝶依 24 FPS 舞台節奏振翅和追蹤游標。光暈採用原版矩形的垂直模糊、強度和最終透明度，並以原版留存畫面量測亮帶。
 
 登入面板採用原版 `Login`、`Name:`、`Pass:` 字樣與同行欄位。登入按鈕下方的 `Create New Account` 會切換至原版帳號註冊。左下 News 位於原始的 (15, 480)，大小為 220 × 200。News 讀取 `/public/news.xml`，預設是本目錄的三筆繁中測試公告，內容可以捲動。使用 `--news /path/to/news.xml` 可覆寫。
 
@@ -38,14 +38,14 @@ python3 tools/legacy-web/check_source_login.py --port 4389
 
 | 項目 | 來源與驗收 |
 | --- | --- |
-| 舞台 | 固定為 780 × 680，視窗較高時垂直置中，較矮時保留可捲動高度。 |
+| 舞台 | 固定為 780 × 680，視窗較高時垂直置中，較矮時保留可捲動高度。兩個回放入口的舞台外底色依原版 HTML 設定為 `#080808`。 |
 | 背景、Logo、蝴蝶與過場 | 使用原始 SWF 的 JPEG、向量與時間軸。入場與追蹤讀取原版 [TitleView](../app/client/src/view/TitleView.as) 和 [Ageha](../app/client/src/view/image/title/Ageha.as) 的設定。 |
-| 登入框與標題 | [LoginPanel](../app/client/src/view/image/title/LoginPanel.as) 定位 (500, 20)，英文字樣與同行欄位依來源。面板標題使用與原版 Flex 標題欄相近的裝置字型，Name／Pass 使用歷史字型原檔。 |
+| 登入框與標題 | [LoginPanel](../app/client/src/view/image/title/LoginPanel.as) 定位 (500, 20)，英文字樣與同行欄位依來源。面板標題使用與原版 Flex 標題欄相近的裝置字型，Name／Pass 使用歷史字型原檔。Login 與 OK 共用原版樣式的灰色按鈕，登入按鈕以面板置中。 |
 | News | [NewsPanel](../app/client/src/view/image/title/NewsPanel.as) 定位 (15, 480)，220 × 200。驗證同源三則 XML 公告，以及內容可捲閱。 |
-| 註冊與返回 | 表單底部的 Create New Account 切換至 Register。原始 Auth 指令建立帳號，完成後回登入表單，重新輸入密碼即可登入。 |
-| 登入失敗 | [TitleCtrl](../app/client/src/controller/TitleCtrl.as) 使用 Error 警示。780 × 680 舞台以 Flex 的 50% 淺色遮罩和 3px 模糊覆蓋，確認後焦點回密碼。 |
-| BGM 與音效 | [TitleBGM](../app/client/src/sound/bgm/TitleBGM.as) 循環播放，登入與註冊提交使用 [ClickSE](../app/client/src/sound/se/ClickSE.as)，[Alerter](../app/client/lib/Alerter.as) 開啟錯誤視窗時使用 [Click2SE](../app/client/src/sound/se/Click2SE.as)。 |
+| 註冊與返回 | 表單底部的 Create New Account 依未修補的原版回放校正字形與位置，點擊後切換至 Register。原始 Auth 指令建立帳號，完成後回登入表單，重新輸入密碼即可登入。 |
+| 登入失敗 | [TitleCtrl](../app/client/src/controller/TitleCtrl.as) 使用 Error 警示。780 × 680 舞台以 Flex 的 50% 淺色遮罩和 3px 模糊覆蓋。空白帳號或密碼由同一視窗處理，確認後焦點回到缺漏欄位。 |
+| BGM 與音效 | [TitleBGM](../app/client/src/sound/bgm/TitleBGM.as) 在背景入場時自曲首循環播放。載入時點擊或按鍵可先靜音準備播放，原音檔曲首約 0.29 秒的低音量保留。登入與註冊提交使用 [ClickSE](../app/client/src/sound/se/ClickSE.as)，[Alerter](../app/client/lib/Alerter.as) 開啟錯誤視窗時使用 [Click2SE](../app/client/src/sound/se/Click2SE.as)。 |
 
-已知視覺差異包括 Logo 光暈的近似濾鏡、裝置字型的渲染差異，以及署名列目前位於舞台外。
+已知差異包括 Logo 濾鏡的取樣捨入、裝置字型的渲染差異，以及署名列目前位於舞台外。
 
 程式來源依本倉庫的 [MIT 授權](../LICENSE)。原版美術 © CPA。素材原檔來自上述素材鏡像，依 [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/) 使用。登入文字載入歷史 `nbr.ttf` 原檔，檔內標示 Bradley Gratis、Justin Callaghan 與公有領域授權。[歷史字型來源](https://github.com/UnlightCloud/shell/tree/4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc/res/data)
