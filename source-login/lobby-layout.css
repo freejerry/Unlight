@@ -1,0 +1,126 @@
+:root {
+  color-scheme: dark;
+  background: #080808;
+  color: #e6ebf2;
+  font: 14px/1.35 "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  min-width: 780px;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+}
+
+.lobby-stage {
+  position: relative;
+  isolation: isolate;
+  width: 780px;
+  height: 680px;
+  overflow: hidden;
+  background: #111720;
+}
+
+ul, dl, dd { margin: 0; }
+ul { padding: 0; list-style: none; }
+
+.lobby-backdrop,
+.art-slot,
+.avatar-layer,
+.entrance-layer,
+.top-entries,
+.play-entries li,
+.utility-entries li,
+.lower-slot,
+.side-entries,
+.avatar-status,
+.avatar-status > div { position: absolute; }
+
+/* EntranceBG's bitmap is placed at (0, 160) in the 760-wide authored scene. */
+.lobby-backdrop { top: 160px; width: 760px; height: 496px; background: #202a36; }
+.avatar-layer, .entrance-layer { inset: 0; }
+
+.art-slot, .lower-slot {
+  display: grid;
+  place-items: center;
+  color: #cfdae9;
+  background: #324356;
+  border: 1px dashed #849bb5;
+}
+
+/* Portrait boxes reserve the visible areas seen in the lobby reference capture. */
+.standing-character { left: 0; top: 202px; width: 248px; height: 420px; }
+.avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
+
+.top-entries {
+  inset: 32px auto auto 0;
+  width: 760px;
+  height: 112px;
+  display: grid;
+  grid-template-columns: 208px 216px repeat(3, 112px);
+}
+
+.top-entries li, .play-entries li, .utility-entries li, .side-entries li {
+  display: grid;
+  place-items: center;
+  background: #27384b;
+  border: 1px solid #8196b1;
+}
+
+.top-entries li {
+  align-items: end;
+  padding-block-end: 10px;
+  font-weight: 600;
+}
+
+/* Named SWF placement origins, in the center coordinate system of each tile. */
+.play-entries li {
+  width: 156px;
+  height: 156px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 600;
+}
+.duel { left: 272px; top: 240px; }
+.quest { left: 464px; top: 240px; }
+.raid { left: 368px; top: 368px; }
+
+.utility-entries li { height: 27px; }
+.options { left: 536px; top: 160px; width: 104px; }
+.tutorial { left: 640.05px; top: 159.95px; width: 119.95px; }
+.serial { left: 652px; top: 200px; width: 108px; }
+
+.side-entries {
+  left: 713px;
+  top: 480px;
+  width: 44px;
+  display: grid;
+  grid-auto-rows: 38px;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.ranking { left: 0; top: 445px; width: 258px; height: 211px; }
+.chat { left: 262px; top: 567px; width: 247px; height: 89px; }
+
+/* AvatarView's status sits at the lower edge; AP has its separate (705, 646) origin. */
+.avatar-status { top: 660px; width: 760px; height: 20px; background: #263243; }
+.avatar-status > div {
+  top: 0;
+  min-height: 20px;
+  padding-inline: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-inline-end: 1px solid #8196b1;
+  font-size: 12px;
+}
+.avatar-status dt { color: #ccd8e6; }
+.avatar-status .name { left: 0; width: 185px; }
+.avatar-status .gem { left: 185px; width: 195px; }
+.avatar-status .exp { left: 380px; width: 218px; }
+.avatar-status .ap { left: 705px; top: -14px; width: 55px; height: 34px; background: #31455b; }

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unlight 大廳版面</title>
+    <link rel="stylesheet" href="lobby-layout.css" />
+  </head>
+  <body>
+    <main class="lobby-stage" aria-label="Unlight 大廳靜態版面">
+      <!-- LobbyView.as: PRIO_BG, PRIO_CHARA, PRIO_AVATAR, PRIO_ENTRANCE. -->
+      <div class="lobby-backdrop" aria-hidden="true"></div>
+      <div class="art-slot standing-character">角色立繪</div>
+      <div class="avatar-layer">
+        <div class="art-slot avatar">虛擬人物</div>
+        <ul class="side-entries" aria-label="角色入口">
+          <li>紀錄</li>
+          <li>好友</li>
+          <li>道具</li>
+        </ul>
+        <dl class="avatar-status" aria-label="角色狀態">
+          <div class="name"><dt>Name</dt><dd>Lv.1 玩家</dd></div>
+          <div class="gem"><dt>Gem</dt><dd>100</dd></div>
+          <div class="exp"><dt>Exp</dt><dd>0/10</dd></div>
+          <div class="ap"><dt>AP</dt><dd>5/5</dd></div>
+        </dl>
+      </div>
+      <div class="entrance-layer">
+        <!-- EntranceSet.as binds these instance names from the TCN entrance SWF. -->
+        <ul class="top-entries" aria-label="館舍入口">
+          <li data-symbol="btn_i">商店</li>
+          <li data-symbol="btn_j">暗房</li>
+          <li data-symbol="btn_g">牌組</li>
+          <li data-symbol="btn_e">道具</li>
+          <li data-symbol="btn_c">圖書館</li>
+        </ul>
+        <ul class="play-entries" aria-label="遊戲入口">
+          <li class="duel" data-symbol="btn_f">對戰</li>
+          <li class="quest" data-symbol="btn_b">任務</li>
+          <li class="raid" data-symbol="btn_k">襲擊</li>
+        </ul>
+        <ul class="utility-entries" aria-label="輔助入口">
+          <li class="options" data-symbol="btn_h">設定</li>
+          <li class="tutorial" data-symbol="btn_d">教學</li>
+          <li class="serial" data-symbol="btn_serial">序號</li>
+        </ul>
+        <div class="lower-slot ranking">排行榜</div>
+      </div>
+      <div class="lower-slot chat">聊天區</div>
+    </main>
+  </body>
+</html>
