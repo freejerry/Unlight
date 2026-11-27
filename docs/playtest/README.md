@@ -336,6 +336,14 @@ Chromium 以 1120 及 320 CSS 像素寬、DPR 2 連到隔離 Ruby。開始任務
 
 另一次實測在收到原版對局結果 `41`、庫存移除 `22` 和獎勵回覆後，持續攔下對應的 `24`。結算面板與返回操作仍未開放。登出關閉五條連線後，再交付原版 `24` 也不會重新顯示畫面。SQLite 保留原版已寫入的一筆勝利與獎勵。
 
+### 從創角到首場任務
+
+隔離試玩從只有登入資料的 Ruby 帳號開始。由原生頁面建立角色，再重新登入讀取空的任務清單。第一個牌組只有一張所選的起始角色卡，教學進度為 0。魔女山谷的原版搜尋設定為 180 秒、消耗 1 點行動力。在進度 0/3 時，原版搜尋只會找到「落日大蝙蝠」，開始該任務消耗 0 點行動力。[隔離帳號準備](../../tools/legacy-server/prepare.rb#L28) · [原版搜尋時間](../../app/server/src/constants/common_constants.rb#L951) · [原版任務抽選](../../app/server/src/model/quest_map.rb#L79) · [任務成本](../../app/server/data/csv/tcn/Quests.csv#L2)
+
+在 320 CSS 像素的 Chromium 實際建立角色，搜尋使行動力由 5 降至 4。到期前關閉試玩頁面並重新登入，原版 Data 恢復同一筆搜尋中的任務與剩餘時間。跨過原本的 180 秒期限後手動確認，再用唯一的起始角色卡「古魯瓦爾多」進入「寬廣高原1」。第一回合勝利後收到該筆任務結算，獲得 13 Gem 與 15 Exp，升至 2 級，魔女山谷通關數增至 1。以同一次登入返回任務清單。SQLite 核對該任務移出清單、牌組 1 解除鎖定、同一筆任務只有一筆勝利紀錄，原版升級後的行動力為 6/6。[320 像素單角色對戰](native/83-native-first-role-battle-mobile.png) · [320 像素首場結算](native/84-native-first-role-settlement-mobile.png)
+
+另一個帳號用 12 字繁中名稱創角，重新登入後在同一次登入實際等待 180 秒、確認結果並打贏第一回合。原版結算及 SQLite 確認獲得 8 Gem 與 5 Exp，角色維持 1 級、行動力 4/5。戰後重新登入，原版 Data 回傳同一角色，任務頁顯示魔女山谷進度 1/3、持有任務 0/4。讀取任務資料時未新增 Quest 命令，SQLite 記錄維持一致。[320 像素原版搜尋倒數](native/82-native-first-role-search-mobile.png) · [320 像素戰後重新登入](native/85-native-first-role-persisted-map-mobile.png)
+
 ### 區域地圖查詢
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)

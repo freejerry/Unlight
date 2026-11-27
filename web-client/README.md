@@ -30,6 +30,8 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 未創角時，填寫 3 至 12 字的角色名稱，再選素體、眼睛、嘴型、髮型和一張起始角色卡。選單以原版 Data 回傳的選項為準，名稱來自原始繁中資料。按「建立角色」後，原版大廳先確認名稱是否可用，再處理建立。畫面顯示角色已建立後，登出並重新登入即可讀取原版角色摘要及任務資料。若送出後無法確認結果，也請重新登入查詢。[創角驗收](../docs/playtest/README.md#原生建立角色) · [原版大廳流程](../app/server/src/controller/lobby_controller.rb#L86)
 
+要從空帳號開始玩首場任務，只使用 `--playtest-user` 準備帳號。建立角色並重新登入後，讀取空的任務清單，再到魔女山谷按「開始搜尋」。預設搜尋時間為 3 分鐘，消耗 1 點行動力。時間到後，按「確認搜尋結果」，便能用第一個牌組中的單張起始角色卡開始「落日大蝙蝠」。結算後按「返回任務清單」，可在同一次登入繼續操作。[從創角到首場任務](../docs/playtest/README.md#從創角到首場任務)
+
 要驗收登入後的「最新消息」，在上述啟動指令加上 `--news /path/to/news.xml`，登入後展開該區塊。可用 `--news app/client/public/news.xml.orig` 查看庫內保存的日文範例。瀏覽器讀取 UTF-8 XML 的 `<XML><news>` 內容，保留來源文字和段落、粗體、清單等基本格式。省略 `--news` 時，首次展開後會隱藏此區塊。[原版讀取方式](../app/client/lib/News.as#L130) · [公告驗收](../docs/playtest/README.md#原生瀏覽器登入)
 
 有角色的帳號可按「讀取任務資料」，查看清單、任務狀態、清單上限和普通區域通關數。清單以原版 Data 登入資料及本次登入收到的 Quest 回覆為準。展開「關卡說明」下的任務可讀取原始繁中敘述及地形名稱和描述。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208) · [任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
