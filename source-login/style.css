@@ -50,9 +50,23 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 
 #post-login { position: absolute; inset: 0; }
 
-#stage:not([data-screen="title"]) > :is(#stage-background, #stage-background-status, #login, #news) {
+@media (prefers-reduced-motion: no-preference) {
+  #stage[data-login-transition="revealing"] > #post-login {
+    animation: login-destination-in 470.588ms ease-out both;
+    /* Sample the original 0.8 / Unlight.SPEED sine-out curve. */
+    animation-timing-function: linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1);
+  }
+}
+
+@keyframes login-destination-in { from { opacity: 0; } }
+
+#stage:not([data-screen="title"]) > :is(#stage-background-status, #login, #news),
+#stage:not([data-screen="title"], [data-login-transition]) > #stage-background,
+#stage[data-login-transition="rose"] > :is(#stage-background-status, #login, #news) {
   display: none;
 }
+
+#stage[data-screen="title"][data-login-transition="rose"] + .attribution { visibility: hidden; }
 
 #title-music-start {
   display: none;
@@ -67,7 +81,7 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   cursor: pointer;
 }
 
-#stage[data-screen="title"][data-music-state="blocked"] > #title-music-start { display: block; }
+#stage[data-screen="title"][data-music-state="blocked"]:not([data-login-transition]) > #title-music-start { display: block; }
 #title-music-start:focus-visible { outline: 2px solid #f7f8fa; outline-offset: 2px; }
 
 .stage-panel {

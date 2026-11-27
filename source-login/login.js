@@ -2,6 +2,7 @@ import { registerAccount, SessionError, startSession } from '/session.js';
 import { playTitleAlert } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
+import { startLoginTransition } from './stage.js';
 
 const stage = document.querySelector('#stage');
 const postLogin = document.querySelector('#post-login');
@@ -42,8 +43,11 @@ let activeSession = null;
 let cleanupScreen;
 
 function showStatus(state, message = '', kind) {
+  const authenticating = state === 'working' && form.dataset.mode === 'login';
   status.dataset.state = state;
   status.textContent = message;
+  status.classList.toggle('sr-only', authenticating);
+  status.ariaLabel = authenticating ? '正在登入' : null;
   if (kind) status.dataset.errorKind = kind;
   else delete status.dataset.errorKind;
 }
@@ -125,6 +129,7 @@ function changeScreen(screen) {
 function returnToTitle(session, reason, focus = true) {
   if (activeSession !== session) return;
   activeSession = null;
+  currentAttempt?.transition?.cancel();
   changeScreen('title');
   showStatus('idle');
   if (reason && reason !== 'closed') {
@@ -187,7 +192,7 @@ form.addEventListener('submit', async event => {
   const accountName = username.value;
   const secret = password.value;
 
-  const attempt = { controller: new AbortController(), session: null, closing: null };
+  const attempt = { controller: new AbortController(), session: null, closing: null, transition: null };
   currentAttempt = attempt;
   const restoreFocus = form.contains(document.activeElement);
   let target = password;
@@ -195,7 +200,7 @@ form.addEventListener('submit', async event => {
   clearPasswords();
   fields.disabled = true;
   accountMode.disabled = true;
-  showStatus('working', registering ? '正在建立帳號…' : '正在登入…');
+  showStatus('working', registering ? '正在建立帳號…' : '');
   if (restoreFocus) status.focus({ preventScroll: true });
 
   try {
@@ -208,7 +213,14 @@ form.addEventListener('submit', async event => {
       return;
     }
 
-    const session = await startSession(accountName, secret, options);
+    const session = await startSession(accountName, secret, {
+      ...options,
+      onAuthenticated() {
+        if (currentAttempt === attempt && !attempt.transition) {
+          attempt.transition = startLoginTransition(options);
+        }
+      },
+    });
     attempt.session = session;
     if (currentAttempt !== attempt) return;
     if (!Number.isSafeInteger(session?.playerId) || session.playerId < 1 || !session.initialData
@@ -216,8 +228,16 @@ form.addEventListener('submit', async event => {
       throw new SessionError('protocol');
     }
     activeSession = session;
+    void session.closed.then(reason => returnToTitle(session, reason), () => returnToTitle(session, 'network'));
     try {
-      showPostLogin(session);
+      if (attempt.transition) {
+        const revealed = await attempt.transition.reveal(() => {
+          if (currentAttempt === attempt && activeSession === session) showPostLogin(session);
+        });
+        if (!revealed || currentAttempt !== attempt || activeSession !== session) return;
+      } else {
+        showPostLogin(session);
+      }
     } catch (error) {
       returnToTitle(session, null, false);
       throw error;
@@ -225,14 +245,17 @@ form.addEventListener('submit', async event => {
     attempt.session = null;
     username.value = '';
     showStatus('idle');
-    void session.closed.then(reason => returnToTitle(session, reason), () => returnToTitle(session, 'network'));
   } catch (error) {
     if (currentAttempt !== attempt) return;
     const messages = registering ? registrationFailures : failureMessages;
     const kind = error instanceof SessionError && Object.hasOwn(messages, error.kind) ? error.kind : 'network';
     if (kind === 'account-name-taken') target = username;
-    if (registering) showStatus('error', messages[kind], kind);
-    else loginFailure = kind;
+    if (registering) {
+      showStatus('error', messages[kind], kind);
+    } else {
+      attempt.transition?.cancel();
+      loginFailure = kind;
+    }
   } finally {
     await closeSession(attempt).catch(() => {});
     if (currentAttempt === attempt) {
@@ -258,7 +281,7 @@ window.addEventListener('pagehide', () => {
   const session = activeSession;
   if (session) {
     returnToTitle(session, null, false);
-    void session.close().catch(() => {});
+    if (attempt?.session !== session) void session.close().catch(() => {});
   }
   alertReturnFocus = null;
   if (loginAlert.open) loginAlert.close();

@@ -386,7 +386,8 @@ export function mountLobby(host, { session }) {
   void displayExperienceTarget(view, avatar, signal);
   title.focus({ preventScroll: true });
   if (!newsSeen.has(session.playerId)) {
-    void loadNews(view, signal).then(available => {
+    const entrance = host.getAnimations().find(animation => animation.animationName === 'login-destination-in');
+    void Promise.all([loadNews(view, signal), entrance?.finished.catch(() => {})]).then(([available]) => {
       if (!available || signal.aborted || document.activeElement !== title) return;
       news.showModal();
       newsSeen.add(session.playerId);

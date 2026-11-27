@@ -2570,7 +2570,7 @@ export async function registerAccount(username, password, { signal } = {}) {
   if (result !== 0) throw new SessionError('account-register-rejected', result);
 }
 
-export async function startSession(username, password, { signal } = {}) {
+export async function startSession(username, password, { signal, onAuthenticated } = {}) {
   if (signal?.aborted) throw new SessionError('cancelled');
   if (typeof username !== 'string' || typeof password !== 'string'
     || !LOGIN_FIELD.test(username) || !LOGIN_FIELD.test(password)) {
@@ -2620,6 +2620,15 @@ export async function startSession(username, password, { signal } = {}) {
     }
     sessionKeyBytes = Uint8Array.from(sessionKey.match(/../g), (pair) => Number.parseInt(pair, 16));
     auth.expireOn(8);
+    startupSignal.throwIfAborted();
+    auth.assertOpen();
+    if (typeof onAuthenticated === 'function') {
+      try {
+        void Promise.resolve(onAuthenticated()).catch(() => {});
+      } catch {
+        // A presentation callback cannot interrupt the remaining service connections.
+      }
+    }
 
     let initialData;
     for (const { port, pong } of CHANNELS) {

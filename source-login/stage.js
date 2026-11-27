@@ -11,9 +11,15 @@ const GLOW_BLUR_Y = 110;
 const GLOW_STRENGTH = 4;
 const GLOW_TOP = GLOW_RECT_Y - GLOW_BLUR_Y / 2;
 const GLOW_HEIGHT = GLOW_RECT_HEIGHT + GLOW_BLUR_Y;
+const TITLE_FADE_MS = 800 / 1.7;
+const ROSE_IN_MS = 1000;
+const ROSE_HOLD_MS = 4000;
+const ROSE_OUT_MS = 300;
 const canvas = document.getElementById("stage-background");
 const stage = document.getElementById("stage");
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+let loadingMovie;
+let beginLoginTransition;
 
 if (canvas) {
   canvas.dataset.state = "loading";
@@ -27,7 +33,7 @@ async function loadStage() {
   const assets = Promise.allSettled([loadBackground(renderer), loadTitle(renderer)]);
   if (!reduced.matches) {
     try {
-      const movie = parseVectorMovie(await loadVector("loading.swf"));
+      const movie = await loadLoadingMovie();
       await playLoading(renderer, movie, assets);
     } catch (error) {
       console.warn("Source loading animation unavailable", error);
@@ -77,6 +83,20 @@ async function loadVector(filename) {
   return decompressSwf(source, 1024 * 1024);
 }
 
+function loadLoadingMovie() {
+  loadingMovie ??= loadVector("loading.swf").then(parseVectorMovie).catch(error => {
+    loadingMovie = undefined;
+    throw error;
+  });
+  return loadingMovie;
+}
+
+function roseFrame(elapsed) {
+  // The embedded movie's frame-100 script jumps to authored frame 23.
+  const tick = Math.floor(Math.max(0, elapsed) * 24 / 1000);
+  return tick < 99 ? tick : 22 + (tick - 99) % 77;
+}
+
 async function loadTitle(renderer) {
   const loadFrames = async filename => {
     const movie = await loadVector(filename);
@@ -123,7 +143,7 @@ function playLoading(renderer, movie, assets) {
         return;
       }
       const elapsed = Math.max(0, timestamp - start);
-      const index = Math.floor(elapsed * 24 / 1000) % movie.frameCount;
+      const index = roseFrame(elapsed);
       try {
         if (index !== previous) {
           const { image, ...bounds } = movie.rasterize(index);
@@ -149,6 +169,143 @@ function playLoading(renderer, movie, assets) {
   });
 }
 
+export function startLoginTransition({ signal } = {}) {
+  if (beginLoginTransition && !signal?.aborted && !reduced.matches &&
+      stage.dataset.screen === "title" && canvas.dataset.state === "ready") {
+    return beginLoginTransition(signal);
+  }
+  let cancelled = false;
+  let result;
+  return {
+    reveal(showDestination) {
+      result ??= Promise.resolve().then(() => {
+        if (cancelled || signal?.aborted) return false;
+        showDestination();
+        return true;
+      });
+      return result;
+    },
+    cancel() { cancelled = true; },
+  };
+}
+
+function playLoginTransition(renderer, drawDeparture, restore, signal) {
+  const startedAt = performance.now();
+  let request;
+  let roseAt;
+  let readyAt;
+  let destination;
+  let resolveReveal;
+  let rejectReveal;
+  let movie;
+  let frame;
+  let previous = -1;
+  let animating = true;
+  let cancelled = false;
+  let revealed = false;
+  const result = new Promise((resolve, reject) => { resolveReveal = resolve; rejectReveal = reject; });
+
+  function stop() {
+    if (!animating) return;
+    animating = false;
+    cancelAnimationFrame(request);
+    signal?.removeEventListener("abort", cancel);
+    if (frame) renderer.release(frame.texture);
+    delete stage.dataset.loginTransition;
+    delete canvas.dataset.loadingFrame;
+    canvas.style.removeProperty("opacity");
+    restore();
+  }
+
+  function cancel() {
+    cancelled = true;
+    stop();
+    resolveReveal(false);
+  }
+
+  function mountDestination() {
+    if (!destination || cancelled || signal?.aborted || revealed) return;
+    if (animating) stage.dataset.loginTransition = "revealing";
+    try {
+      destination();
+      revealed = true;
+      resolveReveal(true);
+    } catch (error) {
+      stop();
+      rejectReveal(error);
+    }
+  }
+
+  function skip() {
+    stop();
+    mountDestination();
+  }
+
+  function draw(timestamp) {
+    if (reduced.matches || canvas.dataset.state === "error") {
+      skip();
+      return;
+    }
+    try {
+      const departure = Math.min(1, Math.max(0, (timestamp - startedAt) / TITLE_FADE_MS));
+      if (departure < 1) {
+        drawDeparture(timestamp, departure);
+      } else {
+        if (roseAt === undefined) {
+          roseAt = timestamp;
+          stage.dataset.loginTransition = "rose";
+        }
+        const elapsed = timestamp - roseAt;
+        const opacity = Math.sin(Math.min(elapsed / ROSE_IN_MS, 1) * Math.PI / 2);
+        if (movie) {
+          const index = roseFrame(elapsed);
+          if (index !== previous) {
+            const { image, ...bounds } = movie.rasterize(index);
+            frame = { ...bounds, texture: renderer.upload(image, "linear", frame?.texture) };
+            previous = index;
+            canvas.dataset.loadingFrame = String(index);
+          }
+        }
+        renderer.paint(frame ? drawLayer => drawAsset(drawLayer, frame, 0, 0, 1, opacity) : null, true);
+        if (elapsed >= ROSE_IN_MS) mountDestination();
+        if (revealed) {
+          const cleanupAt = Math.max(readyAt + ROSE_HOLD_MS, roseAt + ROSE_IN_MS);
+          const exiting = Math.max(0, (timestamp - cleanupAt) / ROSE_OUT_MS);
+          if (exiting >= 1) stop();
+          else if (exiting > 0) canvas.style.opacity = String(Math.cos(exiting * Math.PI / 2));
+        }
+      }
+      if (animating) request = requestAnimationFrame(draw);
+    } catch (error) {
+      console.warn("Source login transition unavailable", error);
+      skip();
+    }
+  }
+
+  stage.dataset.loginTransition = "leaving";
+  signal?.addEventListener("abort", cancel, { once: true });
+  void loadLoadingMovie().then(value => { movie = value; }, error => {
+    if (!animating) return;
+    console.warn("Source login transition unavailable", error);
+    skip();
+  });
+  request = requestAnimationFrame(draw);
+  return {
+    reveal(showDestination) {
+      if (signal?.aborted) cancel();
+      if (!cancelled && !destination) {
+        readyAt = performance.now();
+        destination = showDestination;
+        if (!animating) mountDestination();
+      }
+      return result;
+    },
+    get revealed() { return revealed; },
+    cancel,
+    skip,
+  };
+}
+
 function showTitle(renderer, background, title) {
   const butterfly = title?.butterfly ?? [];
   const motion = createTitleMotion(butterfly.length);
@@ -158,6 +315,8 @@ function showTitle(renderer, background, title) {
   const credits = document.querySelector(".attribution");
   let pointer = null;
   let request = 0;
+  let activeTransition;
+  let latestMotion;
   stage.dataset.entry = "entering";
 
   stage.addEventListener("pointermove", event => {
@@ -169,26 +328,34 @@ function showTitle(renderer, background, title) {
     };
   });
 
-  function draw(timestamp) {
+  function paintTitle(timestamp, departure = 0, frozenMotion) {
     const elapsed = Math.max(0, timestamp - start);
-    const intro = reduced.matches ? 1 : Math.sin(Math.min(elapsed / (800 / 1.7), 1) * Math.PI / 2);
-    const state = motion(elapsed, pointer, reduced.matches);
-    if (stage.dataset.entry === "entering") {
-      login.style.opacity = String(intro);
-      news.style.opacity = String(intro * 0.8);
-      credits.style.opacity = String(intro);
+    const intro = reduced.matches ? 1 : Math.sin(Math.min(elapsed / TITLE_FADE_MS, 1) * Math.PI / 2);
+    const faded = 1 - Math.sin(departure * Math.PI / 2);
+    const state = frozenMotion ?? motion(elapsed, pointer, reduced.matches);
+    latestMotion = state;
+    if (stage.dataset.entry === "entering" || departure > 0) {
+      login.style.opacity = String(intro * faded);
+      news.style.opacity = String(intro * faded * 0.8);
+      credits.style.opacity = String(intro * faded);
       if (intro === 1) stage.dataset.entry = "ready";
     }
     renderer.paint(drawLayer => {
-      drawLayer(background, 0, 0, ART_WIDTH, ART_HEIGHT, intro);
+      drawLayer(background, 0, 0, ART_WIDTH, ART_HEIGHT, intro * faded);
       if (!title) return;
-      drawLayer(title.glow, 0, GLOW_TOP, ART_WIDTH, GLOW_HEIGHT, state.glowOpacity);
-      drawAsset(drawLayer, title.logo, 0, 0, 1, state.logoOpacity);
+      drawLayer(title.glow, 0, GLOW_TOP, ART_WIDTH, GLOW_HEIGHT, state.glowOpacity * faded);
+      drawAsset(drawLayer, title.logo, 0, 0, 1, state.logoOpacity * Math.cos(departure * Math.PI / 2));
       if (state.butterfly) {
         const { x, y, frame } = state.butterfly;
-        drawAsset(drawLayer, butterfly[frame], x, y, 0.9, 1);
+        const departY = y + (-200 - y) * Math.sin(departure * (0.8 / 5) * Math.PI / 2);
+        const wing = frozenMotion ? Math.floor(elapsed * 24 / 1000) % butterfly.length : frame;
+        drawAsset(drawLayer, butterfly[wing], x, departY, 0.9, 1);
       }
-    });
+    }, departure > 0);
+    return intro;
+  }
+  function draw(timestamp) {
+    const intro = paintTitle(timestamp);
     if (!reduced.matches && (title || intro < 1)) request = requestAnimationFrame(draw);
   }
   function stop() {
@@ -196,18 +363,42 @@ function showTitle(renderer, background, title) {
   }
   function resume() {
     stop();
-    if (stage.dataset.screen === "title" && canvas.dataset.state === "ready") {
+    if (!activeTransition && stage.dataset.screen === "title" && canvas.dataset.state === "ready") {
       request = requestAnimationFrame(draw);
     }
   }
-  canvas.addEventListener("webglcontextlost", stop, { once: true });
+  beginLoginTransition = signal => {
+    activeTransition?.cancel();
+    stop();
+    const frozenMotion = latestMotion;
+    activeTransition = playLoginTransition(renderer, (time, fade) => paintTitle(time, fade, frozenMotion), () => {
+      activeTransition = undefined;
+      login.style.opacity = "1";
+      news.style.opacity = "0.8";
+      credits.style.opacity = "1";
+      resume();
+    }, signal);
+    return activeTransition;
+  };
+  canvas.addEventListener("webglcontextlost", () => {
+    activeTransition?.skip();
+    stop();
+  }, { once: true });
   stage.addEventListener("game-screen-change", () => {
     pointer = null;
+    if (stage.dataset.screen !== "title") credits.style.opacity = "1";
+    if (stage.dataset.screen === "title" && activeTransition?.revealed) activeTransition.cancel();
     resume();
   });
-  window.addEventListener("pagehide", stop);
+  window.addEventListener("pagehide", () => {
+    activeTransition?.cancel();
+    stop();
+  });
   window.addEventListener("pageshow", resume);
-  reduced.addEventListener("change", resume);
+  reduced.addEventListener("change", () => {
+    if (reduced.matches) activeTransition?.skip();
+    resume();
+  });
   resume();
 }
 
@@ -235,6 +426,19 @@ function createLogoGlow() {
   }
   context.putImageData(pixels, 0, 0);
   return image;
+}
+
+function flexGutter() {
+  // Same authored Halo gray bands as the stage edge in the lobby.
+  const bandEnds = [3, 48, 93, 138, 183, 228, 274, 319, 364, 409, 454, 499, 545, 590, 635, 680];
+  const pixels = new ImageData(1, STAGE_HEIGHT);
+  let band = 0;
+  for (let row = 0; row < STAGE_HEIGHT; row += 1) {
+    if (row === bandEnds[band]) band += 1;
+    const gray = 15 - band;
+    pixels.data.set([gray, gray, gray, 255], row * 4);
+  }
+  return pixels;
 }
 
 async function fetchBytes(path) {
@@ -317,7 +521,7 @@ function createStageRenderer() {
   gl.disable(gl.DITHER);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(14 / 255, 12 / 255, 16 / 255, 1);
+  let gutter;
 
   function upload(image, mode = "linear", texture = gl.createTexture()) {
     const filter = mode === "nearest" ? gl.NEAREST : gl.LINEAR;
@@ -338,8 +542,14 @@ function createStageRenderer() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  return { pixelRatio, upload, release: texture => gl.deleteTexture(texture), paint(drawLayers) {
+  return { pixelRatio, upload, release: texture => gl.deleteTexture(texture), paint(drawLayers, transitionMatte = false) {
+    if (transitionMatte) gl.clearColor(0, 0, 0, 1);
+    else gl.clearColor(14 / 255, 12 / 255, 16 / 255, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    if (transitionMatte) {
+      gutter ??= upload(flexGutter(), "nearest");
+      draw(gutter, ART_WIDTH, 0, STAGE_WIDTH - ART_WIDTH, STAGE_HEIGHT, 1);
+    }
     drawLayers?.(draw);
   } };
 }

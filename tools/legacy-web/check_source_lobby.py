@@ -383,7 +383,7 @@ def check_lobby_hover(page, stage, directory):
     page.emulate_media(reduced_motion="reduce")
 
 
-def check(page, origin, database, directory, selected_parts):
+def check(page, origin, database, directory, selected_parts, *, verify_login_rose):
     name = "flowqa" + token_hex(5)
     password = token_hex(8)
     avatar_name = "夜行者" + token_hex(3).translate(str.maketrans("0123456789abcdef", "零一二三四五六七八九甲乙丙丁戊己"))
@@ -440,8 +440,17 @@ def check(page, origin, database, directory, selected_parts):
         expect(secret).to_have_value("")
         wait_logout(page, database, player_id)
 
+    if verify_login_rose:
+        page.emulate_media(reduced_motion="no-preference")
     first = sign_in()
+    if verify_login_rose:
+        expect(stage).to_have_attribute("data-login-transition", "rose", timeout=TIMEOUT)
+        expect(page.locator("#stage-background[data-loading-frame]")).to_be_visible()
+        expect(status).to_be_hidden()
+        capture(stage, directory, "02a-original-login-rose.png")
     screen(stage, "onboarding")
+    if verify_login_rose:
+        page.emulate_media(reduced_motion="reduce")
     onboarding = page.locator("#onboarding")
     expect(onboarding).to_have_attribute("data-step", "intro")
     expect(page.locator("#login")).to_be_hidden()
@@ -559,7 +568,8 @@ def main():
                 page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
                                         reduced_motion="reduce")
                 try:
-                    portraits.append(check(page, f"http://127.0.0.1:{args.port}", args.database, directory, selected_parts))
+                    portraits.append(check(page, f"http://127.0.0.1:{args.port}", args.database, directory, selected_parts,
+                                           verify_login_rose=number == 1))
                 finally:
                     page.close()
         finally:
