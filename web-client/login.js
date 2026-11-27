@@ -130,6 +130,15 @@ const questCombatUi = {
   questFinish: document.querySelector('#session-quest-combat-quest-finish'),
 };
 
+const questSettlementUi = {
+  section: document.querySelector('#session-quest-settlement'),
+  status: document.querySelector('#session-quest-settlement-status'),
+  returnButton: document.querySelector('#session-quest-return'),
+  fields: [...document.querySelectorAll('#session-quest-settlement [data-field]')],
+  cards: document.querySelector('#session-quest-settlement-cards'),
+  cardList: document.querySelector('#session-quest-settlement-card-list'),
+};
+
 const mapsUi = {
   load: document.querySelector('#session-quest-maps-load'),
   status: document.querySelector('#session-quest-maps-status'),
@@ -182,6 +191,7 @@ const questStatuses = {
   loading: '正在讀取任務資料…',
   empty: '目前的任務清單沒有項目。',
   success: '已讀取任務資料。',
+  returned: '已返回任務清單。',
   failed: '無法讀取任務資料，請重試。',
 };
 const questSearchRejected = {
@@ -253,6 +263,8 @@ let newsRequest = null;
 let questCountdownTimer;
 let questBattleTimer;
 let questBattleCatalogRequest;
+let questSettlementKey;
+let questProgressRequest;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
   field.addEventListener('input', () => field.setCustomValidity(''));
@@ -269,6 +281,11 @@ function clearField(field) {
   field.setCustomValidity('');
 }
 
+function formatAvatarEnergy(energy, maximum) {
+  if (!Number.isSafeInteger(energy)) return '—';
+  return Number.isSafeInteger(maximum) && energy <= maximum ? `${energy} / ${maximum}` : String(energy);
+}
+
 function displayBootstrap(initialData) {
   const avatar = initialData?.avatar;
   const registration = initialData?.registration;
@@ -282,7 +299,7 @@ function displayBootstrap(initialData) {
     ? [avatar.name, avatar.id, avatar.level, avatar.gems, avatar.exp]
     : [];
   ui.avatarFields.forEach((field, index) => { field.textContent = avatarValues[index] ?? ''; });
-  ui.avatarEnergy.textContent = avatar ? `${avatar.energy} / ${avatar.energyMax}` : '';
+  ui.avatarEnergy.textContent = avatar ? formatAvatarEnergy(avatar.energy, avatar.energyMax) : '';
   const registrationValues = registration ? [registration.partCount, registration.cardCount] : [];
   ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
 }
@@ -337,12 +354,15 @@ function updateLiveQuestButtons() {
   }
   for (const { button } of questCountdowns) button.disabled = networkBlocked;
   for (const button of questUi.rows.querySelectorAll('.quest-land-enter')) button.disabled = networkBlocked;
+  questSettlementUi.returnButton.disabled = busy || questSettlementUi.section.hidden
+    || questSettlementUi.status.dataset.state !== 'ready';
   updateQuestBattleButtons();
 }
 
 function beginLiveQuestRequest(kind) {
   const session = active;
-  const blocked = kind === 'battle' ? questLandUi.status.dataset.state !== 'encounter' : questLandLocked();
+  const blocked = kind === 'return' ? questSettlementUi.returnButton.disabled
+    : kind === 'battle' ? questLandUi.status.dataset.state !== 'encounter' : questLandLocked();
   if (!session?.initialData?.avatar || liveQuestRequest || blocked) return null;
   liveQuestRequest = { kind, session, controller: new AbortController() };
   updateLiveQuestButtons();
@@ -368,6 +388,10 @@ function clearLiveQuest() {
   }
   showQuestActionStatus(searchUi.status, 'idle');
   showQuestActionStatus(questDeckUi.status, 'idle');
+  questProgressRequest?.abort();
+  questProgressRequest = undefined;
+  confirmedQuestStarts.clear();
+  questFirstLands.clear();
   clearQuestLand();
   questDeckNames.clear();
   questDeckUi.select.replaceChildren();
@@ -380,19 +404,24 @@ function setOriginalText(element, text) {
   element.textContent = hasText ? text : '';
 }
 
-function clearQuestResults() {
-  clearTimeout(questCountdownTimer);
-  questCountdownTimer = undefined;
-  questCountdowns.length = 0;
-  questUi.progress.hidden = true;
+function clearQuestRegionProgress() {
   questUi.mapProgress.hidden = true;
   delete questUi.mapProgress.dataset.mapId;
+  delete questUi.mapProgress.dataset.clearTarget;
   questUi.mapName.textContent = '';
   questUi.mapCount.textContent = '';
   setOriginalText(questUi.mapCaption, '');
   searchUi.section.hidden = true;
   delete searchUi.section.dataset.mapId;
   searchUi.cost.textContent = '行動力（AP）';
+}
+
+function clearQuestResults() {
+  clearTimeout(questCountdownTimer);
+  questCountdownTimer = undefined;
+  questCountdowns.length = 0;
+  questUi.progress.hidden = true;
+  clearQuestRegionProgress();
   questDeckUi.group.hidden = true;
   questDeckUi.entryNote.hidden = true;
   questUi.inventory.hidden = true;
@@ -438,6 +467,7 @@ function clearQuestBattle() {
   questBattleCatalogRequest = undefined;
   questCardCatalog.clear();
   questCardCatalogRequested.clear();
+  clearQuestSettlement();
   clearQuestCombat();
   for (const section of [questBattleUi.section, questBattleUi.turn, questBattleUi.hand, questBattleUi.move, questBattleUi.moveTable,
     questBattleUi.result, questBattleUi.playerPower.parentElement, questBattleUi.opponentPower.parentElement, questBattleUi.committed]) {
@@ -755,7 +785,107 @@ function syncQuestCombat(exchange, force, session) {
   const finishedId = questCombatUi.questFinish.dataset.inventoryId;
   if (finishedId && finishedId !== questFinishId) {
     const row = questUi.rows.querySelector(`[data-inventory-id="${finishedId}"]`);
-    if (row) void reconcileFinishedQuest(row, Number(finishedId), session);
+    if (row && !exchange.settlement) void reconcileFinishedQuest(Number(finishedId), Number(row.dataset.questId), session);
+  }
+}
+
+function clearQuestSettlement() {
+  questSettlementKey = undefined;
+  const { section, status, returnButton, fields, cards, cardList } = questSettlementUi;
+  section.hidden = true;
+  delete section.dataset.inventoryId;
+  cards.hidden = true;
+  cardList.replaceChildren();
+  returnButton.hidden = true;
+  for (const field of fields) {
+    field.textContent = '';
+    delete field.dataset.value;
+  }
+  showQuestActionStatus(status, 'idle');
+}
+
+function displayQuestSettlement(settlement, session) {
+  if (settlement?.inventoryId !== Number(questLandUi.result.dataset.inventoryId)) return;
+  const { section, status, returnButton, fields, cards, cardList } = questSettlementUi;
+  const currentState = status.dataset.state;
+  const canReturn = settlement.canReturn === true && session.questAdventure?.state !== 'closed';
+  returnButton.hidden = !canReturn || currentState === 'uncertain';
+  if (!['returning', 'uncertain'].includes(currentState)) {
+    const state = canReturn ? 'ready' : 'waiting';
+    const message = canReturn ? '已確認任務結算，可以返回清單。'
+      : settlement.bonusPending === true ? '原版伺服器仍有追加獎勵待處理。'
+        : '原版伺服器尚未確認可以返回清單。';
+    if (currentState !== state) showQuestActionStatus(status, state, message);
+  }
+  const key = JSON.stringify(settlement);
+  if (key === questSettlementKey) return;
+  questSettlementKey = key;
+
+  const { inventoryId, questId, result, avatar, deltas, map, deckRestored } = settlement;
+  section.dataset.inventoryId = String(inventoryId);
+  section.hidden = false;
+  const resultLabel = questResultLabels[result];
+  const values = {
+    result: resultLabel ? `${resultLabel}（${result}）` : result,
+    ...avatar,
+    gemsDelta: deltas.gems,
+    expDelta: deltas.exp,
+    levelDelta: deltas.level,
+    ...map,
+    deckRestored: deckRestored ? (deckRestored.name || `牌組 ${deckRestored.index}`) : null,
+  };
+  for (const field of fields) {
+    const key = field.dataset.field;
+    const value = values[key];
+    field.parentElement.hidden = value == null;
+    field.textContent = value == null ? '' : String(value);
+    if (Number.isSafeInteger(value) || key === 'result' || key === 'deckRestored' && deckRestored) {
+      field.dataset.value = String(key === 'result' ? result : key === 'deckRestored' ? deckRestored.index : value);
+    } else delete field.dataset.value;
+  }
+  cardList.replaceChildren(...settlement.cards.map(({ inventoryId, cardId }) => {
+    const item = document.createElement('li');
+    item.dataset.inventoryId = String(inventoryId);
+    item.dataset.cardId = String(cardId);
+    item.textContent = `角色卡 ID ${cardId}，持有紀錄 ID ${inventoryId}`;
+    return item;
+  }));
+  cards.hidden = !settlement.cards.length;
+  displayBootstrap(session.initialData);
+  void reconcileFinishedQuest(inventoryId, questId, session, undefined, true);
+}
+
+async function returnFromQuest() {
+  const { status, section, returnButton } = questSettlementUi;
+  const restoreFocus = document.activeElement === returnButton;
+  const request = beginLiveQuestRequest('return');
+  if (!request) return;
+  const { session, controller } = request;
+  const inventoryId = Number(section.dataset.inventoryId);
+  showQuestActionStatus(status, 'returning', '正在關閉本次任務連線…');
+  try {
+    const settlement = await session.returnFromQuest({ signal: controller.signal });
+    if (!isCurrentLiveQuestRequest(request)) return;
+    if (settlement?.inventoryId !== inventoryId || session.questAdventure) throw new SessionError('quest-return-uncertain');
+    await reconcileFinishedQuest(inventoryId, settlement.questId, session, controller.signal, true);
+    if (!isCurrentLiveQuestRequest(request)) return;
+    clearQuestLand();
+    displayBootstrap(session.initialData);
+    displayQuestDecks();
+    showQuestStatus('returned');
+  } catch (error) {
+    if (!isCurrentLiveQuestRequest(request)) return;
+    const kind = error instanceof SessionError ? error.kind : 'quest-return-uncertain';
+    const uncertain = kind !== 'busy' && kind !== 'quest-return-unavailable';
+    const message = uncertain ? '未能確認任務連線已關閉。本次登入不會重送返回要求。'
+      : '目前無法返回任務清單。';
+    showQuestActionStatus(status, uncertain ? 'uncertain' : 'waiting', message, kind);
+    returnButton.hidden = true;
+  } finally {
+    finishLiveQuestRequest(request);
+    if (restoreFocus && active === session && [document.body, returnButton].includes(document.activeElement)) {
+      (section.hidden ? questUi.load : status).focus();
+    }
   }
 }
 
@@ -787,9 +917,12 @@ function syncQuestBattle(session, force = false) {
   if ((force || phase !== questBattleUi.section.dataset.phase)
       && (!locallyUncertain || phase === 'moved' || phase === 'closed')) showQuestBattlePhase(phase);
   if (exchange && result) syncQuestCombat(exchange, force, session);
+  const settlement = exchange?.settlement ?? session.questSettlement;
+  if (settlement) displayQuestSettlement(settlement, session);
   if (ready) void enrichQuestBattleCards(session);
   updateQuestBattleButtons();
-  const exchangePending = exchange && !exchange.questFinish && !['uncertain', 'closed'].includes(exchange.phase);
+  const exchangePending = exchange && !['uncertain', 'closed'].includes(exchange.phase)
+    && (!exchange.questFinish || !settlement || !settlement.canReturn);
   if (!document.hidden && (['encounter', 'preparing', 'move', 'committing', 'settling'].includes(phase) || exchangePending)) {
     const delay = ['complete', 'terminal'].includes(exchange?.phase) ? 1000 : 250;
     questBattleTimer = setTimeout(() => syncQuestBattle(session), delay);
@@ -839,8 +972,6 @@ async function runQuestBattleAction(button, state, message, action, { focusAfter
 
 function clearQuestLand() {
   clearQuestBattle();
-  confirmedQuestStarts.clear();
-  questFirstLands.clear();
   questLandUi.section.hidden = true;
   questLandUi.result.hidden = true;
   questLandUi.encounter.hidden = true;
@@ -923,7 +1054,7 @@ function watchQuestLandConnection(session) {
   const closed = session.questAdventure?.closed;
   if (!closed) return;
   const showLost = () => {
-    if (active !== session || !session.initialData) return;
+    if (active !== session || !session.initialData || session.questAdventure?.closed !== closed) return;
     if (session.questBattle?.exchange?.questFinish?.inventoryId === Number(questLandUi.result.dataset.inventoryId)) {
       syncQuestBattle(session, true);
       return;
@@ -942,20 +1073,39 @@ function watchQuestLandConnection(session) {
   void closed.then(showLost, showLost);
 }
 
-async function reconcileFinishedQuest(row, inventoryId, session, signal) {
-  const snapshot = await session.readQuestInventory({ signal }).catch(() => null);
-  if (!snapshot || active !== session || signal?.aborted || !row.isConnected
-      || snapshot.rows.some(entry => entry.inventoryId === inventoryId)) return;
+function refreshSettledQuestProgress(snapshot, session) {
+  displayQuestProgress(snapshot);
+  const mapId = String(snapshot.questFlag + 1);
+  const target = Number(questUi.mapProgress.dataset.clearTarget);
+  if (questUi.mapProgress.dataset.mapId === mapId && Number.isSafeInteger(target) && target > 0) {
+    questUi.mapCount.textContent = `${Math.min(snapshot.questClearNum, target)} / ${target}`;
+    return;
+  }
 
-  const serviceRow = findServiceQuestRow(inventoryId, row.dataset.questId);
+  clearQuestRegionProgress();
+  questProgressRequest?.abort();
+  const controller = new AbortController();
+  questProgressRequest = controller;
+  void enrichQuestSnapshot(snapshot, controller.signal, session).catch(() => {}).finally(() => {
+    if (questProgressRequest === controller) questProgressRequest = undefined;
+  });
+}
+
+async function reconcileFinishedQuest(inventoryId, questId, session, signal, refreshProgress = false) {
+  const snapshot = await session.readQuestInventory({ signal }).catch(() => null);
+  if (!snapshot || active !== session || signal?.aborted || snapshot.rows.some(entry => entry.inventoryId === inventoryId)) return;
+
+  const serviceRow = findServiceQuestRow(inventoryId, questId);
   if (serviceRow) {
     serviceRow.remove();
     const count = serviceInventoryUi.rows.rows.length;
     serviceInventoryUi.count.textContent = String(count);
     serviceInventoryUi.table.hidden = count === 0;
   }
-  row.remove();
-  questUi.fields[0].textContent = String(snapshot.rows.length);
+  confirmedQuestStarts.delete(inventoryId);
+  questUi.rows.querySelector(`[data-inventory-id="${inventoryId}"][data-quest-id="${questId}"]`)?.remove();
+  if (refreshProgress) refreshSettledQuestProgress(snapshot, session);
+  else questUi.fields[0].textContent = String(snapshot.rows.length);
   questUi.inventory.hidden = snapshot.rows.length === 0;
   displayQuestDecks();
 }
@@ -978,7 +1128,7 @@ async function enterQuestLand(row, inventoryId, land, button) {
       questBattleUi.section.dataset.initialDistance = String(result.encounter.duel.distance);
       syncQuestBattle(session);
     }
-    if (result.finish) await reconcileFinishedQuest(row, inventoryId, session, controller.signal);
+    if (result.finish) await reconcileFinishedQuest(inventoryId, Number(row.dataset.questId), session, controller.signal);
     else watchQuestLandConnection(session);
   } catch (error) {
     if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
@@ -1090,7 +1240,7 @@ async function startQuest(row, inventoryId, questId, button, statusElement) {
       throw new SessionError('quest-start-uncertain');
     }
 
-    ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
+    ui.avatarEnergy.textContent = formatAvatarEnergy(energy, session.initialData.avatar.energyMax);
     displayStartedQuest(row, statusElement, deckIndex);
     confirmedQuestStarts.add(inventoryId);
     appendQuestLandOption(row);
@@ -1203,9 +1353,15 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
   }
 }
 
-function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receivedAt }, newestEntry) {
+function displayQuestProgress({ capacity, questFlag, questClearNum, rows }) {
   const values = [rows.length, capacity, questFlag, questClearNum];
   questUi.fields.forEach((field, index) => { field.textContent = String(values[index]); });
+  questUi.progress.hidden = false;
+}
+
+function displayQuestSnapshot(snapshot, newestEntry) {
+  const { rows, receivedAt } = snapshot;
+  displayQuestProgress(snapshot);
 
   for (const entry of newestEntry ? [newestEntry] : rows) {
     const row = appendQuestRow(questUi.rows, entry);
@@ -1245,7 +1401,6 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
     appendQuestStart(row, entry);
   }
 
-  questUi.progress.hidden = false;
   questUi.inventory.hidden = rows.length === 0;
   displayQuestDecks();
   showQuestStatus(rows.length ? 'success' : 'empty');
@@ -1300,18 +1455,20 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
   const { quests, map } = await response.json();
   if (signal.aborted || active !== session || !session.initialData) return;
 
-  if (map?.id === mapId && Number.isSafeInteger(map.clearTarget) && map.clearTarget > 0) {
+  const currentProgress = questUi.fields[2].textContent === String(questFlag) && questUi.fields[3].textContent === String(questClearNum);
+  if (currentProgress && map?.id === mapId && Number.isSafeInteger(map.clearTarget) && map.clearTarget > 0) {
     const completed = Math.min(questClearNum, map.clearTarget);
     questUi.mapName.textContent = typeof map.name === 'string' && map.name ? map.name : `地圖 ${mapId}`;
     questUi.mapCount.textContent = `${completed} / ${map.clearTarget}`;
     questUi.mapProgress.dataset.mapId = String(mapId);
+    questUi.mapProgress.dataset.clearTarget = String(map.clearTarget);
     questUi.mapProgress.hidden = false;
     searchUi.section.dataset.mapId = String(mapId);
     searchUi.cost.textContent = Number.isSafeInteger(map.ap) && map.ap >= 0 ? `${map.ap} 點行動力（AP）` : '行動力（AP）';
     searchUi.section.hidden = false;
     updateLiveQuestButtons();
   }
-  if (map?.id === mapId) setOriginalText(questUi.mapCaption, map.caption);
+  if (currentProgress && map?.id === mapId) setOriginalText(questUi.mapCaption, map.caption);
 
   if (!Array.isArray(quests)) return;
   const catalog = new Map(quests.filter(quest => ids.has(quest?.id)).map(quest => [quest.id, quest]));
@@ -1357,7 +1514,7 @@ async function startQuestSearch() {
       throw new SessionError('search-uncertain');
     }
 
-    ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
+    ui.avatarEnergy.textContent = formatAvatarEnergy(energy, session.initialData.avatar.energyMax);
     showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。');
     try {
       const snapshot = await session.readQuestInventory({ signal });
@@ -1541,6 +1698,8 @@ questUi.load.addEventListener('click', async () => {
   if (!session?.initialData?.avatar || questUi.load.disabled) return;
 
   questRequest?.abort();
+  questProgressRequest?.abort();
+  questProgressRequest = undefined;
   const controller = new AbortController();
   questRequest = controller;
   clearQuestResults();
@@ -1629,6 +1788,7 @@ questCombatUi.commit.addEventListener('click', () => {
   void runQuestBattleAction(questCombatUi.commit, 'committing', '正在送出本次攻防…',
     (session, options) => session.commitQuestBattle(options), { combat: true });
 });
+questSettlementUi.returnButton.addEventListener('click', () => void returnFromQuest());
 
 document.addEventListener('visibilitychange', () => {
   updateQuestCountdowns();

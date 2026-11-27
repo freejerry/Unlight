@@ -308,6 +308,29 @@
                   </dl>
                 </section>
               </section>
+              <section id="session-quest-settlement" class="quest-settlement" aria-labelledby="session-quest-settlement-title" hidden>
+                <h5 id="session-quest-settlement-title">任務結算</h5>
+                <p id="session-quest-settlement-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                <dl class="session-metadata quest-land-metadata">
+                  <div><dt>任務結果</dt><dd data-field="result"></dd></div>
+                  <div hidden><dt>本場獲得 Gem</dt><dd data-field="gemsDelta"></dd></div>
+                  <div hidden><dt>本場獲得經驗值</dt><dd data-field="expDelta"></dd></div>
+                  <div hidden><dt>等級變更</dt><dd data-field="levelDelta"></dd></div>
+                  <div hidden><dt>Gem 餘額</dt><dd data-field="gems"></dd></div>
+                  <div hidden><dt>角色經驗值</dt><dd data-field="exp"></dd></div>
+                  <div hidden><dt>角色等級</dt><dd data-field="level"></dd></div>
+                  <div hidden><dt>行動力</dt><dd data-field="energy"></dd></div>
+                  <div hidden><dt>地圖進度代碼</dt><dd data-field="questFlag"></dd></div>
+                  <div hidden><dt>地圖通關數</dt><dd data-field="questClearNum"></dd></div>
+                  <div hidden><dt>地形進度碼</dt><dd data-field="progress"></dd></div>
+                  <div hidden><dt>返回可用的牌組</dt><dd data-field="deckRestored"></dd></div>
+                </dl>
+                <div id="session-quest-settlement-cards" class="quest-settlement-cards" hidden>
+                  <h6>伺服器回報取得的角色卡</h6>
+                  <ul id="session-quest-settlement-card-list" class="quest-combat-damage"></ul>
+                </div>
+                <button id="session-quest-return" class="button primary" type="button" aria-controls="session-quest-inventory session-quest-search" disabled>返回任務清單</button>
+              </section>
             </div>
           </section>
           <section id="session-quest-details" class="quest-details" aria-labelledby="session-quest-details-title" hidden>

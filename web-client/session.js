@@ -18,6 +18,8 @@ import {
   QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_DEFENCE_PHASE_START_REPLY, QUEST_DEFENCE_PHASE_FINISH_REPLY,
   QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY,
   QUEST_DAMAGE_REPLY, QUEST_HIT_POINT_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
+  QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
+  QUEST_CHARACTER_AWARD_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
@@ -26,6 +28,7 @@ import {
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
   readQuestDamageReply, readQuestHitPointReply, readQuestDuelFinishReply, readQuestCombatBoundaryReply,
+  readQuestSettlementValueReply, readQuestCharacterAwardReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -61,8 +64,12 @@ const QUEST_COMBAT_COMMANDS = {
 const QUEST_COMBAT_REPLIES = [
   QUEST_ATTACK_PHASE_START_REPLY, QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_DEFENCE_PHASE_START_REPLY,
   QUEST_DEFENCE_PHASE_FINISH_REPLY, QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_DAMAGE_REPLY,
-  QUEST_HIT_POINT_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
-  QUEST_FINISH_REPLY, QUEST_DELETED_REPLY,
+  QUEST_HIT_POINT_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
+];
+const QUEST_SETTLEMENT_REPLIES = [
+  QUEST_DUEL_FINISH_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_PROGRESS_REPLY,
+  QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
+  QUEST_CHARACTER_AWARD_REPLY, QUEST_ENERGY_REPLY,
 ];
 const HEARTBEAT = 180_000;
 const CLOSE_TIMEOUT = 1500;
@@ -89,6 +96,8 @@ const messages = {
   'quest-direction-rejected': '遊戲服務未接受這個移動方向。',
   'quest-card-unavailable': '目前無法移動這張卡。',
   'quest-card-rejected': '遊戲服務未接受移動這張卡。',
+  'quest-return-unavailable': '任務服務尚未確認可返回地圖。',
+  'quest-return-uncertain': '未能確認原版任務連線已釋放。',
 };
 
 export class SessionError extends Error {
@@ -131,6 +140,7 @@ class SessionSocket {
   #resolveClose;
   #reason = null;
   #fault = null;
+  #cleanPeerClose = false;
   #expireCommand = null;
   #onStartupFailure;
 
@@ -149,7 +159,7 @@ class SessionSocket {
     this.#socket.onopen = () => this.#resolveOpen(true);
     this.#socket.onmessage = ({ data }) => this.#receive(data);
     this.#socket.onerror = () => this.#fail(new SessionError('network'));
-    this.#socket.onclose = () => this.#finishClose();
+    this.#socket.onclose = (event) => this.#finishClose(event);
   }
 
   async open(signal) {
@@ -228,6 +238,20 @@ class SessionSocket {
     }
   }
 
+  async releaseQuest(signal) {
+    signal.throwIfAborted();
+    this.send(2, []);
+    this.#reason = 'closed';
+    try {
+      await bounded(this.closed, signal, CLOSE_TIMEOUT);
+      signal.throwIfAborted();
+      if (!this.#cleanPeerClose) throw new SessionError('network');
+    } catch (error) {
+      this.#closeTransport();
+      throw error;
+    }
+  }
+
   #receive(data) {
     if (this.#reason) return;
     try {
@@ -266,7 +290,8 @@ class SessionSocket {
     if (this.#socket.readyState < WebSocket.CLOSING) this.#socket.close(1000);
   }
 
-  #finishClose() {
+  #finishClose(event) {
+    this.#cleanPeerClose = event?.wasClean === true && event.code === 1000 && this.#fault === null;
     this.#socket.onopen = this.#socket.onmessage = this.#socket.onerror = this.#socket.onclose = null;
     this.#key?.fill(0);
     this.#key = null;
@@ -667,7 +692,7 @@ function validQuestCardId(cardId) {
   return Number.isInteger(cardId) && cardId > 0 && cardId <= 0x7fffffff;
 }
 
-function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
+function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   let phase = 'encounter';
   let direction = null;
   let ready = null;
@@ -675,7 +700,13 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
   let hand = null;
   let moveTable = null;
   let exchange = null;
+  let duelFinish = null;
+  let questFinish = null;
   let questDeleted = false;
+  let settlement = null;
+  const settlementAvatar = { exp: null, gems: null, level: null, energy: null, energyMax: null };
+  const settlementMap = { questFlag: null, questClearNum: null, progress: null };
+  const awards = new Map();
   let nextCombatReply;
   let combatDeadline;
   let readyParts = {};
@@ -786,28 +817,67 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
     return exchange.phase !== 'uncertain';
   }
 
-  function receiveCombat(reply) {
+  function settlementSnapshot() {
+    if (!settlement) return null;
+    const bonusPending = duelFinish?.bonus ?? null;
+    const duelResult = duelFinish?.result === 0 ? 0 : 1;
+    return { ...settlement, bonusPending, canReturn: bonusPending === false && duelResult === settlement.result };
+  }
+
+  function receiveSettlement(reply) {
+    if (settlement) return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
-      exchange.duelFinish = readQuestDuelFinishReply(reply);
-      finishCombat('terminal');
-      return;
-    }
-    if (reply.command === QUEST_DELETED_REPLY) {
-      if (readQuestDeletedReply(reply) === inventoryId) {
-        questDeleted = true;
-        if (exchange.questFinish) removeFinishedQuest();
-      }
-      return;
-    }
-    if (reply.command === QUEST_FINISH_REPLY) {
-      const finish = readQuestFinishReply(reply);
-      if (finish.inventoryId === inventoryId) {
-        exchange.questFinish = finish;
-        if (questDeleted) removeFinishedQuest();
+      duelFinish ??= readQuestDuelFinishReply(reply);
+      if (exchange) {
+        exchange.duelFinish = duelFinish;
         finishCombat('terminal');
       }
       return;
     }
+
+    switch (reply.command) {
+      case QUEST_DELETED_REPLY:
+        if (readQuestDeletedReply(reply) === inventoryId) questDeleted = true;
+        break;
+      case QUEST_FINISH_REPLY: {
+        const finish = readQuestFinishReply(reply);
+        // Original battle settlement sends win or loss; draw is a quest loss.
+        if (finish.inventoryId !== inventoryId || (finish.result !== 0 && finish.result !== 1)) return;
+        questFinish ??= finish;
+        if (exchange) {
+          exchange.questFinish = questFinish;
+          finishCombat('terminal');
+        }
+        break;
+      }
+      case QUEST_PROGRESS_REPLY: {
+        const progress = readQuestProgressReply(reply);
+        if (progress.inventoryId === inventoryId) settlementMap.progress = progress.progress;
+        break;
+      }
+      case QUEST_CHARACTER_AWARD_REPLY: {
+        const card = readQuestCharacterAwardReply(reply);
+        if (awards.size < MAX_QUEST_ROWS && !awards.has(card.inventoryId)) awards.set(card.inventoryId, card);
+        break;
+      }
+      case QUEST_ENERGY_REPLY:
+        settlementAvatar.energy = readQuestEnergyReply(reply).energy;
+        break;
+      default: {
+        const { field, value } = readQuestSettlementValueReply(reply);
+        const group = Object.hasOwn(settlementAvatar, field) ? settlementAvatar : settlementMap;
+        group[field] = value;
+        break;
+      }
+    }
+    if (questDeleted && questFinish) {
+      settlement = applySettlement({
+        ...questFinish, questId, avatar: { ...settlementAvatar }, map: { ...settlementMap }, cards: [...awards.values()],
+      });
+    }
+  }
+
+  function receiveCombat(reply) {
     if (['complete', 'terminal', 'uncertain'].includes(exchange.phase)) return;
 
     if (reply.command === QUEST_DAMAGE_REPLY || reply.command === QUEST_HIT_POINT_REPLY) {
@@ -884,10 +954,15 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
   const unsubscribe = socket.observe([
     ...QUEST_INITIAL_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
     QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ERROR_REPLY,
-    QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES,
+    QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
   ], (reply) => {
-    if (phase === 'closed' || phase === 'uncertain') return;
+    if (phase === 'closed') return;
     try {
+      if (QUEST_SETTLEMENT_REPLIES.includes(reply.command)) {
+        receiveSettlement(reply);
+        return;
+      }
+      if (phase === 'uncertain') return;
       if (exchange) {
         if (QUEST_COMBAT_REPLIES.includes(reply.command)) receiveCombat(reply);
         else if (reply.command === QUEST_BATTLE_CARD_ADD_REPLY || reply.command === QUEST_BATTLE_CARD_REMOVE_REPLY) {
@@ -941,7 +1016,7 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
           exchange = {
             phase: 'awaiting-attack', playerAttacks: null, battleTable: [], attackCards: null, defenceCards: null,
             cards: null, dice: null, damage: [], hitPoints: { player: null, opponent: null },
-            duelFinish: null, questFinish: null,
+            duelFinish, questFinish,
           };
           waitForCombat(QUEST_ATTACK_PHASE_START_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
           if (pending?.kind === 'commit') pending.resolve(result);
@@ -951,11 +1026,6 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
           readQuestAttackPhaseReply(reply);
           uncertain();
           break;
-        case QUEST_FINISH_REPLY: {
-          const finish = readQuestFinishReply(reply);
-          if (finish.inventoryId === inventoryId) uncertain();
-          break;
-        }
         case QUEST_ERROR_REPLY:
           readQuestErrorReply(reply);
           uncertain();
@@ -1010,7 +1080,9 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
           // The combat observer separately bounds each original stage; this caps the whole action.
           timeout = remaining + (exchange.playerAttacks ? QUEST_COMBAT_WAIT : 0) + 5 * TIMEOUT;
         }
-        return structuredClone(await bounded(notification, controller.signal, timeout));
+        const acknowledged = await bounded(notification, controller.signal, timeout);
+        return structuredClone(kind === 'battle-commit'
+          ? { ...acknowledged, settlement: settlementSnapshot() } : acknowledged);
       } catch (error) {
         if (sent && phase !== 'closed' && error.kind !== 'quest-direction-rejected'
             && error.kind !== 'quest-card-rejected' && error.kind !== 'quest-battle-unavailable') {
@@ -1028,8 +1100,10 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
 
   return {
     get busy() { return pending !== null; },
+    get settlement() { return structuredClone(settlementSnapshot()); },
     snapshot: () => structuredClone({
-      phase, direction, ready, result, actionHand: hand && hand.filter((card) => !card.event), moveTable, exchange,
+      phase, direction, ready, result, actionHand: hand && hand.filter((card) => !card.event), moveTable,
+      exchange: exchange && { ...exchange, settlement: settlementSnapshot() },
     }),
     ready: (signal) => send('ready', QUEST_READY_REQUEST, [], signal),
     choose: (chosen, signal) => send('direction', QUEST_DIRECTION_REQUEST, [signedByte(chosen)], signal, { direction: chosen }),
@@ -1056,9 +1130,11 @@ function observeQuestBattle(socket, inventoryId, removeFinishedQuest) {
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
   let questRequest;
+  let questReturn;
   let searchUncertain = false;
   let questStartUncertain = false;
   let adventure = null;
+  const boundQuestDecks = new Map();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -1067,13 +1143,17 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       clearInterval(timer);
       initialData = null;
       questData = null;
+      boundQuestDecks.clear();
       sessionKey.fill(0);
       const request = questRequest;
+      const returning = questReturn;
       const retained = adventure;
       if (retained) retained.state = 'closed';
       request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+      returning?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       closing = (async () => {
         if (request) await request.task.catch(() => {});
+        if (returning) await returning.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
           await closeChannel(retained.channel);
@@ -1086,8 +1166,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   function assertQuestAvailable() {
-    if (questRequest) throw new SessionError('busy');
+    if (questRequest || questReturn) throw new SessionError('busy');
     if (adventure) {
+      if (adventure.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
       throw new SessionError(adventure.state === 'uncertain' ? 'quest-land-uncertain' : 'quest-adventure-active');
     }
   }
@@ -1119,11 +1200,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   function maintainAdventure() {
     const current = adventure;
     if (!current?.connected || questRequest || current.battle?.busy
-        || current.state === 'closed' || current.state === 'finished') return;
+        || !['encounter', 'progress', 'uncertain'].includes(current.state)) return;
     const { socket } = current.channel;
     void socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch(() => {
-      if (current.state !== 'closed') current.state = 'uncertain';
-      return closeChannel(current.channel);
+      if (current.state === 'encounter' || current.state === 'progress') current.state = 'uncertain';
+      if (current.state === 'uncertain') return closeChannel(current.channel);
     });
   }
 
@@ -1134,6 +1215,40 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       throw new SessionError('quest-battle-unavailable');
     }
     return adventure.battle;
+  }
+
+  function reconcileQuestSettlement(selected, receipt) {
+    const avatar = initialData?.avatar;
+    const deltas = { exp: null, gems: null, level: null };
+    let deckRestored = null;
+    if (!questData || !avatar) return { ...receipt, deltas, deckRestored };
+
+    if (receipt.avatar.level !== null && receipt.avatar.level !== avatar.level) {
+      // check_level_up can refill and raise the AP cap without sending an AP update.
+      avatar.energy = null;
+      avatar.energyMax = null;
+    }
+    for (const field of Object.keys(deltas)) {
+      const absolute = receipt.avatar[field];
+      if (absolute === null) continue;
+      if (Number.isInteger(avatar[field])) deltas[field] = absolute - avatar[field];
+      avatar[field] = absolute;
+    }
+    if (receipt.avatar.energy !== null) avatar.energy = receipt.avatar.energy;
+    for (const field of ['questFlag', 'questClearNum']) {
+      if (receipt.map[field] !== null) questData[field] = receipt.map[field];
+    }
+
+    const finished = questData.rows.findIndex((row) => row.inventoryId === receipt.inventoryId);
+    if (finished >= 0) questData.rows.splice(finished, 1);
+    const deck = boundQuestDecks.get(receipt.inventoryId);
+    boundQuestDecks.delete(receipt.inventoryId);
+    // Original quest_all_clear releases the already-bound deck before sending SC24.
+    if (deck?.index === selected.deckIndex && !avatar.questDecks.some(({ index }) => index === deck.index)) {
+      avatar.questDecks = [...avatar.questDecks, deck].sort((first, second) => first.index - second.index);
+      deckRestored = { ...deck };
+    }
+    return { ...receipt, deltas, deckRestored };
   }
 
   const timer = setInterval(async () => {
@@ -1163,6 +1278,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       return { inventoryId, slot, state, closed: channel.socket.closed };
     },
     get questBattle() { return adventure?.battle?.snapshot() ?? null; },
+    get questSettlement() { return adventure?.battle?.settlement ?? null; },
     async readQuestInventory({ signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
@@ -1246,7 +1362,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
       const selected = questData.rows[index];
       const avatar = initialData.avatar;
-      if (!isStartableQuest(selected) || !avatar?.questDecks?.some(({ index }) => index === deckIndex)) {
+      const deck = avatar?.questDecks?.find(({ index }) => index === deckIndex);
+      if (!isStartableQuest(selected) || !deck) {
         throw new SessionError('quest-start-unavailable');
       }
 
@@ -1268,6 +1385,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             questData.rows[index] = row;
             avatar.energy = result.energy;
             avatar.questDecks = avatar.questDecks.filter(({ index }) => index !== deckIndex);
+            boundQuestDecks.set(inventoryId, { ...deck });
             questStartUncertain = false;
             return { row: { ...row }, energy: result.energy, deckIndex };
           },
@@ -1304,13 +1422,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               adventure = current;
               void socket.closed.then(() => {
                 current.connected = false;
-                if (current.state !== 'closed' && current.state !== 'finished') current.state = 'uncertain';
+                if (['entering', 'encounter', 'progress'].includes(current.state)) current.state = 'uncertain';
               });
             }, () => {
-              current.battle = observeQuestBattle(socket, inventoryId, () => {
-                const finished = questData?.rows.findIndex((row) => row.inventoryId === inventoryId) ?? -1;
-                if (finished >= 0) questData.rows.splice(finished, 1);
-              });
+              current.battle = observeQuestBattle(socket, selected, (receipt) => reconcileQuestSettlement(selected, receipt));
             });
             if (result.rejection !== undefined) {
               adventure = null;
@@ -1375,6 +1490,39 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     },
     async commitQuestBattle({ signal } = {}) {
       return activeBattle().commitBattle(signal);
+    },
+    async returnFromQuest({ signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      const current = adventure;
+      if (questRequest || questReturn || current?.battle?.busy) throw new SessionError('busy');
+      if (current?.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
+      const settlement = current?.battle?.settlement;
+      if (!settlement?.canReturn || current.state !== 'encounter' || !current.connected) {
+        throw new SessionError('quest-return-unavailable');
+      }
+
+      const controller = new AbortController();
+      const cancel = () => controller.abort(new SessionError('cancelled'));
+      signal?.addEventListener('abort', cancel, { once: true });
+      current.state = 'returning';
+      const task = current.channel.socket.releaseQuest(controller.signal);
+      questReturn = { controller, task };
+      try {
+        await task;
+        controller.signal.throwIfAborted();
+        await current.battle.stop('closed');
+        controller.signal.throwIfAborted();
+        adventure = null;
+        return settlement;
+      } catch (error) {
+        if (current.state === 'closed') throw error;
+        current.state = 'return-uncertain';
+        throw new SessionError('quest-return-uncertain');
+      } finally {
+        questReturn = null;
+        signal?.removeEventListener('abort', cancel);
+      }
     },
     closed,
     close: () => stop('closed'),

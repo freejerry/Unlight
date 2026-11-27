@@ -22,6 +22,12 @@ export const QUEST_SEARCH_REQUEST = 5;
 export const QUEST_SEARCH_REPLY = QUEST_INVENTORY_REPLY;
 export const QUEST_SEARCH_TIMER = 1;
 export const QUEST_ENERGY_REPLY = 4;
+export const QUEST_EXP_REPLY = 7;
+export const QUEST_LEVEL_REPLY = 8;
+export const QUEST_GEMS_REPLY = 10;
+export const QUEST_CHARACTER_AWARD_REPLY = 13;
+export const QUEST_MAP_FLAG_REPLY = 26;
+export const QUEST_MAP_CLEAR_COUNT_REPLY = 28;
 export const QUEST_ERROR_REPLY = 29;
 export const QUEST_START_REQUEST = 13;
 export const QUEST_DELETED_REPLY = 22;
@@ -69,6 +75,13 @@ const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
 const skipGroup = (count) => [4, ...skipStrings(count)];
 const optionalList = (key, limit = MAX_ID_LIST_BYTES) => ({ key, limit, optional: true });
+const settlementFields = {
+  [QUEST_EXP_REPLY]: 'exp',
+  [QUEST_LEVEL_REPLY]: 'level',
+  [QUEST_GEMS_REPLY]: 'gems',
+  [QUEST_MAP_FLAG_REPLY]: 'questFlag',
+  [QUEST_MAP_CLEAR_COUNT_REPLY]: 'questClearNum',
+};
 
 // Order from DataCommand.scAvatarInfo. Length-prefixed fields can span inflated chunks.
 const fields = [
@@ -180,6 +193,24 @@ export function readQuestEnergyReply(reply) {
   return { energy, remainingSeconds };
 }
 
+export function readQuestSettlementValueReply(reply) {
+  const field = settlementFields[reply.command];
+  if (!field) throw new Error('Unexpected quest settlement value reply.');
+  const value = reply.int();
+  reply.done();
+  if (value < 0 || (field === 'level' && value === 0)) throw new Error('Invalid quest settlement value.');
+  return { field, value };
+}
+
+export function readQuestCharacterAwardReply(reply) {
+  if (reply.command !== QUEST_CHARACTER_AWARD_REPLY) throw new Error('Unexpected quest character award reply.');
+  const inventoryId = reply.int();
+  const cardId = reply.int();
+  reply.done();
+  if (inventoryId <= 0 || cardId <= 0) throw new Error('Invalid quest character award.');
+  return { inventoryId, cardId };
+}
+
 export function readQuestErrorReply(reply) {
   if (reply.command !== QUEST_ERROR_REPLY) throw new Error('Unexpected quest error reply.');
   const code = reply.int();
@@ -269,12 +300,12 @@ export function readQuestDuelStartReply(reply) {
 export function readQuestDuelFinishReply(reply) {
   if (reply.command !== QUEST_DUEL_FINISH_REPLY) throw new Error('Unexpected quest duel finish reply.');
   const result = reply.byte();
-  // The display only needs the result, but the original packet also carries seven reward integers and a flag.
+  // The seven integer fields carry duel award amounts and multipliers.
   for (let field = 0; field < 7; field += 1) reply.int();
-  readDuelBoolean(reply);
+  const bonus = readDuelBoolean(reply);
   reply.done();
   if (result < 0 || result > 2) throw new Error('Invalid quest duel result.');
-  return { result };
+  return { result, bonus };
 }
 
 function readDuelCardIds(reply) {
