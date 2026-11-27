@@ -1,0 +1,43 @@
+.replay-panel {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: .7rem;
+  background: var(--white);
+}
+
+.replay-panel h2 { font-size: 1.1rem; }
+.replay-control-heading, .replay-transport { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .55rem 1rem; }
+.replay-control-heading > div { min-width: 0; }
+#replay-status, .replay-note { color: var(--muted); font-size: .9rem; }
+#replay-status { margin-top: .22rem; }
+#replay[data-state="failed"] #replay-status { color: var(--failure); }
+#replay-retry { margin-top: .65rem; }
+.replay-seed { border-radius: .35rem; padding: .22rem .5rem; background: #ecf4f3; color: #205049; font-size: .9rem; }
+.replay-player { display: grid; gap: .7rem; margin-top: .85rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+#replay-toggle { min-width: 5.5rem; }
+.replay-position { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+.replay-position strong { color: #172933; font-variant-numeric: tabular-nums; }
+.replay-seek-field { display: grid; gap: .2rem; font-size: .9rem; }
+#replay-seek { width: 100%; min-height: 1.9rem; margin: 0; accent-color: var(--accent); }
+
+.replay-content { display: grid; align-items: start; grid-template-columns: minmax(0, 1.13fr) minmax(0, 1fr); gap: .8rem; margin-top: .8rem; }
+.replay-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .7rem; }
+.replay-metrics > div { min-width: 0; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .4rem; background: #f2f7f9; }
+.replay-metrics dt, .replay-draw dt { color: var(--muted); font-size: .86rem; }
+.replay-metrics dd { margin-top: .16rem; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.replay-clock { display: block; font-weight: 450; }
+.replay-draw { margin-top: .75rem; }
+.replay-draw h3 { font-size: .95rem; }
+.replay-draw dl { display: flex; gap: 1.6rem; margin-top: .32rem; }
+.replay-draw dd { font-variant-numeric: tabular-nums; }
+.replay-raw { margin: .7rem 0 0; padding: .75rem; border: 1px solid #dce7ed; border-radius: .45rem; background: #f0f5f7; color: #223b4a; font-size: .84rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 52rem) {
+  .replay-content { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 35rem) {
+  .replay-panel { padding: .8rem; }
+  .replay-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -94,6 +94,12 @@ Chromium 的 ANGLE SwiftShader 實測使用一個 WebGL 2 繪圖環境。讀回�
 
 以 390 CSS 像素寬、裝置像素比 2 的 Chromium 視窗再次登入，仍可完整讀取任務列與 0/3 進度，頁面寬度維持在視窗內。[窄視窗截圖](native/08-native-quest-mobile.png)
 
+## 原生對局紀錄回放
+
+用原版 Ruby 重跑固定種子 `2026`，輸出的 68 筆事件與保存的基準逐位元組相同。原生對局紀錄頁由同源讀取該基準。Chromium 用鍵盤逐筆核對回合、階段、HP、各次抽牌數及原始事件 JSON。tick 0 有四筆紀錄，依輸出順序完整保留。第四回合在模擬時間 92.1 秒結算，玩家勝利，雙方 HP 為 5／0。[原版 Ruby 紀錄](../../tools/legacy-server/fixtures/trace-2026.json) · [抽牌截圖](native/11-native-replay-event.png) · [結算截圖](native/12-native-replay-finished.png)
+
+瀏覽器驗證了播放、暫停、前後跳轉、結算時停止及重新播放。390 CSS 像素寬的視窗遇到 HTTP 503 或無效的紀錄資料時可重試。本次回放只讀取同源檔案，未啟動對局服務。[重跑方式](../../web-client/README.md#原版對局紀錄回放)
+
 ## 原始 SWF 元件
 
 獨立播放標題背景、換角面板與戰鬥階段元件，確認可載入並繪製。這三個檔案的遊戲內操作和聲音由主客戶端另外觸發。

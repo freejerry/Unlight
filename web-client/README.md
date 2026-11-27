@@ -59,3 +59,22 @@ python3 tools/legacy-web/check_native_session.py --port 4334 --username playtest
 若第一個帳號已有角色，可加上 `--no-avatar-username` 和 `--no-avatar-password-file`，用同一個 Ruby 環境的第二個測試帳號驗證未創角回應。[有角色](../docs/playtest/native/04-native-initial-data.png) · [未創角](../docs/playtest/native/05-native-starter-data.png)
 
 加上 `--quest-database` 並指定該次 Ruby 測試環境的 `app/server/data/game_dev2.db`，可用唯讀連線核對實際清單及區域進度。腳本會比對按下讀取前後的資料及 Ruby 通訊。[任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
+
+## 原版對局紀錄回放
+
+從首頁選「對局紀錄」，或直接開啟 `http://127.0.0.1:4348/replay/`。回放頁可用播放、暫停、上一筆、下一筆及鍵盤操作的滑桿逐筆查看。抽牌事件顯示該筆發給雙方的牌數。
+
+只驗收回放時，可直接啟動原生入口。頁面從同源讀取版本庫保存的固定種子對局紀錄，可獨立於 Ruby 服務與遊戲素材執行。
+
+```bash
+python3 tools/legacy-web/serve.py --native --port 4348
+```
+
+另開終端機，以 Chromium 和 Python Playwright 驗收 68 筆事件、操作、窄版及錯誤重試，並存下結算畫面。
+
+```bash
+python3 tools/legacy-web/check_native_replay.py --port 4348 \
+  --screenshot /tmp/unlight-native-replay.png
+```
+
+驗收頁固定每 600 毫秒前進一筆。畫面中的 Ruby tick 每格為 0.1 秒的模擬時間，同一 tick 的各筆事件仍照原始順序顯示。[Ruby 時鐘](../tools/legacy-server/duel.rb#L44) · [回放驗收紀錄](../docs/playtest/README.md#原生對局紀錄回放)

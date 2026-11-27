@@ -25,6 +25,7 @@ PORTS = tuple(port for _, port, _, _ in SERVICES)
 ROOT = Path(__file__).resolve().parent
 PUBLIC_CONFIG = ROOT.parents[1] / "app/client/public"
 NATIVE_ROOT = ROOT.parents[1] / "web-client"
+REPLAY_BASELINE = ROOT.parent / "legacy-server/fixtures/trace-2026.json"
 QUEST_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
@@ -211,9 +212,12 @@ def create_app(
 
     if native:
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
+        app.router.add_get("/replay/", serve_file(NATIVE_ROOT / "replay.html"))
+        app.router.add_get("/api/replay-baseline", serve_file(REPLAY_BASELINE))
         for filename in (
             "client.js", "style.css", "transport.js", "session.js",
             "wire.js", "srp.js", "login.js", "panel.js", "panel-webgl.js", "data-bootstrap.js", "quest-data.js",
+            "replay.js", "replay-model.js", "replay.css",
         ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#112235" />
+    <meta name="description" content="逐筆檢查固定種子的原版 Ruby 對局紀錄。" />
+    <title>Unlight 對局紀錄</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/replay.css" />
+    <script type="module" src="/replay.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-content">
+        <span class="wordmark">Unlight</span>
+        <span class="topbar-label">對局診斷</span>
+        <a class="topbar-link" href="/">連線診斷</a>
+      </div>
+    </header>
+
+    <main id="replay" class="shell" data-state="loading" data-playback="paused" aria-labelledby="replay-title">
+      <div class="page-heading">
+        <div>
+          <h1 id="replay-title">Ruby 對局紀錄</h1>
+          <p>逐筆查看固定種子的原版伺服器驗收紀錄。</p>
+        </div>
+      </div>
+
+      <section class="replay-panel replay-controls" aria-labelledby="replay-controls-title">
+        <div class="replay-control-heading">
+          <div>
+            <h2 id="replay-controls-title">事件時間軸</h2>
+            <p id="replay-status" role="status" aria-atomic="true">正在讀取 Ruby 對局紀錄…</p>
+          </div>
+          <p id="replay-seed-label" class="replay-seed" hidden>種子 <code id="replay-seed"></code></p>
+        </div>
+        <button id="replay-retry" class="button secondary" type="button" hidden>重試讀取紀錄</button>
+
+        <div id="replay-player" class="replay-player" hidden>
+          <div class="replay-transport">
+            <div class="actions" aria-label="事件播放控制" role="group">
+              <button id="replay-prev" class="button secondary" type="button">上一筆</button>
+              <button id="replay-toggle" class="button primary" type="button">播放</button>
+              <button id="replay-next" class="button secondary" type="button">下一筆</button>
+            </div>
+            <p class="replay-position">目前紀錄 <strong id="replay-index"></strong></p>
+          </div>
+          <div class="replay-seek-field">
+            <label for="replay-seek">定位紀錄</label>
+            <input id="replay-seek" type="range" min="0" max="0" step="1" value="0" aria-describedby="replay-pace" />
+          </div>
+          <p id="replay-pace" class="replay-note">診斷頁每 600 毫秒播放一筆。同一 Ruby tick 的紀錄仍按原始順序逐筆顯示。</p>
+        </div>
+      </section>
+
+      <div id="replay-content" class="replay-content" hidden>
+        <section class="replay-panel" aria-labelledby="replay-event-title">
+          <h2 id="replay-event-title">目前事件</h2>
+          <dl class="replay-metrics">
+            <div>
+              <dt>Ruby tick</dt>
+              <dd><code id="replay-tick"></code><small class="replay-note replay-clock"><span id="replay-time"></span> 秒（虛擬時鐘）</small></dd>
+            </div>
+            <div><dt>回合</dt><dd id="replay-turn"></dd></div>
+            <div><dt>階段</dt><dd><code id="replay-phase"></code></dd></div>
+            <div><dt>玩家 HP</dt><dd id="replay-player-hp"></dd></div>
+            <div><dt>CPU HP</dt><dd id="replay-cpu-hp"></dd></div>
+            <div><dt>結果（玩家／CPU）</dt><dd><code id="replay-result"></code></dd></div>
+          </dl>
+
+          <section id="replay-draw" class="replay-draw" aria-labelledby="replay-draw-title" hidden>
+            <h3 id="replay-draw-title">本筆抽牌</h3>
+            <dl>
+              <div><dt>玩家</dt><dd><strong id="replay-draw-player"></strong> 張</dd></div>
+              <div><dt>CPU</dt><dd><strong id="replay-draw-cpu"></strong> 張</dd></div>
+            </dl>
+          </section>
+        </section>
+
+        <section class="replay-panel" aria-labelledby="replay-raw-title">
+          <h2 id="replay-raw-title">原始事件 JSON</h2>
+          <pre class="replay-raw"><code id="replay-event-json"></code></pre>
+        </section>
+      </div>
+      <noscript><p>請啟用 JavaScript 以讀取對局紀錄。</p></noscript>
+    </main>
+  </body>
+</html>
