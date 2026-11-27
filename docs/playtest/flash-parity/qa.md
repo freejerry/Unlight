@@ -100,6 +100,10 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 2. 保留遊戲舞台及相同 Quest 連線，等待實際 180 秒。觀察到期檢查 `CS17` 的送出時間，以及 Ruby 回覆的同一持有 ID、NEW 狀態和真正任務 ID。畫面只更新這一列，AP 維持 3/5、庫存維持 2/4。Back 返回大廳後，其他四條連線仍應存活。
 3. 以尚未到期的新搜尋再跑一次。倒數中先 Back 回大廳，再進任務。確認同一筆等待列，然後重新登入並再進入。記錄重登入後到期查詢的時間，須在原始 `find_at` 之後，並且只送一次 `CS17`。測試自然到期時保留原本 Ruby 時鐘。需要測遺失回覆時，可在測試瀏覽器暫緩原始回覆，查核 SQLite 並驗證再登入的對帳結果。[原始倒數發送](../../../app/client/src/view/scene/quest/QuestItem.as#L350) · [Ruby 到期判斷](../../../app/server/src/model/avatar_quest_inventory.rb#L110) · [完整原版操作及封包](/workspace/shared/unlight-web-port/flash-parity/quest-search/README.md)
 
+### 重跑任務詳情與牌組切換
+
+使用上面的完整 `check_source_lobby.py` 命令，以 `--screens` 保存固定 780×680 圖。兩位原版 Ruby 新角色各實際搜尋落日大蝙蝠，核對 NEW 點下時已展開詳情、狀態只依相符回覆變動。暫緩後放行的案例驗證地形滑入／移出、左上返回與重開、實際牌組循環和 BGM 播放延續。模擬遺失的案例在原始真回覆到達時略過轉交，驗證同次開啟不重送，回大廳再進任務由原版清單回播復原。最後比對 Quest 與 Lobby 的實際封包、SQLite、AP 和右上 Back 後的四條連線。[瀏覽器測例](../../../tools/legacy-web/check_source_lobby.py) · [原版操作與畫面](/workspace/shared/unlight-web-port/flash-parity/quest-details-original/README.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

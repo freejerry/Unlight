@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、兩秒場景音樂淡出、魔女山谷即時與 180 秒搜尋、AP 更新、重進／重新登入與到期轉 NEW。 | 接入任務詳情、NEW 確認與牌組選擇，再開始首場 PvE。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、兩秒場景音樂淡出、魔女山谷搜尋及到期、任務詳情、NEW 確認、地形滑入、地圖內返回與真實牌組切換。 | 接入卡面、開始任務、空牌組提示與首格移動，再開始首場 PvE。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -76,3 +76,8 @@
 
 - 原版繁中 SWF 與新版固定舞台皆使用隔離 Ruby 的真正搜尋。即時顯示落日大蝙蝠「取得」，3 分鐘搜尋自然到期後將同一持有項目更新為 NEW。每次扣 1 AP，同一 Quest 內從 AP 5/5、庫存 0/4 到 AP 3/5、庫存 2/4。Back 只關閉 Quest 連線。新版在原連線與重新登入兩條路徑分別在 Ruby 截止時間約 38 ms、889 ms 後送出唯一的到期查詢。[即時取得並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/instant-acquisition-comparison.png) · [搜尋中並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/timed-pending-comparison.png) · [到期並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/timed-found-comparison.png) · [到期測例](flash-parity/qa.md#重跑定時任務搜尋)
 - 真實 Ruby 拒絕 AP 不足時顯示「警告」，AP 和庫存維持原值。測試暫緩真正的搜尋成功通知時，畫面不提前追加任務。通知確定遺失時鎖住重送，重新登入後讀到 Ruby 已保存的唯一任務及扣除後的 AP。[AP 不足](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-06-native-rejected-ap.png) · [結果不明提示](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-07-native-search-uncertain.png) · [新版脫敏封包](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-native-search-wire.json)
+
+### 任務詳情、地形及牌組
+
+- 從正常遊戲進入魔女山谷，選「落日大蝙蝠」即展開詳情。收到 Ruby 對同一持有 ID 的確認後，NEW 變成未完成。地形滑入會填入高原圖與繁中說明，移出清空。地圖內返回、重開與牌組箭頭全程保留同一條 Quest 與背景音樂。牌組經已登入的 Lobby 確認，已驗兩個空牌組及左右循環，AP 維持 4/5。[任務詳情並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/detail-comparison.png) · [地形滑入並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/terrain-hover-comparison.png) · [空牌組並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/empty-deck-comparison.png) · [可重跑測例](flash-parity/qa.md#重跑任務詳情與牌組切換)
+- 暫緩及遺失回覆使用 Ruby 真確認。遺失後同一場景重開維持待確認狀態。回大廳重進後，原版清單回播同一筆未完成任務，未重送確認。舊 Flash 的地形說明缺字，新版以原版繁中資料顯示。完整卡面與其他任務的寶箱閃光循環待接入，開始、丟棄與贈送目前只顯示來源按鈕。[新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/qa-native-detail-wire.json) · [任務頁狀態與素材](flash-parity/quest-pve.md#任務詳情的來源規格)

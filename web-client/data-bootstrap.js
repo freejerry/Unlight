@@ -121,6 +121,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
     if (includeDeckCollection) {
       profile.deckCollection = quests?.deckCollection() ?? null;
       profile.selectedDeck = quests?.selectedDeck() ?? null;
+      profile.deckChoices = quests?.physicalDecks() ?? null;
     }
     profile.tutorialQuestProgress = quests?.tutorialQuestProgress() ?? null;
     return profile;

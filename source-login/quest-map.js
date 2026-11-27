@@ -12,6 +12,11 @@ const rowStatusNames = ['新任務', '未完成', '進行中', '已完成', '搜
 const rowKind = ['adventure', 'treasure', 'boss'];
 const pageSize = 10;
 const pickerPositions = [[64, 128], [144, 128], [224, 128], [304, 128], [64, 208], [144, 208]];
+const detailStatuses = new Set([0, 1, 2, 6]);
+const detailColumns = [88, 184, 280];
+const detailRows = [100, 180, 260, 340, 420];
+const outerPassFrames = [0, 0, 0, 2, 0, 1, 3, 4];
+const centerPassFrames = [0, 0, 0, 3, 0, 1, 10, 5, 0, 2, 8, 6, 9, 4, 11, 7];
 const searchRejections = new Map([
   [1, 'AP不足'],
   [30, '因任務數量已達到上限，所以不能再取得任務'],
@@ -30,12 +35,27 @@ const layout = `
       </div>
     </div>
     <img class="quest-map-frame" src="${art}quest-base.png" width="760" height="680" alt="">
+    <div class="quest-map-detail-copy" hidden>
+      <div class="quest-map-detail-heading">
+        <h2 id="quest-map-detail-title"></h2>
+        <p id="quest-map-detail-region"></p>
+        <p id="quest-map-detail-points"></p>
+      </div>
+      <p id="quest-map-detail-sender" hidden></p>
+      <p id="quest-map-detail-caption"></p>
+    </div>
     <button id="quest-map-region-open" class="quest-map-art-button" type="button" aria-label="選擇地圖" aria-haspopup="dialog" aria-controls="quest-map-region-picker">
       <img src="${art}quest-select-map-up.png" width="56" height="56" alt="">
       <img class="quest-map-art-over" src="${art}quest-select-map-over.png" width="56" height="56" alt="">
     </button>
-    <img class="quest-map-deck-back-art" src="${art}quest-deck-back-up.png" width="16" height="24" alt="">
-    <img class="quest-map-deck-next-art" src="${art}quest-deck-next-up.png" width="16" height="24" alt="">
+    <button id="quest-map-deck-previous" class="quest-map-art-button" type="button" aria-label="上一個牌組" aria-disabled="true">
+      <img src="${art}quest-deck-back-up.png" width="16" height="24" alt="">
+      <img class="quest-map-art-over" src="${art}quest-deck-back-over.png" width="16" height="24" alt="">
+    </button>
+    <button id="quest-map-deck-next" class="quest-map-art-button" type="button" aria-label="下一個牌組" aria-disabled="true">
+      <img src="${art}quest-deck-next-up.png" width="16" height="24" alt="">
+      <img class="quest-map-art-over" src="${art}quest-deck-next-over.png" width="16" height="24" alt="">
+    </button>
     <div class="avatar-layer"></div>
     <section class="quest-map-list" aria-label="目前持有的任務">
       <img class="quest-map-list-art" alt="" hidden>
@@ -49,8 +69,20 @@ const layout = `
     </section>
     <section id="quest-map-deck" aria-label="在任務中使用的牌組">
       <img class="quest-map-deck-case" src="${art}quest-deck-case.png" width="329" height="156" alt="">
-      <span id="quest-map-deck-name"></span>
+      <span id="quest-map-active-deck-name"></span>
       <ol id="quest-map-deck-cards"></ol>
+    </section>
+    <section id="quest-map-detail" aria-labelledby="quest-map-detail-title" hidden>
+      <button id="quest-map-detail-back" class="quest-map-art-button" type="button" aria-label="返回地圖"><span>返回地圖</span></button>
+      <div class="quest-map-detail-route"></div>
+      <div class="quest-map-detail-data-art" aria-hidden="true"></div>
+      <div class="quest-map-detail-commands"></div>
+      <section id="quest-map-detail-land-data" aria-labelledby="quest-map-detail-land-name" hidden>
+        <div class="quest-map-detail-land-art"></div>
+        <h3 id="quest-map-detail-land-name"></h3>
+        <p id="quest-map-detail-land-caption"></p>
+      </section>
+      <p id="quest-map-detail-status" class="sr-only" role="status"></p>
     </section>
     <img class="quest-map-item-art" src="/source-login/lobby-art/hover/item-up.png" width="48" height="32" alt="">
     <p id="quest-map-status" role="status" hidden></p>
@@ -229,6 +261,228 @@ function paintProgress(progress, clearNum, map, position) {
   progress.querySelector('span').textContent = `${clear}/${map.clearTarget}`;
   place(progress, position);
   progress.hidden = false;
+}
+
+function appendDetailArt(parent, layer, x = 0, y = 0) {
+  if (!layer) return;
+  const node = image(layer.file, 'quest-map-detail-sprite');
+  place(node, [x + layer.x, y + layer.y, layer.width, layer.height]);
+  parent.append(node);
+}
+
+// QuestPassClip.judgeType selects each authored path frame from the three original next masks.
+function detailPathFrames(left, center, right) {
+  const leftBits = (left & 4 ? 5 : 0) | (left & 3 ? 3 : 0) | ((center | right) & 4 ? 6 : 0);
+  const rightBits = (right & 1 ? 5 : 0) | (right & 6 ? 3 : 0) | ((center | left) & 1 ? 6 : 0);
+  const centerBits = (center & 2 ? 5 : 0) | (center & 4 ? 9 : 0) | (center & 1 ? 3 : 0) |
+    (left & 2 ? 12 : 0) | (right & 2 ? 6 : 0) | (left & 1 || right & 4 ? 10 : 0);
+  return [outerPassFrames[leftBits], centerPassFrames[centerBits], outerPassFrames[rightBits]];
+}
+
+function appendTerrainArt(parent, assets, land, x, y) {
+  const terrain = assets.terrain?.[land.stage]?.dis;
+  appendDetailArt(parent, terrain, x, y);
+  if (land.enemyId > 0) {
+    appendDetailArt(parent, assets.events[land.treasureType === 7 ? 'enemy_hl' : 'enemy'], x, y);
+    if (land.treasureType > 0) appendDetailArt(parent, assets.subEvents[assets.subEventByTreasure[land.treasureType]], x, y);
+  } else if (land.treasureType > 0 && land.treasureType !== 7) {
+    appendDetailArt(parent, assets.events[assets.eventByTreasure[land.treasureType]], x, y);
+  }
+  return terrain;
+}
+
+function paintDetailRoute(route, positions, assets, setHover) {
+  route.replaceChildren();
+  if (!Array.isArray(positions) || !assets) return;
+  const bySlot = new Map(positions.map(land => [land.slot, land]));
+  const lanes = ['left', 'center', 'right'];
+  for (let column = 0; column < 4; column += 1) {
+    const index = column * 3;
+    const frames = detailPathFrames(bySlot.get(index)?.nextMask ?? 0, bySlot.get(index + 1)?.nextMask ?? 0,
+      bySlot.get(index + 2)?.nextMask ?? 0);
+    for (const [lane, frame] of frames.entries()) {
+      if (frame) appendDetailArt(route, assets.paths?.[lanes[lane]]?.[frame], 80 + 96 * lane, 156 + 80 * column);
+    }
+  }
+
+  const start = [2, 1, 0].find(slot => bySlot.has(slot)) ?? 0;
+  appendDetailArt(route, assets.bases?.[4], detailColumns[start], 36);
+  for (const land of positions) {
+    const { id, slot, nextMask } = land;
+    if (!Number.isInteger(slot) || slot < 0 || slot > 14) continue;
+    const x = detailColumns[slot % 3];
+    const y = detailRows[Math.floor(slot / 3)];
+    const goal = slot >= 12 || nextMask === 0;
+    appendDetailArt(route, assets.bases?.[goal ? 5 : 2], x, y);
+    const terrain = appendTerrainArt(route, assets, land, x + 40, y + 56);
+    if (!terrain) continue;
+
+    const hit = document.createElement('span');
+    hit.className = 'quest-map-detail-land';
+    hit.dataset.slot = String(slot);
+    hit.dataset.landId = String(id);
+    hit.tabIndex = 0;
+    hit.setAttribute('role', 'img');
+    hit.setAttribute('aria-label', land.name || `地形 ${id}`);
+    if (land.caption) hit.setAttribute('aria-description', land.caption);
+    place(hit, [x + 40 + terrain.x, y + 56 + terrain.y, terrain.width, terrain.height]);
+    const activate = () => setHover(land);
+    const deactivate = () => { if (!hit.matches(':hover, :focus')) setHover(null); };
+    hit.addEventListener('mouseenter', activate);
+    hit.addEventListener('mouseleave', deactivate);
+    hit.addEventListener('focus', activate);
+    hit.addEventListener('blur', deactivate);
+    route.append(hit);
+  }
+}
+
+function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, current }) {
+  const get = selector => view.querySelector(selector);
+  const detail = get('#quest-map-detail');
+  const world = get('#quest-map-world');
+  const picker = get('#quest-map-region-open');
+  const copy = get('.quest-map-detail-copy');
+  const localBack = get('#quest-map-detail-back');
+  const route = get('.quest-map-detail-route');
+  const commands = get('.quest-map-detail-commands');
+  const panel = get('#quest-map-detail-land-data');
+  const panelArt = get('.quest-map-detail-land-art');
+  const notice = get('#quest-map-detail-status');
+  let assets;
+  let selectedId;
+  let acknowledging;
+  let rendered;
+
+  function setHover(land) {
+    panelArt.replaceChildren();
+    panel.hidden = !land;
+    if (!land) {
+      delete panel.dataset.landId;
+      delete panel.dataset.slot;
+      get('#quest-map-detail-land-name').textContent = '';
+      get('#quest-map-detail-land-caption').textContent = '';
+      return;
+    }
+    panel.dataset.landId = String(land.id);
+    panel.dataset.slot = String(land.slot);
+    get('#quest-map-detail-land-name').textContent = land.name;
+    get('#quest-map-detail-land-caption').textContent = land.caption;
+    appendTerrainArt(panelArt, assets, land, 512, 403);
+  }
+
+  function close() {
+    const closed = selectedId;
+    selectedId = undefined;
+    rendered = undefined;
+    detail.hidden = copy.hidden = true;
+    world.inert = false;
+    picker.hidden = false;
+    delete view.dataset.detailOpen;
+    delete detail.dataset.inventoryId;
+    delete detail.dataset.questStatus;
+    delete detail.dataset.confirmationState;
+    setHover(null);
+    route.replaceChildren();
+    const row = get(`#quest-map-inventory > li[data-inventory-id="${closed}"]`);
+    row?.querySelector('.quest-map-row-open')?.removeAttribute('aria-current');
+    (row?.querySelector('.quest-map-row-open') ?? picker).focus({ preventScroll: true });
+  }
+
+  function refresh() {
+    if (!selectedId || signal.aborted) return;
+    const { rows, energy } = current();
+    const row = rows.find(item => item.inventoryId === selectedId);
+    if (!row || !detailStatuses.has(row.status)) {
+      close();
+      return;
+    }
+    const definition = definitions.get(row.questId);
+    detail.dataset.inventoryId = String(row.inventoryId);
+    detail.dataset.questStatus = String(row.status);
+    detail.dataset.confirmationState = row.confirmationState ?? (acknowledging === row.inventoryId ? 'busy' : 'ready');
+    notice.textContent = detail.dataset.confirmationState === 'uncertain' ? '無法確認任務已讀狀態。' : '';
+    get('#quest-map-detail-title').textContent = definition?.name || `任務 ${row.questId}`;
+    get('#quest-map-detail-region').textContent = definition?.map ? `[地區]${definition.map}` : '';
+    get('#quest-map-detail-points').textContent = Number.isInteger(definition?.difficulty) ? `[QuestPoint]: ＋${definition.difficulty}` : '';
+    get('#quest-map-detail-caption').textContent = definition?.caption || '';
+    const sender = get('#quest-map-detail-sender');
+    sender.hidden = !row.senderName;
+    sender.textContent = row.senderName ? `[送礼来的大小姐]：${row.senderName}` : '';
+    for (const button of commands.children) {
+      const command = button.dataset.questCommand;
+      button.hidden = row.status === 2 ? command !== 'quit' : command === 'quit' ||
+        (command === 'present' && Number.isInteger(energy) && definition?.ap > energy);
+    }
+    if (rendered?.definition !== definition || rendered?.assets !== assets) {
+      rendered = { definition, assets };
+      setHover(null);
+      paintDetailRoute(route, definition?.positions, assets, setHover);
+    }
+  }
+
+  localBack.addEventListener('click', close, { signal });
+  void getCatalog(`${art}sources.json`, null, signal).then(({ detail: source }) => {
+    if (signal.aborted || !source) return;
+    assets = source;
+    function applyButtonArt(button, { up, over, hit }) {
+      place(button, hit);
+      appendDetailArt(button, up, -hit[0], -hit[1]);
+      if (over) {
+        appendDetailArt(button, over, -hit[0], -hit[1]);
+        button.lastElementChild.classList.add('quest-map-art-over');
+      }
+    }
+    if (assets.back) {
+      localBack.replaceChildren();
+      applyButtonArt(localBack, assets.back);
+    }
+    for (const [key, label] of [['start', '開始'], ['drop', '丟棄'], ['present', '贈送'], ['quit', '放棄']]) {
+      if (!assets.commands?.[key]) continue;
+      const command = document.createElement('button');
+      command.className = 'quest-map-art-button';
+      command.type = 'button';
+      command.disabled = true;
+      command.dataset.questCommand = key;
+      command.setAttribute('aria-label', label);
+      applyButtonArt(command, assets.commands[key]);
+      commands.append(command);
+    }
+    for (const layer of assets.data ?? []) appendDetailArt(get('.quest-map-detail-data-art'), layer);
+    refresh();
+  }).catch(() => {
+    // Authoritative names and captions remain available when art cannot be loaded.
+  });
+
+  return {
+    get inventoryId() { return selectedId; },
+    refresh,
+    async open(id) {
+      const row = current().rows.find(item => item.inventoryId === id);
+      if (!row || !detailStatuses.has(row.status) || row.questId <= 0) return;
+      get(`#quest-map-inventory > li[data-inventory-id="${selectedId}"] .quest-map-row-open`)?.removeAttribute('aria-current');
+      selectedId = id;
+      get(`#quest-map-inventory > li[data-inventory-id="${id}"] .quest-map-row-open`)?.setAttribute('aria-current', 'true');
+      detail.hidden = copy.hidden = false;
+      world.inert = true;
+      picker.hidden = true;
+      view.dataset.detailOpen = '';
+      refresh();
+      playBackClick();
+      localBack.focus({ preventScroll: true });
+      void loadDefinitions([row.questId]);
+      if (!scene || row.status !== 0 || row.confirmationState === 'uncertain' || acknowledging) return;
+      acknowledging = id;
+      refresh();
+      try {
+        await scene.acknowledge(id);
+      } catch {
+        // A later snapshot carries any uncertainty about an already-sent request.
+      } finally {
+        acknowledging = undefined;
+        if (!signal.aborted) refresh();
+      }
+    },
+  };
 }
 
 function setupSearchPreview(view, thumbnails, signal, { scene, onAlert, definitions, loadDefinitions }) {
@@ -510,14 +764,15 @@ function rowText(row, className, value) {
   return label;
 }
 
-function createQuestRow(item, definitions, receiptTime, timers, showHelp) {
+function createQuestRow(item, definitions, receiptTime, timers, showHelp, selectedId) {
   const row = document.createElement('li');
   row.dataset.inventoryId = String(item.inventoryId);
   row.dataset.questId = String(item.questId);
   row.dataset.questStatus = String(item.status);
   const status = rowStatus[item.status];
   if (status) row.append(image(`quest-row-state-${status}.png`, 'quest-map-row-state'));
-  rowText(row, 'sr-only', rowStatusNames[item.status] ?? '');
+  const statusLabel = rowText(row, 'sr-only', rowStatusNames[item.status] ?? '');
+  statusLabel.id = `quest-map-row-status-${item.inventoryId}`;
 
   const definition = definitions.get(item.questId);
   const undiscovered = item.questId === 0;
@@ -536,11 +791,23 @@ function createQuestRow(item, definitions, receiptTime, timers, showHelp) {
     row.append(image('quest-row-ap.png', 'quest-map-row-ap-art'));
     rowText(row, 'quest-map-row-ap', undiscovered ? '?' : `x${definition.ap}`);
   }
+  let helpId;
   if (showHelp && definition && (definition.caption || name)) {
     const tooltip = rowText(row, 'quest-map-row-tooltip', definition?.caption || name);
-    tooltip.id = `quest-map-row-help-${item.inventoryId}`;
+    helpId = tooltip.id = `quest-map-row-help-${item.inventoryId}`;
     tooltip.setAttribute('role', 'tooltip');
-    row.setAttribute('aria-describedby', tooltip.id);
+  }
+  if (!undiscovered && detailStatuses.has(item.status)) {
+    const button = document.createElement('button');
+    button.className = 'quest-map-row-open';
+    button.type = 'button';
+    button.setAttribute('aria-label', name);
+    button.setAttribute('aria-controls', 'quest-map-detail');
+    button.setAttribute('aria-describedby', helpId ? `${statusLabel.id} ${helpId}` : statusLabel.id);
+    if (item.inventoryId === selectedId) button.setAttribute('aria-current', 'true');
+    row.append(button);
+  } else if (helpId) {
+    row.setAttribute('aria-describedby', helpId);
     row.tabIndex = 0;
   }
   const expiry = (item.receivedAt ?? receiptTime) + Math.max(0, item.findSeconds) * 1000;
@@ -554,14 +821,20 @@ function createQuestRow(item, definitions, receiptTime, timers, showHelp) {
 }
 
 async function paintDeck(view, selected, signal) {
-  if (!selected) return;
   const deck = view.querySelector('#quest-map-deck');
+  const name = deck.querySelector('#quest-map-active-deck-name');
+  const cards = deck.querySelector('#quest-map-deck-cards');
+  cards.replaceChildren();
+  if (!selected) {
+    delete deck.dataset.deckIndex;
+    name.textContent = '';
+    return;
+  }
   deck.dataset.deckIndex = String(selected.index);
-  deck.querySelector('#quest-map-deck-name').textContent = `${selected.index}. ${selected.name}`;
+  name.textContent = `${selected.index}. ${selected.name}`;
 
   const entries = selected.cards.filter(({ position }) => position >= 0 && position < 3);
   if (!entries.length) return;
-  const cards = deck.querySelector('#quest-map-deck-cards');
   const slots = new Map();
   for (const { cardId, inventoryId, position } of entries) {
     const slot = document.createElement('li');
@@ -601,12 +874,15 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
   const nextPage = get('.quest-map-page-next');
   const capacity = get('#quest-map-capacity');
   const searchStatus = get('#quest-map-search-status');
+  const deckControls = [[get('#quest-map-deck-previous'), -1], [get('#quest-map-deck-next'), 1]];
   const definitions = new Map();
   const definitionRequests = new Map();
   const timers = [];
   let latest = snapshot;
   let page = 0;
   let timer;
+  let selectingDeck = false;
+  const details = setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, current: () => latest });
 
   const updateTimers = () => {
     let running = false;
@@ -627,10 +903,14 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
     page = Math.min(page, pages - 1);
     const pageRows = latest.rows.slice(page * pageSize, (page + 1) * pageSize);
     const showHelp = getPreferences().toolTip;
-    const rowFocus = inventory.contains(document.activeElement) ? document.activeElement.dataset.inventoryId : null;
-    const items = pageRows.map(row => createQuestRow(row, definitions, latest.receivedAt, timers, showHelp));
+    const focused = document.activeElement;
+    const rowFocus = inventory.contains(focused) ? focused.closest('li')?.dataset.inventoryId : null;
+    const items = pageRows.map(row => createQuestRow(row, definitions, latest.receivedAt, timers, showHelp, details.inventoryId));
     inventory.replaceChildren(...items);
-    if (rowFocus) items.find(item => item.dataset.inventoryId === rowFocus)?.focus({ preventScroll: true });
+    if (rowFocus) {
+      const restored = items.find(item => item.dataset.inventoryId === rowFocus);
+      (restored?.querySelector('.quest-map-row-open') ?? restored)?.focus({ preventScroll: true });
+    }
     capacity.textContent = `${latest.rows.length}/${latest.capacity}`;
     capacity.classList.toggle('quest-map-capacity-full', latest.rows.length >= latest.capacity);
     get('#quest-map-list-page').textContent = `${page + 1}/${pages}`;
@@ -650,6 +930,7 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
         if (signal.aborted) return;
         for (const quest of quests) if (requested.has(quest.id)) definitions.set(quest.id, quest);
         paintRows();
+        details.refresh();
       }).catch(() => {
         for (const id of missing) definitionRequests.delete(id);
       });
@@ -658,13 +939,23 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
     return Promise.all(Array.from(requested, id => definitionRequests.get(id)));
   }
 
+  function displayDeckControls() {
+    const state = latest.deckSelectionState ?? 'unavailable';
+    view.dataset.deckSelectionState = state;
+    for (const [button] of deckControls) {
+      button.setAttribute('aria-disabled', String(state !== 'ready' || latest.searchState === 'busy' || selectingDeck || !scene));
+    }
+  }
+
   function displaySnapshot(next) {
     if (signal.aborted) return;
     const previous = latest;
     latest = next;
+    displayDeckControls();
+    if (previous.selectedDeck !== next.selectedDeck) void paintDeck(view, next.selectedDeck, signal);
     if (view.dataset.searchState !== next.searchState) {
       view.dataset.searchState = next.searchState;
-      searchStatus.textContent = next.searchState === 'busy' ? '正在確認搜尋結果。' : '';
+      searchStatus.textContent = next.searchState === 'busy' ? '正在等待伺服器回覆。' : '';
       for (const button of view.querySelectorAll('.quest-map-landmark-hit:not(:disabled)')) {
         if (next.searchState === 'busy') button.setAttribute('aria-disabled', 'true');
         else button.removeAttribute('aria-disabled');
@@ -674,12 +965,14 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
       next.rows.some((item, index) => {
         const old = previous.rows[index];
         return item.inventoryId !== old.inventoryId || item.questId !== old.questId || item.status !== old.status ||
-          item.findSeconds !== old.findSeconds || item.receivedAt !== old.receivedAt || item.dueAt !== old.dueAt;
+          item.findSeconds !== old.findSeconds || item.receivedAt !== old.receivedAt || item.dueAt !== old.dueAt ||
+          item.senderName !== old.senderName || item.confirmationState !== old.confirmationState;
       });
     if (changed) {
       paintRows();
       void loadDefinitions(next.rows.map(row => row.questId));
     }
+    details.refresh();
   }
 
   const changePage = delta => {
@@ -690,6 +983,27 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
   };
   prevPage.addEventListener('click', () => changePage(-1), { signal });
   nextPage.addEventListener('click', () => changePage(1), { signal });
+  inventory.addEventListener('click', event => {
+    const button = event.target.closest('.quest-map-row-open');
+    if (button) void details.open(Number(button.closest('li').dataset.inventoryId));
+  }, { signal });
+  for (const [button, delta] of deckControls) {
+    button.addEventListener('click', async () => {
+      if (!scene || selectingDeck || latest.deckSelectionState !== 'ready' || latest.searchState === 'busy') return;
+      selectingDeck = true;
+      displayDeckControls();
+      try {
+        await scene.selectDeck(delta);
+      } catch (error) {
+        if (!signal.aborted && !view.inert && error?.kind === 'deck-select-uncertain') {
+          onAlert?.('quest-deck-uncertain', '無法確認牌組切換。', button);
+        }
+      } finally {
+        selectingDeck = false;
+        if (!signal.aborted) displayDeckControls();
+      }
+    }, { signal });
+  }
   back.addEventListener('click', () => {
     back.disabled = true;
     playBackClick();

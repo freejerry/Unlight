@@ -3358,6 +3358,1234 @@
       "width": 285,
       "height": 126,
       "sha256": "8c652f420fa0849b15fc8a23488f7ad6d95df89cd543b3c07058e2ef7efbd23e"
+    },
+    "quest-detail-back-up.png": {
+      "source": "data/image/quest/btn_mapback_ch.swf",
+      "sourceSha256": "b7fcfdaef7346263f02b5fe5887ec05861a2b24af4fd05669053184059f36804",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": null,
+      "buttonId": 5,
+      "sourceState": "up",
+      "x": 8.0,
+      "y": 40.0,
+      "width": 88,
+      "height": 24,
+      "sha256": "2839968746ef932febba4f58ba464e8ea6b3310ec8b188eaa6b65b11fbf5752a"
+    },
+    "quest-detail-back-over.png": {
+      "source": "data/image/quest/btn_mapback_ch.swf",
+      "sourceSha256": "b7fcfdaef7346263f02b5fe5887ec05861a2b24af4fd05669053184059f36804",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": null,
+      "buttonId": 5,
+      "sourceState": "over",
+      "x": 8.0,
+      "y": 40.0,
+      "width": 88,
+      "height": 24,
+      "sha256": "24d7dad3c327fd6f111cc2ada71a88f9b7d9973d598cd67cd15e18421c37fd69"
+    },
+    "quest-detail-start-up.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        17
+      ],
+      "bitmapIds": [
+        16
+      ],
+      "sourceInstance": "btn_map_start",
+      "buttonId": 20,
+      "sourceState": "up",
+      "x": 16.0,
+      "y": 72.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "26ce22b2aac53ca578e5cd6a4a89fda19f79d5fb25cd075a0c9ad20d215f87d6"
+    },
+    "quest-detail-start-over.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        19
+      ],
+      "bitmapIds": [
+        18
+      ],
+      "sourceInstance": "btn_map_start",
+      "buttonId": 20,
+      "sourceState": "over",
+      "x": 16.0,
+      "y": 72.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "692dce8689a2a7844f79b013029c696e999fa6dc58eb76951dfe5cd8802e294e"
+    },
+    "quest-detail-drop-up.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        7
+      ],
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "btn_map_drop",
+      "buttonId": 10,
+      "sourceState": "up",
+      "x": 16.0,
+      "y": 112.05,
+      "width": 44,
+      "height": 32,
+      "sha256": "9788e1456a090bb9bcc15f7d7b000eb36d153a8fae8c29b00b29dfbcb2845a4c"
+    },
+    "quest-detail-drop-over.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "btn_map_drop",
+      "buttonId": 10,
+      "sourceState": "over",
+      "x": 16.0,
+      "y": 112.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "dea9129a06fb4379b01c61e58bc6de6dc2217fe2633892249969769bddab89ec"
+    },
+    "quest-detail-present-up.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "btn_map_pres",
+      "buttonId": 5,
+      "sourceState": "up",
+      "x": 16.0,
+      "y": 152.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "581eac782cbe8275b6174a7a69d6a10e54db2d02f0599f27de726f6918cab5c9"
+    },
+    "quest-detail-present-over.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "btn_map_pres",
+      "buttonId": 5,
+      "sourceState": "over",
+      "x": 16.0,
+      "y": 152.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "f5ed741bd691a1292dc5762c14d7edf6c4a3d9895ab2f865baafb80555d3247f"
+    },
+    "quest-detail-quit-up.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        12
+      ],
+      "bitmapIds": [
+        11
+      ],
+      "sourceInstance": "btn_map_give",
+      "buttonId": 15,
+      "sourceState": "up",
+      "x": 16.0,
+      "y": 72.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "0cddd71976e886253e8620841c4c5e056d4eea492ccdb3375e72b5fd47e63f3b"
+    },
+    "quest-detail-quit-over.png": {
+      "source": "data/image/quest/btn_quest.swf",
+      "sourceSha256": "3cdd8a9f8cd256058566c581c6813c0d20146172d95a1753960152778ee5b237",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        14
+      ],
+      "bitmapIds": [
+        13
+      ],
+      "sourceInstance": "btn_map_give",
+      "buttonId": 15,
+      "sourceState": "over",
+      "x": 16.0,
+      "y": 72.0,
+      "width": 44,
+      "height": 32,
+      "sha256": "b3ba5279bda22433f2dd367ccb0a9ba82e7258154d6e02c7462a891db0e19bfb"
+    },
+    "quest-detail-data-plate.png": {
+      "source": "data/image/quest/map_data.swf",
+      "sourceSha256": "c8a1784e2202fa4e317482fdd7ece2b93f910fbf220b30aa3dd3a8cb0a2fd81e",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceDepth": 3,
+      "x": 464.0,
+      "y": 320.0,
+      "width": 96,
+      "height": 144,
+      "sha256": "019d011aac37ad4ce326e2549e3c9f2e822844853b8a6fef64912ce2048c7056"
+    },
+    "quest-detail-data-label.png": {
+      "source": "data/image/quest/map_data.swf",
+      "sourceSha256": "c8a1784e2202fa4e317482fdd7ece2b93f910fbf220b30aa3dd3a8cb0a2fd81e",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        3
+      ],
+      "bitmapIds": [
+        2
+      ],
+      "sourceDepth": 4,
+      "x": 509.0,
+      "y": 321.0,
+      "width": 48,
+      "height": 12,
+      "sha256": "91a00d3bc688f052d9535f19fda3871f3b1e4005bb94f2bb83c3d4c323fcb423"
+    },
+    "quest-detail-base-1.png": {
+      "source": "data/image/quest/map_base.swf",
+      "sourceSha256": "ad46a98e104990e973acbbda008885f5f6edea70184c9d49514c7b4206b6b0b2",
+      "sourceFrame": 1,
+      "coordinateSpace": "cell",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "map_base",
+      "spriteId": 11,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "56c5d1a6e0df7e1edbfa2d337179a2427eb888c5545464818cdef3d26b3a887a"
+    },
+    "quest-detail-base-2.png": {
+      "source": "data/image/quest/map_base.swf",
+      "sourceSha256": "ad46a98e104990e973acbbda008885f5f6edea70184c9d49514c7b4206b6b0b2",
+      "sourceFrame": 2,
+      "coordinateSpace": "cell",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map_base",
+      "spriteId": 11,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "b9140f634a8c6c7153d61a1f13d0286c3a0f4b1cea292590e0efdd77f0928c69"
+    },
+    "quest-detail-base-3.png": {
+      "source": "data/image/quest/map_base.swf",
+      "sourceSha256": "ad46a98e104990e973acbbda008885f5f6edea70184c9d49514c7b4206b6b0b2",
+      "sourceFrame": 3,
+      "coordinateSpace": "cell",
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceInstance": "map_base",
+      "spriteId": 11,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "3f5fc5c217ff0a6a4f3991ff6ddfd429562901d4e33ba82500bd20d27380e03e"
+    },
+    "quest-detail-base-4.png": {
+      "source": "data/image/quest/map_base.swf",
+      "sourceSha256": "ad46a98e104990e973acbbda008885f5f6edea70184c9d49514c7b4206b6b0b2",
+      "sourceFrame": 4,
+      "coordinateSpace": "cell",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "map_base",
+      "spriteId": 11,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "9c814abd966a267c658ba019a1bde6647b64759558c24b06f1b678cb7c88101e"
+    },
+    "quest-detail-base-5.png": {
+      "source": "data/image/quest/map_base.swf",
+      "sourceSha256": "ad46a98e104990e973acbbda008885f5f6edea70184c9d49514c7b4206b6b0b2",
+      "sourceFrame": 5,
+      "coordinateSpace": "cell",
+      "shapeIds": [
+        10
+      ],
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map_base",
+      "spriteId": 11,
+      "x": 0.05,
+      "y": 0.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "ffa77f1bb63c2ebed3d5a192172a84b530a2496a67ad31c1e5223aae60f92426"
+    },
+    "quest-detail-path-left-1.png": {
+      "source": "data/image/quest/map_pass_left.swf",
+      "sourceSha256": "7b0ff0c731d731e9281d0cab72ec3582725035b54f4df90307af87b80ffcccd6",
+      "sourceFrame": 1,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "map_pass_left",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "7a9f4da11e9f04f4d9c6947b213c45284e4c8161b4adad4c4e3a81724a06c7ee"
+    },
+    "quest-detail-path-left-2.png": {
+      "source": "data/image/quest/map_pass_left.swf",
+      "sourceSha256": "7b0ff0c731d731e9281d0cab72ec3582725035b54f4df90307af87b80ffcccd6",
+      "sourceFrame": 2,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map_pass_left",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "58715a56bf522447c4d4a7a272623b897b333c642030a4915485aefd31a4f239"
+    },
+    "quest-detail-path-left-3.png": {
+      "source": "data/image/quest/map_pass_left.swf",
+      "sourceSha256": "7b0ff0c731d731e9281d0cab72ec3582725035b54f4df90307af87b80ffcccd6",
+      "sourceFrame": 3,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceInstance": "map_pass_left",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "9189c8d5d61b8b5b564bbd058286a7d3efa5d2978f494dca30b79a3bdaebc3d2"
+    },
+    "quest-detail-path-left-4.png": {
+      "source": "data/image/quest/map_pass_left.swf",
+      "sourceSha256": "7b0ff0c731d731e9281d0cab72ec3582725035b54f4df90307af87b80ffcccd6",
+      "sourceFrame": 4,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "map_pass_left",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "1e4dbb96b6b7debe674da3b5d9e913a7439ed3a7b1e0906b751e402dbe363f68"
+    },
+    "quest-detail-path-center-1.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 1,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "7a9f4da11e9f04f4d9c6947b213c45284e4c8161b4adad4c4e3a81724a06c7ee"
+    },
+    "quest-detail-path-center-2.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 2,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "e6b5733982c2950453d1bf4255d5675cd1df8cd8b2c4c44ff1b255f02054535e"
+    },
+    "quest-detail-path-center-3.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 3,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "58715a56bf522447c4d4a7a272623b897b333c642030a4915485aefd31a4f239"
+    },
+    "quest-detail-path-center-4.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 4,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "9163e42020f5a4f24bc6e314ed2c9528aa6bf18c13a51a45ff7cbe930d05d879"
+    },
+    "quest-detail-path-center-5.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 5,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        10
+      ],
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "1e4dbb96b6b7debe674da3b5d9e913a7439ed3a7b1e0906b751e402dbe363f68"
+    },
+    "quest-detail-path-center-6.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 6,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        12
+      ],
+      "bitmapIds": [
+        11
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "8cb54e444a8c87a0f976a5a671fb4942986081ea55f8490ab74f3cb725901111"
+    },
+    "quest-detail-path-center-7.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 7,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        14
+      ],
+      "bitmapIds": [
+        13
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "5d34a5ed6e7b2f2faac34f2e26a86b6216d863860121bb10027399b7af89f93b"
+    },
+    "quest-detail-path-center-8.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 8,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        16
+      ],
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "c7513401d40dc0edf65b514a1e8848ef878a6b7f25d475caca8f164da7862e92"
+    },
+    "quest-detail-path-center-9.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 9,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        18
+      ],
+      "bitmapIds": [
+        17
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "010eac80dd17ef505469ade5b97f408eb36ecdfbea623a451eae59bdd6c760a2"
+    },
+    "quest-detail-path-center-10.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 10,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        20
+      ],
+      "bitmapIds": [
+        19
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "9189c8d5d61b8b5b564bbd058286a7d3efa5d2978f494dca30b79a3bdaebc3d2"
+    },
+    "quest-detail-path-center-11.png": {
+      "source": "data/image/quest/map_pass_center.swf",
+      "sourceSha256": "616902b636e1b3ba84714d0da944ced1326ad9f1150dcb6bce674cd4acba2e32",
+      "sourceFrame": 11,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        22
+      ],
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "map_pass_center",
+      "spriteId": 23,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 96,
+      "height": 32,
+      "sha256": "2e19341c8d05149a0138f2217c2752cad2a2227fc2be24ea500fd888baac1de6"
+    },
+    "quest-detail-path-right-1.png": {
+      "source": "data/image/quest/map_pass_right.swf",
+      "sourceSha256": "2e2b5d3e2cd95897ba4600317f7739ca994b659de713d6f45e0c56f12bf3f3cf",
+      "sourceFrame": 1,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "map_pass_right",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 64,
+      "height": 32,
+      "sha256": "f7fa1f5b03430445ae28882eabc4a9b1c78fa850ce08bb6b0bb180d60e21bb9a"
+    },
+    "quest-detail-path-right-2.png": {
+      "source": "data/image/quest/map_pass_right.swf",
+      "sourceSha256": "2e2b5d3e2cd95897ba4600317f7739ca994b659de713d6f45e0c56f12bf3f3cf",
+      "sourceFrame": 2,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map_pass_right",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 64,
+      "height": 32,
+      "sha256": "23c64d88f7cb638672866928f72fac4bc4b6d11ec6b5028d02432c28145e9faa"
+    },
+    "quest-detail-path-right-3.png": {
+      "source": "data/image/quest/map_pass_right.swf",
+      "sourceSha256": "2e2b5d3e2cd95897ba4600317f7739ca994b659de713d6f45e0c56f12bf3f3cf",
+      "sourceFrame": 3,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceInstance": "map_pass_right",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 64,
+      "height": 32,
+      "sha256": "55d5882ceb483c4ac7d28733b07a09326a629ee75c093997eca509869c83651f"
+    },
+    "quest-detail-path-right-4.png": {
+      "source": "data/image/quest/map_pass_right.swf",
+      "sourceSha256": "2e2b5d3e2cd95897ba4600317f7739ca994b659de713d6f45e0c56f12bf3f3cf",
+      "sourceFrame": 4,
+      "coordinateSpace": "path",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "map_pass_right",
+      "spriteId": 9,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 64,
+      "height": 32,
+      "sha256": "558789fb705269aa1d9eddf5b6dbf00eb412d551872a19a592e84244eeffe389"
+    },
+    "quest-detail-event-enemy.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "enemy",
+      "x": -13.95,
+      "y": -45.95,
+      "width": 28,
+      "height": 22,
+      "sha256": "4922fc0d13b3a87d0d247b948e66b1c3791593c609ace5397c8474abc359617e"
+    },
+    "quest-detail-event-tbox_red_g.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 8,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        14,
+        15
+      ],
+      "bitmapIds": [
+        13
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "nestedAnimationFrame": 1,
+      "sourceLabel": "tbox_red_g",
+      "x": -10.95,
+      "y": -46.1,
+      "width": 26,
+      "height": 29,
+      "sha256": "bdb1ebb4721372d30a0f9256f17610056842dc55360e87bdbb2e014ff9cc51a0"
+    },
+    "quest-detail-event-tbox_green_s.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 11,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        22
+      ],
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "tbox_green_s",
+      "x": -11.0,
+      "y": -42.0,
+      "width": 24,
+      "height": 24,
+      "sha256": "a586ab6130ef2d708297a6dd89c2afa20894cef8a5041a9d515f713aeddc9fe6"
+    },
+    "quest-detail-event-tbox_blue_s.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 9,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        20
+      ],
+      "bitmapIds": [
+        19
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "tbox_blue_s",
+      "x": -11.0,
+      "y": -42.0,
+      "width": 24,
+      "height": 24,
+      "sha256": "f3bf3f0422d3dc77dc0faf8a0074a785ffdec71bcc211d725d2b66352260061b"
+    },
+    "quest-detail-event-tbox_white_s.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 13,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        24
+      ],
+      "bitmapIds": [
+        23
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "tbox_white_s",
+      "x": -11.0,
+      "y": -42.0,
+      "width": 24,
+      "height": 24,
+      "sha256": "83d145b1eb5f5c60e3376a92161f91c418b9b877eb70bca79ac1dc96531570bf"
+    },
+    "quest-detail-event-jem_g.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 6,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        12
+      ],
+      "bitmapIds": [
+        11
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "jem_g",
+      "x": -11.95,
+      "y": -44.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "031190cb90aae8750fd8d6adf38c511b1244dad026fd2c21241f239071859a97"
+    },
+    "quest-detail-event-enemy_hl.png": {
+      "source": "data/image/quest/land_event.swf",
+      "sourceSha256": "a027f4784a036a7de5fd649fd489edb2113838e675fe29ff5924ac7e293044e9",
+      "sourceFrame": 2,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "event",
+      "spriteId": 25,
+      "sourceLabel": "enemy_hl",
+      "x": -13.95,
+      "y": -45.95,
+      "width": 28,
+      "height": 22,
+      "sha256": "baf64d51cedc26aec1253630c39e539e809d432b96226661f82ad4b913287b5e"
+    },
+    "quest-detail-sub-event-tbox_red_s.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 6,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        12
+      ],
+      "bitmapIds": [
+        11
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "tbox_red_s",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "dc2b7d42840062b71e841f49616b099f8e4071cb9c28abb928460ff3567acb91"
+    },
+    "quest-detail-sub-event-tbox_red_g.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 7,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        12,
+        13
+      ],
+      "bitmapIds": [
+        11
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "nestedAnimationFrame": 1,
+      "sourceLabel": "tbox_red_g",
+      "x": 27.0,
+      "y": -52.1,
+      "width": 26,
+      "height": 26,
+      "sha256": "971177b689171d787e7da6d891d8f69fb26c00c28d275f7a3276f1ba67dd88e7"
+    },
+    "quest-detail-sub-event-tbox_green_s.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 10,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        20
+      ],
+      "bitmapIds": [
+        19
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "tbox_green_s",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "057b3b9f5f5d08b0eab7429b991cb02ba55f4037b3f70ad5b1662ac7d10e4da3"
+    },
+    "quest-detail-sub-event-tbox_blue_s.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 8,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        18
+      ],
+      "bitmapIds": [
+        17
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "tbox_blue_s",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "d789c568d2e8247f57326b0387115902b95083aac0e94cc97ac2070f163d1a12"
+    },
+    "quest-detail-sub-event-tbox_white_s.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 12,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        22
+      ],
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "tbox_white_s",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "202a9a76ad58de4efd4f0c87048971a4ff2bc07df2c1af220f7d730303c15710"
+    },
+    "quest-detail-sub-event-jem_g.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 4,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "jem_g",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "34da30dc2e927398adbf3e91409b3bc39ba194deba7a3bdd1319b69dc1d2e4a3"
+    },
+    "quest-detail-sub-event-exp_s.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "exp_s",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "52faed993cd6db4474de8b6e905bb94d802bb5a92f8fa2db9324101929503a84"
+    },
+    "quest-detail-sub-event-highlow.png": {
+      "source": "data/image/quest/land_subevent.swf",
+      "sourceSha256": "25153e5cf9ee0b0babec7437384d4efde122702a9857a7032fe941dc9285a2d9",
+      "sourceFrame": 14,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        24
+      ],
+      "bitmapIds": [
+        23
+      ],
+      "sourceInstance": "subevent",
+      "spriteId": 25,
+      "sourceLabel": "highlow",
+      "x": 27.0,
+      "y": -50.95,
+      "width": 24,
+      "height": 24,
+      "sha256": "68bfb6c272e1a27eae15f3445554f61e2566a884de47c6c269f7002500bff48d"
+    },
+    "quest-detail-land-sl-gate-dis.png": {
+      "source": "data/image/quest/land_sl_gate.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-sl-forest-dis.png": {
+      "source": "data/image/quest/land_sl_forest.swf",
+      "sourceSha256": "58c8b3e2dc400dee3044364f112c83aee84a4d6e5ea23b8fddec374069fbe5e0",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "15172b40314f0048f58d2ee871be28e44d34a92f27de508e2a64202cc63b94d9"
+    },
+    "quest-detail-land-sl-road-dis.png": {
+      "source": "data/image/quest/land_sl_road.swf",
+      "sourceSha256": "cd92e79b679c1af7822083b58311d85b054dc1907c5db72b395df4535f22a9fb",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "ca4a5af35039f10b60dfd4020359314b332759e94d983a190f05282b27ab570b"
+    },
+    "quest-detail-land-sl-lake-dis.png": {
+      "source": "data/image/quest/land_sl_lake.swf",
+      "sourceSha256": "46064debc1f45793462218d136436db4fb28d7e22a8fd535161130ff7b01b44c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "ece150c614f4f4749fe625d69c0b40eea4315ea4811d3af11910bdac4f4b1299"
+    },
+    "quest-detail-land-sl-cemetery-dis.png": {
+      "source": "data/image/quest/land_sl_cemetery.swf",
+      "sourceSha256": "4911aec7b51eecab416ca5fc0f583189db33d56d70b81e330a4a52b562d93a8c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "8e1d616bb79f6bf44353609eefe1e6d1e3e66da1a7da619fb974dfe36960c71e"
+    },
+    "quest-detail-land-sl-village-dis.png": {
+      "source": "data/image/quest/land_sl_village.swf",
+      "sourceSha256": "db90d3151fe0cbfbec795ae93ecb473587c9e5f0602f5c5d1c9c6d55ed8ce4ea",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "981d77d0c3d522584e505c65124fe73b22c7a247d11a78593ed2a84c8790d46b"
+    },
+    "quest-detail-land-sl-wilderness-dis.png": {
+      "source": "data/image/quest/land_sl_wilderness.swf",
+      "sourceSha256": "caa2df1f24e0afffe26ee6ac19f46fda75d137ca28f2837c3ac01dfe04ff4740",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "00959733f9fd0d0f5f2c6813d471b4e05ff12d7a0a1e979f02e31331bcae3755"
+    },
+    "quest-detail-land-sl-ruin-dis.png": {
+      "source": "data/image/quest/land_sl_ruin.swf",
+      "sourceSha256": "e3d23d732faa68f1960a79ff47b18f5fa4305f861df928593cc5236405381334",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "f0e62573c1729c8e404bff914d755c6868930d76e2ac7d3776908554aa963737"
+    },
+    "quest-detail-land-ml-castle-dis.png": {
+      "source": "data/image/quest/land_ml_castle.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-am-wasteland-dis.png": {
+      "source": "data/image/quest/land_am_wasteland.swf",
+      "sourceSha256": "e9308b1f98ca2fc7891c2576ed9f78d7874dcefddda9ae799b366b8179618683",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "636a5a547ee4dacb5630b701d566562063dea6245392229c7f4241780e48aad2"
+    },
+    "quest-detail-land-am-stone-dis.png": {
+      "source": "data/image/quest/land_am_stone.swf",
+      "sourceSha256": "35a0e8cac598ac45282bf7478abde867b2a78e6cc026bee0c574d0edc4656070",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "57d20ef8a4d92aea97527da2f4a45d141415d15b8938484b4ff0cb46a345221a"
+    },
+    "quest-detail-land-al-arch-dis.png": {
+      "source": "data/image/quest/land_al_arch.swf",
+      "sourceSha256": "f3bb1f02b2893fdaab92e600634bd70538f47a2c10f32b97de32fff6abe87cbf",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-end-throne-dis.png": {
+      "source": "data/image/quest/land_end_throne.swf",
+      "sourceSha256": "abea4c5b314b9fb89529f7cd1c38925b9fc80a15be51864e5d20058c66111224",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "dis",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
     }
   },
   "searchThumbnails": {
@@ -3402,5 +4630,588 @@
     "2011": "quest-search-thumbnail-00.jpg",
     "2012": "quest-search-thumbnail-00.jpg",
     "2013": "quest-search-thumbnail-00.jpg"
+  },
+  "detail": {
+    "back": {
+      "up": {
+        "file": "quest-detail-back-up.png",
+        "x": 8.0,
+        "y": 40.0,
+        "width": 88,
+        "height": 24
+      },
+      "over": {
+        "file": "quest-detail-back-over.png",
+        "x": 8.0,
+        "y": 40.0,
+        "width": 88,
+        "height": 24
+      },
+      "hit": [
+        8.0,
+        40.0,
+        87.95,
+        23.95
+      ]
+    },
+    "commands": {
+      "start": {
+        "up": {
+          "file": "quest-detail-start-up.png",
+          "x": 16.0,
+          "y": 72.0,
+          "width": 44,
+          "height": 32
+        },
+        "over": {
+          "file": "quest-detail-start-over.png",
+          "x": 16.0,
+          "y": 72.0,
+          "width": 44,
+          "height": 32
+        },
+        "hit": [
+          16.0,
+          72.0,
+          44.0,
+          32.0
+        ]
+      },
+      "drop": {
+        "up": {
+          "file": "quest-detail-drop-up.png",
+          "x": 16.0,
+          "y": 112.05,
+          "width": 44,
+          "height": 32
+        },
+        "over": {
+          "file": "quest-detail-drop-over.png",
+          "x": 16.0,
+          "y": 112.0,
+          "width": 44,
+          "height": 32
+        },
+        "hit": [
+          16.0,
+          112.0,
+          44.0,
+          32.0
+        ]
+      },
+      "present": {
+        "up": {
+          "file": "quest-detail-present-up.png",
+          "x": 16.0,
+          "y": 152.0,
+          "width": 44,
+          "height": 32
+        },
+        "over": {
+          "file": "quest-detail-present-over.png",
+          "x": 16.0,
+          "y": 152.0,
+          "width": 44,
+          "height": 32
+        },
+        "hit": [
+          16.0,
+          152.0,
+          44.0,
+          32.0
+        ]
+      },
+      "quit": {
+        "up": {
+          "file": "quest-detail-quit-up.png",
+          "x": 16.0,
+          "y": 72.0,
+          "width": 44,
+          "height": 32
+        },
+        "over": {
+          "file": "quest-detail-quit-over.png",
+          "x": 16.0,
+          "y": 72.0,
+          "width": 44,
+          "height": 32
+        },
+        "hit": [
+          16.0,
+          72.0,
+          44.0,
+          32.0
+        ]
+      }
+    },
+    "data": [
+      {
+        "file": "quest-detail-data-plate.png",
+        "x": 464.0,
+        "y": 320.0,
+        "width": 96,
+        "height": 144
+      },
+      {
+        "file": "quest-detail-data-label.png",
+        "x": 509.0,
+        "y": 321.0,
+        "width": 48,
+        "height": 12
+      }
+    ],
+    "bases": {
+      "1": {
+        "file": "quest-detail-base-1.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 80,
+        "height": 64
+      },
+      "2": {
+        "file": "quest-detail-base-2.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 80,
+        "height": 64
+      },
+      "3": {
+        "file": "quest-detail-base-3.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 80,
+        "height": 64
+      },
+      "4": {
+        "file": "quest-detail-base-4.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 80,
+        "height": 64
+      },
+      "5": {
+        "file": "quest-detail-base-5.png",
+        "x": 0.05,
+        "y": 0.0,
+        "width": 80,
+        "height": 64
+      }
+    },
+    "terrain": {
+      "0": {
+        "dis": {
+          "file": "quest-detail-land-sl-gate-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "1": {
+        "dis": {
+          "file": "quest-detail-land-sl-forest-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "2": {
+        "dis": {
+          "file": "quest-detail-land-sl-road-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "3": {
+        "dis": {
+          "file": "quest-detail-land-sl-lake-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "4": {
+        "dis": {
+          "file": "quest-detail-land-sl-cemetery-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "5": {
+        "dis": {
+          "file": "quest-detail-land-sl-village-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "6": {
+        "dis": {
+          "file": "quest-detail-land-sl-wilderness-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "7": {
+        "dis": {
+          "file": "quest-detail-land-sl-ruin-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "8": {
+        "dis": {
+          "file": "quest-detail-land-sl-lake-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "9": {
+        "dis": {
+          "file": "quest-detail-land-sl-lake-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "10": {
+        "dis": {
+          "file": "quest-detail-land-ml-castle-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "11": {
+        "dis": {
+          "file": "quest-detail-land-am-wasteland-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "12": {
+        "dis": {
+          "file": "quest-detail-land-sl-lake-dis.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "13": {
+        "dis": {
+          "file": "quest-detail-land-am-stone-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "14": {
+        "dis": {
+          "file": "quest-detail-land-al-arch-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      },
+      "15": {
+        "dis": {
+          "file": "quest-detail-land-end-throne-dis.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        }
+      }
+    },
+    "paths": {
+      "left": {
+        "1": {
+          "file": "quest-detail-path-left-1.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "2": {
+          "file": "quest-detail-path-left-2.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "3": {
+          "file": "quest-detail-path-left-3.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "4": {
+          "file": "quest-detail-path-left-4.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        }
+      },
+      "center": {
+        "1": {
+          "file": "quest-detail-path-center-1.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "2": {
+          "file": "quest-detail-path-center-2.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "3": {
+          "file": "quest-detail-path-center-3.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "4": {
+          "file": "quest-detail-path-center-4.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "5": {
+          "file": "quest-detail-path-center-5.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "6": {
+          "file": "quest-detail-path-center-6.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "7": {
+          "file": "quest-detail-path-center-7.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "8": {
+          "file": "quest-detail-path-center-8.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "9": {
+          "file": "quest-detail-path-center-9.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "10": {
+          "file": "quest-detail-path-center-10.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        },
+        "11": {
+          "file": "quest-detail-path-center-11.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 96,
+          "height": 32
+        }
+      },
+      "right": {
+        "1": {
+          "file": "quest-detail-path-right-1.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 64,
+          "height": 32
+        },
+        "2": {
+          "file": "quest-detail-path-right-2.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 64,
+          "height": 32
+        },
+        "3": {
+          "file": "quest-detail-path-right-3.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 64,
+          "height": 32
+        },
+        "4": {
+          "file": "quest-detail-path-right-4.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 64,
+          "height": 32
+        }
+      }
+    },
+    "events": {
+      "enemy": {
+        "file": "quest-detail-event-enemy.png",
+        "x": -13.95,
+        "y": -45.95,
+        "width": 28,
+        "height": 22
+      },
+      "tbox_red_g": {
+        "file": "quest-detail-event-tbox_red_g.png",
+        "x": -10.95,
+        "y": -46.1,
+        "width": 26,
+        "height": 29
+      },
+      "tbox_green_s": {
+        "file": "quest-detail-event-tbox_green_s.png",
+        "x": -11.0,
+        "y": -42.0,
+        "width": 24,
+        "height": 24
+      },
+      "tbox_blue_s": {
+        "file": "quest-detail-event-tbox_blue_s.png",
+        "x": -11.0,
+        "y": -42.0,
+        "width": 24,
+        "height": 24
+      },
+      "tbox_white_s": {
+        "file": "quest-detail-event-tbox_white_s.png",
+        "x": -11.0,
+        "y": -42.0,
+        "width": 24,
+        "height": 24
+      },
+      "jem_g": {
+        "file": "quest-detail-event-jem_g.png",
+        "x": -11.95,
+        "y": -44.95,
+        "width": 24,
+        "height": 24
+      },
+      "enemy_hl": {
+        "file": "quest-detail-event-enemy_hl.png",
+        "x": -13.95,
+        "y": -45.95,
+        "width": 28,
+        "height": 22
+      }
+    },
+    "subEvents": {
+      "tbox_red_s": {
+        "file": "quest-detail-sub-event-tbox_red_s.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "tbox_red_g": {
+        "file": "quest-detail-sub-event-tbox_red_g.png",
+        "x": 27.0,
+        "y": -52.1,
+        "width": 26,
+        "height": 26
+      },
+      "tbox_green_s": {
+        "file": "quest-detail-sub-event-tbox_green_s.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "tbox_blue_s": {
+        "file": "quest-detail-sub-event-tbox_blue_s.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "tbox_white_s": {
+        "file": "quest-detail-sub-event-tbox_white_s.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "jem_g": {
+        "file": "quest-detail-sub-event-jem_g.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "exp_s": {
+        "file": "quest-detail-sub-event-exp_s.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      },
+      "highlow": {
+        "file": "quest-detail-sub-event-highlow.png",
+        "x": 27.0,
+        "y": -50.95,
+        "width": 24,
+        "height": 24
+      }
+    },
+    "eventByTreasure": [
+      "enemy",
+      "tbox_red_g",
+      "tbox_green_s",
+      "tbox_blue_s",
+      "tbox_white_s",
+      "jem_g",
+      "enemy",
+      "enemy_hl"
+    ],
+    "subEventByTreasure": [
+      "tbox_red_s",
+      "tbox_red_g",
+      "tbox_green_s",
+      "tbox_blue_s",
+      "tbox_white_s",
+      "jem_g",
+      "exp_s",
+      "highlow"
+    ]
   }
 }

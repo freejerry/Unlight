@@ -6,7 +6,7 @@ import {
 import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
   QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, MAX_QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
-  QUEST_START_REQUEST, QUEST_DELETED_REPLY,
+  QUEST_CONFIRM_REQUEST, QUEST_START_REQUEST, QUEST_DELETED_REPLY,
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
   QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_FINISH_REPLY, QUEST_TREASURE_REPLY,
   QUEST_READY_REQUEST, QUEST_DIRECTION_REQUEST, QUEST_MOVE_COMMIT_REQUEST, QUEST_TURN_REPLY,
@@ -49,6 +49,8 @@ const LOBBY_CREATE_AVATAR_REQUEST = 10;
 const LOBBY_CHECK_NAME_REQUEST = 11;
 const LOBBY_CREATE_AVATAR_REPLY = 5;
 const LOBBY_CHECK_NAME_REPLY = 6;
+const LOBBY_SELECT_DECK_REQUEST = 12;
+const LOBBY_SELECT_DECK_REPLY = 9;
 const LOBBY_MOVE_DECK_CARD_REQUEST = 5;
 const LOBBY_MOVE_DECK_CARD_FAILED_REPLY = 10;
 const LOBBY_ERROR_REPLY = 34;
@@ -76,6 +78,7 @@ const QUEST_NEW = 0;
 const QUEST_UNSOLVED = 1;
 const QUEST_IN_PROGRESS = 2;
 const QUEST_PENDING = 4;
+const QUEST_PRESENTED = 6;
 const QUEST_ACTION_CARD_COUNT_REPLY = 32;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const QUEST_LAND_SLOTS = 15;
@@ -144,9 +147,13 @@ const messages = {
   'deck-card-unavailable': '目前無法將這張卡移入牌組。',
   'deck-edit-rejected': '伺服器未接受這次移牌。',
   'deck-edit-uncertain': '未能確認移牌結果，請重新登入查看。',
+  'deck-select-unavailable': '目前無法切換牌組。',
+  'deck-select-uncertain': '未能確認選中的牌組，請重新登入查看。',
   'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
   'search-rejected': '遊戲服務未接受這次搜尋。',
   'search-unavailable': '目前無法搜尋這個地區。',
+  'quest-confirm-unavailable': '目前無法確認這個任務。',
+  'quest-confirm-uncertain': '未能確認任務狀態，請回到大廳後重新進入任務查看。',
   'quest-start-unavailable': '此任務目前無法開始。',
   'quest-start-rejected': '遊戲服務未接受開始任務。',
   'quest-start-uncertain': '開始任務的結果未確認，可先查看任務服務的即時庫存。',
@@ -721,7 +728,7 @@ async function readQuestInventoryPushes(socket, confirm, signal, { sceneChannel 
         }
         if (!sawCardCount) throw new SessionError('protocol');
       }
-      const row = readQuestInventoryReply(reply, { loginReplay: Boolean(sceneChannel) });
+      const row = readQuestInventoryReply(reply, { loginReplay: Boolean(sceneChannel), includeSender: Boolean(sceneChannel) });
       if (row.status === QUEST_PENDING) return;
       if (rows.length === MAX_QUEST_ROWS) throw new SessionError('protocol');
       rows.push(row);
@@ -795,6 +802,36 @@ async function sendQuestDiscovery(socket, signal, inventoryId, markDispatched) {
     markDispatched?.();
     await finishQuestObservation(socket, signal, unsubscribe);
     return discovered;
+  } finally {
+    unsubscribe();
+  }
+}
+
+async function sendQuestConfirmation(socket, signal, row, deckIndex, markDispatched) {
+  let confirmed;
+  let invalid = false;
+  let settle;
+  const receipt = new Promise((resolve) => { settle = resolve; });
+  const unsubscribe = socket.observe([QUEST_DISCOVERY_REPLY], (reply) => {
+    try {
+      const update = readQuestDiscoveryReply(reply);
+      if (update.inventoryId !== row.inventoryId) return;
+      if (confirmed || update.questId !== row.questId || update.status !== QUEST_UNSOLVED) invalid = true;
+      else confirmed = update;
+    } catch {
+      invalid = true;
+    }
+    settle();
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(QUEST_CONFIRM_REQUEST, [row.inventoryId, signedByte(deckIndex)]);
+    markDispatched();
+    await bounded(receipt, signal);
+    if (invalid) throw new SessionError('quest-confirm-uncertain');
+    await finishQuestObservation(socket, signal, unsubscribe);
+    if (invalid) throw new SessionError('quest-confirm-uncertain');
+    return confirmed;
   } finally {
     unsubscribe();
   }
@@ -1938,12 +1975,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   const avatarSubscriptions = new Set();
   let profileRequest;
   let deckEditState;
+  let deckSelectionUncertain = false;
   let closing;
   let questRequest;
   let questReturn;
   let questScene;
   let searchUncertain = false;
   const attemptedDiscoveries = new Set();
+  const questConfirmations = new Map();
   let questStartUncertain = false;
   let adventure = null;
   const boundQuestDecks = new Map();
@@ -1989,6 +2028,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       boundQuestDecks.clear();
       attemptedDiscoveries.clear();
+      questConfirmations.clear();
       sessionKey.fill(0);
       const request = questRequest;
       const returning = questReturn;
@@ -2134,20 +2174,33 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     for (const subscription of scene.subscriptions) subscription.unsubscribe();
   }
 
+  function questSceneRow(scene, row) {
+    const snapshot = { ...row };
+    const dueAt = questDiscoveryDue(row, questData.receivedAt);
+    if (dueAt !== null) snapshot.dueAt = dueAt;
+    const sender = scene.senders.get(row.inventoryId);
+    if (sender?.questId === row.questId) snapshot.senderName = sender.name;
+    if (row.status === QUEST_NEW && questConfirmations.get(row.inventoryId) === row.questId
+        && scene.confirming !== row.inventoryId) snapshot.confirmationState = 'uncertain';
+    return Object.freeze(snapshot);
+  }
+
   function publishQuestScene(scene) {
     if (scene.state !== 'open' || !initialData) return;
     const staleDeck = ['pending-verification', 'uncertain'].includes(deckEditState);
     const decks = staleDeck ? [] : initialData.avatar.questDecks;
+    const deckChoices = staleDeck ? [] : initialData.deckChoices;
+    const deckSelectionState = scene.operation?.kind === 'deck-select' ? 'busy' : deckSelectionUncertain ? 'uncertain'
+      : initialData.selectedDeck && deckChoices?.length ? 'ready' : 'unavailable';
     const searchState = scene.operation?.kind === 'search' ? 'busy'
       : searchUncertain ? 'uncertain' : scene.operation ? 'busy' : 'ready';
     const snapshot = Object.freeze({
       ...questData,
-      rows: Object.freeze(questData.rows.map((row) => {
-        const dueAt = questDiscoveryDue(row, questData.receivedAt);
-        return Object.freeze(dueAt === null ? { ...row } : { ...row, dueAt });
-      })),
+      rows: Object.freeze(questData.rows.map((row) => questSceneRow(scene, row))),
       questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
       selectedDeck: staleDeck ? null : initialData.selectedDeck,
+      deckChoices: deckChoices?.length ? deckChoices : Object.freeze([]),
+      deckSelectionState,
       tutorialQuestFlag: initialData.tutorialQuestProgress?.tutorialQuestFlag ?? null,
       tutorialQuestClearNum: initialData.tutorialQuestProgress?.tutorialQuestClearNum ?? null,
       energy: initialData.avatar.energy,
@@ -2190,6 +2243,74 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         publishQuestScene(scene);
       }
     }
+  }
+
+  async function acknowledgeQuestScene(scene, inventoryId, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !questData) throw new SessionError('network');
+    const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
+    const row = questData.rows[index];
+    if (!row?.questId || ![QUEST_NEW, QUEST_UNSOLVED, QUEST_IN_PROGRESS, QUEST_PRESENTED].includes(row.status)) {
+      throw new SessionError('quest-confirm-unavailable');
+    }
+    if (row.status !== QUEST_NEW) return questSceneRow(scene, row);
+    if (scene.operation) throw new SessionError('busy');
+    if (questConfirmations.has(inventoryId)) throw new SessionError('quest-confirm-uncertain');
+    if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
+    const deck = scene.snapshot.selectedDeck;
+    if (!deck) throw new SessionError('quest-confirm-unavailable');
+
+    return runQuestSceneOperation(scene, 'acknowledge', signal, async (socket, questSignal) => {
+      try {
+        const confirmed = await sendQuestConfirmation(socket, questSignal, row, deck.index, () => {
+          questConfirmations.set(inventoryId, row.questId);
+          scene.confirming = inventoryId;
+        });
+        questSignal.throwIfAborted();
+        socket.assertOpen();
+        questData.rows[index] = confirmed;
+        questConfirmations.delete(inventoryId);
+        return questSceneRow(scene, confirmed);
+      } catch (error) {
+        if (questConfirmations.has(inventoryId)) throw new SessionError('quest-confirm-uncertain');
+        throw error;
+      } finally {
+        scene.confirming = undefined;
+      }
+    });
+  }
+
+  async function selectQuestSceneDeck(scene, delta, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation || profileRequest) throw new SessionError('busy');
+    if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
+    const { deckChoices, selectedDeck } = scene.snapshot;
+    const current = deckChoices.findIndex(({ index }) => index === selectedDeck?.index);
+    if ((delta !== -1 && delta !== 1) || current < 0) throw new SessionError('deck-select-unavailable');
+    const requested = deckChoices[(current + delta + deckChoices.length) % deckChoices.length].index;
+
+    return runQuestSceneOperation(scene, 'deck-select', signal, async (_socket, questSignal) => {
+      try {
+        return await withRegistrationChannel(lobby, questSignal, async (socket, lobbySignal) => {
+          const reply = await socket.ask(LOBBY_SELECT_DECK_REQUEST, [requested], [LOBBY_SELECT_DECK_REPLY], {
+            signal: lobbySignal, allowOther: true, onSend() { deckSelectionUncertain = true; },
+          });
+          const index = reply.int();
+          reply.done();
+          const deck = deckChoices.find((choice) => choice.index === index);
+          if (!deck) throw new SessionError('protocol');
+          lobbySignal.throwIfAborted();
+          socket.assertOpen();
+          initialData.selectedDeck = Object.freeze({ index, name: deck.name, cards: deck.cards });
+          deckSelectionUncertain = false;
+          return index;
+        });
+      } catch (error) {
+        if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
+        throw error;
+      }
+    });
   }
 
   function scheduleQuestDiscovery(scene) {
@@ -2549,14 +2670,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       let scene;
       try {
         return await readFromQuest(async (socket, confirm, questSignal, channel) => {
-          scene = { channel, state: 'opening', subscriptions: new Set(), failedDiscoveries: new Set() };
+          scene = { channel, state: 'opening', subscriptions: new Set(), failedDiscoveries: new Set(), senders: new Map() };
           questScene = scene;
           channel.retained = true;
           return readQuestInventoryPushes(socket, confirm, questSignal, { sceneChannel: channel });
         }, signal, (liveRows) => {
           const { socket } = scene.channel;
           socket.assertOpen();
-          const rows = mergeQuestSceneRows(questData.rows, liveRows);
+          const rows = mergeQuestSceneRows(questData.rows, liveRows.map(({ senderName, ...row }) => {
+            if (senderName) scene.senders.set(row.inventoryId, { questId: row.questId, name: senderName });
+            return row;
+          }));
+          for (const row of liveRows) {
+            if (questConfirmations.get(row.inventoryId) === row.questId) questConfirmations.delete(row.inventoryId);
+          }
           questData.rows = rows;
           scene.state = 'open';
           publishQuestScene(scene);
@@ -2577,6 +2704,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               return subscription.unsubscribe;
             },
             search: (mapId, timerIndex, { signal } = {}) => searchQuestScene(scene, mapId, timerIndex, signal),
+            acknowledge: (inventoryId, { signal } = {}) => acknowledgeQuestScene(scene, inventoryId, signal),
+            selectDeck: (delta, { signal } = {}) => selectQuestSceneDeck(scene, delta, signal),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then((reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');

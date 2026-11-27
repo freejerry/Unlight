@@ -34,6 +34,7 @@ export const QUEST_CHARACTER_AWARD_REPLY = 13;
 export const QUEST_MAP_FLAG_REPLY = 26;
 export const QUEST_MAP_CLEAR_COUNT_REPLY = 28;
 export const QUEST_ERROR_REPLY = 29;
+export const QUEST_CONFIRM_REQUEST = 12;
 export const QUEST_START_REQUEST = 13;
 export const QUEST_DELETED_REPLY = 22;
 export const QUEST_NEXT_LAND_REQUEST = 16;
@@ -249,6 +250,18 @@ function selectedDeck(values) {
   return cards ? Object.freeze({ index, name: lists.names[index], cards }) : null;
 }
 
+function physicalDecks(values) {
+  const lists = readOwnedCardLists(values);
+  if (!lists || lists.statuses.some((status) => status > MAX_INT32)) return null;
+  const decks = [];
+  for (let index = 1; index < lists.names.length; index += 1) {
+    const cards = ownedDeckCards(lists, index);
+    if (!cards) return null;
+    decks.push(Object.freeze({ index, name: lists.names[index], status: lists.statuses[index], cards }));
+  }
+  return Object.freeze(decks);
+}
+
 export function readQuestMapReply(reply, region) {
   if (reply.command !== QUEST_MAP_REPLY || reply.int() !== region) {
     throw new Error('Unexpected quest map reply.');
@@ -266,20 +279,27 @@ function questInventoryRow(inventoryId, questId, status) {
   return { inventoryId, questId, status };
 }
 
-function readQuestGetReply(reply) {
+function readQuestGetReply(reply, includeSender = false) {
   if (reply.command !== QUEST_INVENTORY_REPLY) throw new Error('Unexpected quest inventory reply.');
   const inventoryId = reply.int();
   const questId = reply.int();
   const timer = reply.int();
   const power = reply.int();
   const status = reply.byte();
-  reply.discardString(MAX_SENDER_NAME_BYTES, true);
+  const row = questInventoryRow(inventoryId, questId, status);
+  if (includeSender) {
+    // The original inventory strips the rename suffix and hides the sentinel “n”.
+    const senderName = reply.string(MAX_SENDER_NAME_BYTES, true).replace('_rename', '');
+    if (senderName && senderName !== 'n') row.senderName = senderName;
+  } else {
+    reply.discardString(MAX_SENDER_NAME_BYTES, true);
+  }
   reply.done();
-  return { row: questInventoryRow(inventoryId, questId, status), timer, power };
+  return { row, timer, power };
 }
 
-export function readQuestInventoryReply(reply, { loginReplay = false } = {}) {
-  const { row, timer, power } = readQuestGetReply(reply);
+export function readQuestInventoryReply(reply, { loginReplay = false, includeSender = false } = {}) {
+  const { row, timer, power } = readQuestGetReply(reply, includeSender);
   if (loginReplay && (timer !== 0 || power !== 100 || row.status === PENDING_STATUS)) {
     throw new Error('Invalid Quest login replay.');
   }
@@ -788,6 +808,13 @@ export function createQuestDataReader() {
     selectedDeck() {
       try {
         return selectedDeck(values);
+      } catch {
+        return null;
+      }
+    },
+    physicalDecks() {
+      try {
+        return physicalDecks(values);
       } catch {
         return null;
       }
