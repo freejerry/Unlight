@@ -180,7 +180,7 @@
             <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
             <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
           </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>下一地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
+          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形僅接通進入與戰鬥開場。後續地形與回合操作尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>
@@ -188,6 +188,36 @@
             </thead>
             <tbody id="session-quest-rows"></tbody>
           </table>
+          <section id="session-quest-land" class="quest-region quest-land-record" aria-labelledby="session-quest-land-title" hidden>
+            <h4 id="session-quest-land-title">首格地形紀錄</h4>
+            <p id="session-quest-land-status" class="quest-status quest-land-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+            <div id="session-quest-land-result" class="quest-land-result" hidden>
+              <p id="session-quest-land-name" class="quest-land-record-name"></p>
+              <p id="session-quest-land-caption" class="quest-original-text" hidden></p>
+              <dl class="session-metadata quest-land-metadata">
+                <div><dt>持有紀錄 ID</dt><dd id="session-quest-land-inventory-id"></dd></div>
+                <div><dt>地形 ID</dt><dd id="session-quest-land-id"></dd></div>
+                <div><dt>伺服器格位</dt><dd id="session-quest-land-slot"></dd></div>
+                <div id="session-quest-land-progress" hidden><dt>伺服器進度碼</dt><dd></dd></div>
+                <div id="session-quest-land-finish" hidden><dt>任務結算代碼</dt><dd></dd></div>
+              </dl>
+              <section id="session-quest-land-encounter" class="quest-land-battle" aria-labelledby="session-quest-land-encounter-title" hidden>
+                <h5 id="session-quest-land-encounter-title">戰鬥開場</h5>
+                <dl id="session-quest-land-duel" class="session-metadata quest-land-metadata">
+                  <div><dt>我方角色卡 ID</dt><dd data-field="playerCardIds"></dd></div>
+                  <div><dt>對手角色卡 ID</dt><dd data-field="opponentCardIds"></dd></div>
+                  <div><dt>戰鬥場景代碼</dt><dd data-field="stage"></dd></div>
+                  <div><dt>我方既有傷害</dt><dd data-field="playerDamage"></dd></div>
+                  <div><dt>對手既有傷害</dt><dd data-field="opponentDamage"></dd></div>
+                  <div><dt>行動牌組張數</dt><dd data-field="deckSize"></dd></div>
+                  <div><dt>我方事件牌組張數</dt><dd data-field="playerEventDeckSize"></dd></div>
+                  <div><dt>對手事件牌組張數</dt><dd data-field="opponentEventDeckSize"></dd></div>
+                  <div><dt>初始距離代碼</dt><dd data-field="distance"></dd></div>
+                  <div><dt>多角色旗標</dt><dd data-field="multi"></dd></div>
+                </dl>
+              </section>
+            </div>
+          </section>
           <section id="session-quest-details" class="quest-details" aria-labelledby="session-quest-details-title" hidden>
             <h4 id="session-quest-details-title">關卡說明</h4>
             <div id="session-quest-detail-list" class="quest-detail-list"></div>

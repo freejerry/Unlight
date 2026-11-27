@@ -7,8 +7,12 @@ import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
   QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
   QUEST_START_REQUEST, QUEST_DELETED_REPLY,
+  QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
+  QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
+  readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
+  readQuestProgressReply, readQuestFinishReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -23,6 +27,7 @@ const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byt
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
 const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
+const QUEST_LAND_REJECTIONS = new Set([16, 41, 42, 43]); // Before the original next-land commit.
 const QUEST_MISSING_ERROR = 40;
 const CHANNELS = [
   { port: 12002, pong: 35 },
@@ -46,6 +51,10 @@ const messages = {
   'quest-start-unavailable': '此任務目前無法開始。',
   'quest-start-rejected': '遊戲服務未接受開始任務。',
   'quest-start-uncertain': '開始任務的結果未確認，可先查看任務服務的即時庫存。',
+  'quest-land-unavailable': '此任務目前無法進入第一個地形。',
+  'quest-land-rejected': '遊戲服務未接受進入地形。',
+  'quest-land-uncertain': '地形進入結果未確認，本次登入暫停再次派出。',
+  'quest-adventure-active': '本次登入已有任務地形工作階段。',
 };
 
 export class SessionError extends Error {
@@ -324,14 +333,14 @@ async function closeSession(auth, channels) {
 
 async function queryQuest(playerId, sessionKey, signal, read) {
   const socket = new SessionSocket(QUEST_PORT);
-  const channel = { socket, port: QUEST_PORT, verified: false };
+  const channel = { socket, port: QUEST_PORT, verified: false, retained: false };
   try {
     const confirm = () => confirmChannel(channel, playerId, sessionKey, signal);
-    return await read(socket, confirm, signal);
+    return await read(socket, confirm, signal, channel);
   } catch (error) {
     throw error instanceof SessionError ? error : new SessionError('protocol');
   } finally {
-    await closeChannel(channel);
+    if (!channel.retained) await closeChannel(channel);
   }
 }
 
@@ -522,11 +531,108 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
   }
 }
 
+async function submitQuestLand(socket, confirm, signal, selected, slot, markDispatched) {
+  const { inventoryId, questId, deckIndex } = selected;
+  const rows = await readQuestInventoryPushes(socket, confirm, signal);
+  if (!rows.some((row) => row.inventoryId === inventoryId && row.questId === questId
+      && row.status === QUEST_IN_PROGRESS)) {
+    throw new SessionError('quest-land-unavailable');
+  }
+
+  let arrived = false;
+  let encounter = null;
+  let progress = null;
+  let finish = null;
+  let deleted = false;
+  let invalid = false;
+  let unsubscribe;
+  const notification = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe([
+      QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
+      QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY,
+    ], (reply) => {
+      if (invalid) return;
+      try {
+        switch (reply.command) {
+          case QUEST_NEXT_LAND_REPLY:
+            if (arrived) throw new SessionError('protocol');
+            readQuestNextLandReply(reply, slot);
+            arrived = true;
+            break;
+          case QUEST_ENCOUNTER_REPLY:
+            if (!arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
+            encounter = readQuestEncounterReply(reply);
+            break;
+          case QUEST_DUEL_START_REPLY: {
+            if (!encounter) throw new SessionError('protocol');
+            const duel = readQuestDuelStartReply(reply);
+            unsubscribe();
+            resolve({ slot, encounter: { ...encounter, duel }, progress: null, finish: null });
+            break;
+          }
+          case QUEST_PROGRESS_REPLY: {
+            const update = readQuestProgressReply(reply);
+            if (update.inventoryId !== inventoryId) break;
+            if (!arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
+              throw new SessionError('protocol');
+            }
+            progress = update.progress;
+            resolve(null); // The original callback may still settle this quest.
+            break;
+          }
+          case QUEST_DELETED_REPLY:
+            if (readQuestDeletedReply(reply) !== inventoryId) break;
+            if (encounter) throw new SessionError('protocol');
+            deleted = true;
+            if (!arrived) {
+              unsubscribe();
+              resolve({ rejection: QUEST_MISSING_ERROR, deleted });
+            }
+            break;
+          case QUEST_FINISH_REPLY: {
+            const settled = readQuestFinishReply(reply);
+            if (settled.inventoryId !== inventoryId) break;
+            if (!arrived || encounter || !deleted || finish) throw new SessionError('protocol');
+            finish = settled;
+            resolve(null);
+            break;
+          }
+          case QUEST_ERROR_REPLY: {
+            const code = readQuestErrorReply(reply);
+            if (arrived || !QUEST_LAND_REJECTIONS.has(code)) throw new SessionError('protocol');
+            unsubscribe();
+            resolve({ rejection: code });
+            break;
+          }
+        }
+      } catch {
+        invalid = true;
+        reject(new SessionError('protocol'));
+      }
+    });
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(QUEST_NEXT_LAND_REQUEST, [inventoryId, signedByte(deckIndex), signedByte(slot)]);
+    markDispatched();
+    const interrupted = socket.closed.then(() => { throw new SessionError('network'); });
+    const result = await bounded(Promise.race([notification, interrupted]), signal);
+    if (result) return result;
+
+    await finishQuestObservation(socket, signal, unsubscribe);
+    if (invalid || (deleted && !finish)) throw new SessionError('protocol');
+    return { slot, encounter: null, progress, finish };
+  } finally {
+    unsubscribe();
+  }
+}
+
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
   let questRequest;
   let searchUncertain = false;
   let questStartUncertain = false;
+  let adventure = null;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -537,9 +643,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       questData = null;
       sessionKey.fill(0);
       const request = questRequest;
+      const retained = adventure;
+      if (retained) retained.state = 'closed';
       request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       closing = (async () => {
         if (request) await request.task.catch(() => {});
+        if (retained) await closeChannel(retained.channel);
         await closeSession(auth, channels);
         resolveClosed(reason);
       })();
@@ -547,10 +656,17 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return closing;
   }
 
+  function assertQuestAvailable() {
+    if (questRequest) throw new SessionError('busy');
+    if (adventure) {
+      throw new SessionError(adventure.state === 'uncertain' ? 'quest-land-uncertain' : 'quest-adventure-active');
+    }
+  }
+
   async function readFromQuest(read, signal, reconcile) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (!initialData) throw new SessionError('network');
-    if (questRequest) throw new SessionError('busy');
+    assertQuestAvailable();
     auth.assertOpen();
     for (const { socket } of channels) socket.assertOpen();
 
@@ -571,7 +687,18 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     }
   }
 
+  function maintainAdventure() {
+    const current = adventure;
+    if (!current?.connected || questRequest || current.state === 'closed' || current.state === 'finished') return;
+    const { socket } = current.channel;
+    void socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch(() => {
+      if (current.state !== 'closed') current.state = 'uncertain';
+      return closeChannel(current.channel);
+    });
+  }
+
   const timer = setInterval(async () => {
+    maintainAdventure();
     try {
       const replies = await Promise.all([
         auth.ask(6, [], [7], { allowOther: true }),
@@ -591,6 +718,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     dataVerified: true,
     chatVerified: true,
     get initialData() { return initialData; },
+    get questAdventure() {
+      if (!adventure) return null;
+      const { inventoryId, slot, state, channel } = adventure;
+      return { inventoryId, slot, state, closed: channel.socket.closed };
+    },
     async readQuestInventory({ signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
@@ -703,6 +835,66 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       } catch (error) {
         // Only a verified rejection can make it safe to send another start.
         if (sent && questStartUncertain) throw new SessionError('quest-start-uncertain');
+        throw error;
+      }
+    },
+    async enterQuestLand(inventoryId, slot, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      assertQuestAvailable();
+      if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
+          || !Number.isInteger(slot) || slot < 0 || slot > 2) {
+        throw new SessionError('protocol');
+      }
+      const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
+      const selected = questData.rows[index];
+      // Only a successful CS13 associates a deck in this login's cached inventory.
+      if (selected?.status !== QUEST_IN_PROGRESS || !Number.isInteger(selected.deckIndex)
+          || selected.deckIndex < 1 || selected.deckIndex > 127) {
+        throw new SessionError('quest-land-unavailable');
+      }
+
+      let current;
+      try {
+        return await readFromQuest(
+          async (socket, confirm, questSignal, channel) => {
+            const result = await submitQuestLand(socket, confirm, questSignal, selected, slot, () => {
+              current = { inventoryId, slot, channel, connected: true, state: 'entering' };
+              channel.retained = true;
+              adventure = current;
+              void socket.closed.then(() => {
+                current.connected = false;
+                if (current.state !== 'closed' && current.state !== 'finished') current.state = 'uncertain';
+              });
+            });
+            if (result.rejection !== undefined) {
+              adventure = null;
+              channel.retained = false;
+            } else if (result.finish) {
+              if (current.state !== 'closed') current.state = 'finished';
+              channel.retained = false;
+            }
+            return result;
+          },
+          signal,
+          (result) => {
+            if (result.rejection !== undefined) {
+              if (result.deleted) questData.rows.splice(index, 1);
+              throw new SessionError('quest-land-rejected', result.rejection);
+            }
+            if (result.finish) questData.rows.splice(index, 1);
+            else {
+              current.channel.socket.assertOpen();
+              current.state = result.encounter ? 'encounter' : 'progress';
+            }
+            return result;
+          },
+        );
+      } catch (error) {
+        if (current && adventure === current) {
+          if (current.state !== 'closed' && current.state !== 'finished') current.state = 'uncertain';
+          throw new SessionError('quest-land-uncertain');
+        }
         throw error;
       }
     },

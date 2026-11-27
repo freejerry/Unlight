@@ -158,13 +158,21 @@ Chromium 以 320 CSS 像素、DPR 2 連到隔離 Ruby，先用受控瀏覽器時
 
 ### 開始任務
 
-原生頁面從 Data 登入資料列出第一格有角色卡且可用的牌組。按「開始任務」以原版 Quest 命令 `13` 送出任務持有紀錄 ID 及所選牌組索引。Ruby 以該任務的行動力成本驗證請求，先送出行動力回覆 `4`，再以狀態回覆 `17` 確認任務開始，並將該牌組標記為使用中。這一階段的驗收範圍到任務進行中，下一地形仍待接通。[原版開始命令](../../app/client/src/net/command/QuestCommand.as#L276) · [原版查核及寫入](../../app/server/src/model/avatar.rb#L3096)
+原生頁面從 Data 登入資料列出第一格有角色卡且可用的牌組。按「開始任務」以原版 Quest 命令 `13` 送出任務持有紀錄 ID 及所選牌組索引。Ruby 以該任務的行動力成本驗證請求，先送出行動力回覆 `4`，再以狀態回覆 `17` 確認任務開始，並將該牌組標記為使用中。[原版開始命令](../../app/client/src/net/command/QuestCommand.as#L276) · [原版查核及寫入](../../app/server/src/model/avatar.rb#L3096)
 
 在桌面 Chromium 開始「落日大蝙蝠」，並以 320 CSS 像素、DPR 2 重驗鍵盤操作。原版 Ruby 回覆狀態 `2`，SQLite 顯示使用牌組 `1`，行動力、通關及獎勵資料維持一致。關閉 Quest 連線與登出後仍可在資料庫看到該狀態。重新登入觸發原版 Data 清理，將任務標記為狀態 `5`、從角色清單移除並釋放牌組。[桌面實測](native/38-native-quest-entry-desktop.png) · [原版重新登入流程](../../app/server/src/controller/data_controller.rb#L227) · [任務清理](../../app/server/src/model/avatar.rb#L3455)
 
 另一個隔離測例選牌組 `2` 開始「大蝙蝠之群」。Ruby 從 4 點扣到 3 點行動力，SQLite 確認僅牌組 `2` 進入使用中，另一筆任務及通關與獎勵資料維持原值。[320 像素實測](native/39-native-quest-entry-mobile.png)
 
 另用隔離測例攔下 Ruby 的狀態回覆 `17`。同一次登入重讀後仍保留未確認提示，整段過程只送出一次開始指令。原版 Quest 的唯讀清單仍可核對到狀態 `2`，資料庫也只扣除一次行動力。重新登入觸發相同的原版清理流程。
+
+### 進入首格地形
+
+第一格的位置取自原版任務表第一欄。原生頁面只有在該格有完整繁中說明及敵方資料時提供「進入首格地形」。按下後以原版 Quest 命令 `16` 送出持有紀錄 ID、牌組索引與地形位置。收到移動回覆 `128`、戰鬥資料 `37` 和戰鬥開場 `40` 後，才顯示戰鬥開場。回合操作與結算仍待接通。[原版首格位置](../../app/client/src/model/Quest.as#L241) · [原版下一地形與戰鬥流程](../../app/server/src/controller/quest_controller.rb#L116)
+
+以桌面及 320 CSS 像素、DPR 2 的 Chromium 驗收「落日大蝙蝠」。Ruby 確認位置 `1` 和戰場 `11`，畫面依原版地形表顯示地形 `201` 的「寬廣高原1」及完整繁中描述。戰鬥開場回覆的行動牌張數為 52、雙方事件牌組各 18 張、初始距離代碼為 `2`。Quest 連線保持開啟，頁面仍可重讀快照。登出關閉五條連線，SQLite 的任務進度和獎勵維持原值。[桌面實測](native/40-native-quest-first-land-desktop.png) · [320 像素實測](native/41-native-quest-first-land-mobile.png) · [原版登出清理](../../app/server/src/controller/quest_controller.rb#L531)
+
+另用 Chromium 攔下 Ruby 的戰鬥開場回覆 `40`。約 8 秒後頁面顯示未確認，保持原本的 Quest 連線，仍可重讀快照。整段測試只送出一次進入地形，登出時由原版 Quest 登出指令 `2` 清理對局，五條連線均關閉。
 
 ### 區域地圖查詢
 

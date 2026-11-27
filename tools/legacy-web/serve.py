@@ -82,27 +82,43 @@ def native_quest_catalog():
             }
             for row in DictReader(source)
         }
-    lands = {}
+    land_rows = []
     with suppress(OSError):
         with (QUEST_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
-            lands = {
-                int(row["id"]): {
-                    "id": int(row["id"]), "name": row["name_tcn"] or "", "caption": row["caption_tcn"] or "",
-                }
-                for row in DictReader(source)
-            }
+            land_rows = list(DictReader(source))
+    lands = {}
+    land_enemies = {}
+    for row in land_rows:
+        land_id = int(row["id"])
+        lands[land_id] = {
+            "id": land_id, "name": row["name_tcn"] or "", "caption": row["caption_tcn"] or "",
+        }
+        with suppress(TypeError, ValueError):
+            enemy_id = int(row.get("monstar_no"))
+            if 0 <= enemy_id <= 0x7fffffff:
+                land_enemies[land_id] = enemy_id
     quests = {}
     with (QUEST_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
             if row["name"]:
                 quest_id = int(row["id"])
                 area = maps.get(int(row["quest_map_id"]), {})
-                land_ids = dict.fromkeys(int(row[field] or 0) for field in QUEST_LAND_FIELDS)
+                slots = [int(row[field] or 0) for field in QUEST_LAND_FIELDS]
+                land_ids = dict.fromkeys(slots)
+                # Quest.startRow takes the last occupied slot in the first column.
+                first_slot = next((slot for slot in (2, 1, 0) if slots[slot] > 0), None)
+                first = lands.get(slots[first_slot]) if first_slot is not None else None
+                first_land = None
+                if first and first["name"].strip() and first["caption"].strip():
+                    first_land = {"slot": first_slot, **first}
+                    if first["id"] in land_enemies:
+                        first_land["enemyId"] = land_enemies[first["id"]]
                 quests[quest_id] = {
                     "id": quest_id, "name": row["name"], "map": area.get("name", ""),
                     "caption": row["caption"] or "",
                     "ap": int(row["ap"]),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
+                    "firstLand": first_land,
                 }
     return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
 

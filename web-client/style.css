@@ -150,7 +150,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-map { display: block; color: var(--muted); font-size: .83rem; }
 .quest-countdown { display: block; margin-top: .2rem; color: var(--muted); font-size: .83rem; line-height: 1.4; }
 .quest-countdown[data-state="elapsed"] { color: #694828; }
-.quest-discovery-check, .quest-start { max-width: 100%; min-height: 2rem; margin-top: .32rem; padding: .2rem .38rem; font-size: .81rem; white-space: normal; }
+.quest-discovery-check, .quest-start, .quest-land-enter { max-width: 100%; min-height: 2rem; margin-top: .32rem; padding: .2rem .38rem; font-size: .81rem; white-space: normal; }
 .quest-discovery-status, .quest-start-status, .quest-start-cost { display: block; color: var(--muted); font-size: .83rem; line-height: 1.4; }
 .quest-discovery-status:not(:empty), .quest-start-status:not(:empty), .quest-start-cost:not(:empty) { margin-top: .22rem; }
 .quest-discovery-status[data-state="failed"], .quest-start-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"]) { color: var(--failure); }
@@ -167,6 +167,14 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-lands { margin: .45rem 0 .15rem; padding-inline-start: 1.2rem; }
 .quest-land-name { color: #2d444f; font-size: .88rem; overflow-wrap: anywhere; }
 .quest-land-caption { margin-top: .15rem; }
+.quest-land-option { margin-top: .35rem; }
+.quest-land-option .quest-land-name { display: block; }
+.quest-land-record-name { margin-top: .45rem; color: #203b46; font-weight: 680; overflow-wrap: anywhere; }
+.quest-land-record .quest-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"], [data-state="lost"]) { color: var(--failure); }
+.quest-land-record .quest-status:focus { outline: 2px solid #007f69; outline-offset: 2px; }
+.quest-land-record .quest-original-text { margin-top: .2rem; }
+.quest-land-metadata { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); margin-top: .5rem; }
+.quest-land-battle h5 { margin: .65rem 0 0; color: #203b46; font-size: .94rem; }
 .quest-region, .quest-service { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--line); }
 .quest-region h4, .quest-service h4 { margin: 0; font-size: .96rem; }
 .quest-service-description { margin-top: .4rem; color: var(--muted); font-size: .9rem; }

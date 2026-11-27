@@ -55,6 +55,21 @@ const questDeckUi = {
   entryNote: document.querySelector('#session-quest-entry-note'),
 };
 
+const questLandUi = {
+  section: document.querySelector('#session-quest-land'),
+  status: document.querySelector('#session-quest-land-status'),
+  result: document.querySelector('#session-quest-land-result'),
+  name: document.querySelector('#session-quest-land-name'),
+  caption: document.querySelector('#session-quest-land-caption'),
+  inventoryId: document.querySelector('#session-quest-land-inventory-id'),
+  id: document.querySelector('#session-quest-land-id'),
+  slot: document.querySelector('#session-quest-land-slot'),
+  progress: document.querySelector('#session-quest-land-progress'),
+  finish: document.querySelector('#session-quest-land-finish'),
+  encounter: document.querySelector('#session-quest-land-encounter'),
+  battleFields: document.querySelectorAll('#session-quest-land-duel [data-field]'),
+};
+
 const mapsUi = {
   load: document.querySelector('#session-quest-maps-load'),
   status: document.querySelector('#session-quest-maps-status'),
@@ -122,11 +137,18 @@ const questStartRejected = {
   41: '無法開始任務',
   42: '此牌組已在任務中',
 };
+const questLandRejected = {
+  ...questStartRejected,
+  15: '牌組裡沒有角色卡',
+  43: '無法進入此地區',
+};
 const MAX_CATALOG_ID = 0x7fffffff;
 const QUEST_PENDING = 4;
 const QUEST_IN_PROGRESS = 2;
 const questCountdowns = [];
 const questDeckNames = new Map();
+const confirmedQuestStarts = new Set();
+const questFirstLands = new Map();
 
 let pending = null;
 let active = null;
@@ -199,23 +221,29 @@ function clearLiveQuestResults(view) {
   view.rows.replaceChildren();
 }
 
+function questLandLocked() {
+  return ['encounter', 'ready', 'uncertain', 'lost'].includes(questLandUi.status.dataset.state);
+}
+
 function updateLiveQuestButtons() {
   const busy = liveQuestRequest !== null;
-  mapsUi.load.disabled = busy;
-  serviceInventoryUi.load.disabled = busy;
+  const networkBlocked = busy || questLandLocked();
+  mapsUi.load.disabled = networkBlocked;
+  serviceInventoryUi.load.disabled = networkBlocked;
   questUi.load.disabled = questUi.status.dataset.state === 'loading' || (busy && liveQuestRequest.kind !== 'read');
-  searchUi.start.disabled = busy || searchUi.section.hidden || searchUi.status.dataset.state === 'uncertain';
-  questDeckUi.select.disabled = busy || questDeckUi.group.hidden || questDeckUi.select.options.length <= 1
+  searchUi.start.disabled = networkBlocked || searchUi.section.hidden || searchUi.status.dataset.state === 'uncertain';
+  questDeckUi.select.disabled = networkBlocked || questDeckUi.group.hidden || questDeckUi.select.options.length <= 1
     || questDeckUi.status.dataset.state === 'uncertain';
   for (const button of questUi.rows.querySelectorAll('.quest-start')) {
     button.disabled = questDeckUi.select.disabled || !questDeckUi.select.value;
   }
-  for (const { button } of questCountdowns) button.disabled = busy;
+  for (const { button } of questCountdowns) button.disabled = networkBlocked;
+  for (const button of questUi.rows.querySelectorAll('.quest-land-enter')) button.disabled = networkBlocked;
 }
 
 function beginLiveQuestRequest(kind) {
   const session = active;
-  if (!session?.initialData?.avatar || liveQuestRequest) return null;
+  if (!session?.initialData?.avatar || liveQuestRequest || questLandLocked()) return null;
   liveQuestRequest = { kind, session, controller: new AbortController() };
   updateLiveQuestButtons();
   return liveQuestRequest;
@@ -240,6 +268,7 @@ function clearLiveQuest() {
   }
   showQuestActionStatus(searchUi.status, 'idle');
   showQuestActionStatus(questDeckUi.status, 'idle');
+  clearQuestLand();
   questDeckNames.clear();
   questDeckUi.select.replaceChildren();
   updateLiveQuestButtons();
@@ -280,6 +309,160 @@ function appendQuestRow(tableBody, { inventoryId, questId, status }) {
   row.dataset.questStatus = String(status);
   for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
   return row;
+}
+
+function findServiceQuestRow(inventoryId, questId) {
+  return serviceInventoryUi.rows.querySelector(`[data-inventory-id="${inventoryId}"][data-quest-id="${questId}"]`);
+}
+
+function clearQuestLand() {
+  confirmedQuestStarts.clear();
+  questFirstLands.clear();
+  questLandUi.section.hidden = true;
+  questLandUi.result.hidden = true;
+  questLandUi.encounter.hidden = true;
+  for (const item of [questLandUi.progress, questLandUi.finish]) {
+    item.hidden = true;
+    item.lastElementChild.textContent = '';
+  }
+  delete questLandUi.result.dataset.slot;
+  delete questLandUi.result.dataset.inventoryId;
+  delete questLandUi.result.dataset.landId;
+  setOriginalText(questLandUi.caption, '');
+  for (const field of [questLandUi.name, questLandUi.inventoryId, questLandUi.id, questLandUi.slot, ...questLandUi.battleFields]) {
+    field.textContent = '';
+  }
+  showQuestActionStatus(questLandUi.status, 'idle');
+}
+
+function appendQuestLandOption(row) {
+  const inventoryId = Number(row.dataset.inventoryId);
+  const land = questFirstLands.get(Number(row.dataset.questId));
+  if (!land || !confirmedQuestStarts.has(inventoryId) || Number(row.dataset.questStatus) !== QUEST_IN_PROGRESS
+      || !(Number(row.dataset.deckIndex) > 0) || row.querySelector('.quest-land-option')) return;
+
+  const option = document.createElement('div');
+  option.className = 'quest-land-option';
+  option.dataset.slot = String(land.slot);
+  option.dataset.landId = String(land.id);
+  const name = document.createElement('span');
+  name.className = 'quest-land-name';
+  name.id = `quest-land-option-name-${inventoryId}`;
+  name.textContent = land.name;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button secondary quest-land-enter';
+  button.textContent = '進入首格地形';
+  button.setAttribute('aria-controls', 'session-quest-land');
+  button.setAttribute('aria-describedby', `${name.id} session-quest-entry-note`);
+  option.append(name, button);
+  row.cells[3].append(option);
+  button.addEventListener('click', () => void enterQuestLand(row, inventoryId, land, button));
+}
+
+function displayQuestLand(inventoryId, land, { slot, encounter, progress, finish }) {
+  const battleFields = encounter?.duel ? { ...encounter, ...encounter.duel } : null;
+  const battleValues = battleFields && [...questLandUi.battleFields].map(field => battleFields[field.dataset.field]);
+  const validBattle = battleValues?.every(value => typeof value === 'boolean' || Number.isSafeInteger(value)
+    || (Array.isArray(value) && value.every(Number.isSafeInteger)));
+  if (slot !== land.slot || (encounter && !validBattle) || (!encounter && progress == null && !finish)
+      || (progress != null && !Number.isSafeInteger(progress))
+      || (finish && (finish.inventoryId !== inventoryId || !Number.isSafeInteger(finish.result)))) {
+    throw new SessionError('quest-land-uncertain');
+  }
+
+  questLandUi.name.textContent = land.name;
+  setOriginalText(questLandUi.caption, land.caption);
+  questLandUi.inventoryId.textContent = String(inventoryId);
+  questLandUi.id.textContent = String(land.id);
+  questLandUi.slot.textContent = String(slot);
+  questLandUi.result.dataset.inventoryId = String(inventoryId);
+  questLandUi.result.dataset.landId = String(land.id);
+  questLandUi.result.dataset.slot = String(slot);
+  questLandUi.progress.hidden = progress == null;
+  questLandUi.progress.lastElementChild.textContent = progress ?? '';
+  questLandUi.finish.hidden = !finish;
+  questLandUi.finish.lastElementChild.textContent = finish?.result ?? '';
+  if (battleValues) {
+    questLandUi.battleFields.forEach((field, index) => {
+      const value = battleValues[index];
+      field.textContent = Array.isArray(value) ? value.join('、') : String(value);
+    });
+  }
+  questLandUi.encounter.hidden = !encounter;
+  questLandUi.result.hidden = false;
+  showQuestActionStatus(questLandUi.status, encounter ? 'encounter' : 'ready', encounter
+    ? '伺服器已確認進入地形與戰鬥開場。回合操作尚未接通，其他任務服務操作已暫停。'
+    : '伺服器已確認進入地形，並回傳任務進度或結算。其他任務服務操作已暫停。');
+}
+
+function watchQuestLandConnection(session) {
+  const closed = session.questAdventure?.closed;
+  if (!closed) return;
+  const showLost = () => {
+    if (active !== session || !session.initialData) return;
+    const message = questLandUi.result.hidden
+      ? '任務連線已中斷。未能確認本次進入結果，請勿重送。'
+      : '任務連線已中斷。已確認的資料仍可查看，本次登入的任務服務操作已暫停。';
+    showQuestActionStatus(questLandUi.status, 'lost', message, 'network');
+    updateLiveQuestButtons();
+  };
+  void closed.then(showLost, showLost);
+}
+
+async function reconcileFinishedQuest(row, inventoryId, request) {
+  const { session, controller } = request;
+  const snapshot = await session.readQuestInventory({ signal: controller.signal }).catch(() => null);
+  if (!snapshot || !isCurrentLiveQuestRequest(request) || !row.isConnected
+      || snapshot.rows.some(entry => entry.inventoryId === inventoryId)) return;
+
+  const serviceRow = findServiceQuestRow(inventoryId, row.dataset.questId);
+  if (serviceRow) {
+    serviceRow.remove();
+    const count = serviceInventoryUi.rows.rows.length;
+    serviceInventoryUi.count.textContent = String(count);
+    serviceInventoryUi.table.hidden = count === 0;
+  }
+  row.remove();
+  questUi.fields[0].textContent = String(snapshot.rows.length);
+  questUi.inventory.hidden = snapshot.rows.length === 0;
+  displayQuestDecks();
+}
+
+async function enterQuestLand(row, inventoryId, land, button) {
+  if (button.disabled || !row.isConnected) return;
+  const restoreFocus = document.activeElement === button;
+  const request = beginLiveQuestRequest('land');
+  if (!request) return;
+  const { session, controller } = request;
+  questLandUi.section.hidden = false;
+  showQuestActionStatus(questLandUi.status, 'entering', '正在向伺服器確認首格地形…');
+
+  try {
+    const result = await session.enterQuestLand(inventoryId, land.slot, { signal: controller.signal });
+    if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
+    displayQuestLand(inventoryId, land, result);
+    if (result.finish) await reconcileFinishedQuest(row, inventoryId, request);
+    else watchQuestLandConnection(session);
+  } catch (error) {
+    if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
+    const kind = error instanceof SessionError ? error.kind : 'quest-land-uncertain';
+    if (kind === 'quest-land-rejected') {
+      const reason = questLandRejected[error.code];
+      showQuestActionStatus(questLandUi.status, 'rejected', reason ? `${reason}。` : '伺服器拒絕進入地形。', kind, error.code);
+    } else if (kind === 'quest-land-uncertain' || kind === 'quest-adventure-active') {
+      showQuestActionStatus(questLandUi.status, 'uncertain', '未能確認本次進入結果。本次登入已暫停任務服務操作。', kind);
+      watchQuestLandConnection(session);
+    } else {
+      const message = kind === 'quest-land-unavailable' ? '伺服器尚未確認這筆任務可進入。' : '無法進入首格地形，請重試。';
+      showQuestActionStatus(questLandUi.status, 'failed', message, kind);
+    }
+  } finally {
+    finishLiveQuestRequest(request);
+    if (restoreFocus && active === session && (document.activeElement === document.body || document.activeElement === button)) {
+      questLandUi.status.focus();
+    }
+  }
 }
 
 function deckLabel(index) {
@@ -334,6 +517,7 @@ function appendQuestStart(row, { inventoryId, questId, status, deckIndex }) {
   if (assigned) {
     description.append(statusElement);
     displayStartedQuest(row, statusElement, deckIndex);
+    appendQuestLandOption(row);
     return;
   }
 
@@ -372,7 +556,9 @@ async function startQuest(row, inventoryId, questId, button, statusElement) {
 
     ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
     displayStartedQuest(row, statusElement, deckIndex);
-    const serviceRow = serviceInventoryUi.rows.querySelector(`[data-inventory-id="${inventoryId}"][data-quest-id="${questId}"]`);
+    confirmedQuestStarts.add(inventoryId);
+    appendQuestLandOption(row);
+    const serviceRow = findServiceQuestRow(inventoryId, questId);
     if (serviceRow) updateQuestRowStatus(serviceRow, reply.status);
     button.remove();
     row.querySelector('.quest-start-cost')?.remove();
@@ -607,8 +793,15 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
       cost.textContent = `消耗 ${quest.ap} 點行動力（AP）`;
       cost.hidden = false;
     }
+    const land = quest.firstLand;
+    if (Number.isInteger(land?.slot) && land.slot >= 0 && land.slot <= 2 && Number.isSafeInteger(land.id) && land.id > 0
+        && Number.isSafeInteger(land.enemyId) && land.enemyId > 0 && typeof land.name === 'string' && land.name.trim()) {
+      questFirstLands.set(quest.id, land);
+      appendQuestLandOption(row);
+    }
   }
   showQuestDetails(catalog.values());
+  updateLiveQuestButtons();
 }
 
 async function startQuestSearch() {

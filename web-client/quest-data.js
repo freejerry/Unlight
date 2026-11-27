@@ -3,7 +3,10 @@ const MAX_CARD_LIST_BYTES = 1024 * 1024;
 const MIN_INT32 = -0x80000000;
 const MAX_INT32 = 0x7fffffff;
 const MAX_SENDER_NAME_BYTES = 128;
+const MAX_DIALOGUE_BYTES = 64 * 1024;
 const MAX_DECK_INDEX = 127;
+const LAND_SLOT_COUNT = 15;
+const MAX_LAND_PROGRESS = (1 << LAND_SLOT_COUNT) - 1;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
 const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
@@ -21,6 +24,12 @@ export const QUEST_ENERGY_REPLY = 4;
 export const QUEST_ERROR_REPLY = 29;
 export const QUEST_START_REQUEST = 13;
 export const QUEST_DELETED_REPLY = 22;
+export const QUEST_NEXT_LAND_REQUEST = 16;
+export const QUEST_NEXT_LAND_REPLY = 128;
+export const QUEST_PROGRESS_REPLY = 19;
+export const QUEST_FINISH_REPLY = 24;
+export const QUEST_ENCOUNTER_REPLY = 37;
+export const QUEST_DUEL_START_REPLY = 40;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -160,6 +169,67 @@ export function readQuestDiscoveryReply(reply) {
   const questId = reply.int();
   reply.done();
   return questInventoryRow(inventoryId, questId, status);
+}
+
+export function readQuestNextLandReply(reply, expectedSlot) {
+  if (reply.command !== QUEST_NEXT_LAND_REPLY) throw new Error('Unexpected quest land reply.');
+  const slot = reply.byte();
+  reply.done();
+  if (slot < 0 || slot >= LAND_SLOT_COUNT || slot !== expectedSlot) throw new Error('Invalid quest land slot.');
+  return slot;
+}
+
+export function readQuestProgressReply(reply) {
+  if (reply.command !== QUEST_PROGRESS_REPLY) throw new Error('Unexpected quest progress reply.');
+  const inventoryId = reply.int();
+  const progress = reply.int();
+  reply.done();
+  if (inventoryId <= 0 || progress < 0 || progress > MAX_LAND_PROGRESS) {
+    throw new Error('Invalid quest progress reply.');
+  }
+  return { inventoryId, progress };
+}
+
+export function readQuestFinishReply(reply) {
+  if (reply.command !== QUEST_FINISH_REPLY) throw new Error('Unexpected quest finish reply.');
+  const result = reply.byte();
+  const inventoryId = reply.int();
+  reply.done();
+  if (inventoryId <= 0 || result < 0 || result > 6) throw new Error('Invalid quest finish reply.');
+  return { inventoryId, result };
+}
+
+export function readQuestEncounterReply(reply) {
+  if (reply.command !== QUEST_ENCOUNTER_REPLY) throw new Error('Unexpected quest encounter reply.');
+  // The original Quest controller assigns CPU encounters the session ID -1.
+  if (reply.int() !== -1 || reply.string(3) !== 'CPU') throw new Error('Invalid quest opponent.');
+  const playerCardIds = integerList(reply.string(MAX_ID_LIST_BYTES));
+  const opponentCardIds = integerList(reply.string(MAX_ID_LIST_BYTES));
+  reply.discardString(MAX_DIALOGUE_BYTES, true);
+  reply.discardString(MAX_DIALOGUE_BYTES, true);
+  const stage = reply.byte();
+  const playerDamage = [reply.byte(), reply.byte(), reply.byte()];
+  const opponentDamage = [reply.byte(), reply.byte(), reply.byte()];
+  reply.done();
+  if (stage < 0 || [...playerCardIds, ...opponentCardIds].some((id) => id === 0 || id > MAX_INT32)) {
+    throw new Error('Invalid quest encounter reply.');
+  }
+  return { playerCardIds, opponentCardIds, stage, playerDamage, opponentDamage };
+}
+
+export function readQuestDuelStartReply(reply) {
+  if (reply.command !== QUEST_DUEL_START_REPLY) throw new Error('Unexpected quest duel start reply.');
+  const deckSize = reply.byte();
+  const playerEventDeckSize = reply.byte();
+  const opponentEventDeckSize = reply.byte();
+  const distance = reply.byte();
+  const multi = reply.byte();
+  reply.done();
+  if (deckSize < 0 || playerEventDeckSize < 0 || opponentEventDeckSize < 0
+    || distance < 1 || distance > 3 || (multi !== 0 && multi !== 1)) {
+    throw new Error('Invalid quest duel start reply.');
+  }
+  return { deckSize, playerEventDeckSize, opponentEventDeckSize, distance, multi: multi === 1 };
 }
 
 export function createQuestDataReader() {
