@@ -155,6 +155,7 @@ def observe_session_codec(page, origin):
         if (replies) {
           const bytes = new DataView(body.buffer, body.byteOffset, body.byteLength);
           const data = reply.command === 32 && body.byteLength >= 6 ? [bytes.getInt32(2)]
+            : reply.command === 4 && body.byteLength === 10 ? [bytes.getInt32(2)]
             : reply.command === 6 && body.byteLength >= 19
             ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
           replies.push([reply.command, body.byteLength, ...data]);
@@ -458,13 +459,11 @@ def check_quest_previews(page, stage, directory, live, *, animate):
         expect(value).to_have_text(label)
         expect(value).to_have_attribute("data-seconds", str(seconds))
         expect(page.locator("#quest-map-search-ap")).to_have_text(re.compile(r"(?:^|\D)1(?:\D|$)"))
-        expect(confirm).to_be_disabled()
+        expect(confirm).to_be_enabled()
         if index <= 1:
             capture(stage, directory, f"11b{3 + index}-quest-search-{seconds}s.png")
     assert [socket for socket in live if not socket.is_closed()] == active
     slider.press("Enter")
-    button = confirm.bounding_box()
-    page.mouse.click(button["x"] + button["width"] / 2, button["y"] + button["height"] / 2)
     expect(search).to_be_visible()
     page.keyboard.press("Escape")
     expect(search).to_be_hidden()
@@ -493,7 +492,7 @@ def check_quest_previews(page, stage, directory, live, *, animate):
     expect(search).to_have_attribute("data-map-id", "2009")
     expect(page.locator("#quest-map-search-name")).to_have_text("微笑的平原")
     expect(slider).to_have_value("10")
-    expect(confirm).to_be_disabled()
+    expect(confirm).to_be_enabled()
     search_close.press("Enter")
     expect(tutorial).to_be_focused()
     open_picker.press("Enter")
@@ -652,6 +651,49 @@ def check_owned_quest_inventory(page, origin, database, name, password, director
     assert not errors, errors
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
+
+
+def check_instant_quest_search(page, stage, directory, database, player_id, profile, live, session_start):
+    avatar_id = profile[0]
+    assert not quest_inventory(database, avatar_id) and profile[5:7] == (5, 5)
+    core = live[session_start:]
+    assert len(core) == 4 and all(not socket.is_closed() for socket in core)
+    launcher = page.locator("#lobby-quest-load")
+    launcher.press("Enter")
+    screen(stage, "quest-map")
+    expect(page.locator("#quest-map-view")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    landmark = page.get_by_role("button", name="魔女山谷", exact=True)
+    landmark.press("Enter")
+    expect(page.locator("#quest-map-search-time")).to_have_value("0")
+    page.locator("#quest-map-search-confirm").press("Enter")
+    result = page.locator("#quest-map-search-result")
+    expect(result).to_be_visible(timeout=TIMEOUT)
+    expect(page.locator("#quest-map-search-result-name")).to_have_text("落日大蝙蝠")
+    expect(page.locator("#quest-map-energy")).to_have_text("4/5")
+    (quest,) = quest_inventory(database, avatar_id)
+    assert quest[1:3] == (1, 0)
+    expect(result).to_have_attribute("data-inventory-id", str(quest[0]))
+    expect(page.locator("#quest-map-inventory > li[data-inventory-id]")).to_have_attribute("data-quest-status", "0")
+    assert len(live[session_start:]) == 5 and all(not socket.is_closed() for socket in live[session_start:])
+    capture(stage, directory, "15-quest-search-immediate.png")
+    page.locator("#quest-map-search-result-ok").press("Enter")
+    expect(landmark).to_be_focused()
+    page.locator("#quest-map-back").press("Enter")
+    screen(stage, "lobby")
+    expect(launcher).to_be_focused()
+    expect(page.locator("#lobby-energy")).to_have_text("4/5")
+    assert [socket for socket in live[session_start:] if not socket.is_closed()] == core
+    trace = page.evaluate("""() => {
+      const {sent, replies, close, overlaps} = window.qaQuestWire.sockets.at(-1);
+      return {sent, replies, close, overlaps};
+    }""")
+    assert [command for command, _ in trace["sent"]] == [0, 1, 3, 5, 3, 2], trace
+    assert trace["sent"][3] == [5, 13] and trace["close"] == [1000, True] and not trace["overlaps"], trace
+    energy, discovered = [reply for reply in trace["replies"] if reply[0] in (4, 6)]
+    assert energy == [4, 10, 4] and discovered[0] == 6 and discovered[2:] == [quest[0], 1, 0, 0]
+    updated = profile[:5] + (4,) + profile[6:]
+    assert avatar(database, player_id) == [updated] and quest_inventory(database, avatar_id) == [quest]
+    return updated
 
 
 def check_button_hover(page, button):
@@ -1106,6 +1148,8 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     capture(stage, directory, "13-direct-lobby-after-login.png")
     if verify_login_rose:
         verify_options(edit=False, session_start=second)
+    else:
+        profile = check_instant_quest_search(page, stage, directory, database, player_id, profile, live, second)
     reload_title()
 
     checked_passwords = [password]
@@ -1269,7 +1313,7 @@ def main():
         finally:
             browser.close()
     assert len(set(portraits)) == len(STARTER_CHOICES), "Distinct equipped IDs rendered the same avatar"
-    print("Real account creation, equipped lobby art, AP and free-duel stars, entrance hover, Quest map, and direct relogin passed.")
+    print("Real account, Lobby, Options, Quest map, immediate search, and direct relogin passed.")
 
 
 if __name__ == "__main__":

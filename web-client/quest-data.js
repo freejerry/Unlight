@@ -12,7 +12,7 @@ const ROSTER_SLOT_COUNT = 3;
 const REFILL_ORIENTATION_BITS = 32;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
-const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
+const SEARCH_BASE_SECONDS = [0, 180, 600, 1800, 3600, 7200, 14400, 28800, 57600, 86400, 259200]; // Ruby QFT_SET.
 const EQUIPPED_PART = 1; // Original PartInventory APS_USED bit.
 const MAX_FREE_DUEL_COUNT = 3; // Original FREE_DUEL_COUNT and FreeDuelCountImage frames.
 const text = new TextDecoder('utf-8', { fatal: true });
@@ -25,6 +25,7 @@ export const QUEST_DISCOVERY_REPLY = 17;
 export const QUEST_SEARCH_REQUEST = 5;
 export const QUEST_SEARCH_REPLY = QUEST_INVENTORY_REPLY;
 export const QUEST_SEARCH_TIMER = 1;
+export const MAX_QUEST_SEARCH_TIMER = SEARCH_BASE_SECONDS.length - 1;
 export const QUEST_ENERGY_REPLY = 4;
 export const QUEST_EXP_REPLY = 7;
 export const QUEST_LEVEL_REPLY = 8;
@@ -285,14 +286,16 @@ export function readQuestInventoryReply(reply, { loginReplay = false } = {}) {
   return row;
 }
 
-export function readQuestSearchReply(reply) {
+export function readQuestSearchReply(reply, timerIndex = QUEST_SEARCH_TIMER) {
   const { row, timer, power } = readQuestGetReply(reply);
-  if (timer === 0) return null; // Quest login and inventory-limit rejections may resend existing rows.
-  const findSeconds = Math.floor(SEARCH_BASE_SECONDS * power / 100);
-  if (timer !== QUEST_SEARCH_TIMER || row.questId !== 0 || row.status !== NEW_STATUS
-    || power < 1 || findSeconds > MAX_INT32) {
+  // Capacity rejections can resend untimed inventory rows before the error.
+  if (timer === 0) return timerIndex === 0 && row.questId > 0 && row.status === NEW_STATUS && power === 100 ? row : null;
+  const baseSeconds = SEARCH_BASE_SECONDS[timer];
+  if (!baseSeconds || timer !== timerIndex || row.questId !== 0 || row.status !== NEW_STATUS || power < 1) {
     throw new Error('Invalid quest search reply.');
   }
+  const findSeconds = Math.floor(baseSeconds * power / 100);
+  if (findSeconds > MAX_INT32) throw new Error('Invalid quest search reply.');
   return { ...row, status: PENDING_STATUS, findSeconds };
 }
 

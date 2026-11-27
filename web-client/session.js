@@ -5,7 +5,7 @@ import {
 } from './data-bootstrap.js';
 import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
-  QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
+  QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, MAX_QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
   QUEST_START_REQUEST, QUEST_DELETED_REPLY,
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
   QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_FINISH_REPLY, QUEST_TREASURE_REPLY,
@@ -81,6 +81,10 @@ const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byt
 const QUEST_LAND_SLOTS = 15;
 const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
+const LAST_ORDINARY_SEARCH_MAP = 36;
+const FIRST_TUTORIAL_SEARCH_MAP = 2009;
+const LAST_TUTORIAL_SEARCH_MAP = 2013;
+const MAX_TIMER_DELAY = 0x7fffffff;
 const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
 const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
 const QUEST_LAND_REJECTIONS = new Set([16, 41, 42, 43]); // Before the original next-land commit.
@@ -142,6 +146,7 @@ const messages = {
   'deck-edit-uncertain': '未能確認移牌結果，請重新登入查看。',
   'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
   'search-rejected': '遊戲服務未接受這次搜尋。',
+  'search-unavailable': '目前無法搜尋這個地區。',
   'quest-start-unavailable': '此任務目前無法開始。',
   'quest-start-rejected': '遊戲服務未接受開始任務。',
   'quest-start-uncertain': '開始任務的結果未確認，可先查看任務服務的即時庫存。',
@@ -754,12 +759,25 @@ function mergeQuestSceneRows(cachedRows, liveRows) {
   return rows;
 }
 
+function questDiscoveryDue(row, profileReceivedAt) {
+  if (row.status !== QUEST_PENDING || row.questId !== 0 || !Number.isInteger(row.findSeconds)) return null;
+  const receivedAt = row.receivedAt ?? profileReceivedAt;
+  if (!Number.isFinite(receivedAt)) return null;
+  if (row.receivedAt !== undefined) return receivedAt + row.findSeconds * 1000 + 1;
+  // Data truncates the original UTC deadline to seconds. Zero may still be within the next second.
+  return receivedAt + (row.findSeconds < 0 ? 0 : (row.findSeconds + 1) * 1000);
+}
+
 async function readQuestDiscovery(socket, confirm, signal, inventoryId) {
   // Recover a committed discovery when its original reply did not reach this session.
   const rows = await readQuestInventoryPushes(socket, confirm, signal);
   const existing = rows.find((row) => row.inventoryId === inventoryId && row.questId > 0);
   if (existing) return existing;
 
+  return sendQuestDiscovery(socket, signal, inventoryId);
+}
+
+async function sendQuestDiscovery(socket, signal, inventoryId, markDispatched) {
   let discovered = null;
   const unsubscribe = socket.observe([QUEST_DISCOVERY_REPLY], (reply) => {
     try {
@@ -774,6 +792,7 @@ async function readQuestDiscovery(socket, confirm, signal, inventoryId) {
   try {
     signal.throwIfAborted();
     socket.send(QUEST_DISCOVERY_REQUEST, [inventoryId]);
+    markDispatched?.();
     await finishQuestObservation(socket, signal, unsubscribe);
     return discovered;
   } finally {
@@ -785,34 +804,41 @@ async function submitQuestSearch(socket, confirm, signal, mapId, inventoryIds, m
   const existing = await readQuestInventoryPushes(socket, confirm, signal);
   const known = new Set(inventoryIds);
   for (const { inventoryId } of existing) known.add(inventoryId);
+  const result = await sendQuestSearch(socket, signal, mapId, QUEST_SEARCH_TIMER, known, markDispatched);
+  if (result.rejection !== undefined) return result;
+  return { row: result.row, energy: result.energy.energy };
+}
 
+async function sendQuestSearch(socket, signal, mapId, timerIndex, known, markDispatched) {
+  const immediate = timerIndex === 0;
   let row = null;
   let energy = null;
   let rejection = null;
   let invalid = false;
+  let settle;
+  const receipt = new Promise((resolve) => { settle = resolve; });
   const unsubscribe = socket.observe([QUEST_SEARCH_REPLY, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY], (reply) => {
     if (invalid) return;
     try {
       switch (reply.command) {
         case QUEST_SEARCH_REPLY: {
           const receivedAt = performance.now();
-          const added = readQuestSearchReply(reply);
-          if (!added) break; // The original may resend untimed rows on rejection.
-          if (row || known.has(added.inventoryId)) invalid = true;
-          else row = { ...added, receivedAt };
+          const added = readQuestSearchReply(reply, timerIndex);
+          if (!added || (immediate && known.has(added.inventoryId))) break;
+          if (row || known.has(added.inventoryId) || (immediate && !energy) || rejection !== null) invalid = true;
+          else row = immediate ? added : { ...added, receivedAt };
           break;
         }
         case QUEST_ENERGY_REPLY: {
           const update = readQuestEnergyReply(reply);
-          // The original sends the timed inventory row before spending the energy.
-          if (!row) break;
-          if (energy !== null) invalid = true;
-          else energy = update.energy;
+          // Ruby emits energy first only for instantaneous search.
+          if (energy || (!immediate && !row) || rejection !== null) invalid = true;
+          else energy = { ...update, receivedAt: performance.now() };
           break;
         }
         case QUEST_ERROR_REPLY: {
           const code = readQuestErrorReply(reply);
-          if (rejection !== null || !QUEST_SEARCH_ERRORS.has(code)) invalid = true;
+          if (row || energy || rejection !== null || !QUEST_SEARCH_ERRORS.has(code)) invalid = true;
           else rejection = code;
           break;
         }
@@ -820,11 +846,15 @@ async function submitQuestSearch(socket, confirm, signal, mapId, inventoryIds, m
     } catch {
       invalid = true;
     }
+    if (invalid || rejection !== null || (row && energy)) settle();
   });
   try {
     signal.throwIfAborted();
-    socket.send(QUEST_SEARCH_REQUEST, [mapId, QUEST_SEARCH_TIMER]);
+    socket.send(QUEST_SEARCH_REQUEST, [mapId, timerIndex]);
     markDispatched();
+    const lost = socket.closed.then(() => { throw new SessionError('network'); });
+    await bounded(Promise.race([receipt, lost]), signal);
+    if (invalid) throw new SessionError('search-uncertain');
     await finishQuestObservation(socket, signal, unsubscribe);
     if (!invalid && rejection !== null && !row) return { rejection };
     if (!invalid && rejection === null && row && energy !== null) return { row, energy };
@@ -1913,6 +1943,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let questReturn;
   let questScene;
   let searchUncertain = false;
+  const attemptedDiscoveries = new Set();
   let questStartUncertain = false;
   let adventure = null;
   const boundQuestDecks = new Map();
@@ -1935,11 +1966,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   attachLobbyAvatar((patch) => {
     if (!initialData) return;
+    if (questScene?.energyOwned && Object.hasOwn(patch, 'energy')) return;
     const avatar = initialData.avatar;
     if (avatar) {
       if (Object.entries(patch).every(([field, value]) => avatar[field] === value)) return;
       Object.assign(avatar, patch);
       publishAvatar();
+      if (Object.hasOwn(patch, 'energy') && questScene?.state === 'open') publishQuestScene(questScene);
     } else if (confirmedAvatar) {
       Object.assign(confirmedAvatar.avatar, patch);
     } else if (registrationLobbyPatch) {
@@ -1955,6 +1988,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       confirmedAvatar = null;
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       boundQuestDecks.clear();
+      attemptedDiscoveries.clear();
       sessionKey.fill(0);
       const request = questRequest;
       const returning = questReturn;
@@ -2064,6 +2098,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     scene.closeTask ??= (async () => {
       if (scene.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
       scene.state = 'closing';
+      const operation = scene.operation;
+      disposeQuestSceneOperations(scene, 'cancelled');
+      if (operation) await operation.task.catch(() => {});
       const { socket, negotiationSent } = scene.channel;
       try {
         // Ruby's unbind also deletes the player registration after negotiation alone.
@@ -2081,7 +2118,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function maintainQuestScene() {
     const scene = questScene;
-    if (scene?.state !== 'open' || scene.heartbeat) return;
+    if (scene?.state !== 'open' || scene.heartbeat || scene.operation) return;
     const { socket } = scene.channel;
     scene.heartbeat = socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch((error) => {
       if (scene.state !== 'open') return;
@@ -2089,6 +2126,142 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       scene.failure = error.kind === 'timeout' ? 'expired' : 'network';
       return socket.close();
     }).finally(() => { scene.heartbeat = null; });
+  }
+
+  function disposeQuestSceneOperations(scene, reason) {
+    clearTimeout(scene.discoveryTimer);
+    scene.operation?.controller.abort(new SessionError(reason));
+    for (const subscription of scene.subscriptions) subscription.unsubscribe();
+  }
+
+  function publishQuestScene(scene) {
+    if (scene.state !== 'open' || !initialData) return;
+    const staleDeck = ['pending-verification', 'uncertain'].includes(deckEditState);
+    const decks = staleDeck ? [] : initialData.avatar.questDecks;
+    const searchState = scene.operation?.kind === 'search' ? 'busy'
+      : searchUncertain ? 'uncertain' : scene.operation ? 'busy' : 'ready';
+    const snapshot = Object.freeze({
+      ...questData,
+      rows: Object.freeze(questData.rows.map((row) => {
+        const dueAt = questDiscoveryDue(row, questData.receivedAt);
+        return Object.freeze(dueAt === null ? { ...row } : { ...row, dueAt });
+      })),
+      questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
+      selectedDeck: staleDeck ? null : initialData.selectedDeck,
+      tutorialQuestFlag: initialData.tutorialQuestProgress?.tutorialQuestFlag ?? null,
+      tutorialQuestClearNum: initialData.tutorialQuestProgress?.tutorialQuestClearNum ?? null,
+      energy: initialData.avatar.energy,
+      searchState,
+    });
+    scene.snapshot = snapshot;
+    for (const { listener } of scene.subscriptions) {
+      try {
+        void Promise.resolve(listener(snapshot)).catch(() => {});
+      } catch {
+        // Rendering callbacks cannot interrupt the retained service.
+      }
+    }
+  }
+
+  async function runQuestSceneOperation(scene, kind, signal, work) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation) throw new SessionError('busy');
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new SessionError('cancelled'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+    const operation = { controller, kind };
+    scene.operation = operation;
+    operation.task = Promise.resolve().then(async () => {
+      if (scene.heartbeat) await bounded(scene.heartbeat, controller.signal);
+      controller.signal.throwIfAborted();
+      return work(scene.channel.socket, controller.signal);
+    });
+    publishQuestScene(scene);
+    try {
+      return await operation.task;
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', cancel);
+      scene.operation = null;
+      if (scene.state === 'open') {
+        scheduleQuestDiscovery(scene);
+        publishQuestScene(scene);
+      }
+    }
+  }
+
+  function scheduleQuestDiscovery(scene) {
+    clearTimeout(scene.discoveryTimer);
+    if (scene.state !== 'open' || scene.operation || !questData) return;
+    let next;
+    for (const row of questData.rows) {
+      if (attemptedDiscoveries.has(row.inventoryId) || scene.failedDiscoveries.has(row.inventoryId)) continue;
+      const dueAt = questDiscoveryDue(row, questData.receivedAt);
+      if (dueAt !== null && (!next || dueAt < next.dueAt)) next = { row, dueAt };
+    }
+    if (!next) return;
+    const { row, dueAt } = next;
+    scene.discoveryTimer = setTimeout(() => {
+      if (scene.state !== 'open' || scene.operation) return;
+      if (performance.now() < dueAt) {
+        scheduleQuestDiscovery(scene);
+        return;
+      }
+      void runQuestSceneOperation(scene, 'discovery', undefined, async (socket, signal) => {
+        const update = await sendQuestDiscovery(socket, signal, row.inventoryId, () => {
+          attemptedDiscoveries.add(row.inventoryId);
+        });
+        signal.throwIfAborted();
+        if (!update) return;
+        const index = questData.rows.indexOf(row);
+        if (index >= 0) questData.rows[index] = update;
+      }).catch(() => {
+        scene.failedDiscoveries.add(row.inventoryId);
+      });
+    }, Math.max(0, Math.min(MAX_TIMER_DELAY, dueAt - performance.now())));
+  }
+
+  async function searchQuestScene(scene, mapId, timerIndex, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation) throw new SessionError('busy');
+    if (searchUncertain) throw new SessionError('search-uncertain');
+    const tutorialFlag = initialData.tutorialQuestProgress?.tutorialQuestFlag;
+    const ordinary = mapId >= 1 && mapId <= Math.min(questData.questFlag + 1, LAST_ORDINARY_SEARCH_MAP);
+    const tutorial = mapId >= FIRST_TUTORIAL_SEARCH_MAP && mapId <= Math.min(tutorialFlag + 1, LAST_TUTORIAL_SEARCH_MAP);
+    if (!Number.isInteger(mapId) || (!ordinary && !tutorial)
+        || !Number.isInteger(timerIndex) || timerIndex < 0 || timerIndex > MAX_QUEST_SEARCH_TIMER) {
+      throw new SessionError('search-unavailable');
+    }
+    return runQuestSceneOperation(scene, 'search', signal, async (socket, questSignal) => {
+      const known = new Set(questData.rows.map(({ inventoryId }) => inventoryId));
+      const alreadyOwnedEnergy = scene.energyOwned;
+      try {
+        const result = await sendQuestSearch(socket, questSignal, mapId, timerIndex, known, () => {
+          searchUncertain = true;
+          scene.energyOwned = true;
+        });
+        questSignal.throwIfAborted();
+        if (result.rejection !== undefined) {
+          searchUncertain = false;
+          scene.energyOwned = alreadyOwnedEnergy;
+          throw new SessionError('search-rejected', result.rejection);
+        }
+        if (questData.rows.length >= MAX_QUEST_ROWS) throw new SessionError('search-uncertain');
+        const { row, energy: { energy, remainingSeconds, receivedAt } } = result;
+        questData.rows.push(row);
+        Object.assign(initialData.avatar, { energy, energyRemainingSeconds: remainingSeconds, energyReceivedAt: receivedAt });
+        searchUncertain = false;
+        publishAvatar();
+        const dueAt = questDiscoveryDue(row, questData.receivedAt);
+        return { row: Object.freeze(dueAt === null ? { ...row } : { ...row, dueAt }), energy };
+      } catch (error) {
+        if (searchUncertain) throw new SessionError('search-uncertain');
+        throw error;
+      }
+    });
   }
 
   function maintainAdventure() {
@@ -2181,7 +2354,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     get initialData() { return initialData; },
     refreshLobbyAvatar() {
       const now = performance.now();
-      if (!initialData?.avatar || profileRequest || questRequest || questReturn
+      if (!initialData?.avatar || profileRequest || questRequest || questReturn || questScene?.energyOwned
           || now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
       try {
         auth.assertOpen();
@@ -2376,7 +2549,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       let scene;
       try {
         return await readFromQuest(async (socket, confirm, questSignal, channel) => {
-          scene = { channel, state: 'opening' };
+          scene = { channel, state: 'opening', subscriptions: new Set(), failedDiscoveries: new Set() };
           questScene = scene;
           channel.retained = true;
           return readQuestInventoryPushes(socket, confirm, questSignal, { sceneChannel: channel });
@@ -2386,22 +2559,29 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           const rows = mergeQuestSceneRows(questData.rows, liveRows);
           questData.rows = rows;
           scene.state = 'open';
-          const staleDeck = ['pending-verification', 'uncertain'].includes(deckEditState);
-          const decks = staleDeck ? [] : initialData.avatar.questDecks;
-          const snapshot = Object.freeze({
-            ...questData,
-            rows: Object.freeze(rows.map((row) => Object.freeze({ ...row }))),
-            questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
-            selectedDeck: staleDeck ? null : initialData.selectedDeck,
-            tutorialQuestFlag: initialData.tutorialQuestProgress?.tutorialQuestFlag ?? null,
-            tutorialQuestClearNum: initialData.tutorialQuestProgress?.tutorialQuestClearNum ?? null,
-          });
+          publishQuestScene(scene);
+          scheduleQuestDiscovery(scene);
           return {
-            snapshot,
+            get snapshot() { return scene.snapshot; },
+            subscribe(listener, { signal } = {}) {
+              if (scene.state !== 'open' || signal?.aborted || typeof listener !== 'function') return () => {};
+              const subscription = {
+                listener,
+                unsubscribe() {
+                  scene.subscriptions.delete(subscription);
+                  signal?.removeEventListener('abort', subscription.unsubscribe);
+                },
+              };
+              scene.subscriptions.add(subscription);
+              signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+              return subscription.unsubscribe;
+            },
+            search: (mapId, timerIndex, { signal } = {}) => searchQuestScene(scene, mapId, timerIndex, signal),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then((reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');
               scene.state = 'return-uncertain';
+              disposeQuestSceneOperations(scene, 'network');
               return scene.failure ?? reason;
             }),
           };

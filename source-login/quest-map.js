@@ -12,6 +12,12 @@ const rowStatusNames = ['新任務', '未完成', '進行中', '已完成', '搜
 const rowKind = ['adventure', 'treasure', 'boss'];
 const pageSize = 10;
 const pickerPositions = [[64, 128], [144, 128], [224, 128], [304, 128], [64, 208], [144, 208]];
+const searchRejections = new Map([
+  [1, 'AP不足'],
+  [30, '因任務數量已達到上限，所以不能再取得任務'],
+  [31, '錯誤的任務地圖編號'],
+  [32, '你的等級不足以取得地圖'],
+]);
 
 const layout = `
   <section id="quest-map-view" class="source-quest-map" aria-labelledby="quest-map-title">
@@ -48,6 +54,7 @@ const layout = `
     </section>
     <img class="quest-map-item-art" src="/source-login/lobby-art/hover/item-up.png" width="48" height="32" alt="">
     <p id="quest-map-status" role="status" hidden></p>
+    <p id="quest-map-search-status" class="sr-only" role="status"></p>
     <button id="quest-map-back" type="button" aria-label="返回大廳">
       <img src="/source-login/option-art/back.png" width="48" height="32" alt="">
       <img class="quest-map-back-over" src="/source-login/option-art/back-over.png" width="48" height="32" alt="">
@@ -61,9 +68,8 @@ const layout = `
       </button>
       <div class="quest-map-region-options"></div>
     </dialog>
-    <dialog id="quest-map-search-preview" class="quest-map-dialog" aria-labelledby="quest-map-search-title" aria-describedby="quest-map-search-scope">
+    <dialog id="quest-map-search-preview" class="quest-map-dialog" aria-labelledby="quest-map-search-title">
       <h2 id="quest-map-search-title" class="sr-only">開始搜索</h2>
-      <p id="quest-map-search-scope" class="sr-only">搜尋預覽。可試選時間。</p>
       <img src="${art}quest-search-plate.png" width="368" height="152" alt="">
       <button id="quest-map-search-close" class="quest-map-art-button" type="button" aria-label="關閉搜尋預覽" autofocus>
         <img src="${art}quest-search-close-up.png" width="24" height="24" alt="">
@@ -78,7 +84,14 @@ const layout = `
       <output id="quest-map-search-ap" aria-label="搜尋消耗 AP"></output>
       <button id="quest-map-search-confirm" class="quest-map-art-button" type="button" aria-label="確認搜尋" disabled>
         <img src="${art}quest-search-ok-up.png" width="160" height="40" alt="">
+        <img class="quest-map-art-over" src="${art}quest-search-ok-over.png" width="160" height="40" alt="">
       </button>
+    </dialog>
+    <dialog id="quest-map-search-result" class="quest-map-dialog stage-panel" aria-labelledby="quest-map-search-result-title" aria-describedby="quest-map-search-result-name quest-map-search-result-message">
+      <h2 id="quest-map-search-result-title" class="stage-panel-title">確認</h2>
+      <p id="quest-map-search-result-name"></p>
+      <p id="quest-map-search-result-message">取得</p>
+      <button id="quest-map-search-result-ok" type="button" lang="en" autofocus>OK</button>
     </dialog>
   </section>`;
 
@@ -218,14 +231,21 @@ function paintProgress(progress, clearNum, map, position) {
   progress.hidden = false;
 }
 
-function setupSearchPreview(view, thumbnails, signal) {
+function setupSearchPreview(view, thumbnails, signal, { scene, onAlert, definitions, loadDefinitions }) {
   const dialog = view.querySelector('#quest-map-search-preview');
   const name = dialog.querySelector('#quest-map-search-name');
   const thumbnail = dialog.querySelector('#quest-map-search-thumbnail');
   const slider = dialog.querySelector('#quest-map-search-time');
   const time = dialog.querySelector('#quest-map-search-time-value');
   const ap = dialog.querySelector('#quest-map-search-ap');
+  const confirm = dialog.querySelector('#quest-map-search-confirm');
+  const obtained = view.querySelector('#quest-map-search-result');
+  const obtainedName = obtained.querySelector('#quest-map-search-result-name');
+  const result = setupDialog(obtained, view, [270, 280], signal, { onDismiss: playBackClick });
   const panel = setupDialog(dialog, view, [270, 280], signal, { onDismiss: playBackClick });
+  const uncertainMessage = '無法確認搜尋結果。重新登入後請先查看任務清單。';
+  let selected;
+  let submitting = false;
 
   function showTime() {
     const { index, label, seconds } = QUEST_SEARCH_TIMES[slider.valueAsNumber];
@@ -239,7 +259,58 @@ function setupSearchPreview(view, thumbnails, signal) {
   slider.addEventListener('input', showTime, { signal });
   showTime();
 
+  function canSearch() {
+    return !!scene && scene.snapshot.searchState === 'ready' && !submitting;
+  }
+
+  function updateConfirm() {
+    confirm.disabled = !canSearch();
+  }
+
+  scene?.subscribe(updateConfirm, { signal });
+  confirm.addEventListener('click', async () => {
+    if (!selected || !dialog.open || !canSearch()) return;
+    const { map, opener } = selected;
+    const timerIndex = slider.valueAsNumber;
+    const focusTarget = () => opener.isConnected ? opener : view.querySelector('#quest-map-region-open');
+    submitting = true;
+    updateConfirm();
+    try {
+      const request = scene.search(map.id, timerIndex);
+      void panel.dismiss();
+      const { row } = await request;
+      if (signal.aborted || view.inert || timerIndex !== 0 || row.status !== 0 || row.questId <= 0) return;
+
+      await loadDefinitions([row.questId]);
+      if (signal.aborted || view.inert) return;
+      obtained.dataset.inventoryId = String(row.inventoryId);
+      obtainedName.textContent = definitions.get(row.questId)?.name || `任務 ${row.questId}`;
+      result.show(focusTarget());
+    } catch (error) {
+      if (signal.aborted || view.inert) return;
+      const kind = error?.kind;
+      if (kind === 'search-rejected') {
+        onAlert?.('quest-search-rejected', searchRejections.get(error.code) ?? '搜尋失敗。', focusTarget());
+      } else if (kind === 'search-uncertain') {
+        onAlert?.('quest-search-uncertain', uncertainMessage, focusTarget());
+      } else {
+        onAlert?.('quest-search-error', '無法開始搜尋。', focusTarget());
+      }
+    } finally {
+      submitting = false;
+      if (!signal.aborted) updateConfirm();
+    }
+  }, { signal });
+
   return (map, opener) => {
+    const state = scene?.snapshot.searchState;
+    if (signal.aborted || view.inert || submitting || state === 'busy') return;
+    if (state === 'uncertain') {
+      onAlert?.('quest-search-uncertain', uncertainMessage, opener);
+      return;
+    }
+    selected = { map, opener };
+    updateConfirm();
     dialog.dataset.mapId = String(map.id);
     name.textContent = map.name;
     ap.textContent = map.ap > 0 ? String(map.ap) : '';
@@ -292,7 +363,7 @@ function addWorldArrow(world, direction, states, signal, choose) {
   return button;
 }
 
-async function mountQuestRegions(view, snapshot, signal) {
+async function mountQuestRegions(view, snapshot, signal, search) {
   const get = selector => view.querySelector(selector);
   const world = get('#quest-map-world');
   const worldArt = world.querySelector('.quest-map-world-art');
@@ -346,7 +417,7 @@ async function mountQuestRegions(view, snapshot, signal) {
   tutorial.mapIds ??= [];
 
   const pickerPanel = setupDialog(picker, view, [32, 64], signal, { slide: true });
-  const openPreview = setupSearchPreview(view, geography.searchThumbnails ?? {}, signal);
+  const openPreview = setupSearchPreview(view, geography.searchThumbnails ?? {}, signal, search);
   opener.addEventListener('click', () => pickerPanel.show(opener), { signal });
   opener.disabled = false;
 
@@ -406,6 +477,7 @@ async function mountQuestRegions(view, snapshot, signal) {
       if (signal.aborted || activeRegion !== region) return false;
       if (!map) return false;
       button.setAttribute('aria-label', map.name);
+      if (view.dataset.searchState === 'busy') button.setAttribute('aria-disabled', 'true');
       button.disabled = false;
       if (id === progressId) {
         const marker = artPage.landmarks.find(entry => entry.id === id);
@@ -448,14 +520,14 @@ function createQuestRow(item, definitions, receiptTime, timers, showHelp) {
   rowText(row, 'sr-only', rowStatusNames[item.status] ?? '');
 
   const definition = definitions.get(item.questId);
-  const kind = rowKind[definition?.kind];
-  if (kind) row.append(image(`quest-row-kind-${kind}.png`, 'quest-map-row-kind'));
   const undiscovered = item.questId === 0;
+  const kind = undiscovered ? 'adventure' : rowKind[definition?.kind];
+  if (kind) row.append(image(`quest-row-kind-${kind}.png`, 'quest-map-row-kind'));
   if (undiscovered || Number.isInteger(definition?.difficulty)) {
     rowText(row, 'quest-map-row-level', undiscovered ? 'Lv ?' : `Lv ${definition.difficulty}`);
   }
-  const name = definition?.name || (undiscovered ? '' : `任務 ${item.questId}`);
-  if (name) rowText(row, 'quest-map-row-name', name);
+  const name = definition?.name || (undiscovered ? '搜索中' : `任務 ${item.questId}`);
+  rowText(row, 'quest-map-row-name', name);
   if (undiscovered || Number.isInteger(definition?.rarity)) {
     row.append(image('quest-row-rarity.png', 'quest-map-row-rarity-art'));
     rowText(row, 'quest-map-row-rarity', undiscovered ? '?' : String(definition.rarity));
@@ -471,11 +543,12 @@ function createQuestRow(item, definitions, receiptTime, timers, showHelp) {
     row.setAttribute('aria-describedby', tooltip.id);
     row.tabIndex = 0;
   }
-  if (item.status === 4 && Number.isInteger(item.findSeconds) && Number.isFinite(item.receivedAt ?? receiptTime)) {
+  const expiry = (item.receivedAt ?? receiptTime) + Math.max(0, item.findSeconds) * 1000;
+  if (item.status === 4 && Number.isFinite(expiry)) {
     const remaining = rowText(row, 'quest-map-row-timer', '');
     remaining.setAttribute('role', 'timer');
     remaining.setAttribute('aria-live', 'off');
-    timers.push({ remaining, expiry: (item.receivedAt ?? receiptTime) + Math.max(0, item.findSeconds) * 1000 });
+    timers.push({ remaining, expiry });
   }
   return row;
 }
@@ -514,7 +587,7 @@ async function paintDeck(view, selected, signal) {
   }
 }
 
-export function mountQuestMap(host, { session, snapshot, onBack }) {
+export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -526,9 +599,12 @@ export function mountQuestMap(host, { session, snapshot, onBack }) {
   const pageControls = get('.quest-map-pages');
   const prevPage = get('.quest-map-page-prev');
   const nextPage = get('.quest-map-page-next');
+  const capacity = get('#quest-map-capacity');
+  const searchStatus = get('#quest-map-search-status');
   const definitions = new Map();
+  const definitionRequests = new Map();
   const timers = [];
-  const pages = Math.max(1, Math.ceil(snapshot.rows.length / pageSize));
+  let latest = snapshot;
   let page = 0;
   let timer;
 
@@ -547,15 +623,64 @@ export function mountQuestMap(host, { session, snapshot, onBack }) {
   const paintRows = () => {
     clearInterval(timer);
     timers.length = 0;
-    const pageRows = snapshot.rows.slice(page * pageSize, (page + 1) * pageSize);
+    const pages = Math.max(1, Math.ceil(latest.rows.length / pageSize));
+    page = Math.min(page, pages - 1);
+    const pageRows = latest.rows.slice(page * pageSize, (page + 1) * pageSize);
     const showHelp = getPreferences().toolTip;
-    inventory.replaceChildren(...pageRows.map(row => createQuestRow(row, definitions, snapshot.receivedAt, timers, showHelp)));
+    const rowFocus = inventory.contains(document.activeElement) ? document.activeElement.dataset.inventoryId : null;
+    const items = pageRows.map(row => createQuestRow(row, definitions, latest.receivedAt, timers, showHelp));
+    inventory.replaceChildren(...items);
+    if (rowFocus) items.find(item => item.dataset.inventoryId === rowFocus)?.focus({ preventScroll: true });
+    capacity.textContent = `${latest.rows.length}/${latest.capacity}`;
+    capacity.classList.toggle('quest-map-capacity-full', latest.rows.length >= latest.capacity);
     get('#quest-map-list-page').textContent = `${page + 1}/${pages}`;
     prevPage.hidden = page === 0;
     nextPage.hidden = page + 1 === pages;
     pageControls.hidden = pages === 1;
     if (updateTimers()) timer = setInterval(updateTimers, 1000);
   };
+
+  function loadDefinitions(ids) {
+    const requested = new Set(ids.filter(id => id > 0));
+    const missing = Array.from(requested).filter(id => !definitionRequests.has(id));
+    if (missing.length) {
+      const query = new URLSearchParams();
+      for (const id of missing) query.append('id', String(id));
+      const reading = getCatalog('/api/quest-catalog', query, signal).then(({ quests }) => {
+        if (signal.aborted) return;
+        for (const quest of quests) if (requested.has(quest.id)) definitions.set(quest.id, quest);
+        paintRows();
+      }).catch(() => {
+        for (const id of missing) definitionRequests.delete(id);
+      });
+      for (const id of missing) definitionRequests.set(id, reading);
+    }
+    return Promise.all(Array.from(requested, id => definitionRequests.get(id)));
+  }
+
+  function displaySnapshot(next) {
+    if (signal.aborted) return;
+    const previous = latest;
+    latest = next;
+    if (view.dataset.searchState !== next.searchState) {
+      view.dataset.searchState = next.searchState;
+      searchStatus.textContent = next.searchState === 'busy' ? '正在確認搜尋結果。' : '';
+      for (const button of view.querySelectorAll('.quest-map-landmark-hit:not(:disabled)')) {
+        if (next.searchState === 'busy') button.setAttribute('aria-disabled', 'true');
+        else button.removeAttribute('aria-disabled');
+      }
+    }
+    const changed = previous.capacity !== next.capacity || previous.rows.length !== next.rows.length ||
+      next.rows.some((item, index) => {
+        const old = previous.rows[index];
+        return item.inventoryId !== old.inventoryId || item.questId !== old.questId || item.status !== old.status ||
+          item.findSeconds !== old.findSeconds || item.receivedAt !== old.receivedAt || item.dueAt !== old.dueAt;
+      });
+    if (changed) {
+      paintRows();
+      void loadDefinitions(next.rows.map(row => row.questId));
+    }
+  }
 
   const changePage = delta => {
     page += delta;
@@ -571,8 +696,6 @@ export function mountQuestMap(host, { session, snapshot, onBack }) {
     onBack();
   }, { signal });
 
-  get('#quest-map-capacity').textContent = `${snapshot.rows.length}/${snapshot.capacity}`;
-  get('#quest-map-capacity').classList.toggle('quest-map-capacity-full', snapshot.rows.length >= snapshot.capacity);
   if (snapshot.capacity > 0) {
     const plate = get('.quest-map-list-art');
     plate.src = `${art}quest-list-${String(Math.min(snapshot.capacity, pageSize)).padStart(2, '0')}.png`;
@@ -583,20 +706,10 @@ export function mountQuestMap(host, { session, snapshot, onBack }) {
   void paintDeck(view, snapshot.selectedDeck, signal);
   host.append(view);
   back.focus({ preventScroll: true });
-  void mountQuestRegions(view, snapshot, signal);
-
-  const ids = new Set(snapshot.rows.map(row => row.questId).filter(id => id > 0));
-  const queries = new URLSearchParams();
-  for (const id of ids) queries.append('id', String(id));
-  if (queries.size) {
-    void getCatalog('/api/quest-catalog', queries, signal).then(({ quests }) => {
-      if (signal.aborted) return;
-      for (const quest of quests) if (ids.has(quest.id)) definitions.set(quest.id, quest);
-      paintRows();
-    }).catch(() => {
-      // Verified inventory rows remain available without localized metadata.
-    });
-  }
+  displaySnapshot(scene?.snapshot ?? snapshot);
+  scene?.subscribe(displaySnapshot, { signal });
+  void mountQuestRegions(view, snapshot, signal, { scene, onAlert, definitions, loadDefinitions });
+  void loadDefinitions(latest.rows.map(row => row.questId));
 
   return () => {
     lifetime.abort();

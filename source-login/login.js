@@ -71,7 +71,7 @@ function showStatus(state, message = '', kind) {
 function openAlert(kind, heading, message, field = null) {
   loginAlert.dataset.kind = kind;
   loginAlertTitle.textContent = heading;
-  loginAlertTitle.lang = kind === 'registration-success' ? 'zh-Hant-TW' : 'en';
+  loginAlertTitle.lang = heading === 'Error' ? 'en' : 'zh-Hant-TW';
   loginAlertMessage.textContent = message;
   alertReturnFocus = field;
   loginAlert.showModal();
@@ -320,7 +320,17 @@ async function openQuest(session) {
       return;
     }
     changeScreen('quest-map', 'quest');
-    cleanupScreen = mountQuestMap(postLogin, { session, snapshot: route.scene.snapshot, onBack: () => leaveQuest(route) });
+    cleanupScreen = mountQuestMap(postLogin, {
+      session,
+      snapshot: route.scene.snapshot,
+      scene: route.scene,
+      onBack: () => leaveQuest(route),
+      onAlert(kind, message, focus) {
+        if (questRoute !== route || route.leaving || loginAlert.open) return;
+        const heading = kind === 'quest-search-rejected' ? '警告' : 'Error';
+        openAlert(kind, heading, message, focus?.isConnected ? focus : postLogin.querySelector('#quest-map-back'));
+      },
+    });
     void route.scene.closed.then(() => {
       if (!route.leaving) returnFromQuest(route, '任務連線已中斷。請重新整理並登入後再試。');
     });

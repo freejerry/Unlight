@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、搜尋預覽、兩秒場景音樂淡出、已發現／搜尋中清單與 Back。**部分**探索與共用 Ruby 協定。 | 接入確認搜尋、原版 AP 扣除和等待到期，接續首戰。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、兩秒場景音樂淡出、魔女山谷即時與 180 秒搜尋、AP 更新、重進／重新登入與到期轉 NEW。 | 接入任務詳情、NEW 確認與牌組選擇，再開始首場 PvE。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -70,4 +70,9 @@
 ### 任務選區、搜尋預覽與音樂淡出
 
 - 依原版旗標顯示六張普通地圖與 MemoryLand。原始 MAP 選區按鈕與 300 ms 滑入、地名飾帶的點擊範圍與即時預覽均接入遊戲。實跑核對 11 個時間選項、原始縮圖與 AP 費用，保留同次任務中關閉前的時間。兩個視窗操作全程維持原五條連線，角色 AP、庫存及裝備均維持原資料。[原版時間重開測試](/workspace/shared/unlight-web-port/flash-parity/quest-map/picker-preview/README.md) · [選單並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-map-picker.png) · [搜尋並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-search-3m.png)
-- 真實 Chromium 量到大廳及任務兩方向各十步音量衰減，均約 2001 ms，切換時前後 BGM 可重疊。MemoryLand 保留原版可見飾帶，以真實解鎖旗標提供可操作地標；未修補 Ruffle 曾保留前一張底圖，新版依已選區域換圖。確認搜尋仍停用，下一步驗收 Ruby 的 `CS5`、AP 扣除、庫存回覆與到期處理。[MemoryLand 並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-memoryland.png) · [原始模式與來源驗收](flash-parity/quest-pve.md#map-選區搜尋預覽與音樂)
+- 真實 Chromium 量到大廳及任務兩方向各十步音量衰減，均約 2001 ms，切換時前後 BGM 可重疊。MemoryLand 保留原版可見飾帶，以真實解鎖旗標提供可操作地標。未修補 Ruffle 曾保留前一張底圖，新版依已選區域換圖。[MemoryLand 並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-memoryland.png) · [原始模式與來源驗收](flash-parity/quest-pve.md#map-選區搜尋預覽與音樂)
+
+### 魔女山谷即時與定時搜尋
+
+- 原版繁中 SWF 與新版固定舞台皆使用隔離 Ruby 的真正搜尋。即時顯示落日大蝙蝠「取得」，3 分鐘搜尋自然到期後將同一持有項目更新為 NEW。每次扣 1 AP，同一 Quest 內從 AP 5/5、庫存 0/4 到 AP 3/5、庫存 2/4。Back 只關閉 Quest 連線。新版在原連線與重新登入兩條路徑分別在 Ruby 截止時間約 38 ms、889 ms 後送出唯一的到期查詢。[即時取得並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/instant-acquisition-comparison.png) · [搜尋中並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/timed-pending-comparison.png) · [到期並排](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/timed-found-comparison.png) · [到期測例](flash-parity/qa.md#重跑定時任務搜尋)
+- 真實 Ruby 拒絕 AP 不足時顯示「警告」，AP 和庫存維持原值。測試暫緩真正的搜尋成功通知時，畫面不提前追加任務。通知確定遺失時鎖住重送，重新登入後讀到 Ruby 已保存的唯一任務及扣除後的 AP。[AP 不足](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-06-native-rejected-ap.png) · [結果不明提示](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-07-native-search-uncertain.png) · [新版脫敏封包](/workspace/shared/unlight-web-port/flash-parity/quest-search-live/qa-native-search-wire.json)

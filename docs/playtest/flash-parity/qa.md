@@ -90,6 +90,16 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
   --screens "$proof_dir/native-quest-map"
 ```
 
+### 重跑即時任務搜尋
+
+執行上方的一般 `check_source_lobby.py`。測例建立空庫存的新角色，進魔女山谷選 `0分`，驗證取得視窗、任務名稱、AP 從 5/5 到 4/5 和 SQLite 的唯一新任務。關閉取得視窗後確認鍵盤焦點回地標，Back 回大廳時只關閉該 Quest 連線。紀錄的 Quest 封包包含一次 `CS5`，相應回覆順序為 `SC4`、`SC6`，最後 `CS2` 正常關閉。[可重跑測例](../../../tools/legacy-web/check_source_lobby.py)
+
+### 重跑定時任務搜尋
+
+1. 使用原版與新版各自隔離的測試角色，空庫存進魔女山谷，先選 `0分` 並確認取得。選 `3分` 再按 OK。以原版效率 100% 為條件，記錄 Ruby 的 `find_at`、持有 ID、當前 AP 和清單容量。等候列應為資料庫狀態 4，對外任務 ID 為 0。
+2. 保留遊戲舞台及相同 Quest 連線，等待實際 180 秒。觀察到期檢查 `CS17` 的送出時間，以及 Ruby 回覆的同一持有 ID、NEW 狀態和真正任務 ID。畫面只更新這一列，AP 維持 3/5、庫存維持 2/4。Back 返回大廳後，其他四條連線仍應存活。
+3. 以尚未到期的新搜尋再跑一次。倒數中先 Back 回大廳，再進任務。確認同一筆等待列，然後重新登入並再進入。記錄重登入後到期查詢的時間，須在原始 `find_at` 之後，並且只送一次 `CS17`。測試自然到期時保留原本 Ruby 時鐘。需要測遺失回覆時，可在測試瀏覽器暫緩原始回覆，查核 SQLite 並驗證再登入的對帳結果。[原始倒數發送](../../../app/client/src/view/scene/quest/QuestItem.as#L350) · [Ruby 到期判斷](../../../app/server/src/model/avatar_quest_inventory.rb#L110) · [完整原版操作及封包](/workspace/shared/unlight-web-port/flash-parity/quest-search/README.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)
