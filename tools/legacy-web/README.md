@@ -38,7 +38,7 @@ Codex 雲端桌面實測使用 Mesa lavapipe 和 `ruffle --graphics vulkan`。�
 
 ## 驗收
 
-`check_boot.py` 檢查 SWF、設定與標題音樂。瀏覽器模式下，`check_relay.py` 檢查六個 Ruby 服務的 KeepAlive。另安裝 Playwright 與 Chromium 後，`check_browser.py` 確認實際使用 WGPU WebGL、標題動畫有進展、原版 BGM 有回應且 Web Audio 收到非零波形。它也驗證沒有 WebGL 2 時的提示和重試。
+`check_boot.py` 檢查 SWF、設定與標題音樂。瀏覽器模式下，`check_relay.py` 檢查六個 Ruby 服務的 KeepAlive。另安裝 Playwright 與 Chromium 後，`check_browser.py` 確認實際使用 WGPU WebGL、標題動畫有進展、原版 BGM 有回應且 Web Audio 收到非零波形。它也驗證沒有 WebGL 2 時的提示和重試，並檢查桌面與窄視窗中的播放器外框是否維持原版比例。
 
 ```bash
 python3 tools/legacy-web/check_boot.py 4330
@@ -46,6 +46,6 @@ python3 tools/legacy-web/check_relay.py 4330
 python3 tools/legacy-web/check_browser.py --port 4330 --chromium /path/to/chromium
 ```
 
-軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。動畫驗收依原始程式的事件、時間軸標籤和音效觸發點進行。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
+軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。標題啟動後會量測約一秒的瀏覽器 `requestAnimationFrame`，輸出回呼次數與間隔的中位數、p95 和最大值。SWF 內的動畫進度另依畫面變化、原版時間軸與音效觸發點驗證。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
 
 雲端 Ruffle Desktop 實際打完「落日大蝙蝠」並看到通關結算。獨立 Chromium 實測登入、大廳、魔女山谷及對戰開場，觀察到 Web Audio 訊號，並確認戰鬥場景載入原始 `bgm000.mp3`。瀏覽器內的單場完整結算、各別戰鬥音效及部分彈窗缺字仍待驗證。[實機畫面與驗收紀錄](../../docs/playtest/README.md)

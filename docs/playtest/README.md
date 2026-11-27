@@ -10,9 +10,13 @@
 
 ## 瀏覽器 Ruffle
 
-在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳、魔女山谷與對戰開場。標題的 Web Audio 輸出量到非零波形，戰鬥也請求了原版 BGM。各別戰鬥音效、瀏覽器版通關結算和部分彈窗的繁中字型仍待核對。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
+在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳及魔女山谷。從地圖啟動「落日大蝙蝠」後，原版客戶端進入第一回合的抽牌階段，畫面顯示雙方角色及五張手牌。原版標題及戰鬥 BGM 成功載入，並測到 Web Audio 輸出。各別戰鬥音效、瀏覽器版通關結算和部分彈窗的繁中字型仍待核對。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
+
+Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯示 780 × 680 的播放器，390 × 844 視窗顯示 390 × 340。兩個播放器都維持原版比例，頁面沒有溢出。這次標題取樣在 1.20 秒收到 9 次瀏覽器畫面回呼，回呼間隔中位數為 175.1 毫秒，p95 與最大值均為 233.3 毫秒。這組結果記錄軟體渲染環境的瀏覽器排程，無法據此驗收 SWF 動畫流暢度。[量測腳本](../../tools/legacy-web/check_browser.py)
 
 [標題](browser/01-browser-title.png) · [大廳](browser/02-browser-lobby.png) · [任務地圖](browser/03-browser-quest.png) · [對戰開場](browser/04-browser-battle.png) · [展示入口標題](browser/05-demo-title.png)
+
+[任務啟動](browser/06-browser-quest-start.png) · [第一回合抽牌](browser/07-browser-draw.png)
 
 ## 原生瀏覽器驗收
 

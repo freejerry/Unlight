@@ -30,6 +30,10 @@ bundle exec python3 tools/legacy-server/run.py serve \
 
 另以 `--revision` 指定來源版本，或用 `--checkout` 指定另一個包含 `app/server` 的 checkout。啟動器的相容層會配合 Ruby 2.7 的位元組字串、可變的對局名稱和舊版 Sequel 查詢。這些變更套用在執行副本。[相容補丁](compat.patch) · [回環設定](loopback.rb)
 
+### 首場 PvE 驗收資料
+
+在上例加上 `--playtest-first-quest --work-dir /tmp/unlight-quest-playtest`。指定一個尚未建立的工作目錄，並使用符合原版欄位規格的帳密。準備程序用原版 Ruby 模型建立測試角色、起始牌組和一個尚未開始的「落日大蝙蝠」任務。這個帳號從已完成教學的狀態進入大廳，開始前沒有通關紀錄。SQLite 執行副本位於 `app/server/data/game_dev2.db`。[原版瀏覽器試玩](../legacy-web/README.md)
+
 ## 對局基準
 
 `characterize --check` 使用原始 `MultiDuel` 與任務 AI，載入固定場地所需的牌和兩張測試角色卡，透過固定亂數與模擬時鐘重播。種子 2026 的對局在第四回合結算，玩家 5 HP、AI 0 HP。68 個事件依序記錄抽牌、移動、出牌、攻防、骰點、傷害與勝負。[對局資料](fixtures/trace-2026.json)

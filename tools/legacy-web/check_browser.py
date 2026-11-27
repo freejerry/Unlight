@@ -2,7 +2,9 @@
 
 import argparse
 import os
+from math import ceil
 from pathlib import Path
+from statistics import median
 from tempfile import TemporaryDirectory
 
 from playwright.sync_api import expect, sync_playwright
@@ -38,6 +40,71 @@ HAS_SIGNAL = """
 """
 
 
+def measure_browser_cadence(page, duration_ms=1000):
+    observation = page.evaluate("""
+      duration => new Promise(resolve => {
+        const timestamps = [];
+        let frame;
+        const deadline = setTimeout(() => finish(true), duration + 3000);
+
+        function finish(timedOut) {
+          clearTimeout(deadline);
+          cancelAnimationFrame(frame);
+          resolve({timestamps, timedOut});
+        }
+
+        function sample(timestamp) {
+          timestamps.push(timestamp);
+          if (timestamp - timestamps[0] >= duration) finish(false);
+          else frame = requestAnimationFrame(sample);
+        }
+
+        frame = requestAnimationFrame(sample);
+      })
+    """, duration_ms)
+    times = observation["timestamps"]
+    intervals = sorted(after - before for before, after in zip(times, times[1:]))
+    return {
+        "callbacks": len(times),
+        "window_ms": times[-1] - times[0] if times else 0,
+        "p50_ms": median(intervals) if intervals else None,
+        "p95_ms": intervals[ceil(0.95 * len(intervals)) - 1] if intervals else None,
+        "max_ms": intervals[-1] if intervals else None,
+        "timed_out": observation["timedOut"],
+    }
+
+
+def check_responsive_shell(page):
+    desktop = page.viewport_size or page.evaluate("() => ({width: innerWidth, height: innerHeight})")
+    sizes = []
+    try:
+        for viewport in (desktop, {"width": 390, "height": 844}):
+            page.set_viewport_size(viewport)
+            bounds = page.locator("#stage").evaluate("""
+              stage => ({
+                viewportWidth: innerWidth,
+                viewportHeight: innerHeight,
+                pageWidth: document.documentElement.scrollWidth,
+                pageHeight: document.documentElement.scrollHeight,
+                stage: stage.getBoundingClientRect().toJSON(),
+                player: stage.querySelector('ruffle-player')?.getBoundingClientRect().toJSON()
+              })
+            """)
+            width, height = viewport["width"], viewport["height"]
+            assert (bounds["viewportWidth"], bounds["viewportHeight"]) == (width, height), bounds
+            assert bounds["pageWidth"] <= width and bounds["pageHeight"] <= height, bounds
+            for box in (bounds["stage"], bounds.get("player")):
+                assert box and box["width"] > 0 and box["height"] > 0, bounds
+                assert box["left"] >= -1 and box["top"] >= -1, bounds
+                assert box["right"] <= width + 1 and box["bottom"] <= height + 1, bounds
+                assert abs(box["height"] - box["width"] * 680 / 780) <= 1, bounds
+            stage = bounds["stage"]
+            sizes.append(f"{width}×{height} viewport, {stage['width']:.0f}×{stage['height']:.0f} stage")
+    finally:
+        page.set_viewport_size(desktop)
+    print("Original stage shell fits both viewports. " + " | ".join(sizes), flush=True)
+
+
 def check_title(browser, url, screenshot):
     page = browser.new_page(viewport={"width": 900, "height": 760})
     page.add_init_script(AUDIO_METER)
@@ -63,8 +130,23 @@ def check_title(browser, url, screenshot):
     if screenshot:
         screenshot.parent.mkdir(parents=True, exist_ok=True)
         stage.screenshot(path=screenshot)
+    print("Title rendered with wgpu-webgl, animated, and produced a Web Audio signal.", flush=True)
+    cadence = measure_browser_cadence(page)
+    print(
+        f"During the title, browser requestAnimationFrame recorded {cadence['callbacks']} callbacks "
+        f"over {cadence['window_ms']:.1f} ms. The SWF timeline has its own authored frame rate.",
+        flush=True,
+    )
+    if cadence["p50_ms"] is not None:
+        print(
+            f"Browser callback intervals had a p50 of {cadence['p50_ms']:.1f} ms, "
+            f"p95 of {cadence['p95_ms']:.1f} ms, and maximum of {cadence['max_ms']:.1f} ms.",
+            flush=True,
+        )
+    if cadence["timed_out"]:
+        print("Browser callback sampling reached the observation deadline.", flush=True)
+    check_responsive_shell(page)
     page.close()
-    print("Title rendered with wgpu-webgl, animated, and produced a Web Audio signal.")
 
 
 def check_no_webgl(browser, url):

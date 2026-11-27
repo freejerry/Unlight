@@ -278,6 +278,8 @@ def main(args):
         env = service_environment(run_dir, server)
         cache = start_cache(stack, run_dir, server, env, cache_port)
         prep_args = [args.playtest_user] if args.playtest_user else []
+        if args.playtest_first_quest:
+            prep_args.append("first-quest")
         # Bootstrap the schema before loading models and their column accessors again.
         run_ruby("prepare.rb", prep_args, server, env, run_dir / "prepare.log", stdin=password)
         if not services:
@@ -311,10 +313,16 @@ if __name__ == "__main__":
         "--port-offset", type=int, default=os.environ.get("UNLIGHT_BACKEND_PORT_OFFSET", "0")
     )
     parser.add_argument("--playtest-user", help="Prompt for a local playtest account password.")
+    parser.add_argument(
+        "--playtest-first-quest", action="store_true",
+        help="Prepare the original first quest for a disposable playtest account.",
+    )
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--check", action="store_true", help="Compare the duel to the included fixture.")
     parser.add_argument("--output", type=Path, help="Write the duel's JSON to a file.")
     args = parser.parse_args()
+    if args.playtest_first_quest and (args.mode != "serve" or not args.playtest_user or not args.master):
+        parser.error("--playtest-first-quest requires serve, --playtest-user and --master")
     if args.mode == "characterize" and (args.master or args.playtest_user):
         parser.error("characterize always uses a fresh database without any accounts.")
     if args.mode != "characterize" and (args.check or args.output):
