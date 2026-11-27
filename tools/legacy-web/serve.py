@@ -30,6 +30,10 @@ SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
 MAX_QUEST_CHARACTER_CARD_IDS = 6  # Two rosters have at most three slots each.
+# REGIST_PARTS and REGIST_CARDS in app/server/src/constants/constants.rb.
+AVATAR_STARTER_PART_IDS = (1, 2, 3, 5, 6, 7, 10, 11, 12, 15, 16, 17, 24, 25, 26,
+                           27, 28, 29, 32, 33, 34, 37, 38, 39)
+AVATAR_STARTER_CARD_IDS = (1, 21, 31, 101, 111)
 TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
 QUEST_LAND_FIELDS = tuple(
     f"quest_land_id_{column}_{row}" for column in range(5) for row in range(3)
@@ -191,6 +195,31 @@ def native_quest_character_card_catalog():
     # The Traditional Chinese import uses this shared master when no TCN override exists.
     with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
         return {int(row["id"]): int(row["hp"]) for row in DictReader(source)}
+
+
+def native_avatar_starter_catalog():
+    parts = {}
+    with (SERVER_CSV / "ja/AvatarParts.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            part_id = int(row["id"])
+            name = row["name_tcn"] or ""
+            if part_id in AVATAR_STARTER_PART_IDS and name.strip():
+                role = int(row["parts_type"])
+                if 0 <= role <= 3:
+                    parts[part_id] = {"id": part_id, "type": role, "name": name}
+
+    cards = {}
+    with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            card_id = int(row["id"])
+            name = row["name_tcn"] or ""
+            if card_id in AVATAR_STARTER_CARD_IDS and name.strip():
+                cards[card_id] = {"id": card_id, "name": name}
+
+    return {
+        "parts": [parts[part_id] for part_id in AVATAR_STARTER_PART_IDS if part_id in parts],
+        "cards": [cards[card_id] for card_id in AVATAR_STARTER_CARD_IDS if card_id in cards],
+    }
 
 
 def client_config(server_offset, direct_sockets):
@@ -373,6 +402,9 @@ def create_app(
         character_hp = {}
         with suppress(OSError):
             character_hp = native_quest_character_card_catalog()
+        avatar_starters = None
+        with suppress(OSError):
+            avatar_starters = native_avatar_starter_catalog()
 
         async def quest_catalog(request):
             values = request.query.getall("id", [])
@@ -418,11 +450,18 @@ def create_app(
                 headers={"Cache-Control": "no-store"},
             )
 
+        async def avatar_starter_catalog(_request):
+            headers = {"Cache-Control": "no-store"}
+            if avatar_starters is None:
+                raise web.HTTPServiceUnavailable(text="Avatar starter metadata is unavailable.", headers=headers)
+            return web.json_response(avatar_starters, headers=headers)
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
         app.router.add_get("/api/quest-catalog", quest_catalog)
         app.router.add_get("/api/action-card-catalog", action_card_catalog)
         app.router.add_get("/api/quest-character-cards", quest_character_cards)
+        app.router.add_get("/api/avatar-starter-catalog", avatar_starter_catalog)
         return app
 
     index_path = ROOT / "index.html"

@@ -1,6 +1,6 @@
 # 原生瀏覽器連線、登入與素材驗收
 
-原生入口的首頁 `/` 連接既有 Ruby 服務，先顯示登入表單。登入後可展開「最新消息」或查看任務資料。頂部「連線診斷」通往下方的原版協定、素材與面板檢查，「對局紀錄」通往獨立的 `/replay/`。角色建立及大廳操作可透過原版相容入口試玩。[可啟動入口](../MODERNIZATION_PLAN.md#可啟動入口) · [首頁驗收](../docs/playtest/README.md#原生入口版面) · [原版相容入口](../tools/legacy-web/README.md)
+原生入口的首頁 `/` 連接既有 Ruby 服務，先顯示登入表單。登入後可展開「最新消息」。未創角帳號可建立角色，已有角色的帳號可查看任務資料。頂部「連線診斷」通往下方的原版協定、素材與面板檢查，「對局紀錄」通往獨立的 `/replay/`。原版教學及大廳操作可透過原版相容入口試玩。[可啟動入口](../MODERNIZATION_PLAN.md#可啟動入口) · [首頁驗收](../docs/playtest/README.md#原生入口版面) · [原版相容入口](../tools/legacy-web/README.md)
 
 另有可獨立啟動的 [原生搜尋倒數示範](#原生搜尋倒數示範)。
 
@@ -26,7 +26,9 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
   --assets "$unlight_build/assets/public"
 ```
 
-開啟 `http://127.0.0.1:4334/`，用剛建立的測試帳號登入。登入成功會顯示玩家 ID、三項服務的驗證狀態及角色摘要。未創角的帳號會顯示可選的起始外觀部件與角色卡數量。
+開啟 `http://127.0.0.1:4334/`，用剛建立的測試帳號登入。登入成功會顯示玩家 ID 和三項服務的驗證狀態。已有角色的帳號會顯示角色摘要。
+
+未創角時，填寫 3 至 12 字的角色名稱，再選素體、眼睛、嘴型、髮型和一張起始角色卡。選單以原版 Data 回傳的選項為準，名稱來自原始繁中資料。按「建立角色」後，原版大廳先確認名稱是否可用，再處理建立。畫面顯示角色已建立後，登出並重新登入即可讀取原版角色摘要及任務資料。若送出後無法確認結果，也請重新登入查詢。[創角驗收](../docs/playtest/README.md#原生建立角色) · [原版大廳流程](../app/server/src/controller/lobby_controller.rb#L86)
 
 要驗收登入後的「最新消息」，在上述啟動指令加上 `--news /path/to/news.xml`，登入後展開該區塊。可用 `--news app/client/public/news.xml.orig` 查看庫內保存的日文範例。瀏覽器讀取 UTF-8 XML 的 `<XML><news>` 內容，保留來源文字和段落、粗體、清單等基本格式。省略 `--news` 時，首次展開後會隱藏此區塊。[原版讀取方式](../app/client/lib/News.as#L130) · [公告驗收](../docs/playtest/README.md#原生瀏覽器登入)
 
@@ -68,7 +70,7 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 - **連線。** KeepAlive 與登入共用請求封包編碼。依原版的 KeepAlive 命令向認證、大廳、資料、戰鬥、任務和全域聊天服務送出二進位訊息，逐位元組比對 Ruby 回應。單項失敗時可重試。[共用編碼](wire.js#L15) · [原版命令範例](../app/client/src/net/command/AuthCommand.as#L93) · [ActionScript 封包格式](../app/client/src/net/ULSocket.as#L85) · [Ruby 封包格式](../app/server/src/protocol/ulserver.rb#L107)
 - **登入。** 瀏覽器以原版 SRP 協定計算認證證明，驗證伺服器憑證後，使用原版工作階段金鑰完成大廳、資料和全域聊天的交握。密碼在瀏覽器記憶體內處理。此入口供回環介面的隔離驗收使用。[原版認證流程](../app/client/src/net/server/AuthServer.as) · [原版大廳交握](../app/client/src/net/server/LobbyServer.as)
-- **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，唯讀解析角色摘要，或彙整未創角帳號收到的起始選項數量。登出或連線中斷時清空摘要。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
+- **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，讀取角色摘要，或取得未創角帳號可用的外觀部件及起始角色卡 ID。登出或連線中斷時清空資料。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
 - **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得普通地圖 1 至 35 的資料，並以該地圖門檻為顯示上限。地形依原始欄位順序顯示，每個地形 ID 列一次。缺少說明時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
 - **資源。** 從既有素材目錄讀取商店 PNG `item_id020.png` 和標題 MP3 `ulbgm01.mp3`，比對新入口與原版入口交付的位元組，再由 Chromium 解碼圖片並用使用者手勢確認音訊開始播放。[原版標題音樂的載入位置](../app/client/src/sound/bgm/TitleBGM.as)
 - **九宮格。** 「連線診斷」的 WebGL 2 和 Canvas 2D 預覽共用 120 × 96 的原版面板圖、原始切片座標與幾何計算，按可用寬度和裝置像素比更新。WebGL 2 無法繪製或圖形環境中斷時，Canvas 2D 會接手重繪。首頁的登入及消息區塊使用 CSS 排版。[原版切片設定](../app/client/data/css/UL.css.cn#L35) · [繪圖驗收](../docs/playtest/README.md#原生-webgl-2-九宮格)

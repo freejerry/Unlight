@@ -335,6 +335,49 @@ main { padding-block: 1.6rem 1.8rem; }
 .native-client #session-account .session-result .session-metadata > div { padding: 0; border: 0; background: none; }
 .native-client #session-account .session-metadata dt { color: var(--native-muted); overflow-wrap: anywhere; }
 .native-client .session-bootstrap { margin-top: 1rem; padding-top: .85rem; border-block-start: 1px solid var(--native-edge); }
+.session-bootstrap[data-state="registration"] > h3 { margin-bottom: .65rem; color: var(--native-ink); font-size: 1.16rem; }
+.avatar-create { min-width: 0; margin-top: .55rem; }
+.avatar-create-fields {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: clamp(.8rem, 2.5vw, 1.3rem);
+  border: 1px solid var(--native-edge);
+  border-radius: .55rem;
+  background: var(--native-tint);
+}
+.avatar-create :is(label, legend:not(.sr-only)) { color: var(--native-ink); font-size: .95rem; font-weight: 670; }
+.avatar-create :is(.avatar-create-name, .avatar-create-starter) { display: grid; gap: .3rem; width: min(100%, 24rem); min-width: 0; }
+.avatar-create :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: .44rem .55rem;
+  border: 1px solid #8b9c93;
+  border-radius: .4rem;
+  background: #fff;
+  color: var(--native-ink);
+  font: inherit;
+  font-size: 1rem;
+}
+.avatar-create :is(input, select):disabled { background: #eeeee8; }
+.avatar-create input[aria-invalid="true"] { border-color: #a35041; }
+#session-avatar-create-name-help { color: var(--native-muted); font-size: .86rem; line-height: 1.5; }
+.avatar-create-appearance { min-width: 0; margin: 0; padding: .55rem 0 0; border: 0; border-block-start: 1px solid var(--native-edge); }
+.avatar-create-appearance legend { padding: 0 .4rem 0 0; }
+.avatar-create-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr)); gap: .65rem; }
+.avatar-create-parts label { display: grid; gap: .28rem; min-width: 0; }
+.avatar-create .button { min-height: 44px; width: max-content; max-width: 100%; white-space: normal; }
+.avatar-create .primary { background: var(--native-action); }
+.avatar-create .primary:hover:not(:disabled) { background: #163e32; }
+.avatar-create-status { color: var(--native-muted); font-size: .92rem; line-height: 1.5; overflow-wrap: anywhere; }
+.avatar-create-status:not(:empty) { padding: .65rem .75rem; border-inline-start: 3px solid #829d90; background: #f2f5ef; }
+.avatar-create-status:not(:empty) + .avatar-create-fields { margin-top: .65rem; }
+.avatar-create-status[data-state="confirmed"] { border-inline-start-color: var(--native-action); color: var(--native-action); }
+.avatar-create-status:is([data-state="rejected"], [data-state="failed"], [data-state="uncertain"]) { border-inline-start-color: #a35041; background: #fff1eb; color: #78372b; }
+.avatar-create-status:focus { outline: 2px solid var(--native-action); outline-offset: 2px; }
+#session-avatar-create-retry, .avatar-create + #session-registration-data { margin-top: .65rem; }
 
 .native-client .session-news { max-width: none; margin-top: .9rem; padding: 0; border-color: var(--native-edge); }
 .native-client .session-news summary { width: auto; min-height: 44px; padding: .7rem var(--native-gutter); border-radius: .7rem; font-size: 1.03rem; }
@@ -551,6 +594,7 @@ main { padding-block: 1.6rem 1.8rem; }
 
 @media (max-width: 35rem) {
   .native-client .session-fields button { justify-self: stretch; }
+  .avatar-create .button { width: 100%; }
   .quest-search > .primary { width: 100%; }
   .quest-board .quest-move-card-item .quest-card-label { flex-basis: 100%; }
   .quest-settlement .button { width: 100%; }

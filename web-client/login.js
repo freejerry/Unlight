@@ -25,6 +25,16 @@ const ui = {
   registrationFields: ['parts', 'cards'].map(field => document.querySelector(`#session-starter-${field}`)),
 };
 
+const avatarCreateUi = {
+  form: document.querySelector('#session-avatar-create'),
+  fields: document.querySelector('#session-avatar-create-fields'),
+  name: document.querySelector('#session-avatar-create-name'),
+  parts: [0, 1, 2, 3].map(type => document.querySelector(`#session-avatar-create-part-${type}`)),
+  card: document.querySelector('#session-avatar-create-card'),
+  status: document.querySelector('#session-avatar-create-status'),
+  retry: document.querySelector('#session-avatar-create-retry'),
+};
+
 const questUi = {
   section: document.querySelector('#session-quest'),
   load: document.querySelector('#session-quest-load'),
@@ -327,6 +337,7 @@ const questBoardAnimations = new Set();
 
 let pending = null;
 let active = null;
+let avatarCreateRequest = null;
 let questRequest = null;
 let liveQuestRequest = null;
 let newsRequest = null;
@@ -369,7 +380,7 @@ function displayBootstrap(initialData) {
   const registration = initialData?.registration;
   ui.bootstrap.hidden = !initialData;
   ui.bootstrap.dataset.state = avatar ? 'avatar' : registration ? 'registration' : 'idle';
-  ui.bootstrapTitle.textContent = avatar ? '角色資料' : registration ? '尚未建立角色' : '登入初始資料';
+  ui.bootstrapTitle.textContent = avatar ? '角色資料' : registration ? '建立角色' : '登入初始資料';
   ui.avatarData.hidden = !avatar;
   ui.registrationData.hidden = !registration;
 
@@ -380,6 +391,145 @@ function displayBootstrap(initialData) {
   displayAvatarEnergy(avatar?.energy, avatar?.energyMax);
   const registrationValues = registration ? [registration.partCount, registration.cardCount] : [];
   ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
+}
+
+function showAvatarCreate(state, message = '', kind) {
+  const { status, fields, retry } = avatarCreateUi;
+  status.dataset.state = state;
+  status.textContent = message;
+  if (kind) status.dataset.errorKind = kind;
+  else delete status.dataset.errorKind;
+  fields.disabled = !['ready', 'rejected'].includes(state);
+  fields.hidden = fields.disabled && state !== 'checking';
+  retry.hidden = state !== 'failed';
+}
+
+function clearAvatarCreate() {
+  avatarCreateRequest?.abort();
+  avatarCreateRequest = null;
+  avatarCreateUi.form.hidden = true;
+  clearField(avatarCreateUi.name);
+  avatarCreateUi.name.removeAttribute('aria-invalid');
+  for (const select of [...avatarCreateUi.parts, avatarCreateUi.card]) select.replaceChildren();
+  showAvatarCreate('idle');
+}
+
+function displayAvatarStarterOptions({ partIds, cardIds }, { parts, cards }) {
+  const named = ({ id, name }) => Number.isSafeInteger(id) && id > 0 && typeof name === 'string' && name.trim();
+  const partCatalog = new Map(parts.filter(named).map(part => [part.id, part]));
+  const cardCatalog = new Map(cards.filter(named).map(card => [card.id, card]));
+  const groupOptions = avatarCreateUi.parts.map((_, type) => partIds.map(id => partCatalog.get(id))
+    .filter(part => part?.type === type));
+  const cardOptions = cardIds.map(id => cardCatalog.get(id)).filter(Boolean);
+  if (groupOptions.some(group => !group.length) || !cardOptions.length) throw new Error('Missing starter choices.');
+
+  function setOptions(select, options, placeholder) {
+    select.replaceChildren(new Option(placeholder, ''), ...options.map(({ id, name }) => new Option(name, String(id))));
+  }
+
+  avatarCreateUi.parts.forEach((select, index) => setOptions(select, groupOptions[index], '請選擇'));
+  if (groupOptions[0].some(({ id }) => id === 1)) avatarCreateUi.parts[0].value = '1';
+  setOptions(avatarCreateUi.card, cardOptions, '請選擇起始角色卡');
+}
+
+async function loadAvatarStarterOptions(session, focusFrom) {
+  const registration = session?.initialData?.registration;
+  if (!registration || session.avatarRegistrationState !== 'available' || avatarCreateRequest) return;
+  const controller = new AbortController();
+  avatarCreateRequest = controller;
+  const isCurrent = () => avatarCreateRequest === controller && active === session && session.initialData?.registration;
+  avatarCreateUi.form.hidden = false;
+  showAvatarCreate('loading', '正在讀取起始選項…');
+  if (focusFrom === avatarCreateUi.retry) avatarCreateUi.status.focus();
+  try {
+    const response = await fetch('/api/avatar-starter-catalog', {
+      redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(3500)]),
+    });
+    if (!response.ok) throw new Error('Unavailable starter choices.');
+    const catalog = await response.json();
+    if (!isCurrent()) return;
+    displayAvatarStarterOptions(registration, catalog);
+    showAvatarCreate('ready');
+    if (document.activeElement === (focusFrom === avatarCreateUi.retry ? avatarCreateUi.status : focusFrom)) {
+      avatarCreateUi.name.focus();
+    }
+  } catch {
+    if (isCurrent()) {
+      showAvatarCreate('failed', '暫時無法讀取起始選項。請重試。');
+      if (document.activeElement === avatarCreateUi.status || document.activeElement === focusFrom) {
+        avatarCreateUi.retry.focus();
+      }
+    }
+  } finally {
+    if (avatarCreateRequest === controller) avatarCreateRequest = null;
+  }
+}
+
+const avatarCreateErrors = {
+  'avatar-name-invalid': '這個角色名稱無法使用。請修改名稱。',
+  'avatar-name-taken': '這個角色名稱已有人使用。請換一個名稱。',
+  'avatar-starter-invalid': '請重新選擇外觀部件與起始角色卡。',
+  'avatar-create-rejected': '伺服器拒絕建立角色。請確認名稱與起始選項後再試。',
+  'avatar-create-uncertain': '尚未確認角色是否已建立。請登出後重新登入，查看角色資料。',
+  'avatar-name-uncertain': '未能完成名稱確認。請登出後重新登入再試。',
+  'avatar-registration-unavailable': '本次登入無法建立角色。請登出後重新登入。',
+};
+
+function createAvatarNameError(message) {
+  avatarCreateUi.name.setCustomValidity(message);
+  avatarCreateUi.name.setAttribute('aria-invalid', 'true');
+}
+
+async function submitAvatarCreate(event) {
+  event.preventDefault();
+  const { form, fields, name, parts, card, status } = avatarCreateUi;
+  const session = active;
+  if (!session?.initialData?.registration || session.avatarRegistrationState !== 'available'
+      || avatarCreateRequest || form.hidden || fields.disabled || !form.checkValidity()) return;
+  const nameValue = name.value;
+  if (nameValue.length < name.minLength || nameValue.length > name.maxLength
+      || /[\x00-\x1f\x7f 　",]|\*\*\*/u.test(nameValue) || !nameValue.isWellFormed()) {
+    const message = '請使用符合格式的角色名稱。';
+    createAvatarNameError(message);
+    showAvatarCreate('rejected', message, 'avatar-name-invalid');
+    name.focus();
+    return;
+  }
+
+  const choice = { name: nameValue, partIds: parts.map(select => Number(select.value)), cardId: Number(card.value) };
+  const controller = new AbortController();
+  avatarCreateRequest = controller;
+  const isCurrent = () => avatarCreateRequest === controller && active === session && session.initialData?.registration;
+  const restoreFocus = fields.contains(document.activeElement);
+  showAvatarCreate('checking', '正在向伺服器確認名稱與建立角色…');
+  if (restoreFocus) status.focus();
+  try {
+    const receipt = await session.createAvatar(choice, { signal: controller.signal });
+    if (!isCurrent()) return;
+    if (!Number.isSafeInteger(receipt?.avatarId) || receipt.avatarId <= 0 || receipt.name !== nameValue) {
+      throw new SessionError('avatar-create-uncertain');
+    }
+    ui.bootstrapTitle.textContent = '角色已建立';
+    ui.registrationData.hidden = true;
+    showAvatarCreate('confirmed', `伺服器已建立角色「${receipt.name}」。請登出後重新登入，讀取角色資料。`);
+    if (document.activeElement === status) ui.signOut.focus();
+  } catch (error) {
+    if (!isCurrent()) return;
+    const kind = error instanceof SessionError && Object.hasOwn(avatarCreateErrors, error.kind)
+      ? error.kind : 'avatar-registration-unavailable';
+    const message = avatarCreateErrors[kind];
+    const invalidName = kind === 'avatar-name-invalid' || kind === 'avatar-name-taken';
+    if (invalidName) createAvatarNameError(message);
+    const retryable = session.avatarRegistrationState === 'available'
+      && (invalidName || kind === 'avatar-starter-invalid' || kind === 'avatar-create-rejected');
+    showAvatarCreate(retryable ? 'rejected' : 'uncertain', message, kind);
+    if (document.activeElement === status) {
+      if (retryable) (kind === 'avatar-starter-invalid' ? parts[0] : name).focus();
+      else ui.signOut.focus();
+    }
+  } finally {
+    if (avatarCreateRequest === controller) avatarCreateRequest = null;
+  }
 }
 
 function showQuestStatus(state, kind) {
@@ -2226,6 +2376,7 @@ function show(state, label, detail = '', kind) {
   if (!signedIn) {
     clearNews();
     clearLiveQuest();
+    clearAvatarCreate();
     questUi.sourceDetails.open = false;
     questRequest?.abort();
     questRequest = null;
@@ -2305,12 +2456,34 @@ ui.form.addEventListener('submit', async (event) => {
     const moveFocus = document.activeElement === ui.status;
     show('signed-in', '登入成功');
     if (moveFocus) ui.title.focus();
+    if (initialData.registration) void loadAvatarStarterOptions(session, moveFocus ? ui.title : null);
     void session.closed.then((reason) => handleDisconnect(session, reason), () => handleDisconnect(session, 'network'));
   } catch (error) {
     if (pending === controller) showFailure(error);
   } finally {
     if (pending === controller) pending = null;
   }
+});
+
+avatarCreateUi.name.addEventListener('input', () => {
+  avatarCreateUi.name.setCustomValidity('');
+  avatarCreateUi.name.removeAttribute('aria-invalid');
+  const { state, errorKind } = avatarCreateUi.status.dataset;
+  if (state === 'rejected' && (errorKind === 'avatar-name-invalid' || errorKind === 'avatar-name-taken')) {
+    showAvatarCreate('ready');
+  }
+});
+avatarCreateUi.name.addEventListener('invalid', () => {
+  const { validity, minLength, maxLength } = avatarCreateUi.name;
+  if (!validity.customError) {
+    const message = validity.valueMissing ? '請輸入角色名稱。' : `角色名稱需為 ${minLength} 至 ${maxLength} 個字。`;
+    createAvatarNameError(message);
+    showAvatarCreate('rejected', message, 'avatar-name-invalid');
+  }
+});
+avatarCreateUi.form.addEventListener('submit', submitAvatarCreate);
+avatarCreateUi.retry.addEventListener('click', () => {
+  void loadAvatarStarterOptions(active, document.activeElement === avatarCreateUi.retry ? avatarCreateUi.retry : null);
 });
 
 questUi.load.addEventListener('click', async () => {

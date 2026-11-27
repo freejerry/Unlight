@@ -1,7 +1,7 @@
 import { createAuthExchange } from './srp.js';
 import { applySessionKey, createFrameParser, encodeCommand, readReply, signedByte } from './wire.js';
 import {
-  AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
+  AVATAR_COMMAND, LOBBY_AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readLobbyAvatar, readVersions,
 } from './data-bootstrap.js';
 import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
@@ -38,8 +38,20 @@ import {
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
+const LOBBY_PORT = 12002;
 const DATA_PORT = 12003;
 const QUEST_PORT = 12005;
+const LOBBY_CREATE_AVATAR_REQUEST = 10;
+const LOBBY_CHECK_NAME_REQUEST = 11;
+const LOBBY_CREATE_AVATAR_REPLY = 5;
+const LOBBY_CHECK_NAME_REPLY = 6;
+const LOBBY_PONG = 35;
+const AVATAR_REGISTRATION_REPLIES = [LOBBY_AVATAR_COMMAND, LOBBY_CREATE_AVATAR_REPLY, LOBBY_CHECK_NAME_REPLY];
+// Original AvatarParts.csv types, in the order sent by AvatarStyleEditor.
+const AVATAR_STARTER_PART_GROUPS = [
+  [1, 2, 3], [5, 6, 7, 10, 11, 12, 15, 16, 17], [24, 25, 26], [27, 28, 29, 32, 33, 34, 37, 38, 39],
+];
+const AVATAR_STARTER_CARDS = [1, 21, 31, 101, 111];
 const QUEST_REGION = 0;
 const QUEST_NEW = 0;
 const QUEST_UNSOLVED = 1;
@@ -59,7 +71,7 @@ const QUEST_TURN_REPLIES = [
   QUEST_TURN_REPLY, QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
 ];
 const CHANNELS = [
-  { port: 12002, pong: 35 },
+  { port: LOBBY_PORT, pong: LOBBY_PONG },
   { port: DATA_PORT, pong: 3 },
   { port: 12020, pong: 3 },
 ];
@@ -92,6 +104,13 @@ const messages = {
   timeout: '遊戲服務未及時回覆，請再試一次。',
   cancelled: '已取消連線。',
   busy: '正在讀取任務資料。',
+  'avatar-name-invalid': '此角色名稱無法使用。',
+  'avatar-name-taken': '此角色名稱已有人使用。',
+  'avatar-name-uncertain': '未能確認名稱檢查結果，請重新登入。',
+  'avatar-starter-invalid': '請選擇伺服器提供的外觀和起始角色卡。',
+  'avatar-create-rejected': '伺服器未接受建立角色。',
+  'avatar-create-uncertain': '未能確認角色是否已建立，請重新登入查看。',
+  'avatar-registration-unavailable': '本次登入目前無法建立角色。',
   'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
   'search-rejected': '遊戲服務未接受這次搜尋。',
   'quest-start-unavailable': '此任務目前無法開始。',
@@ -389,6 +408,91 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
     return initialData;
   } finally {
     initial?.dispose();
+  }
+}
+
+function avatarRegistrationOptions(registration) {
+  if (!registration) return null;
+  const partGroups = AVATAR_STARTER_PART_GROUPS.map((group) => group.filter((id) => registration.partIds.includes(id)));
+  const cardIds = AVATAR_STARTER_CARDS.filter((id) => registration.cardIds.includes(id));
+  return partGroups.every((group) => group.length) && cardIds.length ? { partGroups, cardIds } : null;
+}
+
+function avatarRegistrationFields({ name, partIds, cardId }, { partGroups, cardIds }) {
+  if (typeof name !== 'string' || name.length < 3 || name.length > 12 || /[ ",\u3000]|\*{3}|\p{Cc}|\p{Cs}/u.test(name)) {
+    throw new SessionError('avatar-name-invalid');
+  }
+  if (!Array.isArray(partIds) || partIds.length !== partGroups.length
+      || !partGroups.every((group, index) => group.includes(partIds[index])) || !cardIds.includes(cardId)) {
+    throw new SessionError('avatar-starter-invalid');
+  }
+  return [name, partIds.join(','), String(cardId), 0]; // Original optional invitation omitted.
+}
+
+async function finishLobbyObservation(socket, signal) {
+  const pong = await socket.ask(3, [], [LOBBY_PONG], { signal, allowOther: true });
+  pong.done();
+}
+
+async function checkAvatarName(socket, name, signal) {
+  let unexpected = false;
+  const unsubscribe = socket.observe(AVATAR_REGISTRATION_REPLIES, () => { unexpected = true; });
+  try {
+    const reply = await socket.ask(LOBBY_CHECK_NAME_REQUEST, [name], [LOBBY_CHECK_NAME_REPLY], { signal, allowOther: true });
+    const code = reply.int();
+    reply.done();
+    if (code < 0 || code > 2) throw new SessionError('protocol');
+    await finishLobbyObservation(socket, signal);
+    if (unexpected) throw new SessionError('protocol');
+    return code;
+  } finally {
+    unsubscribe();
+  }
+}
+
+async function submitAvatarRegistration(socket, fields, signal, markSent) {
+  let accepted;
+  let profileStarted = false;
+  let invalid = false;
+  let unsubscribe;
+  const confirmation = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe(AVATAR_REGISTRATION_REPLIES, (reply) => {
+      if (invalid) return;
+      try {
+        if (reply.command === LOBBY_CREATE_AVATAR_REPLY && accepted === undefined) {
+          const status = reply.byte();
+          reply.done();
+          if (status !== 0 && status !== 1) throw new SessionError('protocol');
+          accepted = status === 1;
+          if (!accepted) resolve(null);
+        } else if (reply.command === LOBBY_AVATAR_COMMAND && accepted && !profileStarted) {
+          profileStarted = true;
+          resolve(readLobbyAvatar(reply, signal));
+        } else throw new SessionError('protocol');
+      } catch {
+        invalid = true;
+        reject(new SessionError('protocol'));
+      }
+    });
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(LOBBY_CREATE_AVATAR_REQUEST, fields);
+    markSent();
+    const lost = socket.closed.then(() => { throw new SessionError('network'); });
+    const profile = await bounded(Promise.race([confirmation, lost]), signal);
+    // Keep watching this stage until the ordered fence and its chunk are processed.
+    await finishLobbyObservation(socket, signal);
+    if (invalid) throw new SessionError('protocol');
+    if (profile === null) return null;
+    const { avatar, questData } = profile;
+    if (avatar.name !== fields[0] || avatar.level < 1 || avatar.gems < 0 || avatar.exp < 0
+        || avatar.energy < 0 || avatar.energyMax < 1 || !questData || !avatar.questDecks.some(({ index }) => index === 1)) {
+      throw new SessionError('protocol');
+    }
+    return { avatarId: avatar.id, name: avatar.name };
+  } finally {
+    unsubscribe();
   }
 }
 
@@ -1599,6 +1703,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
 }
 
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
+  const lobby = channels.find(({ port }) => port === LOBBY_PORT);
+  const registrationOptions = avatarRegistrationOptions(initialData.registration);
+  let registrationState = registrationOptions ? 'available' : 'unavailable';
+  let registrationRequest;
+  let lobbyHeartbeat;
   let closing;
   let questRequest;
   let questReturn;
@@ -1618,13 +1727,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       sessionKey.fill(0);
       const request = questRequest;
       const returning = questReturn;
+      const registration = registrationRequest;
       const retained = adventure;
       if (retained) retained.state = 'closed';
-      request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
-      returning?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+      for (const operation of [request, returning, registration]) {
+        operation?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+      }
       closing = (async () => {
         if (request) await request.task.catch(() => {});
         if (returning) await returning.task.catch(() => {});
+        if (registration) await registration.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
           retained.nonCombatObserver?.stop();
@@ -1735,9 +1847,15 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     try {
       const replies = await Promise.all([
         auth.ask(6, [], [7], { allowOther: true }),
-        ...channels.map(({ socket, pong }) => socket.ask(3, [], [pong], { allowOther: true })),
+        ...channels.map((channel) => {
+          const { socket, pong } = channel;
+          if (channel !== lobby) return socket.ask(3, [], [pong], { allowOther: true });
+          if (registrationRequest) return null;
+          lobbyHeartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => { lobbyHeartbeat = null; });
+          return lobbyHeartbeat;
+        }),
       ]);
-      for (const reply of replies) reply.done();
+      for (const reply of replies) reply?.done();
     } catch (error) {
       void stop(error.kind === 'timeout' ? 'expired' : 'network');
     }
@@ -1751,6 +1869,56 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     dataVerified: true,
     chatVerified: true,
     get initialData() { return initialData; },
+    get avatarRegistrationState() { return initialData ? registrationState : 'unavailable'; },
+    async createAvatar(selection, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (registrationRequest) throw new SessionError('busy');
+      if (registrationState !== 'available') throw new SessionError('avatar-registration-unavailable');
+      const fields = avatarRegistrationFields(selection ?? {}, registrationOptions);
+      auth.assertOpen();
+      for (const { socket } of channels) socket.assertOpen();
+
+      const controller = new AbortController();
+      const registrationSignal = controller.signal;
+      const cancel = () => controller.abort(new SessionError('cancelled'));
+      signal?.addEventListener('abort', cancel, { once: true });
+      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+      let namePending = false;
+      let createSent = false;
+      registrationState = 'creating';
+      const task = (async () => {
+        if (lobbyHeartbeat) await bounded(lobbyHeartbeat, registrationSignal);
+        registrationSignal.throwIfAborted();
+        namePending = true;
+        const code = await checkAvatarName(lobby.socket, fields[0], registrationSignal);
+        namePending = false;
+        if (code !== 0) throw new SessionError(code === 1 ? 'avatar-name-taken' : 'avatar-name-invalid', code);
+        const reply = await submitAvatarRegistration(lobby.socket, fields, registrationSignal, () => { createSent = true; });
+        registrationSignal.throwIfAborted();
+        if (!reply) {
+          createSent = false;
+          throw new SessionError('avatar-create-rejected');
+        }
+        return reply;
+      })();
+      registrationRequest = { controller, task };
+      try {
+        const receipt = await task;
+        registrationSignal.throwIfAborted();
+        registrationState = 'confirmed';
+        return receipt;
+      } catch (error) {
+        registrationState = createSent || namePending ? 'uncertain' : 'available';
+        if (createSent) throw new SessionError('avatar-create-uncertain');
+        if (namePending) throw new SessionError('avatar-name-uncertain');
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', cancel);
+        registrationRequest = null;
+      }
+    },
     get questAdventure() {
       if (!adventure) return null;
       const { inventoryId, slot, state, channel, run } = adventure;

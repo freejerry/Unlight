@@ -132,9 +132,17 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 登入及消息區塊使用 CSS 排版。「連線診斷」另使用原始面板圖測試 WebGL 2 九宮格。以 Chromium 的 SwiftShader 軟體圖形環境確認 46 次縮放各提交一次批次，核對 DPR 1、1.25 和 2 的圖像分界，並驗證圖形環境中斷後由 Canvas 2D 重繪。這組結果的量測範圍是面板繪製，遊玩動畫與裝置效能另行驗收。[九宮格縮放與備援](#原生九宮格連續縮放) · [既有縮放畫面](native/14-native-panel-resize.png)
 
+### 原生建立角色
+
+使用隔離 Ruby 的未創角帳號登入，原版 Data `SC8` 提供 24 個起始外觀部件和 5 張起始角色卡。創角畫面選用當次原版登入允許的 ID，使用原始繁中資料的名稱。以 Chromium 在 1120、390 和 320 CSS 像素、DPR 2 驗證鍵盤操作及表單文字完整顯示。[桌面創角](native/78-native-avatar-setup-desktop.png) · [原版起始選項](../../app/server/src/controller/data_controller.rb#L209) · [原版外觀資料](../../app/server/data/csv/ja/AvatarParts.csv) · [原版角色卡](../../app/server/data/csv/ja/CharaCards.csv)
+
+表單接受 3 至 12 字。實測重名時，大廳 `SC6` 回覆代碼 1，頁面保留已選外觀並將焦點移回名稱。改用可用的 12 字繁中名稱後，瀏覽器只送出一次 `CS10`。頁面收到成功 `SC5`、與送出名稱相符的壓縮 `SC4` 和後續同一連線的 Pong，才顯示建立成功。原版 SQLite 中只有一筆角色，已裝備四個所選部件，第一個牌組持有所選起始卡，收藏也有原版發放的贈卡。[320 像素重名提示](native/79-native-avatar-name-taken-mobile.png) · [320 像素建立成功](native/80-native-avatar-confirmed-mobile.png) · [原版確認與建立](../../app/server/src/controller/lobby_controller.rb#L86)
+
+另一個隔離帳號在原版建立角色後，測試暫留實際的 `SC4` 至逾時。畫面顯示確認未完成，同次登入未重送建立命令，登出前送達的延遲封包也未改變畫面狀態。重新登入由原版 Data `SC6` 取得同一角色，確認只有一筆。新角色的「魔女山谷」顯示 0/3、5/5 AP 與空任務清單，原版教學進度仍為 0。[320 像素重新登入後的任務頁](native/81-native-avatar-quest-entry-mobile.png) · [原生入口啟動](../../web-client/README.md#啟動)
+
 ## 原生瀏覽器任務快照
 
-用 Chromium 連到隔離 Ruby，核對三種測試帳號。新角色顯示一筆「落日大蝙蝠」，任務 ID 1、狀態 0，魔女山谷進度為 0/3。先前在原版客戶端完成首場 PvE 的帳號顯示空清單與 1/3。兩個帳號的任務清單上限均為 4。未創角帳號顯示原版的建立角色資料。[新任務截圖](native/06-native-quest-ready.png) · [已通關截圖](native/07-native-quest-cleared.png)
+用 Chromium 連到隔離 Ruby，核對三種測試帳號。預先備妥首關的測試角色顯示一筆「落日大蝙蝠」，任務 ID 1、狀態 0，魔女山谷進度為 0/3。先前在原版客戶端完成首場 PvE 的帳號顯示空清單與 1/3。兩個帳號的任務清單上限均為 4。未創角帳號顯示原版的建立角色資料。[新任務截圖](native/06-native-quest-ready.png) · [已通關截圖](native/07-native-quest-cleared.png)
 
 點擊讀取時，驗收確認既有 Ruby 連線的送出訊息數量未增加，清單、通關紀錄及獎勵欄位均與讀取前一致。名稱及通關門檻來自原始繁中資料。登出會清空畫面，重新登入取得同一份在該時點有效的快照。區域進度取自 Data 登入回覆的旗標和通關數。[任務清單原始格式](../../app/client/src/net/command/DataCommand.as#L426) · [重跑方式](../../web-client/README.md)
 

@@ -4,6 +4,7 @@ import { createQuestDataReader } from './quest-data.js';
 export const VERSION_COMMAND = 5;
 export const AVATAR_COMMAND = 6;
 export const REGISTRATION_COMMAND = 8;
+export const LOBBY_AVATAR_COMMAND = 4;
 const VERSION_FIELDS = [
   'actionCard', 'charaCard', 'feat', 'dialogue', 'story', 'questLog', 'avatarItem',
   'avatarPart', 'eventCard', 'weaponCard', 'equipCard', 'quest', 'questMap',
@@ -21,10 +22,15 @@ export function readVersions(reply) {
   return versions;
 }
 
-function countIds(list) {
-  if (list === '') return 0;
-  if (!/^\d+(?:,\d+)*$/.test(list)) throw new Error('Invalid registration data.');
-  return list.split(',').length;
+function starterIds(list) {
+  if (list === '') return Object.freeze([]);
+  const fields = list.split(',');
+  if (fields.some((field) => !field || /\D/.test(field))) throw new Error('Invalid registration data.');
+  const ids = fields.map(Number);
+  if (new Set(ids).size !== ids.length || ids.some((id) => !Number.isInteger(id) || id < 1 || id > 0x7fffffff)) {
+    throw new Error('Invalid registration data.');
+  }
+  return Object.freeze(ids);
 }
 
 async function readAvatar(compressed, signal) {
@@ -111,8 +117,14 @@ export async function readDataProfile(reply, signal) {
     return { ...profile, registration: null };
   }
   if (reply.command !== REGISTRATION_COMMAND) throw new Error('Invalid data profile command.');
-  const partCount = countIds(reply.string(MAX_REGISTRATION_BYTES, true));
-  const cardCount = countIds(reply.string(MAX_REGISTRATION_BYTES, true));
+  const partIds = starterIds(reply.string(MAX_REGISTRATION_BYTES, true));
+  const cardIds = starterIds(reply.string(MAX_REGISTRATION_BYTES, true));
   reply.done();
-  return { avatar: null, registration: { partCount, cardCount }, questData: null };
+  const registration = Object.freeze({ partCount: partIds.length, cardCount: cardIds.length, partIds, cardIds });
+  return { avatar: null, registration, questData: null };
+}
+
+export function readLobbyAvatar(reply, signal) {
+  if (reply.command !== LOBBY_AVATAR_COMMAND) throw new Error('Invalid Lobby avatar command.');
+  return readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal);
 }

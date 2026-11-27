@@ -67,6 +67,39 @@
                 <div><dt>經驗值</dt><dd id="session-avatar-exp"></dd></div>
                 <div><dt>行動力</dt><dd id="session-avatar-energy"></dd></div>
               </dl>
+              <form id="session-avatar-create" class="avatar-create" method="post" autocomplete="off" aria-labelledby="session-bootstrap-title" hidden>
+                <p id="session-avatar-create-status" class="avatar-create-status" role="status" aria-atomic="true" tabindex="-1" data-state="idle"></p>
+                <fieldset id="session-avatar-create-fields" class="avatar-create-fields" disabled>
+                  <legend class="sr-only">角色設定</legend>
+                  <div class="avatar-create-name">
+                    <label for="session-avatar-create-name">角色名稱</label>
+                    <input id="session-avatar-create-name" type="text" minlength="3" maxlength="12" aria-describedby="session-avatar-create-name-help" aria-errormessage="session-avatar-create-status" autocapitalize="off" spellcheck="false" required />
+                    <p id="session-avatar-create-name-help">名稱須為 3 至 12 個字，不含空白、逗號、雙引號或連續三個星號。</p>
+                  </div>
+                  <fieldset class="avatar-create-appearance">
+                    <legend>外觀</legend>
+                    <div class="avatar-create-parts">
+                      <label for="session-avatar-create-part-0">素體
+                        <select id="session-avatar-create-part-0" required><option value="">選擇素體</option></select>
+                      </label>
+                      <label for="session-avatar-create-part-1">眼睛
+                        <select id="session-avatar-create-part-1" required><option value="">選擇眼睛</option></select>
+                      </label>
+                      <label for="session-avatar-create-part-2">嘴型
+                        <select id="session-avatar-create-part-2" required><option value="">選擇嘴型</option></select>
+                      </label>
+                      <label for="session-avatar-create-part-3">髮型
+                        <select id="session-avatar-create-part-3" required><option value="">選擇髮型</option></select>
+                      </label>
+                    </div>
+                  </fieldset>
+                  <label class="avatar-create-starter" for="session-avatar-create-card">起始角色卡
+                    <select id="session-avatar-create-card" required><option value="">選擇起始角色卡</option></select>
+                  </label>
+                  <button id="session-avatar-create-submit" class="button primary" type="submit">建立角色</button>
+                </fieldset>
+                <button id="session-avatar-create-retry" class="button secondary" type="button" hidden>重新讀取選項</button>
+              </form>
               <dl id="session-registration-data" class="session-metadata bootstrap-metadata" hidden>
                 <div><dt>起始外觀部件</dt><dd id="session-starter-parts"></dd></div>
                 <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
