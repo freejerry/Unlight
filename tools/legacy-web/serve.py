@@ -101,6 +101,7 @@ def native_quest_catalog():
                 quests[quest_id] = {
                     "id": quest_id, "name": row["name"], "map": area.get("name", ""),
                     "caption": row["caption"] or "",
+                    "ap": int(row["ap"]),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
                 }
     return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}

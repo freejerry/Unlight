@@ -1,12 +1,13 @@
 import { createAuthExchange } from './srp.js';
-import { applySessionKey, createFrameParser, encodeCommand, readReply } from './wire.js';
+import { applySessionKey, createFrameParser, encodeCommand, readReply, signedByte } from './wire.js';
 import {
   AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
 } from './data-bootstrap.js';
 import {
   QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
   QUEST_SEARCH_REQUEST, QUEST_SEARCH_REPLY, QUEST_SEARCH_TIMER, QUEST_ENERGY_REPLY, QUEST_ERROR_REPLY,
-  readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
+  QUEST_START_REQUEST, QUEST_DELETED_REPLY,
+  readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
 } from './quest-data.js';
 
@@ -15,10 +16,14 @@ const DATA_PORT = 12003;
 const QUEST_PORT = 12005;
 const QUEST_REGION = 0;
 const QUEST_NEW = 0;
+const QUEST_UNSOLVED = 1;
+const QUEST_IN_PROGRESS = 2;
 const QUEST_PENDING = 4;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest return codes.
+const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
+const QUEST_MISSING_ERROR = 40;
 const CHANNELS = [
   { port: 12002, pong: 35 },
   { port: DATA_PORT, pong: 3 },
@@ -38,6 +43,9 @@ const messages = {
   busy: '正在讀取任務資料。',
   'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
   'search-rejected': '遊戲服務未接受這次搜尋。',
+  'quest-start-unavailable': '此任務目前無法開始。',
+  'quest-start-rejected': '遊戲服務未接受開始任務。',
+  'quest-start-uncertain': '開始任務的結果未確認，可先查看任務服務的即時庫存。',
 };
 
 export class SessionError extends Error {
@@ -446,10 +454,79 @@ async function submitQuestSearch(socket, confirm, signal, mapId, inventoryIds, m
   }
 }
 
+function isStartableQuest(row) {
+  return row?.questId > 0 && (row.status === QUEST_NEW || row.status === QUEST_UNSOLVED);
+}
+
+async function submitQuestStart(socket, confirm, signal, selected, deckIndex, markDispatched) {
+  const rows = await readQuestInventoryPushes(socket, confirm, signal);
+  const current = rows.find(({ inventoryId }) => inventoryId === selected.inventoryId);
+  if (!isStartableQuest(current) || current.questId !== selected.questId) {
+    throw new SessionError('quest-start-unavailable');
+  }
+
+  let energy = null;
+  let deleted = false;
+  let acknowledged = false;
+  let unsubscribe;
+  const notification = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe([QUEST_ENERGY_REPLY, QUEST_DISCOVERY_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY], (reply) => {
+      if (acknowledged) return;
+      try {
+        switch (reply.command) {
+          case QUEST_ENERGY_REPLY:
+            if (energy !== null) throw new SessionError('protocol');
+            energy = readQuestEnergyReply(reply).energy;
+            break;
+          case QUEST_DISCOVERY_REPLY: {
+            const row = readQuestDiscoveryReply(reply);
+            if (row.inventoryId !== selected.inventoryId || row.questId !== selected.questId
+                || row.status !== QUEST_IN_PROGRESS) break;
+            if (energy === null || deleted) throw new SessionError('protocol');
+            acknowledged = true;
+            resolve({ row, energy });
+            break;
+          }
+          case QUEST_DELETED_REPLY:
+            if (readQuestDeletedReply(reply) === selected.inventoryId) deleted = true;
+            break;
+          case QUEST_ERROR_REPLY: {
+            const code = readQuestErrorReply(reply);
+            if (!QUEST_START_ERRORS.has(code) || energy !== null || (deleted && code !== QUEST_MISSING_ERROR)) {
+              throw new SessionError('protocol');
+            }
+            acknowledged = true;
+            resolve({ rejection: code, deleted });
+            break;
+          }
+        }
+      } catch {
+        acknowledged = true;
+        reject(new SessionError('protocol'));
+      }
+    });
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(QUEST_START_REQUEST, [selected.inventoryId, signedByte(deckIndex)]);
+    markDispatched();
+    const interrupted = socket.closed.then(() => { throw new SessionError('network'); });
+    const result = await bounded(Promise.race([notification, interrupted]), signal);
+    if (result.row) {
+      // The original persists the deck lock after emitting the quest-state update.
+      await finishQuestObservation(socket, signal, unsubscribe);
+    }
+    return result;
+  } finally {
+    unsubscribe();
+  }
+}
+
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
   let questRequest;
   let searchUncertain = false;
+  let questStartUncertain = false;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -584,6 +661,50 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           return { ...confirmed };
         },
       );
+    },
+    async startQuest(inventoryId, deckIndex, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (questRequest) throw new SessionError('busy');
+      if (questStartUncertain) throw new SessionError('quest-start-uncertain');
+      if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
+          || !Number.isInteger(deckIndex) || deckIndex < 1 || deckIndex > 127) {
+        throw new SessionError('protocol');
+      }
+      const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
+      const selected = questData.rows[index];
+      const avatar = initialData.avatar;
+      if (!isStartableQuest(selected) || !avatar?.questDecks?.some(({ index }) => index === deckIndex)) {
+        throw new SessionError('quest-start-unavailable');
+      }
+
+      let sent = false;
+      try {
+        return await readFromQuest(
+          (socket, confirm, questSignal) => submitQuestStart(socket, confirm, questSignal, selected, deckIndex, () => {
+            sent = true;
+            questStartUncertain = true;
+          }),
+          signal,
+          (result) => {
+            if (result.rejection !== undefined) {
+              if (result.deleted) questData.rows.splice(index, 1);
+              questStartUncertain = false;
+              throw new SessionError('quest-start-rejected', result.rejection);
+            }
+            const row = { ...result.row, deckIndex };
+            questData.rows[index] = row;
+            avatar.energy = result.energy;
+            avatar.questDecks = avatar.questDecks.filter(({ index }) => index !== deckIndex);
+            questStartUncertain = false;
+            return { row: { ...row }, energy: result.energy, deckIndex };
+          },
+        );
+      } catch (error) {
+        // Only a verified rejection can make it safe to send another start.
+        if (sent && questStartUncertain) throw new SessionError('quest-start-uncertain');
+        throw error;
+      }
     },
     closed,
     close: () => stop('closed'),

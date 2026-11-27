@@ -155,7 +155,7 @@
               <h3 id="session-quest-title">任務資料</h3>
               <p id="session-quest-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">可查看任務清單與進度。</p>
             </div>
-            <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-map-caption session-quest-search session-quest-inventory session-quest-details">讀取任務資料</button>
+            <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-map-caption session-quest-search session-quest-deck-group session-quest-inventory session-quest-details">讀取任務資料</button>
           </div>
           <dl id="session-quest-progress" class="session-metadata quest-metadata" hidden>
             <div><dt>持有任務數</dt><dd id="session-quest-count"></dd></div>
@@ -175,6 +175,12 @@
             </div>
             <button id="session-quest-search-start" type="button" class="button primary" aria-describedby="session-quest-map-name session-quest-search-description" aria-controls="session-quest-inventory" disabled>開始搜尋</button>
           </div>
+          <div id="session-quest-deck-group" class="quest-deck" hidden>
+            <label for="session-quest-deck">任務用牌組</label>
+            <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
+            <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
+          </div>
+          <p id="session-quest-entry-note" class="quest-status" hidden>下一地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>

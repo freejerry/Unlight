@@ -48,6 +48,13 @@ const searchUi = {
   status: document.querySelector('#session-quest-search-status'),
 };
 
+const questDeckUi = {
+  group: document.querySelector('#session-quest-deck-group'),
+  select: document.querySelector('#session-quest-deck'),
+  status: document.querySelector('#session-quest-deck-status'),
+  entryNote: document.querySelector('#session-quest-entry-note'),
+};
+
 const mapsUi = {
   load: document.querySelector('#session-quest-maps-load'),
   status: document.querySelector('#session-quest-maps-status'),
@@ -108,9 +115,18 @@ const questSearchRejected = {
   31: '錯誤的任務地圖編號',
   32: '你的等級不足以取得地圖',
 };
+const questStartRejected = {
+  1: 'AP不足',
+  16: '牌組不存在',
+  40: '任務不存在',
+  41: '無法開始任務',
+  42: '此牌組已在任務中',
+};
 const MAX_CATALOG_ID = 0x7fffffff;
 const QUEST_PENDING = 4;
+const QUEST_IN_PROGRESS = 2;
 const questCountdowns = [];
+const questDeckNames = new Map();
 
 let pending = null;
 let active = null;
@@ -167,13 +183,13 @@ function showLiveQuestStatus(view, state, kind) {
   else delete view.status.dataset.errorKind;
 }
 
-function showQuestSearchStatus(state, message = '', kind, code) {
-  searchUi.status.dataset.state = state;
-  searchUi.status.textContent = message;
-  if (kind) searchUi.status.dataset.errorKind = kind;
-  else delete searchUi.status.dataset.errorKind;
-  if (Number.isSafeInteger(code)) searchUi.status.dataset.errorCode = String(code);
-  else delete searchUi.status.dataset.errorCode;
+function showQuestActionStatus(element, state, message = '', kind, code) {
+  element.dataset.state = state;
+  element.textContent = message;
+  if (kind) element.dataset.errorKind = kind;
+  else delete element.dataset.errorKind;
+  if (Number.isSafeInteger(code)) element.dataset.errorCode = String(code);
+  else delete element.dataset.errorCode;
 }
 
 function clearLiveQuestResults(view) {
@@ -187,9 +203,13 @@ function updateLiveQuestButtons() {
   const busy = liveQuestRequest !== null;
   mapsUi.load.disabled = busy;
   serviceInventoryUi.load.disabled = busy;
-  questUi.load.disabled = questUi.status.dataset.state === 'loading'
-    || liveQuestRequest?.kind === 'discovery' || liveQuestRequest?.kind === 'search';
+  questUi.load.disabled = questUi.status.dataset.state === 'loading' || (busy && liveQuestRequest.kind !== 'read');
   searchUi.start.disabled = busy || searchUi.section.hidden || searchUi.status.dataset.state === 'uncertain';
+  questDeckUi.select.disabled = busy || questDeckUi.group.hidden || questDeckUi.select.options.length <= 1
+    || questDeckUi.status.dataset.state === 'uncertain';
+  for (const button of questUi.rows.querySelectorAll('.quest-start')) {
+    button.disabled = questDeckUi.select.disabled || !questDeckUi.select.value;
+  }
   for (const { button } of questCountdowns) button.disabled = busy;
 }
 
@@ -218,7 +238,10 @@ function clearLiveQuest() {
     clearLiveQuestResults(view);
     showLiveQuestStatus(view, 'idle');
   }
-  showQuestSearchStatus('idle');
+  showQuestActionStatus(searchUi.status, 'idle');
+  showQuestActionStatus(questDeckUi.status, 'idle');
+  questDeckNames.clear();
+  questDeckUi.select.replaceChildren();
   updateLiveQuestButtons();
 }
 
@@ -241,6 +264,8 @@ function clearQuestResults() {
   searchUi.section.hidden = true;
   delete searchUi.section.dataset.mapId;
   searchUi.cost.textContent = '行動力（AP）';
+  questDeckUi.group.hidden = true;
+  questDeckUi.entryNote.hidden = true;
   questUi.inventory.hidden = true;
   questUi.rows.replaceChildren();
   questUi.details.hidden = true;
@@ -255,6 +280,124 @@ function appendQuestRow(tableBody, { inventoryId, questId, status }) {
   row.dataset.questStatus = String(status);
   for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
   return row;
+}
+
+function deckLabel(index) {
+  const name = questDeckNames.get(index);
+  return name?.trim() ? `${index}　${name}` : `牌組 ${index}`;
+}
+
+function updateQuestSearchRecovery() {
+  if (searchUi.status.dataset.state !== 'uncertain') return;
+  const caution = !questDeckUi.entryNote.hidden || questDeckUi.status.dataset.state === 'uncertain'
+    ? ' 重新登入會清除進行中的任務。' : '';
+  showQuestActionStatus(searchUi.status, 'uncertain',
+    `無法確認搜尋是否已開始。請重新登入後查看任務清單。${caution}`, 'search-uncertain');
+}
+
+function displayQuestDecks() {
+  const decks = active?.initialData?.avatar?.questDecks ?? [];
+  const selected = questDeckUi.select.value;
+  const options = [new Option(decks.length ? '請選擇牌組' : '目前沒有可用的牌組', '')];
+  for (const { index, name } of decks) {
+    questDeckNames.set(index, name);
+    options.push(new Option(deckLabel(index), String(index)));
+  }
+  questDeckUi.select.replaceChildren(...options);
+  if (options.some(option => option.value === selected)) questDeckUi.select.value = selected;
+  questDeckUi.group.hidden = !questUi.rows.querySelector('.quest-start') && questDeckUi.status.dataset.state !== 'uncertain';
+  questDeckUi.entryNote.hidden = !questUi.rows.querySelector(`[data-quest-status="${QUEST_IN_PROGRESS}"]`);
+  updateQuestSearchRecovery();
+  updateLiveQuestButtons();
+}
+
+function updateQuestRowStatus(row, status) {
+  row.dataset.questStatus = String(status);
+  row.cells[2].textContent = String(status);
+}
+
+function displayStartedQuest(row, statusElement, deckIndex) {
+  updateQuestRowStatus(row, QUEST_IN_PROGRESS);
+  row.dataset.deckIndex = String(deckIndex);
+  showQuestActionStatus(statusElement, 'started', `伺服器已開始任務。使用 ${deckLabel(deckIndex)}。`);
+}
+
+function appendQuestStart(row, { inventoryId, questId, status, deckIndex }) {
+  const startable = questId > 0 && (status === 0 || status === 1);
+  const assigned = status === QUEST_IN_PROGRESS && Number.isSafeInteger(deckIndex) && deckIndex > 0;
+  if (!startable && !assigned) return;
+  const description = row.cells[3];
+  const statusElement = document.createElement('span');
+  statusElement.className = 'quest-start-status';
+  statusElement.setAttribute('role', 'status');
+  statusElement.tabIndex = -1;
+  if (assigned) {
+    description.append(statusElement);
+    displayStartedQuest(row, statusElement, deckIndex);
+    return;
+  }
+
+  const cost = document.createElement('span');
+  cost.className = 'quest-start-cost';
+  cost.id = `quest-start-cost-${inventoryId}`;
+  cost.hidden = true;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button secondary quest-start';
+  button.textContent = '開始任務';
+  button.disabled = true;
+  button.setAttribute('aria-describedby', `quest-name-${inventoryId} ${cost.id}`);
+  statusElement.dataset.state = 'idle';
+  description.append(cost, button, statusElement);
+  button.addEventListener('click', () => void startQuest(row, inventoryId, questId, button, statusElement));
+}
+
+async function startQuest(row, inventoryId, questId, button, statusElement) {
+  if (button.disabled || !row.isConnected) return;
+  const index = Number(questDeckUi.select.value);
+  if (!active?.initialData?.avatar?.questDecks?.some(deck => deck.index === index)) return;
+  const restoreFocus = document.activeElement === button;
+  const request = beginLiveQuestRequest('start');
+  if (!request) return;
+  const { session, controller } = request;
+
+  showQuestActionStatus(statusElement, 'starting', '正在向伺服器開始任務…');
+  try {
+    const { row: reply, energy, deckIndex } = await session.startQuest(inventoryId, index, { signal: controller.signal });
+    if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
+    if (reply?.inventoryId !== inventoryId || reply.questId !== questId || reply.status !== QUEST_IN_PROGRESS
+        || reply.deckIndex !== index || deckIndex !== index || !Number.isSafeInteger(energy) || energy < 0) {
+      throw new SessionError('quest-start-uncertain');
+    }
+
+    ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
+    displayStartedQuest(row, statusElement, deckIndex);
+    const serviceRow = serviceInventoryUi.rows.querySelector(`[data-inventory-id="${inventoryId}"][data-quest-id="${questId}"]`);
+    if (serviceRow) updateQuestRowStatus(serviceRow, reply.status);
+    button.remove();
+    row.querySelector('.quest-start-cost')?.remove();
+    displayQuestDecks();
+  } catch (error) {
+    if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
+    const kind = error instanceof SessionError ? error.kind : 'quest-start-uncertain';
+    if (kind === 'quest-start-rejected') {
+      const reason = questStartRejected[error.code];
+      showQuestActionStatus(statusElement, 'rejected', reason ? `${reason}。` : '伺服器拒絕開始任務。', kind, error.code);
+    } else if (kind === 'quest-start-uncertain') {
+      showQuestActionStatus(statusElement, 'uncertain', '無法確認任務是否已開始。', kind);
+      showQuestActionStatus(questDeckUi.status, 'uncertain', '本次登入已暫停開始任務。可讀取任務服務清單查看伺服器狀態。', kind);
+      updateQuestSearchRecovery();
+    } else {
+      const message = kind === 'quest-start-unavailable' ? '任務服務未確認這筆任務可開始。' : '無法開始任務，請重試。';
+      showQuestActionStatus(statusElement, 'failed', message, kind);
+    }
+  } finally {
+    finishLiveQuestRequest(request);
+    if (restoreFocus && row.isConnected && (document.activeElement === document.body || document.activeElement === button)) {
+      const target = button.isConnected && !button.disabled ? button : statusElement;
+      target.focus({ preventScroll: true });
+    }
+  }
 }
 
 function formatQuestTime(seconds) {
@@ -284,25 +427,18 @@ function updateQuestCountdowns() {
   if (Number.isFinite(nextUpdate)) questCountdownTimer = setTimeout(updateQuestCountdowns, Math.ceil(nextUpdate));
 }
 
-function showQuestDiscoveryStatus(element, state, message, kind) {
-  element.dataset.state = state;
-  element.textContent = message;
-  if (kind) element.dataset.errorKind = kind;
-  else delete element.dataset.errorKind;
-}
-
 async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement) {
   if (!row.isConnected || countdown.element.dataset.state !== 'elapsed') return;
   const request = beginLiveQuestRequest('discovery');
   if (!request) return;
   const { session, controller } = request;
 
-  showQuestDiscoveryStatus(statusElement, 'checking', '正在確認搜尋結果…');
+  showQuestActionStatus(statusElement, 'checking', '正在確認搜尋結果…');
   try {
     const result = await session.checkQuestDiscovery(inventoryId, { signal: controller.signal });
     if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
     if (result === null) {
-      showQuestDiscoveryStatus(statusElement, 'unconfirmed', '伺服器尚未確認搜尋結果，請重試。');
+      showQuestActionStatus(statusElement, 'unconfirmed', '伺服器尚未確認搜尋結果，請重試。');
       return;
     }
     if (result?.inventoryId !== inventoryId || !Number.isSafeInteger(result.questId) || result.questId <= 0
@@ -323,7 +459,9 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
     questCountdowns.splice(questCountdowns.indexOf(countdown), 1);
     countdown.element.remove();
     countdown.button.remove();
-    showQuestDiscoveryStatus(statusElement, 'confirmed', '伺服器已確認搜尋結果。');
+    showQuestActionStatus(statusElement, 'confirmed', '伺服器已確認搜尋結果。');
+    appendQuestStart(row, result);
+    displayQuestDecks();
 
     try {
       const snapshot = await session.readQuestInventory({ signal: controller.signal });
@@ -336,7 +474,7 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
   } catch (error) {
     if (isCurrentLiveQuestRequest(request) && row.isConnected) {
       const kind = error instanceof SessionError ? error.kind : 'protocol';
-      showQuestDiscoveryStatus(statusElement, 'failed', '無法確認搜尋結果，請重試。', kind);
+      showQuestActionStatus(statusElement, 'failed', '無法確認搜尋結果，請重試。', kind);
     }
   } finally {
     finishLiveQuestRequest(request);
@@ -351,6 +489,7 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
     const row = appendQuestRow(questUi.rows, entry);
     const name = document.createElement('span');
     name.className = 'quest-name';
+    name.id = `quest-name-${entry.inventoryId}`;
     name.textContent = entry.questId === 0 ? '尚未發現' : '未取得名稱';
     const map = document.createElement('span');
     map.className = 'quest-map';
@@ -381,10 +520,12 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
       questCountdowns.push(countdown);
       button.addEventListener('click', () => void confirmQuestDiscovery(row, entry.inventoryId, countdown, statusElement));
     }
+    appendQuestStart(row, entry);
   }
 
   questUi.progress.hidden = false;
   questUi.inventory.hidden = rows.length === 0;
+  displayQuestDecks();
   showQuestStatus(rows.length ? 'success' : 'empty');
   updateQuestCountdowns();
 }
@@ -461,6 +602,11 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
       map.textContent = quest.map;
       map.hidden = false;
     }
+    const cost = row.querySelector('.quest-start-cost');
+    if (cost && Number.isSafeInteger(quest.ap) && quest.ap >= 0) {
+      cost.textContent = `消耗 ${quest.ap} 點行動力（AP）`;
+      cost.hidden = false;
+    }
   }
   showQuestDetails(catalog.values());
 }
@@ -471,7 +617,7 @@ async function startQuestSearch() {
   if (!request) return;
   const { session, controller } = request;
   const { signal } = controller;
-  showQuestSearchStatus('starting', '正在向伺服器開始搜尋…');
+  showQuestActionStatus(searchUi.status, 'starting', '正在向伺服器開始搜尋…');
 
   try {
     const { row, energy } = await session.startQuestSearch({ signal });
@@ -483,7 +629,7 @@ async function startQuestSearch() {
     }
 
     ui.avatarEnergy.textContent = `${energy} / ${session.initialData.avatar.energyMax}`;
-    showQuestSearchStatus('started', '伺服器已開始搜尋。');
+    showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。');
     try {
       const snapshot = await session.readQuestInventory({ signal });
       if (!isCurrentLiveQuestRequest(request)) return;
@@ -494,7 +640,7 @@ async function startQuestSearch() {
       displayQuestSnapshot(snapshot, { ...newestEntry, receivedAt: row.receivedAt });
     } catch {
       if (isCurrentLiveQuestRequest(request)) {
-        showQuestSearchStatus('started', '伺服器已開始搜尋。請重新讀取任務資料以查看倒數。');
+        showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。請重新讀取任務資料以查看倒數。');
       }
     }
   } catch (error) {
@@ -502,11 +648,12 @@ async function startQuestSearch() {
     const kind = error instanceof SessionError ? error.kind : 'search-uncertain';
     if (kind === 'search-rejected') {
       const reason = questSearchRejected[error.code];
-      showQuestSearchStatus('rejected', reason ? `${reason}。` : '伺服器拒絕開始搜尋。', kind, error.code);
+      showQuestActionStatus(searchUi.status, 'rejected', reason ? `${reason}。` : '伺服器拒絕開始搜尋。', kind, error.code);
     } else if (kind === 'search-uncertain') {
-      showQuestSearchStatus('uncertain', '無法確認搜尋是否已開始。請重新登入後查看任務清單。', kind);
+      searchUi.status.dataset.state = 'uncertain';
+      updateQuestSearchRecovery();
     } else {
-      showQuestSearchStatus('failed', '無法開始搜尋，請重試。', kind);
+      showQuestActionStatus(searchUi.status, 'failed', '無法開始搜尋，請重試。', kind);
     }
   } finally {
     finishLiveQuestRequest(request);
@@ -734,6 +881,7 @@ serviceInventoryUi.load.addEventListener('click', () => {
   void readLiveQuest(serviceInventoryUi, 'readQuestServiceInventory', appendServiceInventory);
 });
 searchUi.start.addEventListener('click', () => void startQuestSearch());
+questDeckUi.select.addEventListener('change', updateLiveQuestButtons);
 
 document.addEventListener('visibilitychange', updateQuestCountdowns);
 

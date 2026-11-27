@@ -156,6 +156,16 @@ Chromium 使用隔離 Ruby 的真實 Data 回覆，取得任務 ID `0`、狀態 
 
 Chromium 以 320 CSS 像素、DPR 2 連到隔離 Ruby，先用受控瀏覽器時鐘讓按鈕在實際截止前約 4.2 秒出現。當時 Ruby 保留狀態 `4`，頁面顯示尚未確認。同一筆任務跨過真實截止後重試，原版回覆及 SQLite 都顯示狀態 `0`。畫面可讀到「落日大蝙蝠」與完整繁中說明，行動力、通關及獎勵資料維持一致。驗收也延遲真實回覆，確認重試可透過原版 Quest 登入補送取回結果，登出則會清除畫面並忽略延遲回覆。[尚未確認](native/34-native-quest-confirm-unconfirmed.png) · [確認後的繁中關卡資料](native/35-native-quest-confirm-discovered.png)
 
+### 開始任務
+
+原生頁面從 Data 登入資料列出第一格有角色卡且可用的牌組。按「開始任務」以原版 Quest 命令 `13` 送出任務持有紀錄 ID 及所選牌組索引。Ruby 以該任務的行動力成本驗證請求，先送出行動力回覆 `4`，再以狀態回覆 `17` 確認任務開始，並將該牌組標記為使用中。這一階段的驗收範圍到任務進行中，下一地形仍待接通。[原版開始命令](../../app/client/src/net/command/QuestCommand.as#L276) · [原版查核及寫入](../../app/server/src/model/avatar.rb#L3096)
+
+在桌面 Chromium 開始「落日大蝙蝠」，並以 320 CSS 像素、DPR 2 重驗鍵盤操作。原版 Ruby 回覆狀態 `2`，SQLite 顯示使用牌組 `1`，行動力、通關及獎勵資料維持一致。關閉 Quest 連線與登出後仍可在資料庫看到該狀態。重新登入觸發原版 Data 清理，將任務標記為狀態 `5`、從角色清單移除並釋放牌組。[桌面實測](native/38-native-quest-entry-desktop.png) · [原版重新登入流程](../../app/server/src/controller/data_controller.rb#L227) · [任務清理](../../app/server/src/model/avatar.rb#L3455)
+
+另一個隔離測例選牌組 `2` 開始「大蝙蝠之群」。Ruby 從 4 點扣到 3 點行動力，SQLite 確認僅牌組 `2` 進入使用中，另一筆任務及通關與獎勵資料維持原值。[320 像素實測](native/39-native-quest-entry-mobile.png)
+
+另用隔離測例攔下 Ruby 的狀態回覆 `17`。同一次登入重讀後仍保留未確認提示，整段過程只送出一次開始指令。原版 Quest 的唯讀清單仍可核對到狀態 `2`，資料庫也只扣除一次行動力。重新登入觸發相同的原版清理流程。
+
 ### 區域地圖查詢
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)

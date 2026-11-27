@@ -28,7 +28,7 @@ function countIds(list) {
 }
 
 async function readAvatar(compressed, signal) {
-  // Keep the fixed-size avatar header and selected quest fields only.
+  // Keep the fixed-size avatar header and selected deck and quest fields only.
   const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 5 * 4);
   let prefixLength = 0;
   let total = 0;
@@ -83,6 +83,7 @@ async function readAvatar(compressed, signal) {
       level: fields.int(),
       energy: fields.int(),
       energyMax: fields.int(),
+      questDecks: quests?.deckChoices() ?? [],
     };
     if (avatar.id < 1) throw new Error('Invalid avatar ID.');
     let questData = null;

@@ -5,6 +5,17 @@ const NEWLINE = 10;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
+class SignedByte {
+  constructor(value) {
+    this.value = value;
+  }
+}
+
+export function signedByte(value) {
+  if (!Number.isInteger(value) || value < -128 || value > 127) throw new Error('Invalid signed byte.');
+  return Object.freeze(new SignedByte(value));
+}
+
 export function applySessionKey(bytes, key) {
   if (!key) return;
   for (let offset = 0; offset < bytes.length; offset += 1) {
@@ -20,6 +31,7 @@ export function encodeCommand(command, fields = [], key = null) {
   let size = 2;
   for (const value of values) {
     if (value instanceof Uint8Array) size += 2 + value.length;
+    else if (value instanceof SignedByte) size += 1;
     else if (Number.isInteger(value) && value >= 0 && value <= U32_MAX) size += 4;
     else throw new Error('Invalid command field.');
   }
@@ -35,6 +47,9 @@ export function encodeCommand(command, fields = [], key = null) {
       view.setUint16(offset, value.length);
       frame.set(value, offset + 2);
       offset += 2 + value.length;
+    } else if (value instanceof SignedByte) {
+      view.setInt8(offset, value.value);
+      offset += 1;
     } else {
       view.setUint32(offset, value);
       offset += 4;
