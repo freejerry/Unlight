@@ -114,3 +114,11 @@ python3 -Bu tools/legacy-web/check_native_deadlines.py --port 4356 \
 ```
 
 瀏覽器漏收建立搜尋的回覆後，重試沿用原 UUID 和截止時間。測試流量只送往同源 Rust 的頁面、靜態檔及搜尋 API。另以相同 SQLite 檔重啟服務，確認可取回既有結果。[桌面搜尋中](../docs/playtest/native/15-native-search-pending.png) · [桌面搜尋完成](../docs/playtest/native/16-native-search-ready.png) · [320 像素窄版](../docs/playtest/native/17-native-search-mobile.png)
+
+### 最近搜尋紀錄
+
+在同一瀏覽器與網址連續執行搜尋，「最近搜尋」最多保留 16 個編號。展開一筆紀錄可查看完整編號及伺服器結果，目前的搜尋仍會繼續倒數。可按「更新紀錄」重新查詢。頁面重新整理會讀回已儲存的編號，也能接續舊版留在同一網址的一筆搜尋。
+
+瀏覽器以同源 `POST /api/searches/query` 傳送 JSON 的 `ids` 陣列，每次最多 16 個 UUID。伺服器依首次出現的順序回傳已存在的紀錄，省略未知編號和重複項目。查詢沿用現有 SQLite 結構，並用同一個伺服器時間判定回覆中的搜尋狀態。
+
+八項 Rust 測試通過，包含批次查詢的筆數上限、順序、截止時間，以及沿用前一版 SQLite 檔。使用上方的 Playwright 指令可重跑兩筆搜尋的倒數、展開舊結果、重載、批次查詢失敗後重試，以及舊版單筆編號的恢復。此次使用 4357 驗收。桌面和 320 像素窄版的請求均由同源 Rust 服務處理。[批次 HTTP 測試](../tools/native-deadlines/tests/http_contract.rs) · [倒數中查看舊結果](../docs/playtest/native/18-native-search-history-during.png) · [兩筆已完成結果](../docs/playtest/native/19-native-search-history-ready.png) · [320 像素窄版](../docs/playtest/native/20-native-search-history-mobile.png)

@@ -20,6 +20,8 @@
 
 獨立的 Rust 搜尋示範已用 Chromium 驗收固定 8 秒的倒數、伺服器確認結果、重新整理和斷線重試。桌面及 320 像素窄版都可完成操作。重啟 Rust 程序並沿用原 SQLite 檔後，可查回相同結果。原生任務、戰鬥與結算的串接仍待完成。[啟動與驗收](web-client/README.md#原生搜尋倒數示範) · [搜尋完成截圖](docs/playtest/native/16-native-search-ready.png)
 
+搜尋示範已用 Chromium 驗收最近紀錄。展開先前結果時，目前搜尋繼續倒數。重新整理會恢復儲存的紀錄，包括舊版只保存一筆編號的情況。批次查詢失敗時，畫面會保留已確認的結果供查閱及重試。[最近搜尋紀錄](web-client/README.md#最近搜尋紀錄) · [倒數中查看舊結果](docs/playtest/native/18-native-search-history-during.png)
+
 原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖恢復了登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫可重跑 SWF 宣告幀率、瀏覽器回呼和可見畫面變化的量測。目標硬體上的動畫流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
 
 大廳淡出時會清理它持有的提示框。Chromium 實測直接點擊仍顯示提示的「任務」按鈕，進入地圖與戰鬥時提示都已清除。正常的地圖懸停提示也已驗證。[提示退場驗收](docs/playtest/README.md#大廳提示退場)

@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
+use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -65,42 +65,65 @@ impl Store {
             )?;
         }
 
-        let existing = transaction
-            .query_row(
-                "SELECT find_at_ms, ready FROM searches WHERE id = ?1",
-                [&id],
-                |row| Ok((row.get::<_, u64>(0)?, row.get::<_, bool>(1)?)),
-            )
-            .optional()?;
-        let Some((find_at_ms, was_ready)) = existing else {
-            return Ok(None);
-        };
+        let search = snapshot(&transaction, id, now_ms)?;
+        transaction.commit()?;
+        Ok(search)
+    }
 
-        let ready = was_ready || now_ms >= find_at_ms;
-        if ready && !was_ready {
-            transaction.execute("UPDATE searches SET ready = 1 WHERE id = ?1", [&id])?;
+    pub(crate) fn query(&mut self, ids: &[Uuid], now_ms: u64) -> rusqlite::Result<Vec<Search>> {
+        let transaction = self
+            .0
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut searches = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(search) = snapshot(&transaction, id.to_string(), now_ms)? {
+                searches.push(search);
+            }
         }
         transaction.commit()?;
-
-        let (status, result) = if ready {
-            (
-                Status::Ready,
-                Some(SearchResult {
-                    id: format!("result-{id}"),
-                }),
-            )
-        } else {
-            (Status::Pending, None)
-        };
-
-        Ok(Some(Search {
-            id,
-            status,
-            find_at_ms,
-            server_now_ms: now_ms,
-            result,
-        }))
+        Ok(searches)
     }
+}
+
+fn snapshot(
+    transaction: &Transaction,
+    id: String,
+    now_ms: u64,
+) -> rusqlite::Result<Option<Search>> {
+    let existing = transaction
+        .query_row(
+            "SELECT find_at_ms, ready FROM searches WHERE id = ?1",
+            [&id],
+            |row| Ok((row.get::<_, u64>(0)?, row.get::<_, bool>(1)?)),
+        )
+        .optional()?;
+    let Some((find_at_ms, was_ready)) = existing else {
+        return Ok(None);
+    };
+
+    let ready = was_ready || now_ms >= find_at_ms;
+    if ready && !was_ready {
+        transaction.execute("UPDATE searches SET ready = 1 WHERE id = ?1", [&id])?;
+    }
+
+    let (status, result) = if ready {
+        (
+            Status::Ready,
+            Some(SearchResult {
+                id: format!("result-{id}"),
+            }),
+        )
+    } else {
+        (Status::Pending, None)
+    };
+
+    Ok(Some(Search {
+        id,
+        status,
+        find_at_ms,
+        server_now_ms: now_ms,
+        result,
+    }))
 }
 
 #[cfg(test)]

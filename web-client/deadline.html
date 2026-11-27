@@ -49,6 +49,36 @@
           </div>
         </section>
       </div>
+
+      <section id="deadline-history" class="search-record search-history" data-state="empty" aria-labelledby="deadline-history-title">
+        <header class="history-heading">
+          <div>
+            <h2 id="deadline-history-title">最近搜尋</h2>
+            <p id="deadline-history-status" role="status" aria-atomic="true">尚無搜尋紀錄。</p>
+          </div>
+          <button id="deadline-history-refresh" class="button history-refresh" type="button" aria-controls="deadline-history-list" disabled>更新紀錄</button>
+        </header>
+        <ul id="deadline-history-list" class="history-list" hidden></ul>
+      </section>
+
+      <template id="deadline-history-template">
+        <li class="history-row">
+          <details>
+            <summary class="history-summary">
+              <span class="history-chevron" aria-hidden="true"></span>
+              <span class="history-summary-content">
+                <strong class="history-label"></strong><span class="history-current" hidden>目前</span>
+                <time class="history-time"></time>
+              </span>
+              <span class="history-row-status"></span>
+            </summary>
+            <dl class="history-details">
+              <div><dt>搜尋編號</dt><dd><code class="history-search-id"></code></dd></div>
+              <div class="history-row-result"><dt>伺服器結果</dt><dd><code class="history-result-id"></code></dd></div>
+            </dl>
+          </details>
+        </li>
+      </template>
       <noscript><p>請啟用 JavaScript 以執行限時搜尋。</p></noscript>
     </main>
   </body>

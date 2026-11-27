@@ -3,16 +3,18 @@ mod store;
 use std::path::Path as FilePath;
 use std::sync::{Arc, Mutex};
 
-use axum::extract::{Path, State};
+use axum::extract::{rejection::JsonRejection, Path, State};
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::middleware;
 use axum::response::{Html, IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use store::{Search, Store};
+
+const MAX_QUERY_IDS: usize = 16;
 
 #[derive(Clone)]
 struct AppState {
@@ -31,6 +33,12 @@ pub fn router(
     };
     let api = Router::new()
         .route("/api/searches/{id}", get(read_search).put(create_search))
+        .route(
+            "/api/searches/query",
+            post(query_searches)
+                .get(invalid_route_id)
+                .put(invalid_route_id),
+        )
         .route_layer(middleware::map_response(no_store));
 
     Ok(Router::new()
@@ -83,6 +91,43 @@ async fn create_search(
     access_search(state, id, true).await.map(Json)
 }
 
+#[derive(Deserialize)]
+struct SearchQuery {
+    ids: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct SearchQueryResult {
+    searches: Vec<Search>,
+}
+
+async fn query_searches(
+    State(state): State<AppState>,
+    body: Result<Json<SearchQuery>, JsonRejection>,
+) -> Result<Json<SearchQueryResult>, ApiError> {
+    let Json(query) = body.map_err(|_| ApiError::InvalidQuery)?;
+    if query.ids.len() > MAX_QUERY_IDS {
+        return Err(ApiError::TooManyIds);
+    }
+
+    let mut ids = Vec::with_capacity(query.ids.len());
+    for id in query.ids {
+        let id = parse_id(&id)?;
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+
+    let searches = state
+        .with_store(move |store, now_ms| store.query(&ids, now_ms))
+        .await?;
+    Ok(Json(SearchQueryResult { searches }))
+}
+
+async fn invalid_route_id() -> ApiError {
+    ApiError::InvalidId
+}
+
 async fn no_store(mut response: Response) -> Response {
     response
         .headers_mut()
@@ -91,24 +136,39 @@ async fn no_store(mut response: Response) -> Response {
 }
 
 async fn access_search(state: AppState, id: String, create: bool) -> Result<Search, ApiError> {
-    let id = Uuid::parse_str(&id).map_err(|_| ApiError::InvalidId)?;
-    tokio::task::spawn_blocking(move || {
-        let mut store = state.store.lock().map_err(|_| ApiError::Storage)?;
-        let now_ms = (state.clock)();
-        store
-            .access(id, now_ms, create)
-            .map_err(|error| {
+    let id = parse_id(&id)?;
+    state
+        .with_store(move |store, now_ms| store.access(id, now_ms, create))
+        .await?
+        .ok_or(ApiError::Missing)
+}
+
+fn parse_id(id: &str) -> Result<Uuid, ApiError> {
+    Uuid::parse_str(id).map_err(|_| ApiError::InvalidId)
+}
+
+impl AppState {
+    async fn with_store<T: Send + 'static>(
+        self,
+        operation: impl FnOnce(&mut Store, u64) -> rusqlite::Result<T> + Send + 'static,
+    ) -> Result<T, ApiError> {
+        tokio::task::spawn_blocking(move || {
+            let mut store = self.store.lock().map_err(|_| ApiError::Storage)?;
+            let now_ms = (self.clock)();
+            operation(&mut store, now_ms).map_err(|error| {
                 eprintln!("Timed search storage failed: {error}");
                 ApiError::Storage
-            })?
-            .ok_or(ApiError::Missing)
-    })
-    .await
-    .map_err(|_| ApiError::Storage)?
+            })
+        })
+        .await
+        .map_err(|_| ApiError::Storage)?
+    }
 }
 
 enum ApiError {
     InvalidId,
+    InvalidQuery,
+    TooManyIds,
     Missing,
     Storage,
 }
@@ -122,6 +182,11 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error) = match self {
             Self::InvalidId => (StatusCode::BAD_REQUEST, "Invalid search ID"),
+            Self::InvalidQuery => (StatusCode::BAD_REQUEST, "Invalid search query"),
+            Self::TooManyIds => (
+                StatusCode::BAD_REQUEST,
+                "A search query accepts up to 16 IDs",
+            ),
             Self::Missing => (StatusCode::NOT_FOUND, "Search not found"),
             Self::Storage => (StatusCode::INTERNAL_SERVER_ERROR, "Search unavailable"),
         };

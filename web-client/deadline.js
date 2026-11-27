@@ -1,5 +1,7 @@
 const SEARCH_DURATION_MS = 8000;
 const STORAGE_KEY = 'unlight.deadline.search-id';
+const HISTORY_STORAGE_KEY = 'unlight.deadline.search-history';
+const HISTORY_LIMIT = 16;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const deadlineFormat = new Intl.DateTimeFormat('zh-TW', {
   dateStyle: 'medium', timeStyle: 'medium', timeZone: 'Asia/Taipei',
@@ -17,6 +19,11 @@ const ui = {
   findAtEmpty: document.querySelector('#deadline-find-at-empty'),
   result: document.querySelector('#deadline-result'),
   resultId: document.querySelector('#deadline-result-id'),
+  history: document.querySelector('#deadline-history'),
+  historyStatus: document.querySelector('#deadline-history-status'),
+  historyRefresh: document.querySelector('#deadline-history-refresh'),
+  historyList: document.querySelector('#deadline-history-list'),
+  historyTemplate: document.querySelector('#deadline-history-template'),
 };
 const labels = {
   idle: '尚未開始',
@@ -34,6 +41,8 @@ let retryMethod = 'GET';
 let localDeadline = 0;
 let nextDeadlineCheck = Infinity;
 let clockTimer;
+let historyIds = [];
+let historyRequest = null;
 
 function renderActions() {
   ui.start.hidden = searchId !== null && snapshot?.status !== 'ready';
@@ -51,15 +60,20 @@ function setState(state, detail) {
   renderActions();
 }
 
+function renderTime(element, timestamp) {
+  element.textContent = deadlineFormat.format(timestamp);
+  element.dateTime = new Date(timestamp).toISOString();
+  element.dataset.timestamp = String(timestamp);
+}
+
 function renderRecord() {
   ui.id.textContent = searchId ?? '—';
   ui.findAt.hidden = snapshot === null;
   ui.findAtEmpty.hidden = snapshot !== null;
-  ui.findAt.textContent = snapshot ? deadlineFormat.format(snapshot.find_at_ms) : '';
   if (snapshot) {
-    ui.findAt.dateTime = new Date(snapshot.find_at_ms).toISOString();
-    ui.findAt.dataset.timestamp = String(snapshot.find_at_ms);
+    renderTime(ui.findAt, snapshot.find_at_ms);
   } else {
+    ui.findAt.textContent = '';
     ui.findAt.removeAttribute('datetime');
     delete ui.findAt.dataset.timestamp;
   }
@@ -102,6 +116,113 @@ function validateSnapshot(data, id) {
   return data;
 }
 
+function normalizeHistory(values) {
+  const ids = new Set();
+  for (const value of values) {
+    const id = typeof value === 'string' ? value.toLowerCase() : '';
+    if (UUID.test(id)) ids.add(id);
+    if (ids.size === HISTORY_LIMIT) break;
+  }
+  return [...ids];
+}
+
+function historyFromStorage() {
+  try {
+    const values = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY));
+    return Array.isArray(values) ? normalizeHistory(values) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory() {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(historyIds));
+  } catch {
+    // Keep the session's list available if history storage is unavailable.
+  }
+}
+
+function rememberSearch(id) {
+  historyIds = normalizeHistory([id, ...historyFromStorage(), ...historyIds]);
+  persistHistory();
+}
+
+function setHistoryState(state, message) {
+  ui.history.dataset.state = state;
+  ui.historyStatus.textContent = message;
+  ui.historyRefresh.disabled = historyIds.length === 0 || state === 'loading';
+}
+
+function renderHistory(searches) {
+  const openIds = new Set([...ui.historyList.querySelectorAll('details[open]')]
+    .map(details => details.closest('[data-search-id]').dataset.searchId));
+  const focusedId = document.activeElement?.closest('#deadline-history-list [data-search-id]')?.dataset.searchId;
+  let nextFocus;
+  const rows = searches.map(search => {
+    const row = ui.historyTemplate.content.firstElementChild.cloneNode(true);
+    row.dataset.searchId = search.id;
+    row.dataset.state = search.status;
+    row.querySelector('details').open = openIds.has(search.id);
+    row.querySelector('.history-label').textContent = `搜尋 ${search.id.slice(0, 8)}`;
+    row.querySelector('.history-current').hidden = search.id !== searchId;
+    row.querySelector('.history-row-status').textContent = labels[search.status];
+    row.querySelector('.history-search-id').textContent = search.id;
+    renderTime(row.querySelector('.history-time'), search.find_at_ms);
+    if (search.status === 'ready') row.querySelector('.history-result-id').textContent = search.result.id;
+    else row.querySelector('.history-row-result').remove();
+    if (search.id === focusedId) nextFocus = row.querySelector('summary');
+    return row;
+  });
+  ui.historyList.replaceChildren(...rows);
+  ui.historyList.hidden = rows.length === 0;
+  nextFocus?.focus({ preventScroll: true });
+}
+
+function cancelHistoryRefresh() {
+  historyRequest?.abort();
+  historyRequest = null;
+}
+
+async function refreshHistory() {
+  cancelHistoryRefresh();
+  const ids = [...historyIds];
+  if (!ids.length) {
+    setHistoryState('empty', '尚無搜尋紀錄。');
+    return;
+  }
+
+  const controller = new AbortController();
+  historyRequest = controller;
+  setHistoryState('loading', '正在查詢最近搜尋…');
+  try {
+    const response = await fetch('/api/searches/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+      cache: 'no-store',
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(4500)]),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const { searches } = await response.json();
+    if (historyRequest !== controller) return;
+    const byId = new Map();
+    if (!Array.isArray(searches)) throw new Error('Invalid search history');
+    for (const search of searches) {
+      if (!ids.includes(search?.id) || byId.has(search.id)) throw new Error('Unexpected search in history');
+      byId.set(search.id, validateSnapshot(search, search.id));
+    }
+    const confirmed = ids.filter(id => byId.has(id)).map(id => byId.get(id));
+    renderHistory(confirmed);
+    if (confirmed.length) setHistoryState('ready', `已讀取 ${confirmed.length} 筆搜尋紀錄。`);
+    else setHistoryState('empty', '尚無搜尋紀錄。');
+  } catch {
+    if (historyRequest === controller) setHistoryState('failed', '暫時無法更新搜尋紀錄。');
+  } finally {
+    if (historyRequest === controller) historyRequest = null;
+  }
+}
+
 function acceptSnapshot(data) {
   snapshot = data;
   retryMethod = 'GET';
@@ -122,6 +243,7 @@ async function querySearch(method) {
   if (requestPending || searchId === null) return;
   requestPending = true;
   retryMethod = method;
+  let refreshRecent = method === 'PUT';
   const id = searchId;
   if (method === 'PUT') setState('starting', '正在向伺服器啟動這筆搜尋。');
   else setState('checking', '正在向伺服器確認這筆搜尋。');
@@ -130,17 +252,21 @@ async function querySearch(method) {
     let response = await requestSearch(id, method);
     if (method === 'GET' && response.status === 404 && snapshot === null) {
       retryMethod = 'PUT';
+      refreshRecent = true;
       setState('starting', '正在用已保存的編號接續搜尋。');
       response = await requestSearch(id, 'PUT');
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    acceptSnapshot(validateSnapshot(await response.json(), id));
+    const data = validateSnapshot(await response.json(), id);
+    refreshRecent ||= data.status === 'ready' && snapshot?.status !== 'ready';
+    acceptSnapshot(data);
   } catch {
     setState('failed', '保留原本的搜尋編號。連線恢復後可重試。');
   } finally {
     requestPending = false;
     renderActions();
     updateClock();
+    if (refreshRecent) void refreshHistory();
   }
 }
 
@@ -156,6 +282,10 @@ function startSearch() {
   }
 
   clearTimeout(clockTimer);
+  cancelHistoryRefresh();
+  rememberSearch(id);
+  const previousCurrent = ui.historyList.querySelector('.history-current:not([hidden])');
+  if (previousCurrent) previousCurrent.hidden = true;
   searchId = id;
   snapshot = null;
   nextDeadlineCheck = Infinity;
@@ -168,18 +298,28 @@ function resumeSearch() {
   if (!document.hidden) void querySearch(retryMethod);
 }
 
+function resumePage() {
+  if (document.hidden) return;
+  resumeSearch();
+  void refreshHistory();
+}
+
 ui.start.addEventListener('click', startSearch);
 ui.refresh.addEventListener('click', resumeSearch);
+ui.historyRefresh.addEventListener('click', () => void refreshHistory());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearTimeout(clockTimer);
-  else resumeSearch();
+  else resumePage();
 });
-window.addEventListener('online', resumeSearch);
-window.addEventListener('pagehide', () => clearTimeout(clockTimer));
-window.addEventListener('pageshow', (event) => { if (event.persisted) resumeSearch(); });
+window.addEventListener('online', resumePage);
+window.addEventListener('pagehide', () => {
+  clearTimeout(clockTimer);
+  cancelHistoryRefresh();
+});
+window.addEventListener('pageshow', (event) => { if (event.persisted) resumePage(); });
 
 try {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(STORAGE_KEY)?.toLowerCase();
   if (saved && UUID.test(saved)) {
     searchId = saved;
     renderRecord();
@@ -188,3 +328,8 @@ try {
 } catch {
   setState('failed', '瀏覽器無法讀取已保存的搜尋編號。請確認網站可以使用本機儲存後再試。');
 }
+
+historyIds = historyFromStorage();
+if (searchId && !historyIds.includes(searchId)) rememberSearch(searchId);
+else if (historyIds.length) persistHistory();
+void refreshHistory();
