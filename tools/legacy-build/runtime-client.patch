@@ -23,6 +23,13 @@
  paddingTop: 40;
  paddingLeft: 10;
  paddingRight: 10;
+@@ -678,5 +678,5 @@ .QuestLandDataLabel {
+ color: #ffffff;
+ fontSize: 10;
+-fontFamily: Palatino;
++fontFamily: mincho;
+ borderStyle: none;
+ }
 --- /dev/null
 +++ src/view/image/PanelScaleNineSkin.as
 @@ -0,0 +1,80 @@

@@ -30,7 +30,7 @@ Git 提交版本、三套字型及 `as3crypto.swc` 均會驗證。自行提供 F
 | 相對於 `legacy_work` | 內容 |
 | --- | --- |
 | `dist/Unlight.swf` | 依照 Open Unlight 歷史繁中配方編譯的主程式 |
-| `dist/Unlight-local-runtime.swf` | 供 Ruffle 使用的相容版。套用既有面板圖的九宮格縮放和任務名稱字型，支援標題頁的公告設定，並在大廳退場時清除它的提示框 |
+| `dist/Unlight-local-runtime.swf` | 供 Ruffle 使用的相容版。套用既有面板圖的九宮格縮放與任務、地形文字字型，支援標題頁的公告設定，並在大廳退場時清除它的提示框 |
 | `assets/public/` | 靜態伺服用的既有圖像與音效素材 |
 | `app/client/src/model/utils/ConstData.as` | 由 SQLite 產生的繁中遊戲常數 |
 | `app/client/src/FontLoader.as` | 原版字型嵌入宣告 |
@@ -41,6 +41,12 @@ Git 提交版本、三套字型及 `as3crypto.swc` 均會驗證。自行提供 F
 匯入以繁中整表優先，其餘整表取自 `ja`，再將 `_tcn` 欄位寫入對應欄位。一次 SQLite 交易載入資料並逐表核對筆數。程式會拒絕匯入已有紀錄的主資料表。兩份資料庫皆執行 `PRAGMA quick_check`。建置時 Memcached 只監聽回環位址，資料生成結束後會關閉。
 
 原版字型嵌入與繁中素材別名沿用歷史配方。原始常數腳本改用已載入的 SQLite 連線，修正空表輸出。教學需要的 CPU 使用原本角色建立和建牌流程，以一張原版允許的起始卡初始化。歷史 Docker 設定沿用 Sandbox 的伺服器語系常數，部分系統文字仍為日文。有缺字的字型範圍會記錄在 `font.log`。
+
+可用下列指令核對成品內的字元代碼表。程式讀取原版任務、地圖及地形的繁中名稱和說明，驗證各自使用的內嵌明體。輸出也包括原始資料的空白欄位數。[關卡文字驗收](../../docs/playtest/README.md#繁中關卡地形文字)
+
+```bash
+python3 tools/legacy-build/check_quest_text.py "$legacy_work/dist/Unlight-local-runtime.swf"
+```
 
 接續試玩時，使用 CPU-ready 資料庫啟動隔離 Ruby 服務，再將相容版 SWF 和 `assets/public/` 交給網頁入口。[Ruby 測試服務](../legacy-server/README.md) · [Ruffle 網頁入口](../legacy-web/README.md)
 

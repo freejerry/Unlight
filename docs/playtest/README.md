@@ -68,6 +68,12 @@ Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯�
 
 [標題頁消息](browser/14-browser-title-news.png) · [標題頁消息末行](browser/15-browser-title-news-scrolled.png) · [登入後公告](browser/12-browser-latest-news.png) · [登入後公告末行](browser/13-browser-latest-news-scrolled.png) · [任務名稱修正](browser/10-browser-quest-name.png)
 
+### 繁中關卡地形文字
+
+以成品 SWF 的字元代碼表核對 3,216 筆任務、138 筆地圖及 2,203 筆地形。任務與地圖使用內嵌 `minchoB`，地形名稱與描述使用內嵌 `mincho`。5,557 筆資料中的非空白字元都有對應字形，原始資料共有 138 個空白欄位。此檢查涵蓋字形可用性，文字換行和欄寬仍需逐畫面驗收。[關卡資料檢查指令](../../tools/legacy-build/README.md#產物和驗證)
+
+在 Chromium 和 Ruffle 用同一份隔離 Ruby 資料登入，兩個入口均未指定 `--tcn-device-font`。到魔女山谷選取「落日大蝙蝠」，把游標停在地形上。舊相容版 `602db88d` 的地形名稱只顯示 `1`，描述欄像素和空白狀態完全相同。改用內嵌明體的 `8e88e01f` 顯示「寬廣高原1」及兩行完整的「蝙蝠揮舞翅膀的廣大高原」。游標移開後，兩個欄位都回到原先的畫面。畫面測例涵蓋首場任務的地形欄，其他關卡的實際欄寬仍待驗收。[修正前](browser/30-browser-land-font-before.png) · [修正後](browser/31-browser-land-font-after.png)
+
 ## 原生瀏覽器驗收
 
 Chromium 直接連到原版 Ruby 的轉接服務。兩輪檢查的六項二進位 KeepAlive 都相符。模擬戰鬥服務無法連線時，該項顯示失敗並可單獨重試。原版道具 PNG 成功解碼，原版標題 MP3 在點擊播放後正常前進，截圖時已暫停。兩個素材的 SHA-256 與原版入口相同。[驗收截圖](native/01-native-check.png) · [重跑方式](../../web-client/README.md)
