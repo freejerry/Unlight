@@ -80,14 +80,14 @@ def music(page, scene, filename):
     }""", arg={"scene": scene, "filename": filename}, timeout=TIMEOUT)
 
 
-def observe_scene_music_fade(page, scene):
+def observe_scene_music_fade(page, scene, *, departure="silent"):
     audio = page.locator(f'#stage > audio[data-bgm-scene="{scene}"]')
-    assert audio.evaluate("""(audio, scene) => {
+    assert audio.evaluate("""(audio, {scene, departure}) => {
       window.qaSceneMusic ??= {};
       const trace = {audio, steps: []};
       window.qaSceneMusic[scene] = trace;
       document.getElementById('stage').addEventListener('game-screen-change', function boundary() {
-        if (this.dataset.soundscape !== 'silent' || trace.started) return;
+        if (this.dataset.soundscape !== departure || trace.started) return;
         trace.started = performance.now();
       });
       function sample() {
@@ -99,7 +99,7 @@ def observe_scene_music_fade(page, scene):
       audio.addEventListener('volumechange', sample);
       sample();
       return audio.volume === 0.5 && !audio.paused;
-    }""", scene)
+    }""", {"scene": scene, "departure": departure})
 
 
 def check_scene_music_fade(page, scene):
@@ -142,6 +142,10 @@ def observe_session_codec(page, origin):
     page.route(origin + "/wire.js", lambda route: route.fulfill(content_type="text/javascript", body="""
       import { encodeCommand as encode, readReply as read } from './wire.js?qa-original';
       export * from './wire.js?qa-original';
+      function encounterFields(body) {
+        const fields = read(body);
+        return [fields.int(), fields.string(3), fields.string(4096), fields.string(4096), ...body.slice(-7)];
+      }
       export function encodeCommand(command, fields, key) {
         const frame = encode(command, fields, key);
         const isRefresh = command === 17 && fields?.length === 0;
@@ -150,7 +154,9 @@ def observe_session_codec(page, origin):
         const confirm = command === 12 && fields?.length === 2
           ? [fields[0], fields[1]?.value] : null;
         const deck = command === 12 && fields?.length === 1 ? fields[0] : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck});
+        const action = [13, 16].includes(command) && fields
+          ? [command, fields[0], ...fields.slice(1).map(field => field.value)] : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action});
         return frame;
       }
       export function readReply(body) {
@@ -165,6 +171,9 @@ def observe_session_codec(page, origin):
           const data = reply.command === 32 && body.byteLength >= 6 ? [bytes.getInt32(2)]
             : reply.command === 4 && body.byteLength === 10 ? [bytes.getInt32(2)]
             : reply.command === 17 && body.byteLength === 11 ? [bytes.getInt32(2), bytes.getInt8(6), bytes.getInt32(7)]
+            : reply.command === 128 && body.byteLength === 3 ? [bytes.getInt8(2)]
+            : reply.command === 37 && body.byteLength >= 9 ? encounterFields(body)
+            : reply.command === 40 && body.byteLength === 7 ? [...body.slice(2)]
             : reply.command === 6 && body.byteLength >= 19
             ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
           replies.push([reply.command, body.byteLength, ...data]);
@@ -177,13 +186,13 @@ def observe_session_codec(page, origin):
 def observe_quest_wire(page):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
-      wire.holdDetail = () => {{
+      wire.holdAction = (command, forward = 0) => {{
         const peer = wire.sockets.at(-1);
-        wire.detail = {{ peer, start: peer.sent.length, queued: [] }};
+        wire.actionHold = {{ peer, command, forward, start: peer.sent.length, queued: [], buffer: new Uint8Array() }};
       }};
-      wire.endDetailHold = (deliver) => {{
-        const {{ queued }} = wire.detail;
-        wire.detail = null;
+      wire.endActionHold = (deliver) => {{
+        const {{ queued }} = wire.actionHold;
+        wire.actionHold = null;
         if (deliver) for (const receive of queued) receive();
         return queued.length;
       }};
@@ -194,16 +203,17 @@ def observe_quest_wire(page):
           if (service === '/socket/12002') this.lobbyTrace = wire.lobby;
           if (service !== {QUEST_PORT!r}) return;
           const overlaps = wire.sockets.some(socket => !socket.close);
-          const trace = this.questTrace = {{ sent: [], confirms: [], replies: [], close: null, held: false, overlaps }};
+          const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], replies: [], close: null, held: false, overlaps }};
           wire.sockets.push(trace);
           this.addEventListener('close', event => {{ trace.close = [event.code, event.wasClean]; }});
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
           if (this.questTrace) {{
-            const {{ command, confirm }} = encoded;
+            const {{ command, confirm, action }} = encoded;
             this.questTrace.sent.push([command, frame.byteLength]);
             if (confirm) this.questTrace.confirms.push(confirm);
+            if (action) this.questTrace.actions.push(action);
           }}
           if (this.lobbyTrace && encoded && encoded.deck !== null) this.lobbyTrace.sent.push([encoded.command, frame.byteLength, encoded.deck]);
           super.send(frame);
@@ -227,13 +237,31 @@ def observe_quest_wire(page):
               trace.held = heldSize >= 2 && heldBytes >= heldSize + 5;
               return;
             }}
-            const receive = () => {{
+            const receive = (message = event) => {{
               wire.receiving = trace;
-              try {{ handler.call(this, event); }} finally {{ wire.receiving = null; }}
+              try {{ handler.call(this, message); }} finally {{ wire.receiving = null; }}
             }};
-            const detail = wire.detail;
-            if (detail?.peer === trace && trace.sent.slice(detail.start).some(([command]) => command === 12)) {{
-              detail.queued.push(receive);
+            const hold = wire.actionHold;
+            if (hold?.peer === trace && trace.sent.slice(hold.start).some(([command]) => command === hold.command)) {{
+              if (!hold.forward) {{ hold.queued.push(receive); return; }}
+              // Keep exact source frames intact while forwarding earlier packets from a shared chunk.
+              const chunk = new Uint8Array(event.data);
+              const combined = new Uint8Array(hold.buffer.length + chunk.length);
+              combined.set(hold.buffer);
+              combined.set(chunk, hold.buffer.length);
+              hold.buffer = combined;
+              while (hold.forward && hold.buffer.length >= 4) {{
+                const packetSize = new DataView(hold.buffer.buffer).getUint32(0) + 5;
+                if (hold.buffer.length < packetSize) return;
+                receive({{data: hold.buffer.slice(0, packetSize).buffer}});
+                hold.buffer = hold.buffer.slice(packetSize);
+                hold.forward--;
+              }}
+              if (!hold.forward && hold.buffer.length) {{
+                const held = {{data: hold.buffer.buffer}};
+                hold.queued.push(() => receive(held));
+                hold.buffer = new Uint8Array();
+              }}
             }} else receive();
           }} : handler;
         }}
@@ -747,7 +775,7 @@ def check_quest_detail(page, stage, directory, database, avatar_id, quest, *, dr
     detail = page.locator("#quest-map-detail")
     back = page.locator("#quest-map-detail-back")
     land = detail.locator('.quest-map-detail-land[data-slot="1"][data-land-id="201"]')
-    page.evaluate("window.qaQuestWire.holdDetail()")
+    page.evaluate("window.qaQuestWire.holdAction(12)")
     select_row.click()
     expect(detail).to_be_visible(timeout=TIMEOUT)
     expect(detail).to_have_attribute("data-inventory-id", str(inventory_id))
@@ -755,7 +783,7 @@ def check_quest_detail(page, stage, directory, database, avatar_id, quest, *, dr
     expect(page.locator("#quest-map-detail-caption")).to_have_text("飛舞於山谷間的大蝙蝠，今晚也要搜尋犧牲者")
     expect(land).to_be_visible()
     expect(detail.locator('[data-quest-command="start"]')).to_be_disabled()
-    page.wait_for_function("() => window.qaQuestWire.detail.queued.length > 0", timeout=TIMEOUT)
+    page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
     expect(detail).to_have_attribute("data-quest-status", "0")
     expect(row).to_have_attribute("data-quest-status", "0")
     assert page.evaluate("window.qaQuestWire.sockets.at(-1).confirms") == [[inventory_id, 1]]
@@ -766,11 +794,11 @@ def check_quest_detail(page, stage, directory, database, avatar_id, quest, *, dr
 
     if drop_reply:
         expect(detail).to_have_attribute("data-confirmation-state", "uncertain", timeout=TIMEOUT)
-        assert page.evaluate("window.qaQuestWire.endDetailHold(false)") > 0
+        assert page.evaluate("window.qaQuestWire.endActionHold(false)") > 0
         expect(detail).to_have_attribute("data-quest-status", "0")
         capture(stage, directory, "15b-quest-detail-uncertain.png")
     else:
-        assert page.evaluate("window.qaQuestWire.endDetailHold(true)") > 0
+        assert page.evaluate("window.qaQuestWire.endActionHold(true)") > 0
         expect(detail).to_have_attribute("data-quest-status", "1")
         terrain = page.locator("#quest-map-detail-land-data")
         heading = detail.locator(".quest-map-detail-data-art > img").first
@@ -810,14 +838,8 @@ def check_quest_detail(page, stage, directory, database, avatar_id, quest, *, dr
     return confirmed
 
 
-def check_instant_quest_search(page, stage, directory, database, player_id, profile, live, session_start, *, drop_reply):
-    avatar_id = profile[0]
-    assert not quest_inventory(database, avatar_id) and profile[5:7] == (5, 5)
-    parts, decks = equipped_parts(database, avatar_id), quest_deck(database, avatar_id)
-    core = live[session_start:]
-    assert len(core) == 4 and all(not socket.is_closed() for socket in core)
-    launcher = page.locator("#lobby-quest-load")
-    launcher.press("Enter")
+def search_first_quest(page, stage, directory, database, avatar_id):
+    page.locator("#lobby-quest-load").press("Enter")
     screen(stage, "quest-map")
     expect(page.locator("#quest-map-view")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
     landmark = page.get_by_role("button", name="魔女山谷", exact=True)
@@ -832,10 +854,21 @@ def check_instant_quest_search(page, stage, directory, database, player_id, prof
     assert quest[1:3] == (1, 0)
     expect(result).to_have_attribute("data-inventory-id", str(quest[0]))
     expect(page.locator("#quest-map-inventory > li[data-inventory-id]")).to_have_attribute("data-quest-status", "0")
-    assert len(live[session_start:]) == 5 and all(not socket.is_closed() for socket in live[session_start:])
     capture(stage, directory, "15-quest-search-immediate.png")
     page.locator("#quest-map-search-result-ok").press("Enter")
     expect(landmark).to_be_focused()
+    return quest
+
+
+def check_instant_quest_search(page, stage, directory, database, player_id, profile, live, session_start, *, drop_reply):
+    avatar_id = profile[0]
+    assert not quest_inventory(database, avatar_id) and profile[5:7] == (5, 5)
+    parts, decks = equipped_parts(database, avatar_id), quest_deck(database, avatar_id)
+    core = live[session_start:]
+    assert len(core) == 4 and all(not socket.is_closed() for socket in core)
+    quest = search_first_quest(page, stage, directory, database, avatar_id)
+    assert len(live[session_start:]) == 5 and all(not socket.is_closed() for socket in live[session_start:])
+    launcher = page.locator("#lobby-quest-load")
     observe_detail_audio(page)
     if not drop_reply:
         check_deck_arrows(page, stage, directory, database, avatar_id)
@@ -891,12 +924,196 @@ def check_instant_quest_search(page, stage, directory, database, player_id, prof
 def check_quest_position_catalog(page, origin):
     response = page.request.get(origin + "/api/quest-catalog?id=1&id=3")
     assert response.ok
+    quests = response.json()["quests"]
+    assert {quest["id"]: quest["ap"] for quest in quests} == {1: 0, 3: 1}
     positions = {
         quest["id"]: [(land["slot"], land["id"], land["nextMask"], land["nextSlots"],
                        land["stage"], land["treasureType"]) for land in quest["positions"]]
-        for quest in response.json()["quests"]
+        for quest in quests
     }
     assert positions == {1: [(1, 201, 0, [], 11, 0)], 3: [(1, 201, 2, [4], 11, 0), (4, 210, 0, [], 11, 1)]}
+
+
+def wait_quest_start_lock(page, database, avatar_id, started, expected_deck):
+    deadline = monotonic() + 4
+    while (quest_inventory(database, avatar_id), quest_deck(database, avatar_id)) != ([started], expected_deck):
+        assert monotonic() < deadline, "Original Ruby did not commit quest progress and deck lock"
+        page.wait_for_timeout(30)
+
+
+def check_quest_start(page, origin, database, name, password, directory, fault):
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    avatar_id = profile[0]
+    original_deck = quest_deck(database, avatar_id)
+    original_parts = equipped_parts(database, avatar_id)
+    assert flags == 0 and profile[5:7] == (5, 5) and not quest_inventory(database, avatar_id)
+    assert len(original_deck) == 1 and original_deck[0][1:] == (STARTER_CARD, 0, 0)
+    _, sockets, errors = observe(page)
+    live = []
+    page.on("websocket", lambda socket: live.append(socket))
+    observe_session_codec(page, origin)
+    observe_quest_wire(page)
+    assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
+    stage = page.locator("#stage")
+    expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
+    page.locator("#username").fill(name)
+    page.locator("#password").fill(password)
+    page.locator("#login-submit").click()
+    screen(stage, "lobby")
+    close_lobby_news(page, stage, None)
+    active_session_traffic(sockets, live, 0, player_id)
+    (profile,) = avatar(database, player_id)
+    core = live[:4]
+    quest = search_first_quest(page, stage, directory, database, avatar_id)
+    inventory_id = quest[0]
+    row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"]')
+    row.locator(".quest-map-row-open").click()
+    detail = page.locator("#quest-map-detail")
+    view = page.locator("#quest-map-view")
+    start = detail.locator('[data-quest-command="start"]')
+    expect(detail).to_have_attribute("data-quest-status", "1", timeout=TIMEOUT)
+    confirmed = quest[:2] + (1,) + quest[3:]
+    assert quest_inventory(database, avatar_id) == [confirmed]
+    updated = profile[:5] + (4,) + profile[6:]
+    face = page.locator('#quest-map-deck-cards .quest-map-card-face[data-card-id="21"]')
+    expect(face).to_be_visible(timeout=TIMEOUT)
+    expect(face).to_have_accessible_name("古魯瓦爾多 Lv.1 · HP 7 · ATK 5 · DEF 5")
+    assert face.evaluate("canvas => canvas.width === 168 && canvas.height === 240 && "
+                         "canvas.getContext('2d').getImageData(84, 110, 1, 1).data[3] === 255")
+    face_size = face.bounding_box()
+    assert (face_size["width"], face_size["height"]) == (84, 120)
+    wait_quest_art(page)
+    capture(stage, directory, "16a-starter-card.png")
+
+    if fault is None:
+        deck = page.locator("#quest-map-deck")
+        page.locator("#quest-map-deck-next").press("Enter")
+        expect(deck).to_have_attribute("data-deck-index", "2")
+        expect(deck.locator("li[data-card-id]")).to_have_count(0)
+        start.press("Enter")
+        alert = page.locator('#login-alert[data-kind="quest-empty-deck"]')
+        expect(alert).to_be_visible()
+        expect(page.locator("#login-alert-title")).to_have_text("警告")
+        expect(page.locator("#login-alert-message")).to_have_text("卡組是空的")
+        capture(stage, directory, "16a-empty-deck-warning.png")
+        page.locator("#login-alert-ok").press("Enter")
+        expect(alert).to_be_hidden()
+        assert page.evaluate("window.qaQuestWire.sockets.at(-1).actions") == []
+        assert quest_inventory(database, avatar_id) == [confirmed] and avatar(database, player_id) == [updated]
+        assert quest_deck(database, avatar_id) == original_deck
+        page.locator("#quest-map-deck-previous").press("Enter")
+        expect(deck).to_have_attribute("data-deck-index", "1")
+        expect(deck.locator('li[data-card-id="21"][data-position="0"]')).to_be_visible()
+        assert query(database, "SELECT current_deck FROM avatars WHERE id = ?", avatar_id) == [(1,)]
+
+    page.evaluate("window.qaQuestWire.holdAction(13)")
+    target = start.bounding_box()
+    start.click()
+    page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+    expect(detail).to_have_attribute("data-quest-status", "1")
+    active_land = detail.locator('button.quest-map-detail-land[data-slot="1"]')
+    expect(active_land).to_have_count(0)
+    pawn = page.locator("#quest-map-detail-pawn")
+    expect(pawn).to_be_hidden()
+    started = quest[:2] + (2,) + quest[3:]
+    locked = [original_deck[0][:3] + (1,)]
+    wait_quest_start_lock(page, database, avatar_id, started, locked)
+    assert avatar(database, player_id) == [updated]
+    capture(stage, directory, "16b-start-before-reply.png")
+
+    if fault == "start":
+        expect(view).to_have_attribute("data-start-state", "uncertain", timeout=TIMEOUT)
+        assert page.evaluate("window.qaQuestWire.endActionHold(false)") > 0
+        expect(detail).to_have_attribute("data-quest-status", "1")
+        expect(active_land).to_have_count(0)
+        capture(stage, directory, "16c-start-uncertain.png")
+    else:
+        assert page.evaluate("window.qaQuestWire.endActionHold(true)") > 0
+        expect(detail).to_have_attribute("data-quest-status", "2", timeout=TIMEOUT)
+        expect(row).to_have_attribute("data-quest-status", "2")
+        expect(active_land).to_be_enabled()
+        expect(pawn).to_have_attribute("data-slot", "start")
+        expect(page.locator("#quest-map-back")).to_be_hidden()
+        expect(page.locator("#quest-map-detail-back")).to_be_hidden()
+        expect(page.locator("#quest-map-energy")).to_have_text("4/5")
+        wait_quest_art(page)
+        capture(stage, directory, "16c-start-confirmed.png")
+        if fault == "land":
+            page.evaluate("window.qaQuestWire.holdAction(16, 2)")
+        else:
+            page.emulate_media(reduced_motion="no-preference")
+            music(page, "quest", "ulbgm03.mp3")
+            observe_scene_music_fade(page, "quest", departure="quest-duel")
+        target = active_land.bounding_box()
+        active_land.click()
+        battle = page.locator("#quest-map-battle")
+        if fault == "land":
+            page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+            expect(pawn).to_have_attribute("data-slot", "1")
+            expect(view).to_have_attribute("data-adventure-state", "uncertain", timeout=TIMEOUT)
+            expect(battle).to_be_hidden()
+            assert page.evaluate("window.qaQuestWire.endActionHold(false)") > 0
+            capture(stage, directory, "16d-land-uncertain.png")
+        else:
+            expect(battle).to_have_attribute("data-stage", "11", timeout=TIMEOUT)
+            expect(battle).to_have_attribute("data-phase", "opening", timeout=TIMEOUT)
+            page.wait_for_function("""() => document.querySelector('#quest-map-battle')?.dataset.burn === 'burning'
+              && document.querySelector('.quest-map-board').style.maskImage.startsWith('url(')""", timeout=TIMEOUT)
+            if directory is not None:
+                stage.screenshot(path=directory / "16d-battle-transition.png", scale="css")
+            expect(battle).to_have_attribute("data-burn", "settled", timeout=TIMEOUT)
+            music(page, "quest-duel", "bgm000.mp3")
+            check_scene_music_fade(page, "quest")
+            expect(page.locator(".quest-map-board")).to_be_hidden()
+            expect(battle.get_by_role("button")).to_have_count(0)
+            assert battle.locator("img").evaluate_all("images => images.map(image => image.src.split('/').at(-1))") == [
+                "quest-battle-stage11-far.jpg", "quest-battle-stage11-near-bottom.png",
+                "quest-battle-stage11-near-foreground.png",
+            ]
+            wait_quest_art(page)
+            capture(stage, directory, "16e-battle-opening.png")
+
+    if fault:
+        if page.locator("#login-alert").is_visible():
+            page.locator("#login-alert-ok").press("Enter")
+        page.mouse.click(target["x"] + target["width"] / 2, target["y"] + target["height"] / 2)
+        page.wait_for_timeout(150)
+    trace = page.evaluate("window.qaQuestWire.sockets.at(-1)")
+    assert len(live) == 5 and all(not peer.is_closed() for peer in live) and not trace["overlaps"]
+    actions = trace["actions"]
+    assert actions == [[13, inventory_id, 1], *([] if fault == "start" else [[16, inventory_id, 1, 1]])]
+    states = [reply for reply in trace["replies"] if reply[0] in (4, 17)]
+    assert states[:2] == [[4, 10, 4], [17, 11, inventory_id, 1, 1]]
+    assert states[2:] == ([] if fault == "start" else [[4, 10, 4], [17, 11, inventory_id, 2, 1]])
+    encounter = [reply for reply in trace["replies"] if reply[0] in (128, 37, 40)]
+    expected_encounter = [] if fault == "start" else [128, 37] if fault == "land" else [128, 37, 40]
+    assert [reply[0] for reply in encounter] == expected_encounter, encounter
+    if encounter:
+        assert encounter[0] == [128, 3, 1] and encounter[1][2:] == [-1, "CPU", "21", "1004", 11, *([0] * 6)]
+    if fault is None:
+        assert len(encounter[2]) == 7 and encounter[2][1] == 7 and encounter[2][-2:] == [2, 1]
+    assert [command for command, _ in trace["sent"] if command not in {0, 1, 2, 3, 5, 12}] == [
+        command for command, *_ in actions
+    ]
+    assert [packet for packet in trace["sent"] if packet[0] in {13, 16}] == [
+        [command, 10 if command == 13 else 11] for command, *_ in actions
+    ]
+    assert avatar(database, player_id) == [updated] and equipped_parts(database, avatar_id) == original_parts
+    assert quest_inventory(database, avatar_id) == [started] and quest_deck(database, avatar_id) == locked
+    if fault == "start":
+        if page.locator("#login-alert").is_visible():
+            page.locator("#login-alert-ok").press("Enter")
+        page.locator("#quest-map-back").press("Enter")
+        screen(stage, "lobby")
+        trace = page.evaluate("window.qaQuestWire.sockets.at(-1)")
+        assert trace["close"] == [1000, True] and trace["sent"][-1] == [2, 5]
+        assert [peer for peer in live if not peer.is_closed()] == core
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
+    assert not errors, errors
+    if directory is not None:
+        (directory / "16-quest-start-wire.json").write_text(json.dumps(trace, indent=2) + "\n")
 
 
 def check_button_hover(page, button):
@@ -1476,13 +1693,20 @@ def main():
     fixture = parser.add_mutually_exclusive_group()
     fixture.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
     fixture.add_argument("--quest-user", help="Only check Quest entry and cancel for a disposable discovered/pending fixture")
+    fixture.add_argument("--quest-start-user", help="Only check start/first terrain for a disposable empty Quest fixture")
     parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
     parser.add_argument("--quest-password-file", type=Path, help="Private password file for --quest-user")
+    parser.add_argument("--quest-start-password-file", type=Path, help="Private password file for --quest-start-user")
+    parser.add_argument("--quest-start-fault", choices=("start", "land"), help="Omit the genuine reply after one request")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
         parser.error("--refresh-user and --refresh-password-file must be supplied together")
     if (args.quest_user is None) != (args.quest_password_file is None):
         parser.error("--quest-user and --quest-password-file must be supplied together")
+    if (args.quest_start_user is None) != (args.quest_start_password_file is None):
+        parser.error("--quest-start-user and --quest-start-password-file must be supplied together")
+    if args.quest_start_fault is not None and args.quest_start_user is None:
+        parser.error("--quest-start-fault requires --quest-start-user")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -1490,19 +1714,24 @@ def main():
         ])
         portraits = []
         try:
-            if args.refresh_user is not None or args.quest_user is not None:
+            if args.refresh_user is not None or args.quest_user is not None or args.quest_start_user is not None:
                 if args.screens is not None:
                     args.screens.mkdir(parents=True, exist_ok=True)
                 page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
                                         reduced_motion="reduce")
-                if args.quest_user is None:
+                if args.refresh_user:
                     check_ap_recovery(page, origin, args.database, args.refresh_user,
                                       args.refresh_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Original Ruby AP recovered from 4/5 to 5/5 on the existing Lobby connection.")
-                else:
+                elif args.quest_user:
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
+                else:
+                    check_quest_start(page, origin, args.database, args.quest_start_user,
+                                      args.quest_start_password_file.read_text().rstrip("\r\n"),
+                                      args.screens, args.quest_start_fault)
+                    print(f"Real initial Quest start/terrain passed ({args.quest_start_fault or 'normal'}).")
                 return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):
                 directory = args.screens / f"avatar-{number}" if args.screens is not None else None

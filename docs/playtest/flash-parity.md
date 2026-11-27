@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、兩秒場景音樂淡出、魔女山谷搜尋及到期、任務詳情、NEW 確認、地形滑入、地圖內返回與真實牌組切換。 | 接入卡面、開始任務、空牌組提示與首格移動，再開始首場 PvE。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告、落日大蝙蝠開始與首格，以及舞台 11 背景入場。 | 接首戰開場人物與 HUD、原版 Ready、抽牌和首回合操作。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -80,4 +80,10 @@
 ### 任務詳情、地形及牌組
 
 - 從正常遊戲進入魔女山谷，選「落日大蝙蝠」即展開詳情。收到 Ruby 對同一持有 ID 的確認後，NEW 變成未完成。地形滑入會填入高原圖與繁中說明，移出清空。地圖內返回、重開與牌組箭頭全程保留同一條 Quest 與背景音樂。牌組經已登入的 Lobby 確認，已驗兩個空牌組及左右循環，AP 維持 4/5。[任務詳情並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/detail-comparison.png) · [地形滑入並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/terrain-hover-comparison.png) · [空牌組並排](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/empty-deck-comparison.png) · [可重跑測例](flash-parity/qa.md#重跑任務詳情與牌組切換)
-- 暫緩及遺失回覆使用 Ruby 真確認。遺失後同一場景重開維持待確認狀態。回大廳重進後，原版清單回播同一筆未完成任務，未重送確認。舊 Flash 的地形說明缺字，新版以原版繁中資料顯示。完整卡面與其他任務的寶箱閃光循環待接入，開始、丟棄與贈送目前只顯示來源按鈕。[新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/qa-native-detail-wire.json) · [任務頁狀態與素材](flash-parity/quest-pve.md#任務詳情的來源規格)
+- 暫緩及遺失回覆使用 Ruby 真確認。遺失後同一場景重開維持待確認狀態。回大廳重進後，原版清單回播同一筆未完成任務，未重送確認。舊 Flash 的地形說明缺字，新版以原版繁中資料顯示。寶箱閃光循環、丟棄與贈送待接入。[新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-details-live/qa-native-detail-wire.json) · [任務頁狀態與素材](flash-parity/quest-pve.md#任務詳情的來源規格)
+
+### 起始卡面、開始任務與首格
+
+- 原版與新版實跑落日大蝙蝠。Deck 2 為空時顯示原版警告與按鈕聚焦，Ruby 未收到開始封包。切回 Deck 1 後，開始只送一次，Ruby 確認進行中及牌組鎖定，棋子出現、可走首格高亮，任務 AP 仍為 4/5。五張起始角色卡沿用原插畫、卡框、槽色與字型。實跑牌組以卡 21 核對實際卡位和屬性。[空牌組警告並排](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/empty-deck-warning-comparison.png) · [開始與棋子並排](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/quest-started-comparison.png)
+- 保留同條 Quest，原版 Ruby 確認首格 `SC128` 後才更新棋子座標。收到遭遇和配牌後，按來源時序燃燒轉場至舞台 11，任務曲淡出並由原曲 `bgm000.mp3` 接續。原版會在後續完整開場自動送 Ready。新版此次停在掛載首戰背景的階段。[首格滑入並排](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/first-land-hover-comparison.png) · [首戰背景並排](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/first-battle-comparison.png) · [新版轉場](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/qa-05-first-terrain-burn.png) · [自動 Ready 原版證據](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/ready/wire.json)
+- 兩個真回覆遺失的案例各只送一次操作。遺失開始確認時保持原畫面，Ruby 資料已保存牌組鎖。首格已收到位置時會到格，遺失其後的配牌回覆時保留同一格與 Quest，戰鬥背景尚未開啟。[新版雙向測試記錄](/workspace/shared/unlight-web-port/flash-parity/quest-start-live/qa-native-start-wire.json) · [重跑首格驗收](flash-parity/qa.md#重跑開始任務與首格入場)

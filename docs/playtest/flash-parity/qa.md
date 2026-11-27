@@ -104,6 +104,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 使用上面的完整 `check_source_lobby.py` 命令，以 `--screens` 保存固定 780×680 圖。兩位原版 Ruby 新角色各實際搜尋落日大蝙蝠，核對 NEW 點下時已展開詳情、狀態只依相符回覆變動。暫緩後放行的案例驗證地形滑入／移出、左上返回與重開、實際牌組循環和 BGM 播放延續。模擬遺失的案例在原始真回覆到達時略過轉交，驗證同次開啟不重送，回大廳再進任務由原版清單回播復原。最後比對 Quest 與 Lobby 的實際封包、SQLite、AP 和右上 Back 後的四條連線。[瀏覽器測例](../../../tools/legacy-web/check_source_lobby.py) · [原版操作與畫面](/workspace/shared/unlight-web-port/flash-parity/quest-details-original/README.md)
 
+### 重跑開始任務與首格入場
+
+在隔離 Ruby 副本備好已有角色、AP 5/5、魔女山谷進度 0/3、空任務清單的測試帳號。對照用角色由原版 `Avatar.regist` 選配件 `[2,12,26,38]`、起始牌 `[21]` 和教學標記 14。Deck 1 有該卡，Deck 2 及 3 由原版建立為空牌組。讓 gateway 載入包含舞台 11 和卡面檔案的素材，再執行同一個測試腳本。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database "$proof_dir/native-ruby/app/server/data/game_dev2.db" \
+  --quest-start-user queststart --quest-start-password-file "$proof_dir/queststart-password" \
+  --screens "$proof_dir/native-quest-start"
+```
+
+用不同的全新隔離測試角色加 `--quest-start-fault start` 或 `--quest-start-fault land` 重跑，以暫緩實際 Ruby 回覆驗證結果不明的狀態。首格案例放行 `SC128` 和 `SC37`，保留棋子的權威座標，缺少 `SC40` 時不會切到對戰畫面。[原版完整步驟和封包](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/README.md) · [新版腳本](../../../tools/legacy-web/check_source_lobby.py)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

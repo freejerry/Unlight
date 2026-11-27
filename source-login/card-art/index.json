@@ -1,0 +1,411 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "width": 168,
+  "height": 240,
+  "base": {
+    "2": "frame-2.png",
+    "7": "frame-7.png",
+    "8": "frame-8.png",
+    "9": "frame-9.png"
+  },
+  "overlays": {
+    "normal": {
+      "1": "overlay-normal-1.png",
+      "2": "overlay-normal-2.png",
+      "3": "overlay-normal-3.png",
+      "4": "overlay-normal-4.png",
+      "5": "overlay-normal-5.png",
+      "6": "overlay-normal-6.png",
+      "7": "overlay-normal-7.png",
+      "8": "overlay-normal-8.png",
+      "9": "overlay-normal-9.png",
+      "10": "overlay-normal-10.png",
+      "11": "overlay-normal-11.png",
+      "12": "overlay-normal-12.png",
+      "13": "overlay-normal-13.png",
+      "14": "overlay-normal-14.png",
+      "15": "overlay-normal-15.png",
+      "16": "overlay-normal-16.png",
+      "17": "overlay-normal-17.png",
+      "18": "overlay-normal-18.png",
+      "19": "overlay-normal-19.png",
+      "20": "overlay-normal-20.png",
+      "21": "overlay-normal-21.png",
+      "22": "overlay-normal-22.png",
+      "23": "overlay-normal-23.png"
+    },
+    "reborn": {
+      "1": "overlay-reborn-1.png",
+      "2": "overlay-reborn-2.png",
+      "3": "overlay-reborn-3.png",
+      "4": "overlay-reborn-4.png",
+      "5": "overlay-reborn-5.png",
+      "6": "overlay-reborn-6.png",
+      "7": "overlay-reborn-7.png"
+    },
+    "episode": {
+      "1": "overlay-episode-1.png",
+      "2": "overlay-episode-2.png",
+      "3": "overlay-episode-3.png",
+      "4": "overlay-episode-4.png",
+      "5": "overlay-episode-5.png"
+    }
+  },
+  "emptySlots": {
+    "normal": "slots-normal.png",
+    "reborn": "slots-reborn.png",
+    "episode": "slots-episode.png"
+  },
+  "stars": {
+    "1": "star-1.png",
+    "2": "star-2.png",
+    "3": "star-3.png",
+    "4": "star-4.png",
+    "5": "star-5.png",
+    "6": "star-6.png",
+    "7": "star-7.png"
+  },
+  "illustrations": {
+    "1": "illustration-1.png",
+    "21": "illustration-21.png",
+    "31": "illustration-31.png",
+    "101": "illustration-101.png",
+    "111": "illustration-111.png"
+  },
+  "font": {
+    "file": "card-names.woff",
+    "source": "res/data/wt004.ttf",
+    "repository": "https://github.com/UnlightCloud/shell",
+    "revision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+    "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+    "sha256": "9e70f1b904db191cbb96d4447800cb4f777f7ae2712f9da450461498229c2f3f"
+  },
+  "layers": {
+    "frame-2.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sourceFrame": 2,
+      "sha256": "89fbfe6b400c29d4780d84a398902f4b9588c842dc049ae36018b69704ef70c5"
+    },
+    "frame-7.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sourceFrame": 7,
+      "sha256": "07ea7caeebcde410a4f84441b78ab15c57d8348a85628e95ebf4e351b19ab8dc"
+    },
+    "frame-8.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sourceFrame": 8,
+      "sha256": "e324fb13a467ed6be16167bbb8d2cfa2adcd6504cdae4cef86c9b25f5acaecc8"
+    },
+    "frame-9.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sourceFrame": 9,
+      "sha256": "68e5f56f577f6aaf25b6c0ed1c86aa58f1163206f7de3293af3c7973b46cf349"
+    },
+    "overlay-normal-1.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 1,
+      "sha256": "ea94f5fd9ae21d7441773b1664371cb6a891559d83d9e1fdba38f322ee051984"
+    },
+    "overlay-normal-2.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 2,
+      "sha256": "18554178671496d37aa379b48be6662867f7f44570e9414433327ef69fd19018"
+    },
+    "overlay-normal-3.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 3,
+      "sha256": "c102c5e71c00e9dcca8d53f3513e32f955b5db5dd4f1ec3ed912f63aa792b4aa"
+    },
+    "overlay-normal-4.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 4,
+      "sha256": "839f2b8a25c3509635064fe6e173e33dbe2f896d7d2675469e12186d46c9d5e4"
+    },
+    "overlay-normal-5.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 5,
+      "sha256": "293c3ab259f2f52831d58957e9a954528cdf92434c733859610359fc3e64addd"
+    },
+    "overlay-normal-6.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 6,
+      "sha256": "363d05e5b28d3e2ad6b358f1eb64ad3a486985b7d35105761b4ac8345f833996"
+    },
+    "overlay-normal-7.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 7,
+      "sha256": "24177e1e516cb4afed4e2433c88d595f688006ccd16c4f8a414c25aac9da6ebe"
+    },
+    "overlay-normal-8.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 8,
+      "sha256": "9dfc8a5b05145e1c73c89040e5a660a7c6710a26602c013cf750aeab92586dc2"
+    },
+    "overlay-normal-9.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 9,
+      "sha256": "d8f5365b5e8dd5c45f0363169f1040d31442f8cf99639fd5b876b96c78c69321"
+    },
+    "overlay-normal-10.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 10,
+      "sha256": "9838d67ff6c09b6a3c572fe6af3fb358daf6bff53d5689a55b7194e7951e1e3a"
+    },
+    "overlay-normal-11.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 11,
+      "sha256": "68f5ce005c86745a16417ac51dffb23fbfe1de2ae3fd0834626c861de692647f"
+    },
+    "overlay-normal-12.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 12,
+      "sha256": "15f2a1f411235154eec88cb0f8628da3ddf64b3f8ea1d265352d8b13f0a8fbd7"
+    },
+    "overlay-normal-13.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 13,
+      "sha256": "03dde1060e3eaeaa3ac2a4c29c84a4f239c176c108ce21c439ac85ef7efe7c3f"
+    },
+    "overlay-normal-14.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 14,
+      "sha256": "ed045bd51d8e24c88bc35fa230b07df37fdd47ddd27d0c16775bef17c11ac61b"
+    },
+    "overlay-normal-15.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 15,
+      "sha256": "f451cb013610fbfca129cab20a144eecb6a7d84a8e5a8e093d97be6f734482f8"
+    },
+    "overlay-normal-16.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 16,
+      "sha256": "bc57349fec0dcd2a4e776db1c5ca3844e845207bb4282c8874160ab01d74f88a"
+    },
+    "overlay-normal-17.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 17,
+      "sha256": "ea94f5fd9ae21d7441773b1664371cb6a891559d83d9e1fdba38f322ee051984"
+    },
+    "overlay-normal-18.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 18,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-normal-19.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 19,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-normal-20.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 20,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-normal-21.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 21,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "overlay-normal-22.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 22,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "overlay-normal-23.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 23,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "slots-normal.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sourceFrame": 1,
+      "sha256": "99a596fe5c0487be7c571ee4a673d556bc21d8870fdc9162ebf91d4c7db2eab5"
+    },
+    "overlay-reborn-1.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 1,
+      "sha256": "ea94f5fd9ae21d7441773b1664371cb6a891559d83d9e1fdba38f322ee051984"
+    },
+    "overlay-reborn-2.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 2,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-reborn-3.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 3,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-reborn-4.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 4,
+      "sha256": "ff2817374d6b6c86872fb91a6f65c20dfa0f2a8fae49dc99d0c7085035d29e65"
+    },
+    "overlay-reborn-5.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 5,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "overlay-reborn-6.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 6,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "overlay-reborn-7.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 7,
+      "sha256": "e3d56002c23c09fb4c9717ba1598db0cf8ef85c2902a754415404100f5c303c0"
+    },
+    "slots-reborn.png": {
+      "source": "data/image/ccframe_b_over.swf",
+      "sourceSha256": "0af93b453b47676f5b17594956e31455f7c7b368683f61155a202547dd7a002e",
+      "sourceFrame": 1,
+      "sha256": "99a596fe5c0487be7c571ee4a673d556bc21d8870fdc9162ebf91d4c7db2eab5"
+    },
+    "overlay-episode-1.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 1,
+      "sha256": "3c44fe218d69023ff6350dc1b458349be27911c44728117876ee993988e0813a"
+    },
+    "overlay-episode-2.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 2,
+      "sha256": "a4da888f63b347e75cd881ebd308e093a01f0ca3c68f6a809484db4acb62ca45"
+    },
+    "overlay-episode-3.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 3,
+      "sha256": "0518e7e031af7db91777d4f5d155338be178a1062ed92b640563e5a4f0a23b70"
+    },
+    "overlay-episode-4.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 4,
+      "sha256": "d543732a1b8e03653ff24dd6c563d7a5b48210a8085f45f84659a8866fe95068"
+    },
+    "overlay-episode-5.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 5,
+      "sha256": "74ea12ac8f2bdc4389d1a3212a21bd7f9244a002eec842e322b64d33a56627f7"
+    },
+    "slots-episode.png": {
+      "source": "data/image/ccframe_c_over.swf",
+      "sourceSha256": "bc4f47ee3a34a4745406ea17d78c0ddfdb97833fed61646bf5e368b5b903ca8f",
+      "sourceFrame": 1,
+      "sha256": "99a596fe5c0487be7c571ee4a673d556bc21d8870fdc9162ebf91d4c7db2eab5"
+    },
+    "star-1.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "8fe6ceba6ec69818990c43c3e1658dfdc241aee7e36a088944e44f82733d96b5"
+    },
+    "star-2.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "2b0b82223ff7003b993a6f89ed188946b40ca24da2d8b352401c4b4cb1b978d6"
+    },
+    "star-3.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "916579e100b75222d2cd829079862d36d401a66307b53be221d3e368fdc5a842"
+    },
+    "star-4.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "75c6bc978c87ac32dee0638736e393603831538f9fedfdae8f4dafe31e9cb9a2"
+    },
+    "star-5.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "d2e7ed28cbce35c5e0d4f429a2eb6b005b802d1cd6be44682b72f0e97b314f82"
+    },
+    "star-6.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "ce7c0a0f1a08985c94822b0f3db78bad39a7922af8ab4765ef0fa29abae5d749"
+    },
+    "star-7.png": {
+      "source": "data/image/common/ccframe_star.swf",
+      "sourceSha256": "d19fdceebee9fbd644b6c44446137c1650c026e7625bc232636c083cdb5c547e",
+      "sourceFrame": 1,
+      "sha256": "ff9f8890d4e381a0382ee2c346a795159e476d20de29fa38d8ecf1a2463f24c1"
+    },
+    "illustration-1.png": {
+      "source": "public/image/cc01_01.swf",
+      "sourceSha256": "9974558ec450c26b0a757e1c93e1b870cafec48537f04016a8ed0857452cfd29",
+      "sourceFrame": 1,
+      "sha256": "ed950d18167de67d07028013d0d47d37bce7289dd8b626139a4bed33931a9885"
+    },
+    "illustration-21.png": {
+      "source": "public/image/cc03_01.swf",
+      "sourceSha256": "524c6943068066b2d7451de87ddd52f4906d2870ebe71afafeb5484294fbcd65",
+      "sourceFrame": 1,
+      "sha256": "f55fd93d49ac8d0e438da7613fd27eda28356d9cb9173dae9ef9804da6288840"
+    },
+    "illustration-31.png": {
+      "source": "public/image/cc04_01.swf",
+      "sourceSha256": "b91ccf50e66f23c19e9e095e05e1b15e902e720e4f922fa09ef50f34824f1c03",
+      "sourceFrame": 1,
+      "sha256": "df0550de4f4263f3b759ba5c69cdfdea9008f27d558050931bcc505ba173bcb8"
+    },
+    "illustration-101.png": {
+      "source": "public/image/cc11_01.swf",
+      "sourceSha256": "91f702ef1236adf503fa2112c3a8ed349a704f8a8ade052d25181eab58e32898",
+      "sourceFrame": 1,
+      "sha256": "07488f74c0ac1f593eb9332dcdd457f908f7f6dcfe956589788b6d7516d650cb"
+    },
+    "illustration-111.png": {
+      "source": "public/image/cc12_01.swf",
+      "sourceSha256": "b97442277dbbc526e99a9a8a6efc00d52ee9217e05df8a43f389f1a7945b19d2",
+      "sourceFrame": 1,
+      "sha256": "d7d1733cec121bbaf45e9a52b9d5cd36a7ad19347506a43c6185c24127426528"
+    }
+  }
+}

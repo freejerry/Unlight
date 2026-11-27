@@ -3688,6 +3688,91 @@
       "height": 64,
       "sha256": "ffa77f1bb63c2ebed3d5a192172a84b530a2496a67ad31c1e5223aae60f92426"
     },
+    "quest-detail-pawn-01.png": {
+      "source": "data/image/quest/unit_chara01.swf",
+      "sourceSha256": "b7b6a68cc786ba4ac43ca8c35a9a5cda0935fe0c00fe4382923684658899c41d",
+      "sourceFrame": 1,
+      "coordinateSpace": "pawn",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "x": -12.0,
+      "y": -37.0,
+      "width": 24,
+      "height": 40,
+      "sha256": "f745b6f8efd8135f5e5be71d7db9b50766be5e5b57f0542b5975d6448902b665"
+    },
+    "quest-detail-pawn-03.png": {
+      "source": "data/image/quest/unit_chara03.swf",
+      "sourceSha256": "6cd2e124f7efd8a71e8d332d9da104e6cb191c975222424012e4bb257ea75482",
+      "sourceFrame": 1,
+      "coordinateSpace": "pawn",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "x": -12.0,
+      "y": -37.0,
+      "width": 24,
+      "height": 40,
+      "sha256": "4d892c1d9dfc038dacdd2bef5ccff7f0a0c4705fdc3cb7732ddf2119c6c980f4"
+    },
+    "quest-detail-pawn-04.png": {
+      "source": "data/image/quest/unit_chara04.swf",
+      "sourceSha256": "b2b425125e5897e0c460f49116d60f7a4354389022a44dfe3c75b27bcdf2cb26",
+      "sourceFrame": 1,
+      "coordinateSpace": "pawn",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "x": -12.0,
+      "y": -37.0,
+      "width": 24,
+      "height": 40,
+      "sha256": "e0ce772b1e8acb614e1d9d363ab2785a6d42801b4c3e1096501c638286f412c1"
+    },
+    "quest-detail-pawn-11.png": {
+      "source": "data/image/quest/unit_chara11.swf",
+      "sourceSha256": "f6fdb01b3ff95d95d14f7bc650a102b79f7e0bcf150e01c318bedfaae0e939d2",
+      "sourceFrame": 1,
+      "coordinateSpace": "pawn",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "x": -12.0,
+      "y": -37.0,
+      "width": 24,
+      "height": 40,
+      "sha256": "34bbfcb377af829946bf025e3d1583404a031ec1cd48cc7b3808d0adbbe72cc0"
+    },
+    "quest-detail-pawn-12.png": {
+      "source": "data/image/quest/unit_chara12.swf",
+      "sourceSha256": "7c67cb97b7e14dfac14d5f54039ce786d91ed4266b04dadcdb1c572485675496",
+      "sourceFrame": 1,
+      "coordinateSpace": "pawn",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "x": -12.0,
+      "y": -37.0,
+      "width": 24,
+      "height": 40,
+      "sha256": "6ceb5680c1de7b5aca93ab14dc45136a36bd0aa1198e08c3aeaf5cd06f235232"
+    },
     "quest-detail-path-left-1.png": {
       "source": "data/image/quest/map_pass_left.swf",
       "sourceSha256": "7b0ff0c731d731e9281d0cab72ec3582725035b54f4df90307af87b80ffcccd6",
@@ -4371,6 +4456,64 @@
       "height": 64,
       "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
     },
+    "quest-detail-land-sl-gate-up.png": {
+      "source": "data/image/quest/land_sl_gate.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-sl-gate-over.png": {
+      "source": "data/image/quest/land_sl_gate.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        7
+      ],
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "6fca273cad9f95af5be140d5857a38e24a34137d20ef33f049bef78fadcedd6a"
+    },
+    "quest-detail-land-sl-gate-pulse.png": {
+      "source": "data/image/quest/land_sl_gate.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 5,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-sl-forest-dis.png": {
       "source": "data/image/quest/land_sl_forest.swf",
       "sourceSha256": "58c8b3e2dc400dee3044364f112c83aee84a4d6e5ea23b8fddec374069fbe5e0",
@@ -4388,6 +4531,64 @@
       "width": 80,
       "height": 64,
       "sha256": "15172b40314f0048f58d2ee871be28e44d34a92f27de508e2a64202cc63b94d9"
+    },
+    "quest-detail-land-sl-forest-up.png": {
+      "source": "data/image/quest/land_sl_forest.swf",
+      "sourceSha256": "58c8b3e2dc400dee3044364f112c83aee84a4d6e5ea23b8fddec374069fbe5e0",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "15172b40314f0048f58d2ee871be28e44d34a92f27de508e2a64202cc63b94d9"
+    },
+    "quest-detail-land-sl-forest-over.png": {
+      "source": "data/image/quest/land_sl_forest.swf",
+      "sourceSha256": "58c8b3e2dc400dee3044364f112c83aee84a4d6e5ea23b8fddec374069fbe5e0",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "18df72272241644d83361ffdc99fcfb932b4abee1134434d4551fbb290e10e62"
+    },
+    "quest-detail-land-sl-forest-pulse.png": {
+      "source": "data/image/quest/land_sl_forest.swf",
+      "sourceSha256": "58c8b3e2dc400dee3044364f112c83aee84a4d6e5ea23b8fddec374069fbe5e0",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
     },
     "quest-detail-land-sl-road-dis.png": {
       "source": "data/image/quest/land_sl_road.swf",
@@ -4407,6 +4608,64 @@
       "height": 64,
       "sha256": "ca4a5af35039f10b60dfd4020359314b332759e94d983a190f05282b27ab570b"
     },
+    "quest-detail-land-sl-road-up.png": {
+      "source": "data/image/quest/land_sl_road.swf",
+      "sourceSha256": "cd92e79b679c1af7822083b58311d85b054dc1907c5db72b395df4535f22a9fb",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "ca4a5af35039f10b60dfd4020359314b332759e94d983a190f05282b27ab570b"
+    },
+    "quest-detail-land-sl-road-over.png": {
+      "source": "data/image/quest/land_sl_road.swf",
+      "sourceSha256": "cd92e79b679c1af7822083b58311d85b054dc1907c5db72b395df4535f22a9fb",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "17f45f725e34a82015ec8d85ee699cb0176e892ddde79f6f75a811ff26162477"
+    },
+    "quest-detail-land-sl-road-pulse.png": {
+      "source": "data/image/quest/land_sl_road.swf",
+      "sourceSha256": "cd92e79b679c1af7822083b58311d85b054dc1907c5db72b395df4535f22a9fb",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-sl-lake-dis.png": {
       "source": "data/image/quest/land_sl_lake.swf",
       "sourceSha256": "46064debc1f45793462218d136436db4fb28d7e22a8fd535161130ff7b01b44c",
@@ -4424,6 +4683,64 @@
       "width": 80,
       "height": 64,
       "sha256": "ece150c614f4f4749fe625d69c0b40eea4315ea4811d3af11910bdac4f4b1299"
+    },
+    "quest-detail-land-sl-lake-up.png": {
+      "source": "data/image/quest/land_sl_lake.swf",
+      "sourceSha256": "46064debc1f45793462218d136436db4fb28d7e22a8fd535161130ff7b01b44c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "ece150c614f4f4749fe625d69c0b40eea4315ea4811d3af11910bdac4f4b1299"
+    },
+    "quest-detail-land-sl-lake-over.png": {
+      "source": "data/image/quest/land_sl_lake.swf",
+      "sourceSha256": "46064debc1f45793462218d136436db4fb28d7e22a8fd535161130ff7b01b44c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "fb311b6079c5cb22b347df54f961632d9bbbbfd54ed75c19094a05d011bdd172"
+    },
+    "quest-detail-land-sl-lake-pulse.png": {
+      "source": "data/image/quest/land_sl_lake.swf",
+      "sourceSha256": "46064debc1f45793462218d136436db4fb28d7e22a8fd535161130ff7b01b44c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
     },
     "quest-detail-land-sl-cemetery-dis.png": {
       "source": "data/image/quest/land_sl_cemetery.swf",
@@ -4443,6 +4760,64 @@
       "height": 64,
       "sha256": "8e1d616bb79f6bf44353609eefe1e6d1e3e66da1a7da619fb974dfe36960c71e"
     },
+    "quest-detail-land-sl-cemetery-up.png": {
+      "source": "data/image/quest/land_sl_cemetery.swf",
+      "sourceSha256": "4911aec7b51eecab416ca5fc0f583189db33d56d70b81e330a4a52b562d93a8c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "8e1d616bb79f6bf44353609eefe1e6d1e3e66da1a7da619fb974dfe36960c71e"
+    },
+    "quest-detail-land-sl-cemetery-over.png": {
+      "source": "data/image/quest/land_sl_cemetery.swf",
+      "sourceSha256": "4911aec7b51eecab416ca5fc0f583189db33d56d70b81e330a4a52b562d93a8c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "8685e5440dfb6d06abd2b4a45075f2e18c934cadcefef3f624102c21b524218c"
+    },
+    "quest-detail-land-sl-cemetery-pulse.png": {
+      "source": "data/image/quest/land_sl_cemetery.swf",
+      "sourceSha256": "4911aec7b51eecab416ca5fc0f583189db33d56d70b81e330a4a52b562d93a8c",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-sl-village-dis.png": {
       "source": "data/image/quest/land_sl_village.swf",
       "sourceSha256": "db90d3151fe0cbfbec795ae93ecb473587c9e5f0602f5c5d1c9c6d55ed8ce4ea",
@@ -4460,6 +4835,64 @@
       "width": 80,
       "height": 64,
       "sha256": "981d77d0c3d522584e505c65124fe73b22c7a247d11a78593ed2a84c8790d46b"
+    },
+    "quest-detail-land-sl-village-up.png": {
+      "source": "data/image/quest/land_sl_village.swf",
+      "sourceSha256": "db90d3151fe0cbfbec795ae93ecb473587c9e5f0602f5c5d1c9c6d55ed8ce4ea",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "981d77d0c3d522584e505c65124fe73b22c7a247d11a78593ed2a84c8790d46b"
+    },
+    "quest-detail-land-sl-village-over.png": {
+      "source": "data/image/quest/land_sl_village.swf",
+      "sourceSha256": "db90d3151fe0cbfbec795ae93ecb473587c9e5f0602f5c5d1c9c6d55ed8ce4ea",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "c93f4fc5c8fd899a5440a76913c2dc4287a55289c7bf50b9f8fee7e7ccfb5b62"
+    },
+    "quest-detail-land-sl-village-pulse.png": {
+      "source": "data/image/quest/land_sl_village.swf",
+      "sourceSha256": "db90d3151fe0cbfbec795ae93ecb473587c9e5f0602f5c5d1c9c6d55ed8ce4ea",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
     },
     "quest-detail-land-sl-wilderness-dis.png": {
       "source": "data/image/quest/land_sl_wilderness.swf",
@@ -4479,6 +4912,64 @@
       "height": 64,
       "sha256": "00959733f9fd0d0f5f2c6813d471b4e05ff12d7a0a1e979f02e31331bcae3755"
     },
+    "quest-detail-land-sl-wilderness-up.png": {
+      "source": "data/image/quest/land_sl_wilderness.swf",
+      "sourceSha256": "caa2df1f24e0afffe26ee6ac19f46fda75d137ca28f2837c3ac01dfe04ff4740",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "00959733f9fd0d0f5f2c6813d471b4e05ff12d7a0a1e979f02e31331bcae3755"
+    },
+    "quest-detail-land-sl-wilderness-over.png": {
+      "source": "data/image/quest/land_sl_wilderness.swf",
+      "sourceSha256": "caa2df1f24e0afffe26ee6ac19f46fda75d137ca28f2837c3ac01dfe04ff4740",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -40.0,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "154f95eb4ba196490df240ac7b0186661d9e010b7c6c680aa12663340bf299bd"
+    },
+    "quest-detail-land-sl-wilderness-pulse.png": {
+      "source": "data/image/quest/land_sl_wilderness.swf",
+      "sourceSha256": "caa2df1f24e0afffe26ee6ac19f46fda75d137ca28f2837c3ac01dfe04ff4740",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-sl-ruin-dis.png": {
       "source": "data/image/quest/land_sl_ruin.swf",
       "sourceSha256": "e3d23d732faa68f1960a79ff47b18f5fa4305f861df928593cc5236405381334",
@@ -4496,6 +4987,64 @@
       "width": 80,
       "height": 64,
       "sha256": "f0e62573c1729c8e404bff914d755c6868930d76e2ac7d3776908554aa963737"
+    },
+    "quest-detail-land-sl-ruin-up.png": {
+      "source": "data/image/quest/land_sl_ruin.swf",
+      "sourceSha256": "e3d23d732faa68f1960a79ff47b18f5fa4305f861df928593cc5236405381334",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "f0e62573c1729c8e404bff914d755c6868930d76e2ac7d3776908554aa963737"
+    },
+    "quest-detail-land-sl-ruin-over.png": {
+      "source": "data/image/quest/land_sl_ruin.swf",
+      "sourceSha256": "e3d23d732faa68f1960a79ff47b18f5fa4305f861df928593cc5236405381334",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -62.0,
+      "width": 80,
+      "height": 64,
+      "sha256": "b1490d5c88a87be9214073ecfd5bc9b8e3aac5c9463edabb932b2d643b925a85"
+    },
+    "quest-detail-land-sl-ruin-pulse.png": {
+      "source": "data/image/quest/land_sl_ruin.swf",
+      "sourceSha256": "e3d23d732faa68f1960a79ff47b18f5fa4305f861df928593cc5236405381334",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.9,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
     },
     "quest-detail-land-ml-castle-dis.png": {
       "source": "data/image/quest/land_ml_castle.swf",
@@ -4515,6 +5064,64 @@
       "height": 64,
       "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
     },
+    "quest-detail-land-ml-castle-up.png": {
+      "source": "data/image/quest/land_ml_castle.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-ml-castle-over.png": {
+      "source": "data/image/quest/land_ml_castle.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        7
+      ],
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "6fca273cad9f95af5be140d5857a38e24a34137d20ef33f049bef78fadcedd6a"
+    },
+    "quest-detail-land-ml-castle-pulse.png": {
+      "source": "data/image/quest/land_ml_castle.swf",
+      "sourceSha256": "8534bb571facbff22927873edc90d9655641ebddd9f899cb49e072b2a4349862",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 5,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-am-wasteland-dis.png": {
       "source": "data/image/quest/land_am_wasteland.swf",
       "sourceSha256": "e9308b1f98ca2fc7891c2576ed9f78d7874dcefddda9ae799b366b8179618683",
@@ -4532,6 +5139,64 @@
       "width": 80,
       "height": 64,
       "sha256": "636a5a547ee4dacb5630b701d566562063dea6245392229c7f4241780e48aad2"
+    },
+    "quest-detail-land-am-wasteland-up.png": {
+      "source": "data/image/quest/land_am_wasteland.swf",
+      "sourceSha256": "e9308b1f98ca2fc7891c2576ed9f78d7874dcefddda9ae799b366b8179618683",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "636a5a547ee4dacb5630b701d566562063dea6245392229c7f4241780e48aad2"
+    },
+    "quest-detail-land-am-wasteland-over.png": {
+      "source": "data/image/quest/land_am_wasteland.swf",
+      "sourceSha256": "e9308b1f98ca2fc7891c2576ed9f78d7874dcefddda9ae799b366b8179618683",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "ee1a412e1de96eabe20cb37c058eed2d98c684cf9c1e91531b1232b3441a9532"
+    },
+    "quest-detail-land-am-wasteland-pulse.png": {
+      "source": "data/image/quest/land_am_wasteland.swf",
+      "sourceSha256": "e9308b1f98ca2fc7891c2576ed9f78d7874dcefddda9ae799b366b8179618683",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
     },
     "quest-detail-land-am-stone-dis.png": {
       "source": "data/image/quest/land_am_stone.swf",
@@ -4551,6 +5216,64 @@
       "height": 64,
       "sha256": "57d20ef8a4d92aea97527da2f4a45d141415d15b8938484b4ff0cb46a345221a"
     },
+    "quest-detail-land-am-stone-up.png": {
+      "source": "data/image/quest/land_am_stone.swf",
+      "sourceSha256": "35a0e8cac598ac45282bf7478abde867b2a78e6cc026bee0c574d0edc4656070",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "57d20ef8a4d92aea97527da2f4a45d141415d15b8938484b4ff0cb46a345221a"
+    },
+    "quest-detail-land-am-stone-over.png": {
+      "source": "data/image/quest/land_am_stone.swf",
+      "sourceSha256": "35a0e8cac598ac45282bf7478abde867b2a78e6cc026bee0c574d0edc4656070",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "c66ad824589044e3790d6ed3736b901a9bb3a361cf296146b2238bb026418357"
+    },
+    "quest-detail-land-am-stone-pulse.png": {
+      "source": "data/image/quest/land_am_stone.swf",
+      "sourceSha256": "35a0e8cac598ac45282bf7478abde867b2a78e6cc026bee0c574d0edc4656070",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-al-arch-dis.png": {
       "source": "data/image/quest/land_al_arch.swf",
       "sourceSha256": "f3bb1f02b2893fdaab92e600634bd70538f47a2c10f32b97de32fff6abe87cbf",
@@ -4569,6 +5292,64 @@
       "height": 64,
       "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
     },
+    "quest-detail-land-al-arch-up.png": {
+      "source": "data/image/quest/land_al_arch.swf",
+      "sourceSha256": "f3bb1f02b2893fdaab92e600634bd70538f47a2c10f32b97de32fff6abe87cbf",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-al-arch-over.png": {
+      "source": "data/image/quest/land_al_arch.swf",
+      "sourceSha256": "f3bb1f02b2893fdaab92e600634bd70538f47a2c10f32b97de32fff6abe87cbf",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "6fca273cad9f95af5be140d5857a38e24a34137d20ef33f049bef78fadcedd6a"
+    },
+    "quest-detail-land-al-arch-pulse.png": {
+      "source": "data/image/quest/land_al_arch.swf",
+      "sourceSha256": "f3bb1f02b2893fdaab92e600634bd70538f47a2c10f32b97de32fff6abe87cbf",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
     "quest-detail-land-end-throne-dis.png": {
       "source": "data/image/quest/land_end_throne.swf",
       "sourceSha256": "abea4c5b314b9fb89529f7cd1c38925b9fc80a15be51864e5d20058c66111224",
@@ -4586,6 +5367,154 @@
       "width": 80,
       "height": 64,
       "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-end-throne-up.png": {
+      "source": "data/image/quest/land_end_throne.swf",
+      "sourceSha256": "abea4c5b314b9fb89529f7cd1c38925b9fc80a15be51864e5d20058c66111224",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "491abc1e0fd8070d8ecb0c9d7e590cd3e6142c848ab2ee87072d4403dc7f1059"
+    },
+    "quest-detail-land-end-throne-over.png": {
+      "source": "data/image/quest/land_end_throne.swf",
+      "sourceSha256": "abea4c5b314b9fb89529f7cd1c38925b9fc80a15be51864e5d20058c66111224",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceInstance": "en",
+      "sourceState": "over",
+      "x": -39.95,
+      "y": -61.95,
+      "width": 80,
+      "height": 64,
+      "sha256": "6fca273cad9f95af5be140d5857a38e24a34137d20ef33f049bef78fadcedd6a"
+    },
+    "quest-detail-land-end-throne-pulse.png": {
+      "source": "data/image/quest/land_end_throne.swf",
+      "sourceSha256": "abea4c5b314b9fb89529f7cd1c38925b9fc80a15be51864e5d20058c66111224",
+      "sourceFrame": 1,
+      "coordinateSpace": "terrain",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceInstance": "en",
+      "sourceState": "up",
+      "spriteId": 6,
+      "x": -34.95,
+      "y": -17.95,
+      "width": 70,
+      "height": 20,
+      "sha256": "1a0da0bacdda0c0e5ab3d853bd4dc301ade9ea63a4579035c9431c640e058438"
+    },
+    "quest-battle-stage11-far.jpg": {
+      "source": "data/image/bg/bg_btl11a.swf",
+      "sourceSha256": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "representation": "unchanged SWF JPEG stream",
+      "sourceDepth": 1,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 760,
+      "height": 567,
+      "sha256": "dd887c49e8a6f7a89d989bf0b71c29e041ce63441af9d6745b96278bf2a0ddb2"
+    },
+    "quest-battle-stage11-near-bottom.png": {
+      "source": "data/image/bg/bg_btl11a_book.swf",
+      "sourceSha256": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceDepth": 2,
+      "x": 0.0,
+      "y": 472.0,
+      "width": 760,
+      "height": 208,
+      "sha256": "ab347edd73eba511a747e0bf7e8aaf4ba008a3813b98554c5b7a61f061cddbb4"
+    },
+    "quest-battle-stage11-near-foreground.png": {
+      "source": "data/image/bg/bg_btl11a_book.swf",
+      "sourceSha256": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        3
+      ],
+      "bitmapIds": [
+        2
+      ],
+      "sourceDepth": 3,
+      "x": 0.0,
+      "y": 396.0,
+      "width": 760,
+      "height": 62,
+      "sha256": "82d01b06bc127bfb8d6e71b718d6a9f8ce02136db77732724300fef86ee3e729"
+    },
+    "quest-battle-base-frame.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        3,
+        3,
+        5,
+        5,
+        7,
+        7
+      ],
+      "bitmapIds": [
+        2,
+        2,
+        4,
+        4,
+        6,
+        6
+      ],
+      "sourceDepths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "x": 0.0,
+      "y": 0.0,
+      "width": 760,
+      "height": 680,
+      "sha256": "8ca38a0275fcbe3fba2f6395a7bcd1310718ceba41df87792a9e5c6eeac00b3d"
     }
   },
   "searchThumbnails": {
@@ -4805,6 +5734,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-gate-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-gate-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-gate-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "1": {
@@ -4814,6 +5812,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-forest-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-forest-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-forest-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "2": {
@@ -4823,6 +5890,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-road-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-road-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-road-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "3": {
@@ -4832,6 +5968,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-lake-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-lake-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-lake-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "4": {
@@ -4841,6 +6046,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-cemetery-up.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-cemetery-over.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-cemetery-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "5": {
@@ -4850,6 +6124,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-village-up.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-village-over.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-village-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "6": {
@@ -4859,6 +6202,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-wilderness-up.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-wilderness-over.png",
+          "x": -40.0,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-wilderness-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "7": {
@@ -4868,6 +6280,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-ruin-up.png",
+          "x": -39.95,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-ruin-over.png",
+          "x": -39.95,
+          "y": -62.0,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-ruin-pulse.png",
+            "x": -34.9,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "8": {
@@ -4877,6 +6358,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-lake-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-lake-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-lake-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "9": {
@@ -4886,6 +6436,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-lake-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-lake-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-lake-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "10": {
@@ -4895,6 +6514,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-ml-castle-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-ml-castle-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-ml-castle-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "11": {
@@ -4904,6 +6592,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-am-wasteland-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-am-wasteland-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-am-wasteland-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "12": {
@@ -4913,6 +6670,75 @@
           "y": -61.95,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-sl-lake-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-sl-lake-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-sl-lake-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "13": {
@@ -4922,6 +6748,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-am-stone-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-am-stone-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-am-stone-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "14": {
@@ -4931,6 +6826,75 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-al-arch-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-al-arch-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-al-arch-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       },
       "15": {
@@ -4940,8 +6904,151 @@
           "y": -62.0,
           "width": 80,
           "height": 64
+        },
+        "disabledHit": [
+          -40.0,
+          -62.0,
+          79.95,
+          63.95
+        ],
+        "up": {
+          "file": "quest-detail-land-end-throne-up.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "over": {
+          "file": "quest-detail-land-end-throne-over.png",
+          "x": -39.95,
+          "y": -61.95,
+          "width": 80,
+          "height": 64
+        },
+        "hit": [
+          -39.95,
+          -61.95,
+          79.95,
+          63.95
+        ],
+        "pulse": {
+          "layer": {
+            "file": "quest-detail-land-end-throne-pulse.png",
+            "x": -34.95,
+            "y": -17.95,
+            "width": 70,
+            "height": 20
+          },
+          "alpha": [
+            0.19921875,
+            0.23828125,
+            0.28125,
+            0.3203125,
+            0.359375,
+            0.3984375,
+            0.44140625,
+            0.48046875,
+            0.51953125,
+            0.55859375,
+            0.6015625,
+            0.640625,
+            0.6796875,
+            0.71875,
+            0.76171875,
+            0.80078125,
+            0.76171875,
+            0.71875,
+            0.6796875,
+            0.640625,
+            0.6015625,
+            0.55859375,
+            0.51953125,
+            0.48046875,
+            0.44140625,
+            0.3984375,
+            0.359375,
+            0.3203125,
+            0.28125,
+            0.23828125,
+            0.19921875
+          ],
+          "framesPerSecond": 40.8
         }
       }
+    },
+    "pawns": {
+      "1": {
+        "frames": [
+          {
+            "file": "quest-detail-pawn-01.png",
+            "x": -12.0,
+            "y": -37.0,
+            "width": 24,
+            "height": 40
+          }
+        ]
+      },
+      "3": {
+        "frames": [
+          {
+            "file": "quest-detail-pawn-03.png",
+            "x": -12.0,
+            "y": -37.0,
+            "width": 24,
+            "height": 40
+          }
+        ]
+      },
+      "4": {
+        "frames": [
+          {
+            "file": "quest-detail-pawn-04.png",
+            "x": -12.0,
+            "y": -37.0,
+            "width": 24,
+            "height": 40
+          }
+        ]
+      },
+      "11": {
+        "frames": [
+          {
+            "file": "quest-detail-pawn-11.png",
+            "x": -12.0,
+            "y": -37.0,
+            "width": 24,
+            "height": 40
+          }
+        ]
+      },
+      "12": {
+        "frames": [
+          {
+            "file": "quest-detail-pawn-12.png",
+            "x": -12.0,
+            "y": -37.0,
+            "width": 24,
+            "height": 40
+          }
+        ]
+      }
+    },
+    "movement": {
+      "x": [
+        128,
+        224,
+        320
+      ],
+      "startY": 76,
+      "yByColumn": [
+        140,
+        220,
+        300,
+        380,
+        460
+      ],
+      "durationMs": 529.4117647058823,
+      "easing": "sine-in-out"
     },
     "paths": {
       "left": {
@@ -5213,5 +7320,73 @@
       "exp_s",
       "highlow"
     ]
+  },
+  "battle": {
+    "stages": {
+      "11": {
+        "layers": [
+          {
+            "file": "quest-battle-stage11-far.jpg",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 760,
+            "height": 567,
+            "depth": 0
+          },
+          {
+            "file": "quest-battle-stage11-near-bottom.png",
+            "x": 0.0,
+            "y": 472.0,
+            "width": 760,
+            "height": 208,
+            "depth": 3
+          },
+          {
+            "file": "quest-battle-stage11-near-foreground.png",
+            "x": 0.0,
+            "y": 396.0,
+            "width": 760,
+            "height": 62,
+            "depth": 3
+          }
+        ],
+        "bgm": "/public/sound/bgm/bgm000.mp3"
+      }
+    },
+    "common": [
+      {
+        "file": "quest-battle-base-frame.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 760,
+        "height": 680,
+        "depth": 4
+      }
+    ],
+    "commonEntry": {
+      "durationMs": 500,
+      "easing": "sine-out"
+    },
+    "transition": {
+      "source": "app/client/src/view/scene/common/Transition.as",
+      "width": 760,
+      "height": 680,
+      "framesPerSecond": 40.8,
+      "mask": {
+        "baseX": 100,
+        "baseY": 100,
+        "octaves": 5,
+        "stitch": false,
+        "fractal": true,
+        "channel": 1,
+        "grayScale": true,
+        "seedUpperBound": 10000
+      },
+      "thresholdFactor": 0.06,
+      "thresholdMax": 16777215,
+      "lastThresholdTest": 14680063,
+      "thresholdUpdates": 34,
+      "delayAfterDetermineMs": 1100
+    }
   }
 }

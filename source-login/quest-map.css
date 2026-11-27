@@ -10,6 +10,22 @@
   font: 12px/1.3 Verdana, var(--interface-font);
 }
 
+.quest-map-board, #quest-map-battle {
+  position: absolute;
+  inset: 0;
+}
+
+.quest-map-board {
+  z-index: 2;
+  isolation: isolate;
+  background: inherit;
+  mask-size: 760px 680px;
+  mask-repeat: no-repeat;
+}
+
+#quest-map-battle { z-index: 1; }
+#quest-map-battle > img { position: absolute; pointer-events: none; }
+
 .quest-map-world,
 .quest-map-world img,
 .quest-map-landmark-hit,
@@ -97,8 +113,9 @@
   text-align: center;
 }
 
-.source-quest-map > .avatar-layer { z-index: 3; }
+.quest-map-board > .avatar-layer { z-index: 3; }
 .quest-map-list { top: 36px; left: 464px; width: 296px; height: 216px; z-index: 4; }
+.source-quest-map[data-adventure-state] .quest-map-list { filter: brightness(.5); }
 .quest-map-list-art { inset: 0 auto auto 0; pointer-events: none; }
 
 #quest-map-inventory {
@@ -197,6 +214,9 @@
   overflow-wrap: anywhere;
 }
 
+#quest-map-deck-cards > li:has(.quest-map-card-face) { padding: 0; }
+.quest-map-card-face { display: block; width: 84px; height: 120px; }
+
 #quest-map-status {
   z-index: 6;
   top: 5px;
@@ -245,8 +265,34 @@
 .quest-map-detail-copy { z-index: 2; color: #fff; }
 #quest-map-detail { z-index: 7; }
 .quest-map-detail-land, #quest-map-detail-back { pointer-events: auto; }
+.quest-map-detail-commands > [data-quest-command="start"]:enabled { pointer-events: auto; }
 .quest-map-detail-sprite { pointer-events: none; }
 #quest-map-detail-back { left: 8px; top: 40px; width: 88px; height: 24px; color: #fff; }
+
+button.quest-map-detail-land {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.quest-map-terrain-over { visibility: hidden; }
+.quest-map-terrain-cell:has(> button.quest-map-detail-land:is(:hover, :focus-visible, :active))
+  :is(.quest-map-terrain-up, .quest-map-terrain-pulse) { visibility: hidden; }
+.quest-map-terrain-cell:has(> button.quest-map-detail-land:is(:hover, :focus-visible, :active))
+  .quest-map-terrain-over { visibility: visible; }
+
+#quest-map-detail-pawn {
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(.445, .05, .55, .95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #quest-map-detail-pawn { transition: none; }
+}
 
 .quest-map-detail-heading {
   top: 33px;

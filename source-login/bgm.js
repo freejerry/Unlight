@@ -7,6 +7,9 @@ const sceneTracks = {
   lobby: "/public/sound/bgm/ulbgm02.mp3",
   quest: "/public/sound/bgm/ulbgm03.mp3",
 };
+// DuelBGM.as uses the same castle track for stage IDs 0, 10, and 11.
+const duelTracks = ["000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "000", "000", "010"];
+let duelTrack = duelTracks[0];
 const titleMusic = createAudio(theme, audioVolume("bgm"));
 const clickSound = createAudio("/public/sound/se/ulse01.mp3", audioVolume("se"));
 const alertBytes = fetch("/public/sound/se/ulse02.mp3", { redirect: "error" })
@@ -180,6 +183,10 @@ function requestMusic() {
   });
 }
 
+export function selectQuestDuelMusic(stageNumber, isBoss) {
+  duelTrack = isBoss ? duelTracks[12] : duelTracks[stageNumber] ?? duelTracks[0];
+}
+
 function playSceneMusic() {
   if (!active || !sceneEntered()) return;
   const scene = stage.dataset.soundscape ?? "title";
@@ -189,7 +196,7 @@ function playSceneMusic() {
   warmingMusic = false;
   const departingScene = music?.dataset.bgmScene;
   if (scene === "silent") {
-    if (departingScene === "lobby" || departingScene === "quest") fadeSceneMusic();
+    if (departingScene === "lobby" || departingScene === "quest" || departingScene === "quest-duel") fadeSceneMusic();
     else {
       musicRequest += 1;
       music?.pause();
@@ -197,10 +204,12 @@ function playSceneMusic() {
     }
     return;
   }
-  if ((scene === "quest" && departingScene === "lobby") || (scene === "lobby" && departingScene === "quest")) {
+  if ((scene === "quest" && (departingScene === "lobby" || departingScene === "quest-duel"))
+      || (departingScene === "quest" && (scene === "lobby" || scene === "quest-duel"))
+      || (scene === "lobby" && departingScene === "quest-duel")) {
     fadeSceneMusic();
   }
-  const path = sceneTracks[scene] ?? theme;
+  const path = scene === "quest-duel" ? `/public/sound/bgm/bgm${duelTrack}.mp3` : sceneTracks[scene] ?? theme;
   if (scene === "title" && music !== titleMusic) {
     musicRequest += 1;
     if (music) discardSceneMusic(music);

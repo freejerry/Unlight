@@ -1,5 +1,5 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
-import { fadeTitleMusic, playBackClick, playLobbyClick, playTitleAlert } from './bgm.js';
+import { fadeTitleMusic, playBackClick, playLobbyClick, playTitleAlert, selectQuestDuelMusic } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
 import { mountOptions } from './options.js';
@@ -325,9 +325,15 @@ async function openQuest(session) {
       snapshot: route.scene.snapshot,
       scene: route.scene,
       onBack: () => leaveQuest(route),
+      onEncounter({ stage: duelStage, isBoss = false }) {
+        if (questRoute !== route || route.leaving || stage.dataset.soundscape === 'quest-duel') return;
+        selectQuestDuelMusic(duelStage, isBoss);
+        changeSoundscape('quest-duel');
+      },
       onAlert(kind, message, focus) {
         if (questRoute !== route || route.leaving || loginAlert.open) return;
-        const heading = kind === 'quest-search-rejected' ? '警告' : 'Error';
+        const warning = ['quest-search-rejected', 'quest-empty-deck', 'quest-start-rejected', 'quest-land-rejected'];
+        const heading = warning.includes(kind) ? '警告' : 'Error';
         openAlert(kind, heading, message, focus?.isConnected ? focus : postLogin.querySelector('#quest-map-back'));
       },
     });

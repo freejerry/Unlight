@@ -4,7 +4,9 @@ import argparse
 import asyncio
 from contextlib import suppress
 from csv import DictReader
+from functools import lru_cache
 from hashlib import sha256
+from json import loads
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -65,6 +67,17 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
 SOURCE_SCENE_TRACKS = {
     "public/sound/bgm/ulbgm02.mp3": "7ed9b16414f8691f080cc592830f0d120b372bb3aa77f183106a8c7fe6bbfbfd",
     "public/sound/bgm/ulbgm03.mp3": "ebb719112de8cc37999a487ebe13f69c5dd84f77fbc96a7adfc64df453d34ab8",
+    "public/sound/bgm/bgm000.mp3": "7074134ca9d72caec00ce4251fe23d754211216e42e78c115d7dcb9e536e3b4f",
+    "public/sound/bgm/bgm001.mp3": "966a1de504451efdaea5a8a86fe975ab377b19d152799c57398c8ae24931bdf2",
+    "public/sound/bgm/bgm002.mp3": "7c0c2e0d453649f367f9bd15d9ae5b0477d92878b7d5f652a9847fb5567fed5d",
+    "public/sound/bgm/bgm003.mp3": "6674fffd1801f8c331e6ed3a3679f64d73fb84114ffe87cd92bab47388d38acc",
+    "public/sound/bgm/bgm004.mp3": "7891d31cda2657b16b327ad24176f5d0108900aa591be0ded0997a1501a9ef50",
+    "public/sound/bgm/bgm005.mp3": "706cf0cc4d4b46823d5e2e2484d383e41623a4ecb92852677ddad68d111303b1",
+    "public/sound/bgm/bgm006.mp3": "edf97c5cd11373b43708d09b72d763a882c806e3c780ef9b1213b7f55980c44a",
+    "public/sound/bgm/bgm007.mp3": "566d624716eb337862044dc8f1389d0f3e378abe66a5fbea95189533bf3e9508",
+    "public/sound/bgm/bgm008.mp3": "43244c9edb20a18a65fb4976eab27bd2717ded59ed2ae0c6806b2b72b2030838",
+    "public/sound/bgm/bgm009.mp3": "2f179e7fe7b42a06f832fea02595d43cb0663e45753f7e02e838d81c66172915",
+    "public/sound/bgm/bgm010.mp3": "e61f2b2c75ff54f8a8bfb01f40d678f3a551ae681f13a517881cc3d4ece22b36",
     "public/sound/bgm/bgm011.mp3": "95971edab9cab6e762ac8d59b207fc82696fcf510c544ad7a6db787ceae31789",
 }
 SOURCE_SCENE_ART = {
@@ -302,11 +315,21 @@ def native_deck_character_card_catalog():
                 "id": card_id,
                 "name": name,
                 "kind": kind,
+                "level": int(row["level"]),
+                "slot": int(row["slot"]),
+                "hp": int(row["hp"]),
+                "ap": int(row["ap"]),
+                "dp": int(row["dp"]),
                 "characterId": character_id,
                 "unlightCharacterId": unlight_id,
                 "parentId": parents[character_id] or character_id,
             }
     return cards
+
+
+def native_card_illustration_refs():
+    with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        return {int(row["id"]): row["chara_image"] for row in DictReader(source)}
 
 
 def native_avatar_starter_catalog():
@@ -558,7 +581,8 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
-                "quest-map.js", "quest-map.css", "quest-preview-data.js",
+                "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
+                "character-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
@@ -581,6 +605,46 @@ def create_app(
             for image in sorted(quest_art.glob("*")):
                 if image.suffix in (".png", ".jpg"):
                     app.router.add_get(f"/source-login/quest-art/{image.name}", serve_file(image))
+            card_art = SOURCE_LOGIN_ROOT / "card-art"
+            app.router.add_get("/source-login/card-art/index.json", serve_file(card_art / "index.json"))
+            for artifact in sorted(card_art.glob("*")):
+                if artifact.suffix in (".png", ".woff"):
+                    app.router.add_get(f"/source-login/card-art/{artifact.name}", serve_file(artifact))
+
+            illustration_hashes = {}
+            with suppress(OSError):
+                illustration_hashes = loads((card_art / "illustration-sources.json").read_bytes())["files"]
+            if illustration_hashes:
+                illustration_refs = native_card_illustration_refs()
+
+                @lru_cache(maxsize=64)
+                def card_illustration(filename):
+                    digest = illustration_hashes.get(filename)
+                    if not digest or Path(filename).name != filename or not filename.endswith(".swf"):
+                        return None
+                    path = pinned_native_asset(assets, f"public/image/{filename}", digest)
+                    if not path:
+                        return None
+                    from extract_character_card_art import decode_card_illustration
+
+                    return decode_card_illustration(path)
+
+                async def source_card_illustration(request):
+                    card_id = request.match_info["card_id"]
+                    if not card_id.isascii() or not card_id.isdecimal() or len(card_id) > 10:
+                        raise web.HTTPNotFound()
+                    filename = illustration_refs.get(int(card_id))
+                    try:
+                        image = await asyncio.to_thread(card_illustration, filename) if filename else None
+                    except ModuleNotFoundError as error:
+                        if error.name != "PIL":
+                            raise
+                        raise web.HTTPServiceUnavailable(text="On-demand character art requires Pillow.") from error
+                    if image is None:
+                        raise web.HTTPNotFound()
+                    return web.Response(body=image, content_type="image/png")
+
+                app.router.add_get("/source-login/card-illustration/{card_id}.png", source_card_illustration)
             for sheet in sorted((SOURCE_LOGIN_ROOT / "avatar-wardrobe").glob("sheet-*.png")):
                 app.router.add_get(f"/source-login/avatar-wardrobe/{sheet.name}", serve_file(sheet))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))
@@ -662,7 +726,8 @@ def create_app(
                 card = {"id": card_id, "hp": character_hp[card_id]}
                 definition = definitions.get(card_id)
                 if definition:
-                    card["name"] = definition["name"]
+                    for field in ("name", "kind", "level", "slot", "ap", "dp"):
+                        card[field] = definition[field]
                 cards.append(card)
             return web.json_response({"cards": cards}, headers={"Cache-Control": "no-store"})
 

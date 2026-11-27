@@ -901,8 +901,9 @@ async function sendQuestSearch(socket, signal, mapId, timerIndex, known, markDis
   }
 }
 
-function isStartableQuest(row) {
-  return row?.questId > 0 && (row.status === QUEST_NEW || row.status === QUEST_UNSOLVED);
+function isStartableQuest(row, allowGift = false) {
+  return row?.questId > 0 && (row.status === QUEST_NEW || row.status === QUEST_UNSOLVED
+    || (allowGift && row.status === QUEST_PRESENTED));
 }
 
 async function submitQuestStart(socket, confirm, signal, selected, deckIndex, markDispatched) {
@@ -911,27 +912,42 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
   if (!isStartableQuest(current) || current.questId !== selected.questId) {
     throw new SessionError('quest-start-unavailable');
   }
+  return sendQuestStart(socket, signal, selected, deckIndex, markDispatched);
+}
 
+async function sendQuestStart(socket, signal, selected, deckIndex, markDispatched) {
   let energy = null;
   let deleted = false;
   let acknowledged = false;
+  let duplicate = false;
   let unsubscribe;
   const notification = new Promise((resolve, reject) => {
     unsubscribe = socket.observe([QUEST_ENERGY_REPLY, QUEST_DISCOVERY_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY], (reply) => {
-      if (acknowledged) return;
+      if (acknowledged) {
+        try {
+          duplicate ||= reply.command === QUEST_DISCOVERY_REPLY
+            ? readQuestDiscoveryReply(reply).inventoryId === selected.inventoryId
+            : reply.command !== QUEST_DELETED_REPLY || readQuestDeletedReply(reply) === selected.inventoryId;
+        } catch {
+          duplicate = true;
+        }
+        return;
+      }
       try {
         switch (reply.command) {
           case QUEST_ENERGY_REPLY:
             if (energy !== null) throw new SessionError('protocol');
-            energy = readQuestEnergyReply(reply).energy;
+            energy = { ...readQuestEnergyReply(reply), energyReceivedAt: performance.now() };
             break;
           case QUEST_DISCOVERY_REPLY: {
             const row = readQuestDiscoveryReply(reply);
-            if (row.inventoryId !== selected.inventoryId || row.questId !== selected.questId
-                || row.status !== QUEST_IN_PROGRESS) break;
-            if (energy === null || deleted) throw new SessionError('protocol');
+            if (row.inventoryId !== selected.inventoryId) break;
+            if (row.questId !== selected.questId || row.status !== QUEST_IN_PROGRESS || energy === null || deleted) {
+              throw new SessionError('protocol');
+            }
             acknowledged = true;
-            resolve({ row, energy });
+            resolve({ row, energy: energy.energy, energyRemainingSeconds: energy.remainingSeconds,
+              energyReceivedAt: energy.energyReceivedAt });
             break;
           }
           case QUEST_DELETED_REPLY:
@@ -963,6 +979,7 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
       // The original persists the deck lock after emitting the quest-state update.
       await finishQuestObservation(socket, signal, unsubscribe);
     }
+    if (duplicate) throw new SessionError('protocol');
     return result;
   } finally {
     unsubscribe();
@@ -970,23 +987,28 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
 }
 
 async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter,
-  { emptyTerrain = false, fixedGemTreasure = null } = {}) {
+  { emptyTerrain = false, fixedGemTreasure = null, firstLand, onArrival } = {}) {
   const peaceful = emptyTerrain || fixedGemTreasure !== null;
+  const terminal = firstLand?.nextMask === 0;
   let arrived = false;
   let encounter = null;
   let progress = null;
   let finish = null;
   let deleted = false;
+  let deckReset = false;
   let invalid = false;
   let gemBalance = null;
   let treasure = null;
+  const map = { questFlag: null, questClearNum: null };
   let unsubscribe;
   const notification = new Promise((resolve, reject) => {
     unsubscribe = socket.observe([
       QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
       QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY,
-      ...(peaceful ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
-      ...(fixedGemTreasure ? [QUEST_GEMS_REPLY, QUEST_TREASURE_REPLY] : []),
+      ...(peaceful || firstLand ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
+      ...(fixedGemTreasure || firstLand ? [QUEST_GEMS_REPLY] : []),
+      ...(fixedGemTreasure ? [QUEST_TREASURE_REPLY] : []),
+      ...(firstLand ? [QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY] : []),
     ], (reply) => {
       if (invalid) return;
       try {
@@ -995,10 +1017,15 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             if (arrived) throw new SessionError('protocol');
             readQuestNextLandReply(reply, slot);
             arrived = true;
+            onArrival?.();
             break;
           case QUEST_ENCOUNTER_REPLY:
             if (peaceful || !arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
             encounter = readQuestEncounterReply(reply);
+            if (firstLand) {
+              if (encounter.stage !== firstLand.stage) throw new SessionError('protocol');
+              encounter.receivedAt = performance.now();
+            }
             break;
           case QUEST_DUEL_START_REPLY: {
             if (!encounter) throw new SessionError('protocol');
@@ -1015,7 +1042,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             if (!arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
               throw new SessionError('protocol');
             }
-            if (peaceful && (progress !== null || update.progress !== (1 << slot))) {
+            if ((peaceful || firstLand) && (progress !== null || update.progress !== (1 << slot))) {
               throw new SessionError('protocol');
             }
             progress = update.progress;
@@ -1024,8 +1051,16 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           }
           case QUEST_GEMS_REPLY: {
             const { value } = readQuestSettlementValueReply(reply);
-            if (progress === null || gemBalance !== null || value < fixedGemTreasure.value) throw new SessionError('protocol');
+            if (progress === null || (fixedGemTreasure && !treasure
+                && (gemBalance !== null || value < fixedGemTreasure.value))) throw new SessionError('protocol');
             gemBalance = value;
+            break;
+          }
+          case QUEST_MAP_FLAG_REPLY:
+          case QUEST_MAP_CLEAR_COUNT_REPLY: {
+            if (!terminal || progress === null) throw new SessionError('protocol');
+            const { field, value } = readQuestSettlementValueReply(reply);
+            map[field] = value;
             break;
           }
           case QUEST_TREASURE_REPLY: {
@@ -1041,7 +1076,9 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           }
           case QUEST_DELETED_REPLY:
             if (readQuestDeletedReply(reply) !== inventoryId) break;
-            if (encounter || (peaceful && arrived)) throw new SessionError('protocol');
+            if (encounter || ((peaceful || firstLand) && arrived && (!terminal || !deckReset))) {
+              throw new SessionError('protocol');
+            }
             deleted = true;
             if (!arrived) {
               unsubscribe();
@@ -1051,14 +1088,20 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           case QUEST_FINISH_REPLY: {
             const settled = readQuestFinishReply(reply);
             if (settled.inventoryId !== inventoryId) break;
-            if (peaceful || !arrived || encounter || !deleted || finish) throw new SessionError('protocol');
+            if (!arrived || encounter || !deleted || finish || (firstLand && (!terminal || settled.result !== 0))
+                || (peaceful && !terminal)) throw new SessionError('protocol');
             finish = settled;
             resolve(null);
             break;
           }
-          case QUEST_DECK_STATE_REPLY:
-            if (readQuestDeckStateReply(reply).deckIndex === deckIndex) throw new SessionError('protocol');
+          case QUEST_DECK_STATE_REPLY: {
+            const update = readQuestDeckStateReply(reply);
+            if (update.deckIndex !== deckIndex) break;
+            if (!terminal || progress === null || deckReset || deleted || update.status !== QUEST_IN_PROGRESS
+                || update.damage.some((damage) => damage !== 0)) throw new SessionError('protocol');
+            deckReset = true;
             break;
+          }
           case QUEST_DUEL_FINISH_REPLY:
             throw new SessionError('protocol');
           case QUEST_ERROR_REPLY: {
@@ -1084,11 +1127,12 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
     if (result) return result;
 
     // Preserve authored land observation through the Pong's chunk to catch contradictions.
-    await finishQuestObservation(socket, signal, peaceful ? undefined : unsubscribe);
-    if (invalid || (deleted && !finish)) throw new SessionError('protocol');
+    await finishQuestObservation(socket, signal, peaceful || firstLand ? undefined : unsubscribe);
+    if (invalid || (deleted && !finish) || (firstLand && Boolean(finish) !== terminal)) throw new SessionError('protocol');
     return {
       slot, encounter: null, progress, finish,
       ...(emptyTerrain ? { emptyTerrain: true } : {}), ...(treasure ? { fixedGemTreasure: treasure } : {}),
+      ...(firstLand ? { gemBalance, map } : {}),
     };
   } finally {
     unsubscribe();
@@ -1122,13 +1166,15 @@ async function readQuestRoute(questId, signal) {
   const ordinaryMap = Number.isInteger(mapId) && mapId >= 1 && mapId <= MAX_QUEST_MAP_ID;
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
-  for (const { slot, id, name, caption, enemyId, emptyTerrain, fixedGemTreasure, nextSlots } of positions) {
+  for (const { slot, id, name, caption, stage, nextMask, enemyId, emptyTerrain, fixedGemTreasure, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
           || Math.floor(next / 3) !== Math.floor(slot / 3) + 1)) return null;
     nodes.set(slot, {
       slot, id, name, caption, enemyId: validQuestCardId(enemyId) ? enemyId : null,
+      stage: Number.isInteger(stage) && stage >= 0 && stage <= 127 ? stage : null,
+      nextMask: Number.isInteger(nextMask) && nextMask >= 0 && nextMask <= 7 ? nextMask : null,
       emptyTerrain: ordinaryMap && emptyTerrain === true && enemyId === 0,
       fixedGemTreasure: ordinaryMap && emptyTerrain === false && enemyId === 0
         ? verifiedFixedGemTreasure(fixedGemTreasure) : null,
@@ -1149,6 +1195,29 @@ function verifiedFixedGemTreasure(treasure) {
 
 function sameValues(first, second) {
   return first.length === second.length && first.every((value, index) => value === second[index]);
+}
+
+function activeSceneAdventure(scene) {
+  return scene.adventure && scene.adventure.state !== 'finished';
+}
+
+function questSceneAdventureSnapshot(current) {
+  if (!current) return null;
+  const { inventoryId, questId, deckIndex } = current.selected;
+  return Object.freeze({
+    inventoryId, questId, deckIndex, state: current.state, slot: current.slot,
+    progress: current.run.progress, encounter: current.encounter ?? null, finish: current.finish ?? null,
+    emptyTerrain: current.emptyTerrain === true, fixedGemTreasure: current.fixedGemTreasure ?? null,
+  });
+}
+
+function freezeQuestEncounter(encounter) {
+  const { playerCardIds, opponentCardIds, playerDamage, opponentDamage, duel } = encounter;
+  return Object.freeze({
+    ...encounter, playerCardIds: Object.freeze(playerCardIds.slice()), opponentCardIds: Object.freeze(opponentCardIds.slice()),
+    playerDamage: Object.freeze(playerDamage.slice()), opponentDamage: Object.freeze(opponentDamage.slice()),
+    duel: Object.freeze({ ...duel }),
+  });
 }
 
 function nextBattleLands(positions, slot, progress) {
@@ -2141,6 +2210,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       const operation = scene.operation;
       disposeQuestSceneOperations(scene, 'cancelled');
       if (operation) await operation.task.catch(() => {});
+      await stopQuestSceneAdventure(scene, 'closed');
       const { socket, negotiationSent } = scene.channel;
       try {
         // Ruby's unbind also deletes the player registration after negotiation alone.
@@ -2154,6 +2224,18 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (questScene === scene) questScene = undefined;
     })();
     return scene.closeTask;
+  }
+
+  async function stopQuestSceneAdventure(scene, reason) {
+    const current = scene.adventure;
+    if (!current) return;
+    current.nonCombatObserver?.stop();
+    await current.battle?.stop(reason);
+    const { inventoryId, deckIndex } = current.selected;
+    // The peer owns its current terrain. Preserve the row and lock, but do not resume it on another peer.
+    const row = questData?.rows.find((entry) => entry.inventoryId === inventoryId);
+    if (row?.deckIndex === deckIndex) delete row.deckIndex;
+    boundQuestDecks.delete(inventoryId);
   }
 
   function maintainQuestScene() {
@@ -2190,21 +2272,31 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const staleDeck = ['pending-verification', 'uncertain'].includes(deckEditState);
     const decks = staleDeck ? [] : initialData.avatar.questDecks;
     const deckChoices = staleDeck ? [] : initialData.deckChoices;
+    const inAdventure = activeSceneAdventure(scene);
+    const selectedDeck = staleDeck ? null : initialData.selectedDeck;
+    const readyDeck = selectedDeck?.cards.some(({ position }) => position === 0)
+      && decks.some(({ index }) => index === selectedDeck.index);
     const deckSelectionState = scene.operation?.kind === 'deck-select' ? 'busy' : deckSelectionUncertain ? 'uncertain'
+      : inAdventure ? 'unavailable'
       : initialData.selectedDeck && deckChoices?.length ? 'ready' : 'unavailable';
     const searchState = scene.operation?.kind === 'search' ? 'busy'
-      : searchUncertain ? 'uncertain' : scene.operation ? 'busy' : 'ready';
+      : searchUncertain ? 'uncertain' : scene.operation || inAdventure ? 'busy' : 'ready';
+    const startState = scene.operation?.kind === 'start' ? 'busy' : questStartUncertain ? 'uncertain'
+      : inAdventure || deckSelectionUncertain || !readyDeck ? 'unavailable'
+      : scene.operation ? 'busy' : 'ready';
     const snapshot = Object.freeze({
       ...questData,
       rows: Object.freeze(questData.rows.map((row) => questSceneRow(scene, row))),
       questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
-      selectedDeck: staleDeck ? null : initialData.selectedDeck,
+      selectedDeck,
       deckChoices: deckChoices?.length ? deckChoices : Object.freeze([]),
       deckSelectionState,
       tutorialQuestFlag: initialData.tutorialQuestProgress?.tutorialQuestFlag ?? null,
       tutorialQuestClearNum: initialData.tutorialQuestProgress?.tutorialQuestClearNum ?? null,
       energy: initialData.avatar.energy,
       searchState,
+      startState,
+      adventure: questSceneAdventureSnapshot(scene.adventure),
     });
     scene.snapshot = snapshot;
     for (const { listener } of scene.subscriptions) {
@@ -2254,6 +2346,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       throw new SessionError('quest-confirm-unavailable');
     }
     if (row.status !== QUEST_NEW) return questSceneRow(scene, row);
+    if (activeSceneAdventure(scene)) throw new SessionError('quest-adventure-active');
     if (scene.operation) throw new SessionError('busy');
     if (questConfirmations.has(inventoryId)) throw new SessionError('quest-confirm-uncertain');
     if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
@@ -2284,6 +2377,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     if (signal?.aborted) throw new SessionError('cancelled');
     if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
     if (scene.operation || profileRequest) throw new SessionError('busy');
+    if (activeSceneAdventure(scene)) throw new SessionError('quest-adventure-active');
     if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
     const { deckChoices, selectedDeck } = scene.snapshot;
     const current = deckChoices.findIndex(({ index }) => index === selectedDeck?.index);
@@ -2313,9 +2407,156 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     });
   }
 
+  function updateQuestDeckStatus(index, status) {
+    if (!initialData.deckChoices?.some((deck) => deck.index === index)) return;
+    initialData.deckChoices = Object.freeze(initialData.deckChoices.map((deck) => (
+      deck.index === index ? Object.freeze({ ...deck, status }) : deck
+    )));
+  }
+
+  function applyQuestStart(index, selected, deck, result) {
+    questStartUncertain = false;
+    if (result.rejection !== undefined) {
+      if (result.deleted) questData.rows.splice(index, 1);
+      throw new SessionError('quest-start-rejected', result.rejection);
+    }
+    const { energy, energyRemainingSeconds, energyReceivedAt } = result;
+    const { index: deckIndex } = deck;
+    const row = { ...result.row, deckIndex };
+    const { avatar } = initialData;
+    questData.rows[index] = row;
+    Object.assign(avatar, { energy, energyRemainingSeconds, energyReceivedAt });
+    avatar.questDecks = avatar.questDecks.filter(({ index }) => index !== deckIndex);
+    updateQuestDeckStatus(deckIndex, 1); // Original CDS_QUEST, proven after the Quest Pong.
+    boundQuestDecks.set(selected.inventoryId, { ...deck });
+    return { row, energy, deckIndex };
+  }
+
+  async function startQuestScene(scene, inventoryId, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation) throw new SessionError('busy');
+    if (questStartUncertain) throw new SessionError('quest-start-uncertain');
+    if (deckSelectionUncertain) throw new SessionError('deck-select-uncertain');
+    if (questConfirmations.has(inventoryId)) throw new SessionError('quest-confirm-uncertain');
+    const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
+    const selected = questData.rows[index];
+    const deck = scene.snapshot.selectedDeck;
+    const readyDeck = scene.snapshot.questDecks.find((choice) => choice.index === deck?.index);
+    if (activeSceneAdventure(scene) || !isStartableQuest(selected, true) || !readyDeck
+        || !deck.cards.some(({ position }) => position === 0)) throw new SessionError('quest-start-unavailable');
+
+    return runQuestSceneOperation(scene, 'start', signal, async (socket, questSignal) => {
+      const ownedEnergy = scene.energyOwned;
+      try {
+        const result = await sendQuestStart(socket, questSignal, selected, deck.index, () => {
+          questStartUncertain = true;
+          scene.energyOwned = true;
+        });
+        questSignal.throwIfAborted();
+        socket.assertOpen();
+        if (result.rejection !== undefined) scene.energyOwned = ownedEnergy;
+        const started = applyQuestStart(index, selected, readyDeck, result);
+        scene.adventure = { selected: started.row, deck, state: 'started', slot: null, run: questRun() };
+        publishAvatar();
+        return { ...started, row: questSceneRow(scene, started.row) };
+      } catch (error) {
+        if (questStartUncertain) throw new SessionError('quest-start-uncertain');
+        throw error;
+      }
+    });
+  }
+
+  async function enterQuestSceneLand(scene, slot, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation) throw new SessionError('busy');
+    const current = scene.adventure;
+    if (current?.state === 'uncertain') throw new SessionError('quest-land-uncertain');
+    if (current?.state !== 'started' || !Number.isInteger(slot) || slot < 0 || slot > 2) {
+      throw new SessionError('quest-land-unavailable');
+    }
+    const { selected, run } = current;
+    return runQuestSceneOperation(scene, 'land', signal, async (socket, questSignal) => {
+      const catalogSignal = AbortSignal.any([questSignal, AbortSignal.timeout(3500)]);
+      run.positions = await readQuestRoute(selected.questId, catalogSignal).catch(() => null);
+      questSignal.throwIfAborted();
+      const first = [2, 1, 0].find((candidate) => run.positions?.has(candidate));
+      const firstLand = run.positions?.get(first);
+      if (first !== slot || firstLand.stage === null || firstLand.nextMask === null) {
+        throw new SessionError('quest-land-unavailable');
+      }
+
+      let dispatched = false;
+      try {
+        const result = await submitQuestLand(socket, questSignal, selected, slot, () => {
+          dispatched = true;
+          current.state = 'entering';
+          publishQuestScene(scene);
+        }, (encounter) => {
+          if (!sameValues(current.deck.cards.map(({ cardId }) => cardId), encounter.playerCardIds)) {
+            throw new SessionError('protocol');
+          }
+          current.battle = observeQuestBattle(socket, selected, slot, encounter, run, (receipt) => {
+            const settlement = reconcileQuestSettlement(selected, receipt);
+            if (initialData) publishAvatar();
+            publishQuestScene(scene);
+            return settlement;
+          });
+        }, {
+          firstLand, emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
+          onArrival() {
+            current.slot = slot;
+            publishQuestScene(scene);
+          },
+        });
+        questSignal.throwIfAborted();
+        socket.assertOpen();
+        if (result.rejection !== undefined) {
+          current.state = result.deleted ? 'uncertain' : 'started';
+          if (result.deleted) questData.rows = questData.rows.filter(({ inventoryId }) => inventoryId !== selected.inventoryId);
+          throw new SessionError('quest-land-rejected', result.rejection);
+        }
+        current.encounter = result.encounter ? freezeQuestEncounter(result.encounter) : null;
+        run.progress = result.progress;
+        current.emptyTerrain = result.emptyTerrain;
+        if (result.fixedGemTreasure) current.fixedGemTreasure = Object.freeze(result.fixedGemTreasure);
+        if (result.finish) {
+          current.finish = Object.freeze(result.finish);
+          current.state = 'finished';
+          reconcileQuestSettlement(selected, {
+            inventoryId: selected.inventoryId, map: result.map,
+            avatar: { exp: null, level: null, energy: null, gems: result.gemBalance },
+          });
+          publishAvatar();
+        } else if (result.encounter) current.state = 'encounter';
+        else {
+          current.state = 'progress';
+          current.nonCombatObserver = observeNonCombatTerrain(socket, selected, result, () => {
+            current.state = 'uncertain';
+            publishQuestScene(scene);
+          });
+          if (result.gemBalance !== null) {
+            initialData.avatar.gems = result.gemBalance;
+            publishAvatar();
+          }
+        }
+        return { slot, encounter: current.encounter, progress: run.progress, finish: current.finish ?? null,
+          ...(current.emptyTerrain ? { emptyTerrain: true } : {}),
+          ...(current.fixedGemTreasure ? { fixedGemTreasure: current.fixedGemTreasure } : {}) };
+      } catch (error) {
+        if (dispatched && error.kind !== 'quest-land-rejected') {
+          current.state = 'uncertain';
+          throw new SessionError('quest-land-uncertain');
+        }
+        throw error;
+      }
+    });
+  }
+
   function scheduleQuestDiscovery(scene) {
     clearTimeout(scene.discoveryTimer);
-    if (scene.state !== 'open' || scene.operation || !questData) return;
+    if (scene.state !== 'open' || scene.operation || activeSceneAdventure(scene) || !questData) return;
     let next;
     for (const row of questData.rows) {
       if (attemptedDiscoveries.has(row.inventoryId) || scene.failedDiscoveries.has(row.inventoryId)) continue;
@@ -2348,6 +2589,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     if (signal?.aborted) throw new SessionError('cancelled');
     if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
     if (scene.operation) throw new SessionError('busy');
+    if (activeSceneAdventure(scene)) throw new SessionError('quest-adventure-active');
     if (searchUncertain) throw new SessionError('search-uncertain');
     const tutorialFlag = initialData.tutorialQuestProgress?.tutorialQuestFlag;
     const ordinary = mapId >= 1 && mapId <= Math.min(questData.questFlag + 1, LAST_ORDINARY_SEARCH_MAP);
@@ -2441,6 +2683,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     // Original quest_all_clear releases the already-bound deck before sending SC24.
     if (deck?.index === selected.deckIndex && !avatar.questDecks.some(({ index }) => index === deck.index)) {
       avatar.questDecks = [...avatar.questDecks, deck].sort((first, second) => first.index - second.index);
+      updateQuestDeckStatus(deck.index, 0); // Original CDS_NONE after a verified Quest finish.
       deckRestored = { ...deck };
     }
     return { ...receipt, deltas, deckRestored };
@@ -2706,11 +2949,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             search: (mapId, timerIndex, { signal } = {}) => searchQuestScene(scene, mapId, timerIndex, signal),
             acknowledge: (inventoryId, { signal } = {}) => acknowledgeQuestScene(scene, inventoryId, signal),
             selectDeck: (delta, { signal } = {}) => selectQuestSceneDeck(scene, delta, signal),
+            start: (inventoryId, { signal } = {}) => startQuestScene(scene, inventoryId, signal),
+            enterLand: (slot, { signal } = {}) => enterQuestSceneLand(scene, slot, signal),
             close: () => closeQuestScene(scene),
-            closed: socket.closed.then((reason) => {
+            closed: socket.closed.then(async (reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');
               scene.state = 'return-uncertain';
               disposeQuestSceneOperations(scene, 'network');
+              await stopQuestSceneAdventure(scene, 'network');
               return scene.failure ?? reason;
             }),
           };
@@ -2811,18 +3057,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           }),
           signal,
           (result) => {
-            if (result.rejection !== undefined) {
-              if (result.deleted) questData.rows.splice(index, 1);
-              questStartUncertain = false;
-              throw new SessionError('quest-start-rejected', result.rejection);
-            }
-            const row = { ...result.row, deckIndex };
-            questData.rows[index] = row;
-            avatar.energy = result.energy;
-            avatar.questDecks = avatar.questDecks.filter(({ index }) => index !== deckIndex);
-            boundQuestDecks.set(inventoryId, { ...deck });
-            questStartUncertain = false;
-            return { row: { ...row }, energy: result.energy, deckIndex };
+            const started = applyQuestStart(index, selected, deck, result);
+            return { ...started, row: { ...started.row } };
           },
         );
       } catch (error) {

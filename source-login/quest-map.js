@@ -1,6 +1,8 @@
 import { mountAvatarLayer } from './avatar-layer.js';
 import { playBackClick } from './bgm.js';
 import { getPreferences } from './preferences.js';
+import { renderCharacterCard } from './character-card.js';
+import { mountQuestBattleEntry, prepareQuestBattleStage } from './quest-battle-entry.js';
 import {
   DEFAULT_QUEST_SEARCH_TIME, QUEST_SEARCH_TIMES, ordinaryQuestProgressMap, ordinaryQuestRegions,
   tutorialQuestProgressMap, tutorialQuestRegion,
@@ -23,10 +25,19 @@ const searchRejections = new Map([
   [31, '錯誤的任務地圖編號'],
   [32, '你的等級不足以取得地圖'],
 ]);
+const questRejections = new Map([
+  [1, 'AP不足'],
+  [16, '牌組不存在'],
+  [40, '任務不存在'],
+  [41, '無法開始任務'],
+  [42, '此牌組已在任務中'],
+  [43, '無法進入此地區'],
+]);
 
 const layout = `
   <section id="quest-map-view" class="source-quest-map" aria-labelledby="quest-map-title">
     <h1 id="quest-map-title" class="sr-only">任務地圖</h1>
+    <div class="quest-map-board">
     <div id="quest-map-world" class="quest-map-world" hidden>
       <div class="quest-map-world-art"></div>
       <div id="quest-map-progress" hidden>
@@ -75,6 +86,7 @@ const layout = `
     <section id="quest-map-detail" aria-labelledby="quest-map-detail-title" hidden>
       <button id="quest-map-detail-back" class="quest-map-art-button" type="button" aria-label="返回地圖"><span>返回地圖</span></button>
       <div class="quest-map-detail-route"></div>
+      <div id="quest-map-detail-pawn" aria-label="角色的當前位置" role="img" hidden></div>
       <div class="quest-map-detail-data-art" aria-hidden="true"></div>
       <div class="quest-map-detail-commands"></div>
       <section id="quest-map-detail-land-data" aria-labelledby="quest-map-detail-land-name" hidden>
@@ -125,6 +137,7 @@ const layout = `
       <p id="quest-map-search-result-message">取得</p>
       <button id="quest-map-search-result-ok" type="button" lang="en" autofocus>OK</button>
     </dialog>
+    </div>
   </section>`;
 
 function place(node, [x, y, width, height]) {
@@ -268,6 +281,7 @@ function appendDetailArt(parent, layer, x = 0, y = 0) {
   const node = image(layer.file, 'quest-map-detail-sprite');
   place(node, [x + layer.x, y + layer.y, layer.width, layer.height]);
   parent.append(node);
+  return node;
 }
 
 // QuestPassClip.judgeType selects each authored path frame from the three original next masks.
@@ -279,9 +293,23 @@ function detailPathFrames(left, center, right) {
   return [outerPassFrames[leftBits], centerPassFrames[centerBits], outerPassFrames[rightBits]];
 }
 
-function appendTerrainArt(parent, assets, land, x, y) {
-  const terrain = assets.terrain?.[land.stage]?.dis;
-  appendDetailArt(parent, terrain, x, y);
+function appendTerrainArt(parent, assets, land, x, y, enabled = false) {
+  const states = assets.terrain?.[land.stage];
+  const terrain = enabled ? states?.up : states?.dis;
+  appendDetailArt(parent, terrain, x, y)?.classList.add('quest-map-terrain-up');
+  if (enabled) {
+    const { pulse, over } = states;
+    if (pulse) {
+      const blink = appendDetailArt(parent, pulse.layer, x, y);
+      blink.classList.add('quest-map-terrain-pulse');
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        blink.animate(pulse.alpha.map(value => ({ opacity: value, easing: 'steps(1, end)' })), {
+          duration: pulse.alpha.length * 1000 / pulse.framesPerSecond, iterations: Infinity,
+        });
+      }
+    }
+    appendDetailArt(parent, over, x, y)?.classList.add('quest-map-terrain-over');
+  }
   if (land.enemyId > 0) {
     appendDetailArt(parent, assets.events[land.treasureType === 7 ? 'enemy_hl' : 'enemy'], x, y);
     if (land.treasureType > 0) appendDetailArt(parent, assets.subEvents[assets.subEventByTreasure[land.treasureType]], x, y);
@@ -291,7 +319,7 @@ function appendTerrainArt(parent, assets, land, x, y) {
   return terrain;
 }
 
-function paintDetailRoute(route, positions, assets, setHover) {
+function paintDetailRoute(route, positions, assets, setHover, reachableSlot, enterLand) {
   route.replaceChildren();
   if (!Array.isArray(positions) || !assets) return;
   const bySlot = new Map(positions.map(land => [land.slot, land]));
@@ -313,30 +341,41 @@ function paintDetailRoute(route, positions, assets, setHover) {
     const x = detailColumns[slot % 3];
     const y = detailRows[Math.floor(slot / 3)];
     const goal = slot >= 12 || nextMask === 0;
-    appendDetailArt(route, assets.bases?.[goal ? 5 : 2], x, y);
-    const terrain = appendTerrainArt(route, assets, land, x + 40, y + 56);
+    const cell = document.createElement('div');
+    cell.className = 'quest-map-terrain-cell';
+    route.append(cell);
+    appendDetailArt(cell, assets.bases?.[goal ? 5 : 2], x, y);
+    const enabled = slot === reachableSlot && !!assets.terrain?.[land.stage]?.up;
+    const terrain = appendTerrainArt(cell, assets, land, x + 40, y + 56, enabled);
     if (!terrain) continue;
 
-    const hit = document.createElement('span');
+    const hit = document.createElement(enabled ? 'button' : 'span');
     hit.className = 'quest-map-detail-land';
     hit.dataset.slot = String(slot);
     hit.dataset.landId = String(id);
     hit.tabIndex = 0;
-    hit.setAttribute('role', 'img');
+    if (enabled) {
+      hit.type = 'button';
+      hit.addEventListener('click', () => enterLand(slot));
+    } else {
+      hit.setAttribute('role', 'img');
+    }
     hit.setAttribute('aria-label', land.name || `地形 ${id}`);
     if (land.caption) hit.setAttribute('aria-description', land.caption);
-    place(hit, [x + 40 + terrain.x, y + 56 + terrain.y, terrain.width, terrain.height]);
+    const [offsetX, offsetY, width, height] = (enabled ? assets.terrain[land.stage].hit : assets.terrain[land.stage].disabledHit)
+      ?? [terrain.x, terrain.y, terrain.width, terrain.height];
+    place(hit, [x + 40 + offsetX, y + 56 + offsetY, width, height]);
     const activate = () => setHover(land);
-    const deactivate = () => { if (!hit.matches(':hover, :focus')) setHover(null); };
+    const deactivate = () => { if (!hit.matches(':hover, :focus-visible')) setHover(null); };
     hit.addEventListener('mouseenter', activate);
     hit.addEventListener('mouseleave', deactivate);
-    hit.addEventListener('focus', activate);
+    hit.addEventListener('focus', () => { if (hit.matches(':focus-visible')) activate(); });
     hit.addEventListener('blur', deactivate);
-    route.append(hit);
+    cell.append(hit);
   }
 }
 
-function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, current }) {
+function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, loadCards, current, onAlert, onEncounter }) {
   const get = selector => view.querySelector(selector);
   const detail = get('#quest-map-detail');
   const world = get('#quest-map-world');
@@ -344,13 +383,21 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
   const copy = get('.quest-map-detail-copy');
   const localBack = get('#quest-map-detail-back');
   const route = get('.quest-map-detail-route');
+  const pawn = get('#quest-map-detail-pawn');
   const commands = get('.quest-map-detail-commands');
   const panel = get('#quest-map-detail-land-data');
   const panelArt = get('.quest-map-detail-land-art');
   const notice = get('#quest-map-detail-status');
   let assets;
+  let battleAssets;
+  let preparedStage;
   let selectedId;
   let acknowledging;
+  let starting = false;
+  let entering = false;
+  let mountingBattle = false;
+  let pawnCard;
+  let pawnOrigin;
   let rendered;
 
   function setHover(land) {
@@ -371,6 +418,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
   }
 
   function close() {
+    if (current().adventure) return;
     const closed = selectedId;
     selectedId = undefined;
     rendered = undefined;
@@ -388,19 +436,63 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     (row?.querySelector('.quest-map-row-open') ?? picker).focus({ preventScroll: true });
   }
 
+  function drawPawn(adventure, deck, firstLand) {
+    if (!assets?.movement || !adventure || !firstLand) return;
+    const { x, startY, yByColumn, durationMs } = assets.movement;
+    const slot = adventure.slot;
+    const next = `${x[(slot ?? firstLand.slot) % 3]}px, ${slot === null ? startY : yByColumn[Math.floor(slot / 3)]}px`;
+    if (pawnOrigin !== next) {
+      pawn.style.transitionDuration = pawnOrigin ? `${durationMs}ms` : '0ms';
+      pawn.style.transform = `translate(${next})`;
+      pawn.dataset.slot = slot === null ? 'start' : String(slot);
+      pawnOrigin = next;
+    }
+    const cardId = deck?.index === adventure.deckIndex ? deck.cards.find(card => card.position === 0)?.cardId : undefined;
+    if (!cardId || pawnCard === cardId) return;
+    pawnCard = cardId;
+    void loadCards([cardId]).then(cards => {
+      if (signal.aborted || pawnCard !== cardId) return;
+      const layer = assets.pawns?.[cards.get(cardId)?.characterId]?.frames?.[0];
+      if (appendDetailArt(pawn, layer)) pawn.hidden = false;
+    });
+  }
+
+  function readyBattleStage(firstLand) {
+    if (!(firstLand?.enemyId > 0) || !assets?.terrain?.[firstLand.stage]?.hit ||
+        !battleAssets?.transition || !battleAssets.stages?.[firstLand.stage]?.layers?.length) return false;
+    if (preparedStage?.id !== firstLand.stage) {
+      const stage = preparedStage = { id: firstLand.stage, ready: false };
+      void prepareQuestBattleStage(battleAssets.stages[stage.id].layers).then(ready => {
+        if (signal.aborted || preparedStage !== stage) return;
+        stage.ready = ready;
+        refresh();
+      });
+    }
+    return preparedStage.ready;
+  }
+
   function refresh() {
-    if (!selectedId || signal.aborted) return;
-    const { rows, energy } = current();
+    if (signal.aborted) return;
+    const { rows, energy, selectedDeck, startState, searchState, deckSelectionState, adventure } = current();
+    view.dataset.startState = startState ?? 'unavailable';
+    if (adventure) view.dataset.adventureState = adventure.state;
+    else delete view.dataset.adventureState;
+    if (!selectedId) return;
     const row = rows.find(item => item.inventoryId === selectedId);
     if (!row || !detailStatuses.has(row.status)) {
       close();
       return;
     }
     const definition = definitions.get(row.questId);
+    const firstLand = definition?.firstLand;
+    const stageReady = readyBattleStage(firstLand);
     detail.dataset.inventoryId = String(row.inventoryId);
     detail.dataset.questStatus = String(row.status);
     detail.dataset.confirmationState = row.confirmationState ?? (acknowledging === row.inventoryId ? 'busy' : 'ready');
-    notice.textContent = detail.dataset.confirmationState === 'uncertain' ? '無法確認任務已讀狀態。' : '';
+    const statusText = adventure?.state === 'uncertain' ? '無法確認地形移動結果。'
+      : startState === 'uncertain' ? '無法確認任務是否已開始。'
+      : detail.dataset.confirmationState === 'uncertain' ? '無法確認任務已讀狀態。' : '';
+    if (notice.textContent !== statusText) notice.textContent = statusText;
     get('#quest-map-detail-title').textContent = definition?.name || `任務 ${row.questId}`;
     get('#quest-map-detail-region').textContent = definition?.map ? `[地區]${definition.map}` : '';
     get('#quest-map-detail-points').textContent = Number.isInteger(definition?.difficulty) ? `[QuestPoint]: ＋${definition.difficulty}` : '';
@@ -412,18 +504,89 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
       const command = button.dataset.questCommand;
       button.hidden = row.status === 2 ? command !== 'quit' : command === 'quit' ||
         (command === 'present' && Number.isInteger(energy) && definition?.ap > energy);
+      if (command === 'start') {
+        const emptyDeck = selectedDeck && !selectedDeck.cards.some(card => card.position === 0);
+        button.disabled = !scene?.start || !stageReady || ![0, 1, 6].includes(row.status) || !!adventure || starting ||
+          searchState === 'busy' || deckSelectionState !== 'ready' || detail.dataset.confirmationState !== 'ready' ||
+          (startState !== 'ready' && !(emptyDeck && startState === 'unavailable'));
+      }
     }
-    if (rendered?.definition !== definition || rendered?.assets !== assets) {
-      rendered = { definition, assets };
+    const ownAdventure = adventure?.inventoryId === selectedId ? adventure : null;
+    const reachableSlot = ownAdventure?.state === 'started' && stageReady ? firstLand.slot : null;
+    if (rendered?.definition !== definition || rendered?.assets !== assets || rendered?.reachableSlot !== reachableSlot) {
+      rendered = { definition, assets, reachableSlot };
       setHover(null);
-      paintDetailRoute(route, definition?.positions, assets, setHover);
+      paintDetailRoute(route, definition?.positions, assets, setHover, reachableSlot, enterLand);
+    }
+    drawPawn(ownAdventure, selectedDeck, firstLand);
+    if (!mountingBattle && stageReady && ownAdventure?.state === 'encounter' && ownAdventure.encounter) {
+      const { encounter } = ownAdventure;
+      const layers = battleAssets.stages[encounter.stage]?.layers;
+      if (layers?.length && encounter.stage === firstLand.stage) {
+        mountingBattle = true;
+        void mountQuestBattleEntry(view, get('.quest-map-board'), {
+          encounter, layers, timing: battleAssets.transition, signal,
+          isCurrent: () => current().adventure?.encounter === encounter && current().adventure.state === 'encounter',
+          onEncounter: stage => onEncounter?.({
+            stage, isBoss: definition.kind === 2,
+          }),
+        });
+      }
+    }
+  }
+
+  async function startQuest(button) {
+    if (starting || button.disabled || !selectedId || signal.aborted || view.inert) return;
+    playBackClick();
+    const { selectedDeck } = current();
+    if (!selectedDeck?.cards.some(card => card.position === 0)) {
+      onAlert?.('quest-empty-deck', '卡組是空的', button);
+      return;
+    }
+    starting = true;
+    const restore = document.activeElement === button;
+    refresh();
+    try {
+      await scene.start(selectedId);
+      if (!signal.aborted && !view.inert && restore && document.activeElement === document.body) {
+        route.querySelector('button.quest-map-detail-land')?.focus({ preventScroll: true });
+      }
+    } catch (error) {
+      if (signal.aborted || view.inert) return;
+      if (error.kind === 'quest-start-rejected') {
+        onAlert?.(error.kind, questRejections.get(error.code) ?? '無法開始任務', button);
+      } else if (error.kind === 'quest-start-uncertain') {
+        onAlert?.(error.kind, '無法確認任務是否已開始。', button);
+      }
+    } finally {
+      starting = false;
+      refresh();
+    }
+  }
+
+  async function enterLand(slot) {
+    if (!scene?.enterLand || entering || rendered?.reachableSlot !== slot || signal.aborted || view.inert) return;
+    entering = true;
+    try {
+      await scene.enterLand(slot);
+    } catch (error) {
+      if (signal.aborted || view.inert) return;
+      const hit = route.querySelector(`[data-slot="${slot}"]`);
+      if (error.kind === 'quest-land-rejected') {
+        onAlert?.(error.kind, questRejections.get(error.code) ?? '無法進入此地區', hit);
+      } else if (error.kind === 'quest-land-uncertain') {
+        onAlert?.(error.kind, '無法確認地形移動結果。', hit);
+      }
+    } finally {
+      entering = false;
     }
   }
 
   localBack.addEventListener('click', close, { signal });
-  void getCatalog(`${art}sources.json`, null, signal).then(({ detail: source }) => {
+  void getCatalog(`${art}sources.json`, null, signal).then(({ detail: source, battle }) => {
     if (signal.aborted || !source) return;
     assets = source;
+    battleAssets = battle;
     function applyButtonArt(button, { up, over, hit }) {
       place(button, hit);
       appendDetailArt(button, up, -hit[0], -hit[1]);
@@ -445,6 +608,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
       command.dataset.questCommand = key;
       command.setAttribute('aria-label', label);
       applyButtonArt(command, assets.commands[key]);
+      if (key === 'start') command.addEventListener('click', () => startQuest(command), { signal });
       commands.append(command);
     }
     for (const layer of assets.data ?? []) appendDetailArt(get('.quest-map-detail-data-art'), layer);
@@ -457,8 +621,9 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     get inventoryId() { return selectedId; },
     refresh,
     async open(id) {
-      const row = current().rows.find(item => item.inventoryId === id);
-      if (!row || !detailStatuses.has(row.status) || row.questId <= 0) return;
+      const { rows, adventure } = current();
+      const row = rows.find(item => item.inventoryId === id);
+      if (!row || !detailStatuses.has(row.status) || row.questId <= 0 || adventure || starting) return;
       get(`#quest-map-inventory > li[data-inventory-id="${selectedId}"] .quest-map-row-open`)?.removeAttribute('aria-current');
       selectedId = id;
       get(`#quest-map-inventory > li[data-inventory-id="${id}"] .quest-map-row-open`)?.setAttribute('aria-current', 'true');
@@ -820,7 +985,7 @@ function createQuestRow(item, definitions, receiptTime, timers, showHelp, select
   return row;
 }
 
-async function paintDeck(view, selected, signal) {
+async function paintDeck(view, selected, signal, loadCards) {
   const deck = view.querySelector('#quest-map-deck');
   const name = deck.querySelector('#quest-map-active-deck-name');
   const cards = deck.querySelector('#quest-map-deck-cards');
@@ -847,20 +1012,24 @@ async function paintDeck(view, selected, signal) {
     if (!slots.has(cardId)) slots.set(cardId, []);
     slots.get(cardId).push(slot);
   }
-  try {
-    const ids = Array.from(slots.keys()).join(',');
-    const metadata = await getCatalog('/api/quest-character-cards', new URLSearchParams({ ids }), signal);
-    if (signal.aborted) return;
-    for (const { id, name } of metadata.cards) {
-      if (typeof name !== 'string' || !name) continue;
-      for (const slot of slots.get(id) ?? []) slot.textContent = name;
+  const metadata = await loadCards([...slots.keys()]);
+  for (const [id, positions] of slots) {
+    const definition = metadata.get(id);
+    if (signal.aborted || !definition) continue;
+    for (const slot of positions) {
+      if (slot.parentElement !== cards) continue;
+      if (definition.name) slot.textContent = definition.name;
+      const canvas = document.createElement('canvas');
+      canvas.className = 'quest-map-card-face';
+      canvas.dataset.cardId = String(id);
+      void renderCharacterCard(canvas, definition, { signal }).then(painted => {
+        if (painted && !signal.aborted && slot.parentElement === cards) slot.replaceChildren(canvas);
+      });
     }
-  } catch {
-    // The verified deck name and slots remain available if card names cannot be fetched.
   }
 }
 
-export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert }) {
+export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert, onEncounter }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -877,12 +1046,16 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
   const deckControls = [[get('#quest-map-deck-previous'), -1], [get('#quest-map-deck-next'), 1]];
   const definitions = new Map();
   const definitionRequests = new Map();
+  const cards = new Map();
+  const cardRequests = new Map();
   const timers = [];
   let latest = snapshot;
   let page = 0;
   let timer;
   let selectingDeck = false;
-  const details = setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, current: () => latest });
+  const details = setupQuestDetails(view, {
+    scene, signal, definitions, loadDefinitions, loadCards, current: () => latest, onAlert, onEncounter,
+  });
 
   const updateTimers = () => {
     let running = false;
@@ -939,10 +1112,26 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
     return Promise.all(Array.from(requested, id => definitionRequests.get(id)));
   }
 
+  async function loadCards(ids) {
+    const missing = ids.filter(id => !cardRequests.has(id));
+    if (missing.length) {
+      const query = new URLSearchParams({ ids: missing.join(',') });
+      const request = getCatalog('/api/deck-character-catalog', query, signal).then(metadata => {
+        for (const card of metadata.cards) if (missing.includes(card.id)) cards.set(card.id, card);
+      }).catch(() => {
+        for (const id of missing) cardRequests.delete(id);
+      });
+      for (const id of missing) cardRequests.set(id, request);
+    }
+    await Promise.all(ids.map(id => cardRequests.get(id)));
+    return cards;
+  }
+
   function displayDeckControls() {
     const state = latest.deckSelectionState ?? 'unavailable';
     view.dataset.deckSelectionState = state;
     for (const [button] of deckControls) {
+      button.hidden = !!latest.adventure;
       button.setAttribute('aria-disabled', String(state !== 'ready' || latest.searchState === 'busy' || selectingDeck || !scene));
     }
   }
@@ -951,8 +1140,11 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
     if (signal.aborted) return;
     const previous = latest;
     latest = next;
+    back.hidden = !!next.adventure;
+    get('#quest-map-detail-back').hidden = !!next.adventure;
+    get('.quest-map-list').inert = !!next.adventure;
     displayDeckControls();
-    if (previous.selectedDeck !== next.selectedDeck) void paintDeck(view, next.selectedDeck, signal);
+    if (previous.selectedDeck !== next.selectedDeck) void paintDeck(view, next.selectedDeck, signal, loadCards);
     if (view.dataset.searchState !== next.searchState) {
       view.dataset.searchState = next.searchState;
       searchStatus.textContent = next.searchState === 'busy' ? '正在等待伺服器回覆。' : '';
@@ -1005,6 +1197,7 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
     }, { signal });
   }
   back.addEventListener('click', () => {
+    if (latest.adventure) return;
     back.disabled = true;
     playBackClick();
     onBack();
@@ -1017,7 +1210,7 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert 
   }
   paintRows();
   void mountAvatarLayer(get('.avatar-layer'), { session, signal, idPrefix: 'quest-map' });
-  void paintDeck(view, snapshot.selectedDeck, signal);
+  void paintDeck(view, snapshot.selectedDeck, signal, loadCards);
   host.append(view);
   back.focus({ preventScroll: true });
   displaySnapshot(scene?.snapshot ?? snapshot);
