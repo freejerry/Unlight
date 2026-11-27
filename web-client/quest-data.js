@@ -55,6 +55,8 @@ export const QUEST_EVENT_REFILL_REPLY = 45;
 export const QUEST_MOVE_PHASE_START_REPLY = 46;
 export const QUEST_MOVE_PHASE_FINISH_REPLY = 47;
 export const QUEST_MOVE_RESULT_REPLY = 48;
+export const QUEST_CHARA_CHANGE_START_REPLY = 49;
+export const QUEST_CHARA_CHANGE_FINISH_REPLY = 50;
 export const QUEST_ATTACK_PHASE_START_REPLY = 51;
 export const QUEST_ATTACK_PHASE_FINISH_REPLY = 52;
 export const QUEST_DEFENCE_PHASE_START_REPLY = 53;
@@ -62,6 +64,7 @@ export const QUEST_DEFENCE_PHASE_FINISH_REPLY = 54;
 export const QUEST_BATTLE_CARDS_REPLY = 55;
 export const QUEST_BATTLE_DICE_REPLY = 56;
 export const QUEST_DEAD_CHARA_CHANGE_REPLY = 57;
+export const QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY = 58;
 export const QUEST_TURN_FINISH_REPLY = 59;
 export const QUEST_DIRECTION_REPLY = 60;
 export const QUEST_MOVE_CARD_ADD_REPLY = 61;
@@ -70,6 +73,12 @@ export const QUEST_BATTLE_CARD_ADD_REPLY = 65;
 export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
 export const QUEST_DAMAGE_REPLY = 73;
 export const QUEST_HIT_POINT_REPLY = 79;
+
+const CARD_ROTATE_REPLIES = [63, 64];
+const CARD_REMOVE_REPLIES = [84, 85, 86];
+const CARD_STEAL_REPLY = 89;
+const CARD_DEAL_REPLIES = [87, 88, CARD_STEAL_REPLY, 90];
+export const QUEST_HAND_EFFECT_REPLIES = Object.freeze([...CARD_ROTATE_REPLIES, ...CARD_REMOVE_REPLIES, ...CARD_DEAL_REPLIES]);
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -474,15 +483,49 @@ export function readQuestHitPointReply(reply) {
 }
 
 export function readQuestCombatBoundaryReply(reply) {
-  if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
-    readDuelBoolean(reply);
-    readDuelBoolean(reply);
-    reply.discardString(MAX_ID_LIST_BYTES, true);
-    reply.discardString(MAX_ID_LIST_BYTES, true);
-  } else if (reply.command !== QUEST_TURN_FINISH_REPLY) {
+  if (reply.command === QUEST_CHARA_CHANGE_START_REPLY || reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
+    const playerDone = readDuelBoolean(reply);
+    const opponentDone = readDuelBoolean(reply);
+    if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
+      reply.discardString(MAX_ID_LIST_BYTES, true);
+      reply.discardString(MAX_ID_LIST_BYTES, true);
+    }
+    reply.done();
+    return { playerDone, opponentDone };
+  }
+  if (reply.command !== QUEST_CHARA_CHANGE_FINISH_REPLY && reply.command !== QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY
+    && reply.command !== QUEST_TURN_FINISH_REPLY) {
     throw new Error('Unexpected quest combat boundary reply.');
   }
   reply.done();
+  return null;
+}
+
+export function readQuestHandEffectReply(reply) {
+  if (!QUEST_HAND_EFFECT_REPLIES.includes(reply.command)) throw new Error('Unexpected quest hand effect reply.');
+  const player = readDuelBoolean(reply);
+  if (CARD_ROTATE_REPLIES.includes(reply.command)) {
+    const table = reply.byte();
+    reply.byte(); // Original source position.
+    const id = reply.int();
+    readDuelBoolean(reply);
+    reply.done();
+    if (table < 0 || table > 2 || id < 0) throw new Error('Invalid quest rotation reply.');
+    return player && id > 0;
+  }
+  if (CARD_REMOVE_REPLIES.includes(reply.command)) {
+    const id = reply.int();
+    reply.done();
+    if (id < 0) throw new Error('Invalid quest card removal reply.');
+    return player && id > 0;
+  }
+  const ids = readDuelCardIds(reply);
+  reply.uint(); // Card orientation bitmask.
+  const count = reply.int();
+  reply.done();
+  if (count < 0) throw new Error('Invalid quest card deal reply.');
+  // A steal transfers cards between hands whichever side receives them.
+  return (player || reply.command === CARD_STEAL_REPLY) && (ids.length > 0 || count > 0);
 }
 
 export function createQuestDataReader() {

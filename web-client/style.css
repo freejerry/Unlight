@@ -185,6 +185,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-hand-cards { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0; padding: 0; list-style: none; }
 .quest-hand-cards li { max-width: 100%; padding: .16rem .34rem; border: 1px solid var(--line); border-radius: .3rem; background: #fff; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .quest-card-face { color: var(--muted); }
+.quest-refilled { display: inline-block; margin-inline-start: .3rem; color: var(--accent); font-size: .78rem; font-weight: 650; }
 .quest-hand-cards .quest-move-card-item { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; padding: .32rem .38rem; }
 .quest-move-card-item .quest-card-label { flex: 1 1 7rem; min-width: 0; }
 .quest-move-card-item .button { min-height: 2.15rem; padding: .18rem .4rem; font-size: .81rem; }
@@ -202,6 +203,10 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-combat-subtitle span { color: var(--muted); font-weight: 450; }
 .quest-combat-damage { margin: .25rem 0; padding-inline-start: 1.3rem; color: #2d444f; font-size: .9rem; overflow-wrap: anywhere; }
 .quest-combat-damage li + li { margin-top: .2rem; }
+.quest-previous-exchange { min-width: 0; margin-top: .75rem; padding: .45rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: #fbfdfd; }
+.quest-previous-exchange summary { cursor: pointer; color: #203b46; font-size: .88rem; font-weight: 680; }
+.quest-previous-exchange summary:focus-visible { outline: 2px solid #007f69; outline-offset: 2px; }
+.quest-previous-exchange summary span { margin-inline-start: .25rem; color: var(--muted); font-weight: 450; }
 .quest-settlement { min-width: 0; margin-top: .75rem; padding: .35rem .55rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: #fbfdfd; }
 .quest-settlement h5 { margin-top: .1rem; }
 .quest-settlement h6 { margin: .65rem 0 .28rem; color: #203b46; font-size: .9rem; }

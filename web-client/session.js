@@ -18,6 +18,8 @@ import {
   QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_DEFENCE_PHASE_START_REPLY, QUEST_DEFENCE_PHASE_FINISH_REPLY,
   QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY,
   QUEST_DAMAGE_REPLY, QUEST_HIT_POINT_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
+  QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
+  QUEST_HAND_EFFECT_REPLIES,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
@@ -28,6 +30,7 @@ import {
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
   readQuestDamageReply, readQuestHitPointReply, readQuestDuelFinishReply, readQuestCombatBoundaryReply,
+  readQuestHandEffectReply,
   readQuestSettlementValueReply, readQuestCharacterAwardReply,
 } from './quest-data.js';
 
@@ -46,7 +49,7 @@ const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start
 const QUEST_LAND_REJECTIONS = new Set([16, 41, 42, 43]); // Before the original next-land commit.
 const QUEST_MISSING_ERROR = 40;
 const DIRECTION_PENDING = 2;
-const QUEST_INITIAL_TURN_REPLIES = [
+const QUEST_TURN_REPLIES = [
   QUEST_TURN_REPLY, QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
 ];
 const CHANNELS = [
@@ -65,6 +68,7 @@ const QUEST_COMBAT_REPLIES = [
   QUEST_ATTACK_PHASE_START_REPLY, QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_DEFENCE_PHASE_START_REPLY,
   QUEST_DEFENCE_PHASE_FINISH_REPLY, QUEST_BATTLE_CARDS_REPLY, QUEST_BATTLE_DICE_REPLY, QUEST_DAMAGE_REPLY,
   QUEST_HIT_POINT_REPLY, QUEST_DEAD_CHARA_CHANGE_REPLY, QUEST_TURN_FINISH_REPLY,
+  QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
 ];
 const QUEST_SETTLEMENT_REPLIES = [
   QUEST_DUEL_FINISH_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_PROGRESS_REPLY,
@@ -694,12 +698,16 @@ function validQuestCardId(cardId) {
 
 function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   let phase = 'encounter';
+  let turn = null;
+  let startDistance = null;
   let direction = null;
   let ready = null;
   let result = null;
   let hand = null;
   let moveTable = null;
   let exchange = null;
+  let previousExchange = null;
+  let characterChange = null;
   let duelFinish = null;
   let questFinish = null;
   let questDeleted = false;
@@ -718,22 +726,30 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   function uncertain() {
     if (phase === 'closed') return;
     clearTimeout(settlementTimer);
-    if (exchange) {
-      if (exchange.phase === 'complete' || exchange.phase === 'terminal') return;
+    if (phase === 'moved' && exchange && exchange.phase !== 'complete' && exchange.phase !== 'terminal') {
       exchange.phase = 'uncertain';
     } else phase = 'uncertain';
     pending?.reject(new SessionError('quest-battle-uncertain'));
   }
 
   function receiveReady(reply) {
-    if (phase !== 'preparing' || QUEST_INITIAL_TURN_REPLIES[readyStep] !== reply.command) {
+    if (phase === 'moved' && reply.command === QUEST_TURN_REPLY && exchange?.index === 2 && exchange.dice) {
+      beginNextTurn();
+    }
+    if (phase === 'between-turns' && reply.command === QUEST_TURN_REPLY) phase = 'preparing';
+    if (phase !== 'preparing' || QUEST_TURN_REPLIES[readyStep] !== reply.command) {
       throw new SessionError('protocol');
     }
     switch (reply.command) {
-      case QUEST_TURN_REPLY:
-        if (readQuestTurnReply(reply) !== 1) throw new SessionError('protocol');
-        readyParts.turn = 1;
+      case QUEST_TURN_REPLY: {
+        const next = readQuestTurnReply(reply);
+        if (next !== (ready?.turn ?? 0) + 1) throw new SessionError('protocol');
+        turn = next;
+        readyParts.turn = next;
+        clearTimeout(settlementTimer);
+        settlementTimer = setTimeout(uncertain, TIMEOUT);
         break;
+      }
       case QUEST_ACTION_REFILL_REPLY:
         readyParts.action = readQuestRefillReply(reply);
         break;
@@ -743,13 +759,18 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
       case QUEST_MOVE_PHASE_START_REPLY:
         readQuestMovePhaseReply(reply);
         ready = readyParts;
-        readyParts = null;
-        // The original action and event refills append to the same indexed hand.
-        hand = [...ready.action.cards, ...ready.event.cards.map((card) => ({ ...card, event: true }))];
+        // Original SC44 then SC45 append to the same hand, after any survivors.
+        hand ??= [];
+        hand.push(...ready.action.cards, ...ready.event.cards.map((card) => ({ ...card, event: true })));
         moveTable = [];
+        startDistance = result?.distance ?? startDistance;
+        result = null;
+        direction = null;
+        exchange = null;
+        clearTimeout(settlementTimer);
         moveDeadline = performance.now() + QUEST_MOVE_WAIT + TIMEOUT;
         phase = 'move';
-        pending.resolve(ready);
+        if (pending?.kind === 'ready') pending.resolve(ready);
         break;
     }
     readyStep += 1;
@@ -806,15 +827,67 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
 
   function finishCombat(stage) {
     clearTimeout(settlementTimer);
-    if (!closeCombatDrop() && stage !== 'terminal') return;
+    if (!closeCombatDrop() && stage !== 'terminal') return false;
     exchange.phase = stage;
     exchange.battleTable = [];
+    if (stage === 'complete') previousExchange = structuredClone(exchange);
     if (pending?.kind === 'battle-commit') pending.resolve(exchange);
+    return true;
   }
 
   function closeCombatDrop() {
     if (pending?.kind === 'battle-card' && !pending.answered) uncertain();
     return exchange.phase !== 'uncertain';
+  }
+
+  function consumePlayedCards(cards) {
+    const playedIds = new Set(cards.map((card) => card.id));
+    hand = hand.filter((card) => !playedIds.has(card.id));
+  }
+
+  function openExchange(index) {
+    exchange = {
+      turn, index, phase: 'awaiting-attack', playerAttacks: null, battleTable: [], attackCards: null, defenceCards: null,
+      cards: null, dice: null, damage: [], hitPoints: { player: null, opponent: null }, duelFinish, questFinish,
+    };
+  }
+
+  function openAttack(playerAttacks) {
+    exchange.playerAttacks = playerAttacks;
+    exchange.phase = playerAttacks ? 'attack' : 'awaiting-defense';
+    waitForCombat(QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+  }
+
+  function beginNextTurn() {
+    if (exchange.phase !== 'complete' && !finishCombat('complete')) return;
+    phase = 'between-turns';
+    readyParts = {};
+    readyStep = 0;
+    waitForCombat(QUEST_TURN_REPLY);
+  }
+
+  function receiveCharacterChange(reply) {
+    const state = readQuestCombatBoundaryReply(reply);
+    if (reply.command === QUEST_CHARA_CHANGE_START_REPLY) {
+      if (phase !== 'moved' || nextCombatReply !== QUEST_ATTACK_PHASE_START_REPLY) throw new SessionError('protocol');
+      characterChange = { kind: 'movement', ...state };
+      phase = 'character-change';
+      waitForCombat(QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+    } else if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
+      if (phase !== 'moved' || !exchange.dice || !finishCombat('complete')) throw new SessionError('protocol');
+      characterChange = { kind: 'defeated', ...state };
+      phase = 'character-change';
+      waitForCombat(QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+    } else {
+      if (phase !== 'character-change' || nextCombatReply !== reply.command) throw new SessionError('protocol');
+      const { kind } = characterChange;
+      characterChange = null;
+      if (kind === 'defeated') beginNextTurn();
+      else {
+        phase = 'moved';
+        waitForCombat(QUEST_ATTACK_PHASE_START_REPLY);
+      }
+    }
   }
 
   function settlementSnapshot() {
@@ -831,7 +904,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
       if (exchange) {
         exchange.duelFinish = duelFinish;
         finishCombat('terminal');
-      }
+      } else uncertain();
       return;
     }
 
@@ -847,7 +920,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         if (exchange) {
           exchange.questFinish = questFinish;
           finishCombat('terminal');
-        }
+        } else uncertain();
         break;
       }
       case QUEST_PROGRESS_REPLY: {
@@ -878,6 +951,11 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   }
 
   function receiveCombat(reply) {
+    if (reply.command === QUEST_CHARA_CHANGE_START_REPLY || reply.command === QUEST_CHARA_CHANGE_FINISH_REPLY
+        || reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY || reply.command === QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY) {
+      receiveCharacterChange(reply);
+      return;
+    }
     if (['complete', 'terminal', 'uncertain'].includes(exchange.phase)) return;
 
     if (reply.command === QUEST_DAMAGE_REPLY || reply.command === QUEST_HIT_POINT_REPLY) {
@@ -892,27 +970,32 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
       return;
     }
 
-    if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY || reply.command === QUEST_TURN_FINISH_REPLY) {
+    if (reply.command === QUEST_TURN_FINISH_REPLY) {
       readQuestCombatBoundaryReply(reply);
-      if (exchange.dice) finishCombat('complete');
+      if (exchange.index === 2 && exchange.dice) beginNextTurn();
       else uncertain();
       return;
     }
     if (reply.command === QUEST_ATTACK_PHASE_START_REPLY && exchange.playerAttacks !== null) {
       const nextAttacker = readQuestAttackPhaseReply(reply);
-      if (exchange.dice && nextAttacker !== exchange.playerAttacks) finishCombat('complete');
-      else uncertain();
+      if (exchange.index === 1 && exchange.dice && nextAttacker !== exchange.playerAttacks) {
+        if (finishCombat('complete')) {
+          openExchange(2);
+          openAttack(nextAttacker);
+        }
+      } else uncertain();
       return;
     }
 
     // Abilities can publish cosmetic dice before the ordinary result stage.
-    if (reply.command === QUEST_BATTLE_DICE_REPLY && nextCombatReply !== QUEST_BATTLE_DICE_REPLY) return;
+    if (reply.command === QUEST_BATTLE_DICE_REPLY && nextCombatReply !== QUEST_BATTLE_DICE_REPLY) {
+      if (exchange.dice) uncertain();
+      return;
+    }
     if (reply.command !== nextCombatReply) throw new SessionError('protocol');
     switch (reply.command) {
       case QUEST_ATTACK_PHASE_START_REPLY:
-        exchange.playerAttacks = readQuestAttackPhaseReply(reply);
-        exchange.phase = exchange.playerAttacks ? 'attack' : 'awaiting-defense';
-        waitForCombat(QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
+        openAttack(readQuestAttackPhaseReply(reply));
         break;
       case QUEST_ATTACK_PHASE_FINISH_REPLY:
         exchange.attackCards = readQuestBattleCardsReply(reply);
@@ -935,8 +1018,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         break;
       case QUEST_BATTLE_CARDS_REPLY: {
         exchange.cards = readQuestBattleCardsReply(reply);
-        const playedIds = new Set(exchange.cards.playerCards.map((card) => card.id));
-        hand = hand.filter((card) => !playedIds.has(card.id));
+        consumePlayedCards(exchange.cards.playerCards);
         exchange.battleTable.length = 0;
         waitForCombat(QUEST_BATTLE_DICE_REPLY);
         break;
@@ -952,9 +1034,10 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
   }
 
   const unsubscribe = socket.observe([
-    ...QUEST_INITIAL_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
+    ...QUEST_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
     QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ERROR_REPLY,
     QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
+    ...QUEST_HAND_EFFECT_REPLIES,
   ], (reply) => {
     if (phase === 'closed') return;
     try {
@@ -962,7 +1045,22 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         receiveSettlement(reply);
         return;
       }
-      if (phase === 'uncertain') return;
+      if (phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return;
+      if (QUEST_HAND_EFFECT_REPLIES.includes(reply.command)) {
+        if (readQuestHandEffectReply(reply)) uncertain();
+        return;
+      }
+      if (QUEST_TURN_REPLIES.includes(reply.command)) {
+        receiveReady(reply);
+        return;
+      }
+      if (exchange && reply.command === QUEST_DIRECTION_REPLY) {
+        const { player, direction: reset } = readQuestDirectionReply(reply);
+        if (phase === 'moved' && exchange.index === 2 && exchange.dice && player && reset === DIRECTION_PENDING) {
+          beginNextTurn();
+        }
+        return;
+      }
       if (exchange) {
         if (QUEST_COMBAT_REPLIES.includes(reply.command)) receiveCombat(reply);
         else if (reply.command === QUEST_BATTLE_CARD_ADD_REPLY || reply.command === QUEST_BATTLE_CARD_REMOVE_REPLY) {
@@ -971,10 +1069,6 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
           readQuestErrorReply(reply);
           uncertain();
         }
-        return;
-      }
-      if (QUEST_INITIAL_TURN_REPLIES.includes(reply.command)) {
-        receiveReady(reply);
         return;
       }
       switch (reply.command) {
@@ -1010,14 +1104,11 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
         case QUEST_MOVE_RESULT_REPLY:
           if (phase !== 'settling') throw new SessionError('protocol');
           result = readQuestMoveResultReply(reply);
+          consumePlayedCards(result.playerCards);
           moveTable.length = 0;
           clearTimeout(settlementTimer);
           phase = 'moved';
-          exchange = {
-            phase: 'awaiting-attack', playerAttacks: null, battleTable: [], attackCards: null, defenceCards: null,
-            cards: null, dice: null, damage: [], hitPoints: { player: null, opponent: null },
-            duelFinish, questFinish,
-          };
+          openExchange(1);
           waitForCombat(QUEST_ATTACK_PHASE_START_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
           if (pending?.kind === 'commit') pending.resolve(result);
           break;
@@ -1044,7 +1135,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     const combat = kind === 'battle-card' || kind === 'battle-commit';
     const transferring = kind === 'card' || kind === 'battle-card';
     const combatCommands = combat ? QUEST_COMBAT_COMMANDS[exchange?.phase] : null;
-    const allowed = combat ? Boolean(combatCommands) : phase === (kind === 'ready' ? 'encounter' : 'move');
+    const allowed = !duelFinish && !questFinish && (combat ? phase === 'moved' && Boolean(combatCommands)
+      : phase === (kind === 'ready' ? 'encounter' : 'move'));
     if (!allowed) {
       throw new SessionError(transferring ? 'quest-card-unavailable' : 'quest-battle-unavailable');
     }
@@ -1102,7 +1194,9 @@ function observeQuestBattle(socket, { inventoryId, questId }, applySettlement) {
     get busy() { return pending !== null; },
     get settlement() { return structuredClone(settlementSnapshot()); },
     snapshot: () => structuredClone({
-      phase, direction, ready, result, actionHand: hand && hand.filter((card) => !card.event), moveTable,
+      phase, turn, startDistance, direction, ready, result, previousExchange, characterChange, moveTable,
+      actionHand: hand && hand.filter((card) => !card.event),
+      eventHand: hand && hand.filter((card) => card.event).map(({ id, up }) => ({ id, up })),
       exchange: exchange && { ...exchange, settlement: settlementSnapshot() },
     }),
     ready: (signal) => send('ready', QUEST_READY_REQUEST, [], signal),
