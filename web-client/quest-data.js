@@ -7,6 +7,7 @@ const MAX_DIALOGUE_BYTES = 64 * 1024;
 const MAX_DECK_INDEX = 127;
 const LAND_SLOT_COUNT = 15;
 const MAX_LAND_PROGRESS = (1 << LAND_SLOT_COUNT) - 1;
+const REFILL_ORIENTATION_BITS = 32;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
 const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
@@ -30,6 +31,17 @@ export const QUEST_PROGRESS_REPLY = 19;
 export const QUEST_FINISH_REPLY = 24;
 export const QUEST_ENCOUNTER_REPLY = 37;
 export const QUEST_DUEL_START_REPLY = 40;
+export const QUEST_READY_REQUEST = 22;
+export const QUEST_DIRECTION_REQUEST = 23;
+export const QUEST_MOVE_COMMIT_REQUEST = 26;
+export const QUEST_TURN_REPLY = 43;
+export const QUEST_ACTION_REFILL_REPLY = 44;
+export const QUEST_EVENT_REFILL_REPLY = 45;
+export const QUEST_MOVE_PHASE_START_REPLY = 46;
+export const QUEST_MOVE_PHASE_FINISH_REPLY = 47;
+export const QUEST_MOVE_RESULT_REPLY = 48;
+export const QUEST_ATTACK_PHASE_START_REPLY = 51;
+export const QUEST_DIRECTION_REPLY = 60;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -230,6 +242,92 @@ export function readQuestDuelStartReply(reply) {
     throw new Error('Invalid quest duel start reply.');
   }
   return { deckSize, playerEventDeckSize, opponentEventDeckSize, distance, multi: multi === 1 };
+}
+
+function readDuelCardIds(reply) {
+  const ids = integerList(reply.string(MAX_ID_LIST_BYTES, true));
+  if (ids.some((id) => id === 0 || id > MAX_INT32)) throw new Error('Invalid duel card ID.');
+  return ids;
+}
+
+function readDuelBoolean(reply) {
+  const value = reply.byte();
+  if (value !== 0 && value !== 1) throw new Error('Invalid duel boolean.');
+  return value === 1;
+}
+
+function readPlayedCards(reply) {
+  const ids = readDuelCardIds(reply);
+  const orientation = reply.string(MAX_ID_LIST_BYTES, true);
+  const faces = orientation === '' ? [] : orientation.split(',');
+  if (faces.length !== ids.length || faces.some((face) => face !== 'true' && face !== 'false')) {
+    throw new Error('Invalid played-card orientation.');
+  }
+  return ids.map((id, index) => ({ id, up: faces[index] === 'true' }));
+}
+
+export function readQuestTurnReply(reply) {
+  if (reply.command !== QUEST_TURN_REPLY) throw new Error('Unexpected quest turn reply.');
+  const turn = reply.byte();
+  reply.done();
+  if (turn < 1) throw new Error('Invalid quest turn.');
+  return turn;
+}
+
+export function readQuestRefillReply(reply) {
+  if (reply.command !== QUEST_ACTION_REFILL_REPLY && reply.command !== QUEST_EVENT_REFILL_REPLY) {
+    throw new Error('Unexpected quest refill reply.');
+  }
+  const ids = readDuelCardIds(reply);
+  const orientation = reply.uint();
+  const opponentDrawCount = reply.byte();
+  reply.done();
+  if (ids.length > REFILL_ORIENTATION_BITS || opponentDrawCount < 0
+    || (ids.length < REFILL_ORIENTATION_BITS && (orientation >>> ids.length) !== 0)) {
+    throw new Error('Invalid quest refill reply.');
+  }
+  const cards = ids.map((id, index) => ({ id, up: ((orientation >>> index) & 1) === 1 }));
+  return { cards, opponentDrawCount };
+}
+
+export function readQuestMovePhaseReply(reply) {
+  if (reply.command !== QUEST_MOVE_PHASE_START_REPLY && reply.command !== QUEST_MOVE_PHASE_FINISH_REPLY) {
+    throw new Error('Unexpected quest move phase reply.');
+  }
+  reply.done();
+  return reply.command === QUEST_MOVE_PHASE_START_REPLY ? 'start' : 'finish';
+}
+
+export function readQuestDirectionReply(reply) {
+  if (reply.command !== QUEST_DIRECTION_REPLY) throw new Error('Unexpected quest direction reply.');
+  const player = readDuelBoolean(reply);
+  const direction = reply.byte();
+  reply.done();
+  if (direction < -1 || direction > 3) throw new Error('Invalid quest direction.');
+  return { player, direction };
+}
+
+export function readQuestMoveResultReply(reply) {
+  if (reply.command !== QUEST_MOVE_RESULT_REPLY) throw new Error('Unexpected quest move result.');
+  const playerInitiative = readDuelBoolean(reply);
+  const distance = reply.byte();
+  const playerCards = readPlayedCards(reply);
+  const opponentCards = readPlayedCards(reply);
+  const playerPower = reply.byte();
+  const opponentPower = reply.byte();
+  const playerLocked = readDuelBoolean(reply);
+  const opponentLocked = readDuelBoolean(reply);
+  reply.done();
+  // The original distance_appearance returns 4 when fog hides the distance.
+  if (distance < 1 || distance > 4) throw new Error('Invalid quest move distance.');
+  return { playerInitiative, distance, playerCards, opponentCards, playerPower, opponentPower, playerLocked, opponentLocked };
+}
+
+export function readQuestAttackPhaseReply(reply) {
+  if (reply.command !== QUEST_ATTACK_PHASE_START_REPLY) throw new Error('Unexpected quest attack phase reply.');
+  const playerAttacks = readDuelBoolean(reply);
+  reply.done();
+  return playerAttacks;
 }
 
 export function createQuestDataReader() {

@@ -26,8 +26,9 @@ ROOT = Path(__file__).resolve().parent
 PUBLIC_CONFIG = ROOT.parents[1] / "app/client/public"
 NATIVE_ROOT = ROOT.parents[1] / "web-client"
 REPLAY_BASELINE = ROOT.parent / "legacy-server/fixtures/trace-2026.json"
-QUEST_CSV = ROOT.parents[1] / "app/server/data/csv"
+SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
+MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
 TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
 QUEST_LAND_FIELDS = tuple(
     f"quest_land_id_{column}_{row}" for column in range(5) for row in range(3)
@@ -73,7 +74,7 @@ def native_panel_skin(assets):
 
 
 def native_quest_catalog():
-    with (QUEST_CSV / "ja/QuestMaps.csv").open(encoding="utf-8-sig", newline="") as source:
+    with (SERVER_CSV / "ja/QuestMaps.csv").open(encoding="utf-8-sig", newline="") as source:
         maps = {
             int(row["id"]): {
                 "id": int(row["id"]), "name": row["name_tcn"] or row["name"],
@@ -84,7 +85,7 @@ def native_quest_catalog():
         }
     land_rows = []
     with suppress(OSError):
-        with (QUEST_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
+        with (SERVER_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
             land_rows = list(DictReader(source))
     lands = {}
     land_enemies = {}
@@ -98,7 +99,7 @@ def native_quest_catalog():
             if 0 <= enemy_id <= 0x7fffffff:
                 land_enemies[land_id] = enemy_id
     quests = {}
-    with (QUEST_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
+    with (SERVER_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
             if row["name"]:
                 quest_id = int(row["id"])
@@ -121,6 +122,20 @@ def native_quest_catalog():
                     "firstLand": first_land,
                 }
     return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
+
+
+def native_action_card_catalog():
+    # The draw packets use physical ActionCard IDs, including cards from EventDeck.
+    with (SERVER_CSV / "tcn/ActionCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        return {
+            int(row["id"]): {
+                "id": int(row["id"]),
+                "upper": {"type": int(row["u_type"]), "value": int(row["u_value"])},
+                "lower": {"type": int(row["b_type"]), "value": int(row["b_value"])},
+                "caption": row["caption"],
+            }
+            for row in DictReader(source)
+        }
 
 
 def client_config(server_offset, direct_sockets):
@@ -297,6 +312,9 @@ def create_app(
         quests, maps = {}, {}
         with suppress(OSError):
             quests, maps = native_quest_catalog()
+        cards = {}
+        with suppress(OSError):
+            cards = native_action_card_catalog()
 
         async def quest_catalog(request):
             values = request.query.getall("id", [])
@@ -316,9 +334,20 @@ def create_app(
                 "map": area,
             })
 
+        async def action_card_catalog(request):
+            values = request.query.getall("id", [])
+            if not 1 <= len(values) <= MAX_ACTION_CARD_IDS or any(
+                not value.isascii() or not value.isdecimal() or len(value) > 10
+                or not 0 < int(value) <= 2**31 - 1 for value in values
+            ):
+                raise web.HTTPBadRequest(text="Pass positive action card IDs.")
+            ids = dict.fromkeys(map(int, values))
+            return web.json_response({"cards": [cards[card_id] for card_id in ids if card_id in cards]})
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
         app.router.add_get("/api/quest-catalog", quest_catalog)
+        app.router.add_get("/api/action-card-catalog", action_card_catalog)
         return app
 
     index_path = ROOT / "index.html"

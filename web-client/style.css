@@ -170,11 +170,26 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-land-option { margin-top: .35rem; }
 .quest-land-option .quest-land-name { display: block; }
 .quest-land-record-name { margin-top: .45rem; color: #203b46; font-weight: 680; overflow-wrap: anywhere; }
-.quest-land-record .quest-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"], [data-state="lost"]) { color: var(--failure); }
+.quest-land-record .quest-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"], [data-state="lost"], [data-state="closed"]) { color: var(--failure); }
 .quest-land-record .quest-status:focus { outline: 2px solid #007f69; outline-offset: 2px; }
 .quest-land-record .quest-original-text { margin-top: .2rem; }
 .quest-land-metadata { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); margin-top: .5rem; }
-.quest-land-battle h5 { margin: .65rem 0 0; color: #203b46; font-size: .94rem; }
+.quest-land-battle h5, .quest-first-turn h5 { margin: .65rem 0 0; color: #203b46; font-size: .94rem; }
+.quest-first-turn { margin-top: .8rem; padding-top: .35rem; border-top: 1px solid var(--line); }
+.quest-first-turn > .button, .quest-move-result { margin-top: .55rem; }
+.quest-first-turn .quest-status:empty { margin-top: 0; }
+.quest-first-turn .button { max-width: 100%; white-space: normal; }
+.quest-first-turn h6 { margin: .65rem 0 .28rem; color: #203b46; font-size: .9rem; }
+.quest-hand-piles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: .5rem; }
+.quest-hand-piles > div { min-width: 0; padding: .45rem .55rem; border: 1px solid var(--line); border-radius: .4rem; background: #f2f7f9; color: #2d444f; font-size: .86rem; }
+.quest-hand-cards { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0; padding: 0; list-style: none; }
+.quest-hand-cards li { max-width: 100%; padding: .16rem .34rem; border: 1px solid var(--line); border-radius: .3rem; background: #fff; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.quest-card-face { color: var(--muted); }
+.quest-opponent-draw { color: var(--muted); }
+.quest-move { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin-top: .65rem; }
+.quest-move label { color: #2d444f; font-size: .9rem; font-weight: 680; }
+.quest-move select { max-width: 100%; min-height: 2.35rem; padding: .32rem .5rem; border: 1px solid #9eb8bf; border-radius: .4rem; background: #fcfdfe; color: #172933; font: inherit; font-size: .9rem; }
+.quest-move .quest-status { flex-basis: 100%; }
 .quest-region, .quest-service { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--line); }
 .quest-region h4, .quest-service h4 { margin: 0; font-size: .96rem; }
 .quest-service-description { margin-top: .4rem; color: var(--muted); font-size: .9rem; }

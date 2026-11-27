@@ -9,10 +9,15 @@ import {
   QUEST_START_REQUEST, QUEST_DELETED_REPLY,
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
   QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY,
+  QUEST_READY_REQUEST, QUEST_DIRECTION_REQUEST, QUEST_MOVE_COMMIT_REQUEST, QUEST_TURN_REPLY,
+  QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
+  QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_DIRECTION_REPLY, QUEST_ATTACK_PHASE_START_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
   readQuestProgressReply, readQuestFinishReply,
+  readQuestTurnReply, readQuestRefillReply, readQuestMovePhaseReply,
+  readQuestDirectionReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -29,12 +34,17 @@ const QUEST_SEARCH_ERRORS = new Set([1, 30, 31, 32]); // Original get_quest retu
 const QUEST_START_ERRORS = new Set([1, 16, 40, 41, 42]); // Original quest_start return codes.
 const QUEST_LAND_REJECTIONS = new Set([16, 41, 42, 43]); // Before the original next-land commit.
 const QUEST_MISSING_ERROR = 40;
+const DIRECTION_PENDING = 2;
+const QUEST_INITIAL_TURN_REPLIES = [
+  QUEST_TURN_REPLY, QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
+];
 const CHANNELS = [
   { port: 12002, pong: 35 },
   { port: DATA_PORT, pong: 3 },
   { port: 12020, pong: 3 },
 ];
 const TIMEOUT = 8000;
+const QUEST_MOVE_WAIT = 120_000; // Original Ruby INIT_WAIT_TIME.
 const HEARTBEAT = 180_000;
 const CLOSE_TIMEOUT = 1500;
 const LOGIN_FIELD = /^[A-Za-z0-9_.-]{1,16}$/;
@@ -55,6 +65,9 @@ const messages = {
   'quest-land-rejected': '遊戲服務未接受進入地形。',
   'quest-land-uncertain': '地形進入結果未確認，本次登入暫停再次派出。',
   'quest-adventure-active': '本次登入已有任務地形工作階段。',
+  'quest-battle-unavailable': '原版對局目前不接受這項操作。',
+  'quest-battle-uncertain': '對局操作結果未確認，本次對局暫停操作。',
+  'quest-direction-rejected': '遊戲服務未接受這個移動方向。',
 };
 
 export class SessionError extends Error {
@@ -167,8 +180,9 @@ class SessionSocket {
   }
 
   observe(commands, receive) {
-    this.#observer = { commands, receive };
-    return () => { this.#observer = null; };
+    const observer = { commands, receive };
+    this.#observer = observer;
+    return () => { if (this.#observer === observer) this.#observer = null; };
   }
 
   async close(logout, { waitForPeer = false } = {}) {
@@ -531,7 +545,7 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
   }
 }
 
-async function submitQuestLand(socket, confirm, signal, selected, slot, markDispatched) {
+async function submitQuestLand(socket, confirm, signal, selected, slot, markDispatched, markEncounter) {
   const { inventoryId, questId, deckIndex } = selected;
   const rows = await readQuestInventoryPushes(socket, confirm, signal);
   if (!rows.some((row) => row.inventoryId === inventoryId && row.questId === questId
@@ -567,6 +581,7 @@ async function submitQuestLand(socket, confirm, signal, selected, slot, markDisp
             if (!encounter) throw new SessionError('protocol');
             const duel = readQuestDuelStartReply(reply);
             unsubscribe();
+            markEncounter();
             resolve({ slot, encounter: { ...encounter, duel }, progress: null, finish: null });
             break;
           }
@@ -627,6 +642,172 @@ async function submitQuestLand(socket, confirm, signal, selected, slot, markDisp
   }
 }
 
+function observeQuestBattle(socket) {
+  let phase = 'encounter';
+  let direction = null;
+  let ready = null;
+  let result = null;
+  let readyParts = {};
+  let readyStep = 0;
+  let pending = null;
+  let moveDeadline;
+  let settlementTimer;
+
+  function uncertain() {
+    if (phase === 'closed') return;
+    clearTimeout(settlementTimer);
+    phase = 'uncertain';
+    pending?.reject(new SessionError('quest-battle-uncertain'));
+  }
+
+  function receiveReady(reply) {
+    if (phase !== 'preparing' || QUEST_INITIAL_TURN_REPLIES[readyStep] !== reply.command) {
+      throw new SessionError('protocol');
+    }
+    switch (reply.command) {
+      case QUEST_TURN_REPLY:
+        if (readQuestTurnReply(reply) !== 1) throw new SessionError('protocol');
+        readyParts.turn = 1;
+        break;
+      case QUEST_ACTION_REFILL_REPLY:
+        readyParts.action = readQuestRefillReply(reply);
+        break;
+      case QUEST_EVENT_REFILL_REPLY:
+        readyParts.event = readQuestRefillReply(reply);
+        break;
+      case QUEST_MOVE_PHASE_START_REPLY:
+        readQuestMovePhaseReply(reply);
+        ready = readyParts;
+        readyParts = null;
+        moveDeadline = performance.now() + QUEST_MOVE_WAIT + TIMEOUT;
+        phase = 'move';
+        pending.resolve(ready);
+        break;
+    }
+    readyStep += 1;
+  }
+
+  const unsubscribe = socket.observe([
+    ...QUEST_INITIAL_TURN_REPLIES, QUEST_DIRECTION_REPLY,
+    QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ATTACK_PHASE_START_REPLY, QUEST_ERROR_REPLY,
+  ], (reply) => {
+    if (phase === 'closed' || phase === 'uncertain' || phase === 'moved') return;
+    try {
+      if (QUEST_INITIAL_TURN_REPLIES.includes(reply.command)) {
+        receiveReady(reply);
+        return;
+      }
+      switch (reply.command) {
+        case QUEST_DIRECTION_REPLY: {
+          const update = readQuestDirectionReply(reply);
+          if (phase !== 'move' || pending?.kind !== 'direction' || pending.answered || !update.player) break;
+          if (update.direction === pending.direction) {
+            direction = update.direction;
+            pending.answered = true;
+            pending.resolve(update);
+          } else if (update.direction === DIRECTION_PENDING) {
+            direction = null;
+            pending.answered = true;
+            pending.reject(new SessionError('quest-direction-rejected', update.direction));
+          }
+          break;
+        }
+        case QUEST_MOVE_PHASE_FINISH_REPLY:
+          if (phase !== 'move' && phase !== 'committing') throw new SessionError('protocol');
+          readQuestMovePhaseReply(reply);
+          phase = 'settling';
+          settlementTimer = setTimeout(uncertain, TIMEOUT);
+          if (pending?.kind === 'direction') pending.reject(new SessionError('quest-battle-unavailable'));
+          break;
+        case QUEST_MOVE_RESULT_REPLY:
+          if (phase !== 'settling') throw new SessionError('protocol');
+          result = readQuestMoveResultReply(reply);
+          clearTimeout(settlementTimer);
+          phase = 'moved';
+          if (pending?.kind === 'commit') pending.resolve(result);
+          break;
+        case QUEST_ATTACK_PHASE_START_REPLY:
+          // A later phase cannot stand in for a missing movement result.
+          readQuestAttackPhaseReply(reply);
+          uncertain();
+          break;
+        case QUEST_ERROR_REPLY:
+          readQuestErrorReply(reply);
+          uncertain();
+          break;
+      }
+    } catch {
+      uncertain();
+    }
+  });
+  void socket.closed.then(uncertain);
+
+  async function send(kind, command, fields, signal, selectedDirection) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (phase === 'uncertain') throw new SessionError('quest-battle-uncertain');
+    if (pending) throw new SessionError('busy');
+    if (phase !== (kind === 'ready' ? 'encounter' : 'move')) {
+      throw new SessionError('quest-battle-unavailable');
+    }
+    const moveRemaining = phase === 'move' ? moveDeadline - performance.now() : 0;
+    if (phase === 'move' && moveRemaining <= 0) {
+      uncertain();
+      throw new SessionError('quest-battle-uncertain');
+    }
+
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new SessionError('cancelled'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    const action = { kind, direction: selectedDirection, controller, answered: false };
+    const notification = new Promise((resolve, reject) => {
+      action.resolve = resolve;
+      action.reject = reject;
+    });
+    pending = action;
+    action.task = (async () => {
+      let sent = false;
+      try {
+        socket.send(command, fields);
+        sent = true;
+        if (kind === 'ready') phase = 'preparing';
+        else if (kind === 'commit') phase = 'committing';
+        // A commit waits for both entrants or the source phase timer.
+        const timeout = kind === 'commit' ? moveRemaining : TIMEOUT;
+        return structuredClone(await bounded(notification, controller.signal, timeout));
+      } catch (error) {
+        if (sent && phase !== 'closed' && error.kind !== 'quest-direction-rejected'
+            && error.kind !== 'quest-battle-unavailable') {
+          uncertain();
+          throw new SessionError('quest-battle-uncertain');
+        }
+        throw error;
+      } finally {
+        signal?.removeEventListener('abort', cancel);
+        pending = null;
+      }
+    })();
+    return action.task;
+  }
+
+  return {
+    get busy() { return pending !== null; },
+    snapshot: () => ({ phase, direction, ready: structuredClone(ready), result: structuredClone(result) }),
+    ready: (signal) => send('ready', QUEST_READY_REQUEST, [], signal),
+    choose: (chosen, signal) => send('direction', QUEST_DIRECTION_REQUEST, [signedByte(chosen)], signal, chosen),
+    commit: (signal) => send('commit', QUEST_MOVE_COMMIT_REQUEST, ['', ''], signal),
+    async stop(reason) {
+      phase = 'closed';
+      clearTimeout(settlementTimer);
+      unsubscribe();
+      const action = pending;
+      if (action) {
+        action.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+        await action.task.catch(() => {});
+      }
+    },
+  };
+}
+
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
   let questRequest;
@@ -648,7 +829,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       closing = (async () => {
         if (request) await request.task.catch(() => {});
-        if (retained) await closeChannel(retained.channel);
+        if (retained) {
+          if (retained.battle) await retained.battle.stop(reason);
+          await closeChannel(retained.channel);
+        }
         await closeSession(auth, channels);
         resolveClosed(reason);
       })();
@@ -689,12 +873,22 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function maintainAdventure() {
     const current = adventure;
-    if (!current?.connected || questRequest || current.state === 'closed' || current.state === 'finished') return;
+    if (!current?.connected || questRequest || current.battle?.busy
+        || current.state === 'closed' || current.state === 'finished') return;
     const { socket } = current.channel;
     void socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch(() => {
       if (current.state !== 'closed') current.state = 'uncertain';
       return closeChannel(current.channel);
     });
+  }
+
+  function activeBattle() {
+    if (!initialData) throw new SessionError('network');
+    if (adventure?.state === 'uncertain') throw new SessionError('quest-battle-uncertain');
+    if (adventure?.state !== 'encounter' || !adventure.battle) {
+      throw new SessionError('quest-battle-unavailable');
+    }
+    return adventure.battle;
   }
 
   const timer = setInterval(async () => {
@@ -723,6 +917,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       const { inventoryId, slot, state, channel } = adventure;
       return { inventoryId, slot, state, closed: channel.socket.closed };
     },
+    get questBattle() { return adventure?.battle?.snapshot() ?? null; },
     async readQuestInventory({ signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
@@ -866,7 +1061,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
                 current.connected = false;
                 if (current.state !== 'closed' && current.state !== 'finished') current.state = 'uncertain';
               });
-            });
+            }, () => { current.battle = observeQuestBattle(socket); });
             if (result.rejection !== undefined) {
               adventure = null;
               channel.retained = false;
@@ -897,6 +1092,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         }
         throw error;
       }
+    },
+    async readyQuestBattle({ signal } = {}) {
+      return activeBattle().ready(signal);
+    },
+    async chooseQuestMove(direction, { signal } = {}) {
+      if (!Number.isInteger(direction) || direction < -1 || direction > 1) throw new SessionError('protocol');
+      return activeBattle().choose(direction, signal);
+    },
+    async commitQuestMove({ signal } = {}) {
+      return activeBattle().commit(signal);
     },
     closed,
     close: () => stop('closed'),
