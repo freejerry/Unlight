@@ -36,7 +36,7 @@ function bounded(promise, signal, timeout = TIMEOUT) {
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => finish(reject, new SessionError('timeout')), timeout);
-    const cancel = () => finish(reject, new SessionError('cancelled'));
+    const cancel = () => finish(reject, signal.reason);
 
     function finish(callback, value) {
       if (settled) return;
@@ -64,8 +64,10 @@ class SessionSocket {
   #reason = null;
   #fault = null;
   #expireCommand = null;
+  #onStartupFailure;
 
-  constructor(port) {
+  constructor(port, onStartupFailure) {
+    this.#onStartupFailure = onStartupFailure;
     const address = new URL(`/socket/${port}`, location.href);
     address.protocol = address.protocol === 'https:' ? 'wss:' : 'ws:';
     try {
@@ -88,11 +90,19 @@ class SessionSocket {
     }
   }
 
-  async ask(command, fields, replies, { signal, skip, allowOther, nextKey } = {}) {
-    if (signal?.aborted) throw new SessionError('cancelled');
+  assertOpen() {
     if (this.#socket.readyState !== WebSocket.OPEN || this.#reason) {
       throw this.#fault ?? new SessionError('network');
     }
+  }
+
+  finishStartup() {
+    this.#onStartupFailure = null;
+  }
+
+  async ask(command, fields, replies, { signal, skip, allowOther, nextKey } = {}) {
+    signal?.throwIfAborted();
+    this.assertOpen();
     if (this.#waiting) throw new SessionError('protocol');
 
     const response = new Promise((resolve, reject) => {
@@ -170,6 +180,7 @@ class SessionSocket {
     this.#fault ??= error;
     this.#resolveOpen(false);
     this.#waiting?.reject(this.#fault);
+    if (this.#reason !== 'closed') this.#onStartupFailure?.(this.#fault);
     this.#closeTransport();
   }
 
@@ -184,7 +195,9 @@ class SessionSocket {
     this.#observer = null;
     this.#parser.reset();
     this.#resolveOpen(false);
-    this.#waiting?.reject(this.#fault ?? new SessionError('network'));
+    const error = this.#fault ?? new SessionError('network');
+    this.#waiting?.reject(error);
+    if (this.#reason !== 'closed') this.#onStartupFailure?.(error);
     this.#resolveClose(this.#reason ?? 'network');
   }
 }
@@ -324,45 +337,61 @@ export async function startSession(username, password, { signal } = {}) {
 
   let auth;
   const channels = [];
+  const startup = new AbortController();
+  const startupSignal = startup.signal;
+  const rejectStartup = (error) => startup.abort(error);
+  const cancelStartup = () => rejectStartup(new SessionError('cancelled'));
+  signal?.addEventListener('abort', cancelStartup, { once: true });
+
+  function finishStartup() {
+    signal?.removeEventListener('abort', cancelStartup);
+    auth?.finishStartup();
+    for (const { socket } of channels) socket.finishStartup();
+  }
+
   try {
     const exchange = createAuthExchange();
-    auth = new SessionSocket(AUTH_PORT);
-    await auth.open(signal);
+    auth = new SessionSocket(AUTH_PORT, rejectStartup);
+    await auth.open(startupSignal);
 
     const challenge = authReply(await auth.ask(1, [username, exchange.publicKey], [1, 3, 4, 8, 9], {
-      signal, skip: [7],
+      signal: startupSignal, skip: [7],
     }), 1);
     const salt = challenge.string(64);
     const serverPublicKey = challenge.string(66);
     challenge.done();
     const { proof, sessionKey, verify } = await bounded(
-      exchange.answer(username, password, salt, serverPublicKey), signal,
+      exchange.answer(username, password, salt, serverPublicKey), startupSignal,
     );
     password = '';
 
     const certificate = authReply(await auth.ask(2, [proof], [2, 3, 4, 8, 9], {
-      signal, skip: [7],
+      signal: startupSignal, skip: [7],
     }), 2);
     const cert = certificate.string(40);
     const playerId = certificate.uint();
     certificate.done();
     if (!playerId || !/^[0-9a-f]{40}$/.test(sessionKey)
-      || !await bounded(Promise.resolve(verify(cert)), signal)) {
+      || !await bounded(Promise.resolve(verify(cert)), startupSignal)) {
       throw new SessionError('protocol');
     }
     auth.expireOn(8);
 
     let initialData;
     for (const { port, pong } of CHANNELS) {
-      if (signal?.aborted) throw new SessionError('cancelled');
-      const channel = { socket: new SessionSocket(port), port, pong, verified: false };
+      startupSignal.throwIfAborted();
+      const channel = { socket: new SessionSocket(port, rejectStartup), port, pong, verified: false };
       channels.push(channel);
-      const data = await confirmChannel(channel, playerId, sessionKey, signal);
+      const data = await confirmChannel(channel, playerId, sessionKey, startupSignal);
       if (data) initialData = data;
     }
-    if (signal?.aborted) throw new SessionError('cancelled');
+    startupSignal.throwIfAborted();
+    auth.assertOpen();
+    for (const { socket } of channels) socket.assertOpen();
+    finishStartup();
     return activeSession(auth, channels, playerId, initialData);
   } catch (error) {
+    finishStartup();
     await closeSession(auth, channels);
     throw error instanceof SessionError ? error : new SessionError('protocol');
   }

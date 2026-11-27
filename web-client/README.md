@@ -56,11 +56,13 @@ python3 tools/legacy-web/check_native_browser.py --port 4334 --legacy-port 4330
 
 驗收也會連續變更欄寬，核對每個面板的畫布尺寸、標題分界及 WebGL 2 緩衝區重用。每次欄寬更新驗證一次批次繪製，單獨展開說明時也會檢查其他畫布的像素。可用 `--panel-resize-screenshot /tmp/unlight-native-panel-resize.png` 保存最後一次縮放後的畫面。[連續縮放驗收](../docs/playtest/README.md#原生九宮格連續縮放) · [批次驗收](../docs/playtest/README.md#原生九宮格批次繪製)
 
-登入驗收程式會提示輸入隔離測試帳號密碼。它會依序驗證未知帳號、錯誤密碼、成功登入、初始資料、登出和再次登入，並比對原版的回應命令。
+登入驗收程式會提示輸入隔離測試帳號密碼。它會驗證未知帳號、錯誤密碼、成功登入、初始資料、登出和再次登入，並比對原版的回應命令。也會接上實際 Ruby 服務，模擬登入途中認證或大廳連線關閉，驗證失敗後可重新登入。
 
 ```bash
 python3 tools/legacy-web/check_native_session.py --port 4334 --username playtest
 ```
+
+加上 `--startup-disconnect-screenshot /tmp/unlight-native-startup-disconnect.png` 可保存 320 像素窄版的連線失敗畫面。[實測截圖](../docs/playtest/native/23-native-startup-disconnect.png)
 
 若第一個帳號已有角色，可加上 `--no-avatar-username` 和 `--no-avatar-password-file`，用同一個 Ruby 環境的第二個測試帳號驗證未創角回應。[有角色](../docs/playtest/native/04-native-initial-data.png) · [未創角](../docs/playtest/native/05-native-starter-data.png)
 

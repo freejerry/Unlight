@@ -24,6 +24,47 @@ SESSION_SERVICES = {"lobby": 12002, "data": 12003, "chat": 12020}
 AVATAR_VALUES = ("id", "name", "level", "gems", "exp", "energy")
 STARTER_VALUES = ("parts", "cards")
 QUEST_SUMMARY = ("count", "capacity", "flag", "clear-count")
+STARTUP_CLOSE_TIMEOUT = 3000
+STARTUP_DISCONNECT_PROBE = """(() => {
+  const NativeWebSocket = window.WebSocket;
+  const sockets = new Map();
+  const probe = window.startupDisconnectProbe = {
+    holdData: false, held: 0, states: [],
+    arm() {
+      this.holdData = true;
+      this.held = 0;
+      this.states.length = 0;
+      sockets.clear();
+    },
+    watchStatus() {
+      const status = document.querySelector('#session-status');
+      new MutationObserver(changes => {
+        this.states.push(...changes.map(change => change.oldValue), status.dataset.state);
+      }).observe(status, { attributes: true, attributeFilter: ['data-state'], attributeOldValue: true });
+    },
+    close(port) { sockets.get(port).close(1000); },
+  };
+  window.WebSocket = class extends NativeWebSocket {
+    #port;
+    #sent = 0;
+    constructor(...args) {
+      super(...args);
+      this.#port = Number(new URL(this.url).pathname.split('/').at(-1));
+      sockets.set(this.#port, this);
+      if (this.#port === 12003) this.addEventListener('message', event => {
+        // Forward negotiation, then stall the real Data login response and bootstrap.
+        if (probe.holdData && this.#sent >= 2) {
+          probe.held++;
+          event.stopImmediatePropagation();
+        }
+      });
+    }
+    send(data) {
+      if (this.#port === 12003) this.#sent++;
+      super.send(data);
+    }
+  };
+})();"""
 
 
 def read_password(options):
@@ -372,6 +413,73 @@ def check_session(browser, origin, options, password, wrong_password, no_avatar_
     print("The password field cleared, and inspected traffic stayed on the native origin.")
 
 
+def check_startup_disconnect(browser, origin, options, password):
+    page = browser.new_page(viewport={"width": 320, "height": 830}, is_mobile=True, has_touch=True)
+    try:
+        page.add_init_script(STARTUP_DISCONNECT_PROBE)
+        traffic = observe(page)
+        requests, live_sockets = [], []
+        page.on("request", lambda request: requests.append(request))
+        page.on("websocket", lambda socket: live_sockets.append(socket))
+        load_diagnostics(page, origin)
+        page.evaluate("startupDisconnectProbe.watchStatus()")
+        status = page.locator("#session-status")
+        form = page.locator("#session-form")
+
+        for port in (12001, SESSION_SERVICES["lobby"]):
+            offset = len(live_sockets)
+            page.evaluate("startupDisconnectProbe.arm()")
+            submit(page, options.username, password, "working")
+            page.wait_for_function("() => startupDisconnectProbe.held > 0", timeout=TIMEOUT)
+            opened = live_sockets[offset:]
+            assert [urlsplit(socket.url).path for socket in opened] == [
+                "/socket/12001", "/socket/12002", "/socket/12003",
+            ], "Expected Auth and verified Lobby before the pending Data reply"
+            assert not any(socket.is_closed() for socket in opened)
+            with ExitStack() as events:
+                for socket in opened:
+                    events.enter_context(socket.expect_event("close", timeout=STARTUP_CLOSE_TIMEOUT))
+                page.evaluate("port => startupDisconnectProbe.close(port)", port)
+            expect(status).to_have_attribute("data-state", "failed", timeout=STARTUP_CLOSE_TIMEOUT)
+            expect(status).to_have_attribute("data-error-kind", "network")
+            expect(status).to_have_text("連線失敗")
+            assert len(live_sockets) == offset + 3, "Startup opened GlobalChat after the disconnect"
+            assert "signed-in" not in page.evaluate("startupDisconnectProbe.states")
+            expect(page.locator("#session-result")).to_be_hidden()
+            expect_bootstrap_cleared(page)
+            expect(form.locator("#session-password")).to_have_value("")
+            expect(form.locator('button[type="submit"]')).to_be_enabled()
+
+        assert page.evaluate("innerWidth === 320 && document.documentElement.scrollWidth === innerWidth"), (
+            "The failed session layout overflowed at 320px"
+        )
+        for selector in ("#session-status", "#session-detail", "#session-username", "#session-password"):
+            node = page.locator(selector)
+            expect(node).to_be_visible()
+            assert node.evaluate("""element => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return [element.getBoundingClientRect(), ...range.getClientRects()]
+                    .every(box => box.left >= 0 && box.right <= innerWidth + 0.5);
+            }"""), f"{selector} is clipped at 320px"
+        if screenshot := options.startup_disconnect_screenshot:
+            form.locator("#session-username").fill("")
+            screenshot.parent.mkdir(parents=True, exist_ok=True)
+            page.get_by_role("region", name="本機登入驗證").screenshot(path=screenshot)
+
+        offset = len(live_sockets)
+        page.evaluate("startupDisconnectProbe.holdData = false")
+        submit(page, options.username, password, "signed-in")
+        signed_in_player(page)
+        sign_out(page, live_sockets[offset:])
+        ensure_no_password(requests, traffic[1], [password])
+        check_native_requests(page, origin, traffic)
+    finally:
+        page.close()
+    print("During delayed Data, Auth and Lobby disconnects each stopped startup and closed all three opened sockets promptly.")
+    print("The 320px form stayed usable, never showed a signed-in state for a failed attempt, and re-login succeeded.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chromium", default="/usr/bin/chromium")
@@ -382,6 +490,7 @@ def main():
     input_mode.add_argument("--password-file", type=Path, help="Read the password from a private text file")
     input_mode.add_argument("--password-stdin", action="store_true", help="Read one password line from stdin")
     parser.add_argument("--screenshot", type=Path, help="Save the verified signed-in view with form fields masked")
+    parser.add_argument("--startup-disconnect-screenshot", type=Path, help="Save the verified 320px startup error and retry form")
     parser.add_argument("--no-avatar-username", help="Optional second disposable account without a character")
     parser.add_argument("--no-avatar-password-file", type=Path, help="Read the second account password from a private file")
     parser.add_argument("--no-avatar-screenshot", type=Path, help="Save the verified no-character view")
@@ -423,6 +532,7 @@ def main():
             )
             try:
                 check_session(browser, origin, options, password, wrong_password, no_avatar_password, fixture)
+                check_startup_disconnect(browser, origin, options, password)
             finally:
                 browser.close()
     except Exception as error:
