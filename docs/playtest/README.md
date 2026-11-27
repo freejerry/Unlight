@@ -18,6 +18,22 @@ Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯�
 
 [任務啟動](browser/06-browser-quest-start.png) · [第一回合抽牌](browser/07-browser-draw.png) · [移動](browser/08-browser-move.png) · [玩家攻擊](browser/09-browser-attack.png)
 
+### 標題動畫取樣
+
+原版、舊相容版與合併版 SWF 都宣告舞台為 780 × 680、24 FPS。三版的蝴蝶、標題背景和標誌 SWF 內嵌素材逐位元相同。淡入使用 ActionScript 的時間補間，蝴蝶移動在淡入完成後由 `ENTER_FRAME` 驅動。[舞台設定](../../app/client/src/Unlight-config_sandbox.xml#L189) · [標題淡入](../../app/client/src/view/TitleView.as#L150) · [蝴蝶移動](../../app/client/src/view/image/title/Ageha.as#L55)
+
+在同一套 Chromium 156、Ruffle Web 0.8.0、ANGLE SwiftShader 上先後量測原版和兩個相容版。三次皆使用 900 × 760 視窗、裝置像素比 1，並停用測試公告。標題音樂已送到 Web Audio 後，先獨立取樣約一秒的瀏覽器回呼，再取樣約四秒的合成畫面。下列變化次數排除第一張基準影像。合成取樣最多縮到 320 × 280，擷取過程可跳過部分更新。[重跑指令](../../tools/legacy-web/README.md#驗收)
+
+| SWF | 瀏覽器回呼 | 合成樣本 | 可見變化 | 變化間隔中位數／p95 |
+| --- | --- | ---: | ---: | ---: |
+| 原版 `2a375905` | 7 次／1.00 秒 | 18 | 17 | 183.3／433.3 ms |
+| 舊相容版 `26364783` | 10 次／1.03 秒 | 16 | 15 | 216.7／483.3 ms |
+| 合併版 `789ab2b8` | 7 次／1.18 秒 | 18 | 17 | 183.3／416.7 ms |
+
+原版 SWF 的日誌會在預設入口觸發 `ExternalInterface` 錯誤。量測原版時，在獨立測試頁啟用日誌橋接並核對 SWF SHA-256。量測兩份相容版時採用預設入口。約四秒內個別更新間隔相差數百毫秒，動畫流暢度需要在目標硬體上另驗。[原版 JSON](browser/17-title-frames-original.json) · [舊相容版 JSON](browser/17-title-frames-baseline.json) · [合併版 JSON](browser/17-title-frames-merged.json)
+
+[原版標題截圖](browser/17-browser-title-original.png) · [合併版標題截圖](browser/17-browser-title-cadence.png)
+
 ### 畫面驗收項目
 
 | 畫面 | 驗收內容 | 目前觀察 |

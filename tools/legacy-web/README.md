@@ -50,6 +50,15 @@ python3 tools/legacy-web/check_relay.py 4330
 python3 tools/legacy-web/check_browser.py --port 4330 --chromium /path/to/chromium
 ```
 
-軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。標題啟動後會量測約一秒的瀏覽器 `requestAnimationFrame`，輸出回呼次數與間隔的中位數、p95 和最大值。SWF 內的動畫進度另依畫面變化、原版時間軸與音效觸發點驗證。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
+軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。標題啟動後會量測約一秒的瀏覽器 `requestAnimationFrame`，輸出回呼次數與間隔的中位數、p95 和最大值。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
+
+加上 `--frame-report` 可另取樣約四秒的 Chromium 合成畫面。同一份 JSON 記錄 SWF SHA-256、宣告幀率、瀏覽器回呼和合成畫面變化。程式將畫面縮到最多 320 × 280，並略過連續相同的影像。變化間隔優先使用 Chromium 回報的畫面交換時間，必要時改用接收時間。縮圖和擷取可能略過細微或短暫的畫面更新，因此數值適用於該次取樣環境的觀察。[實測紀錄](../../docs/playtest/README.md#標題動畫取樣)
+
+```bash
+python3 tools/legacy-web/check_browser.py --port 4330 --software \
+  --frame-report /tmp/unlight-title-frames.json --screenshot /tmp/unlight-title.png
+```
+
+與未修改的原版 SWF 核對時，使用同一入口的 `--client` 參數指向本倉庫編譯的 `dist/Unlight.swf`，再在驗收指令加上 `--original-swf`。這個選項在獨立的 Chromium 頁面啟用原版的 JavaScript 日誌橋接。測試頁的請求限於本機的測試來源。[原版日誌呼叫](../../app/client/lib/log.as#L95) · [原版 SWF 建置](../legacy-build/README.md)
 
 雲端 Ruffle Desktop 實際打完「落日大蝙蝠」並看到通關結算。獨立 Chromium 實測到第二回合抽牌，並確認原始 `bgm000.mp3` 和 Web Audio 混音輸出。相容版需要重新編譯才能套用任務列表的內嵌繁中字型。瀏覽器內的單場完整結算、各別戰鬥音效及其他畫面的缺字仍待驗收。[重新建置](../legacy-build/README.md) · [實機畫面與驗收紀錄](../../docs/playtest/README.md)

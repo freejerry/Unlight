@@ -1,0 +1,144 @@
+{
+  "chromium": "156.0.8078.79",
+  "ruffle": "0.8.0+2026-11-19",
+  "ruffle_renderer": "wgpu-webgl",
+  "gl_renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+  "original_debug_bridge": false,
+  "swf": {
+    "sha256": "789ab2b834f164f2b4d682e1cfe60a70a4b14f215b8e958e21f74ba8ce3f3d87",
+    "width": 780,
+    "height": 680,
+    "frameRate": 24,
+    "numFrames": 2,
+    "swfVersion": 10,
+    "backgroundColor": null,
+    "isActionScript3": true,
+    "uncompressedLength": 22287300
+  },
+  "viewport_css": {
+    "width": 900,
+    "height": 760
+  },
+  "stage_css": {
+    "width": 780,
+    "height": 680
+  },
+  "device_pixel_ratio": 1,
+  "browser_callbacks": {
+    "callbacks": 7,
+    "window_ms": 1183.2000000000007,
+    "p50_ms": 200.0,
+    "p95_ms": 216.70000000000073,
+    "max_ms": 216.70000000000073,
+    "timed_out": false
+  },
+  "rendered_content": {
+    "samples": 18,
+    "distinct_samples": 18,
+    "duplicate_samples": 0,
+    "changes": 17,
+    "requested_window_ms": 4000,
+    "window_ms": 4004.4481639997684,
+    "capture_bounds": {
+      "max_width": 320,
+      "max_height": 280
+    },
+    "p50_ms": 183.32600593566895,
+    "p95_ms": 416.65101051330566,
+    "max_ms": 416.65101051330566,
+    "clock": "cdp-swap",
+    "ack_failures": 0,
+    "samples_log": [
+      {
+        "arrival_ms": 383.3880739985034,
+        "swap_ms": 0.0,
+        "changed": false
+      },
+      {
+        "arrival_ms": 556.6048780019628,
+        "swap_ms": 233.3240509033203,
+        "changed": true
+      },
+      {
+        "arrival_ms": 809.7782059994643,
+        "swap_ms": 399.9829292297363,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1120.2403780043824,
+        "swap_ms": 633.307933807373,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1285.1838269998552,
+        "swap_ms": 966.627836227417,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1475.161335998564,
+        "swap_ms": 1133.2879066467285,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1616.9025519993738,
+        "swap_ms": 1316.6139125823975,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1728.6937450044206,
+        "swap_ms": 1449.9409198760986,
+        "changed": true
+      },
+      {
+        "arrival_ms": 1909.2297500028508,
+        "swap_ms": 1549.9379634857178,
+        "changed": true
+      },
+      {
+        "arrival_ms": 2106.07681300462,
+        "swap_ms": 1749.9289512634277,
+        "changed": true
+      },
+      {
+        "arrival_ms": 2297.5220080043073,
+        "swap_ms": 1949.920892715454,
+        "changed": true
+      },
+      {
+        "arrival_ms": 2529.958222999994,
+        "swap_ms": 2133.2478523254395,
+        "changed": true
+      },
+      {
+        "arrival_ms": 2924.926523002796,
+        "swap_ms": 2349.905014038086,
+        "changed": true
+      },
+      {
+        "arrival_ms": 3110.755767003866,
+        "swap_ms": 2766.5560245513916,
+        "changed": true
+      },
+      {
+        "arrival_ms": 3277.1324130007997,
+        "swap_ms": 2949.880838394165,
+        "changed": true
+      },
+      {
+        "arrival_ms": 3435.544028005097,
+        "swap_ms": 3099.874973297119,
+        "changed": true
+      },
+      {
+        "arrival_ms": 3522.452057004557,
+        "swap_ms": 3283.200979232788,
+        "changed": true
+      },
+      {
+        "arrival_ms": 3980.17512899969,
+        "swap_ms": 3333.199977874756,
+        "changed": true
+      }
+    ]
+  }
+}
