@@ -1,6 +1,11 @@
 const stage = document.getElementById("stage");
 const defaultVolume = 0.5; // Original Option.as defaults BGM and SE volume to 50.
-const music = titleAudio("/public/sound/bgm/ulbgm01.mp3");
+const theme = "/public/sound/bgm/ulbgm01.mp3";
+const sceneTracks = {
+  tutorial: "/public/sound/bgm/bgm011.mp3",
+  lobby: "/public/sound/bgm/ulbgm02.mp3",
+};
+const music = titleAudio(theme);
 const clickSound = titleAudio("/public/sound/se/ulse01.mp3");
 const alertBytes = fetch("/public/sound/se/ulse02.mp3", { redirect: "error" })
   .then(response => {
@@ -17,7 +22,7 @@ stage.append(music);
 let active = true;
 let musicWarmup;
 let alertPlayback;
-const entryObserver = new MutationObserver(playAtTitle);
+const entryObserver = new MutationObserver(playSceneMusic);
 
 function titleAudio(path) {
   const audio = document.createElement("audio");
@@ -41,12 +46,17 @@ function titleEntered() {
   return stage.dataset.entry === "entering" || stage.dataset.entry === "ready";
 }
 
-function playAtTitle() {
-  if (!active || !titleEntered()) return;
+function playSceneMusic() {
+  if (!active || (stage.dataset.screen === "title" && !titleEntered())) return;
   entryObserver.disconnect();
   if (musicWarmup) {
     musicWarmup = undefined;
     music.currentTime = 0;
+  }
+  const path = sceneTracks[stage.dataset.soundscape] ?? theme;
+  if (music.getAttribute("src") !== path) {
+    music.pause();
+    music.src = path;
   }
   music.volume = defaultVolume;
   if (music.paused && !music.error) playAudio(music);
@@ -103,17 +113,18 @@ export function playTitleAlert() {
 
 function watchEntry() {
   entryObserver.observe(stage, { attributes: true, attributeFilter: ["data-entry"] });
-  playAtTitle();
+  playSceneMusic();
 }
 
 function playOnGesture(event) {
   if (!active || !event.isTrusted) return;
-  if (titleEntered()) playAtTitle();
+  if (stage.dataset.screen !== "title" || titleEntered()) playSceneMusic();
   else warmMusic();
 }
 
 window.addEventListener("pointerdown", playOnGesture, true);
 window.addEventListener("keydown", playOnGesture, true);
+stage.addEventListener("game-screen-change", playSceneMusic);
 document.getElementById("login-submit").addEventListener("click", event => {
   if (!active || !event.isTrusted) return;
   try {

@@ -4,15 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#15202c" />
-    <title>Unlight Login</title>
+    <title>Unlight</title>
     <link rel="stylesheet" href="/source-login/style.css" />
+    <link rel="stylesheet" href="/source-login/onboarding.css" />
+    <link rel="stylesheet" href="/source-login/lobby.css" />
     <script type="module" src="/source-login/stage.js"></script>
     <script type="module" src="/source-login/bgm.js"></script>
     <script type="module" src="/source-login/login.js"></script>
     <script type="module" src="/source-login/news.js"></script>
   </head>
   <body>
-    <main id="stage" aria-labelledby="login-title">
+    <main id="stage" data-screen="title" aria-label="Unlight">
       <canvas id="stage-background" width="780" height="680" aria-hidden="true"></canvas>
       <p id="stage-background-status" role="status" hidden></p>
       <form id="login" class="stage-panel LoginPanel" method="post" aria-labelledby="login-title" data-mode="login" novalidate>
@@ -50,6 +52,7 @@
           <div id="news-content" role="region" aria-labelledby="news-title" tabindex="0" hidden></div>
         </div>
       </section>
+      <div id="post-login" hidden></div>
       <dialog id="login-alert" class="stage-panel" role="alertdialog" aria-labelledby="login-alert-title" aria-describedby="login-alert-message">
         <h2 id="login-alert-title" class="stage-panel-title" lang="en">Error</h2>
         <div class="login-alert-body">

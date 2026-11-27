@@ -85,9 +85,25 @@ async function loadTitle(renderer) {
       texture: renderer.upload(image),
     }));
   };
-  const [logo, butterfly] = await Promise.all([loadFrames("logo.swf"), loadFrames("ageha.swf")]);
-  if (logo.length !== 1 || butterfly.length !== 4) throw new Error("Unexpected title asset timeline");
-  return { logo: logo[0], butterfly, glow: renderer.upload(createLogoGlow()) };
+  const [logo, butterfly] = await Promise.all([
+    loadVector("logo.swf").then(parseVectorMovie), loadFrames("ageha.swf"),
+  ]);
+  if (logo.frameCount !== 1 || butterfly.length !== 4) throw new Error("Unexpected title asset timeline");
+  // Antialias the vector directly in its authored stage position to avoid a second resampling.
+  const { pixelRatio } = renderer;
+  const scaleX = canvas.width / STAGE_WIDTH;
+  const scaleY = canvas.height / STAGE_HEIGHT;
+  const { image, x, y, width, height } = logo.rasterize(0, {
+    scale: 0.7 * pixelRatio, x: 390 * scaleX, y: 370 * scaleY,
+  });
+  return {
+    logo: {
+      x: x / scaleX, y: y / scaleY, width: width / scaleX, height: height / scaleY,
+      texture: renderer.upload(image, "nearest"),
+    },
+    butterfly,
+    glow: renderer.upload(createLogoGlow()),
+  };
 }
 
 function playLoading(renderer, movie, assets) {
@@ -145,6 +161,7 @@ function showTitle(renderer, background, title) {
   stage.dataset.entry = "entering";
 
   stage.addEventListener("pointermove", event => {
+    if (stage.dataset.screen !== "title") return;
     const bounds = canvas.getBoundingClientRect();
     pointer = {
       x: (event.clientX - bounds.left) * STAGE_WIDTH / bounds.width,
@@ -166,7 +183,7 @@ function showTitle(renderer, background, title) {
       drawLayer(background, 0, 0, ART_WIDTH, ART_HEIGHT, intro);
       if (!title) return;
       drawLayer(title.glow, 0, GLOW_TOP, ART_WIDTH, GLOW_HEIGHT, state.glowOpacity);
-      drawAsset(drawLayer, title.logo, 390, 370, 0.7, state.logoOpacity);
+      drawAsset(drawLayer, title.logo, 0, 0, 1, state.logoOpacity);
       if (state.butterfly) {
         const { x, y, frame } = state.butterfly;
         drawAsset(drawLayer, butterfly[frame], x, y, 0.9, 1);
@@ -179,9 +196,15 @@ function showTitle(renderer, background, title) {
   }
   function resume() {
     stop();
-    if (canvas.dataset.state === "ready") request = requestAnimationFrame(draw);
+    if (stage.dataset.screen === "title" && canvas.dataset.state === "ready") {
+      request = requestAnimationFrame(draw);
+    }
   }
   canvas.addEventListener("webglcontextlost", stop, { once: true });
+  stage.addEventListener("game-screen-change", () => {
+    pointer = null;
+    resume();
+  });
   window.addEventListener("pagehide", stop);
   window.addEventListener("pageshow", resume);
   reduced.addEventListener("change", resume);
@@ -253,8 +276,9 @@ async function decompressSwf(swf, capacity) {
 }
 
 function createStageRenderer() {
-  canvas.width = STAGE_WIDTH;
-  canvas.height = STAGE_HEIGHT;
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(STAGE_WIDTH * pixelRatio);
+  canvas.height = Math.round(STAGE_HEIGHT * pixelRatio);
   const gl = canvas.getContext("webgl2", { alpha: false, antialias: false, preserveDrawingBuffer: true });
   if (!gl) throw new Error("WebGL 2 is unavailable");
 
@@ -314,7 +338,7 @@ function createStageRenderer() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  return { upload, release: texture => gl.deleteTexture(texture), paint(drawLayers) {
+  return { pixelRatio, upload, release: texture => gl.deleteTexture(texture), paint(drawLayers) {
     gl.clear(gl.COLOR_BUFFER_BIT);
     drawLayers?.(draw);
   } };

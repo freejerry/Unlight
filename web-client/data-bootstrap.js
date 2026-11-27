@@ -128,5 +128,5 @@ export async function readDataProfile(reply, signal) {
 
 export function readLobbyAvatar(reply, signal) {
   if (reply.command !== LOBBY_AVATAR_COMMAND) throw new Error('Invalid Lobby avatar command.');
-  return readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal);
+  return readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal, true);
 }

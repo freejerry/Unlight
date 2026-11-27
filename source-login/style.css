@@ -48,6 +48,12 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   font-size: .8125rem;
 }
 
+#post-login { position: absolute; inset: 0; }
+
+#stage:not([data-screen="title"]) > :is(#stage-background, #stage-background-status, #login, #news) {
+  display: none;
+}
+
 .stage-panel {
   position: absolute;
   isolation: isolate;

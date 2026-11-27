@@ -1,6 +1,10 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
 import { playTitleAlert } from './bgm.js';
+import { mountLobby } from './lobby.js';
+import { mountOnboarding } from './onboarding.js';
 
+const stage = document.querySelector('#stage');
+const postLogin = document.querySelector('#post-login');
 const form = document.querySelector('#login');
 const fields = document.querySelector('#login-fields');
 const title = document.querySelector('#login-title');
@@ -20,6 +24,7 @@ const failureMessages = {
   timeout: '遊戲服務未及時回覆。請再試一次。',
   protocol: '無法驗證遊戲服務的回覆。請再試一次。',
   cancelled: '登入已取消。',
+  expired: '工作階段已逾時。請重新登入。',
 };
 
 const registrationFailures = {
@@ -33,6 +38,8 @@ const registrationFailures = {
 
 let currentAttempt = null;
 let alertReturnFocus = null;
+let activeSession = null;
+let cleanupScreen;
 
 function showStatus(state, message = '', kind) {
   status.dataset.state = state;
@@ -100,6 +107,63 @@ function closeSession(attempt) {
   return attempt.closing;
 }
 
+function changeSoundscape(soundscape) {
+  stage.dataset.soundscape = soundscape;
+  stage.dispatchEvent(new Event('game-screen-change'));
+}
+
+function changeScreen(screen) {
+  cleanupScreen?.();
+  cleanupScreen = undefined;
+  postLogin.replaceChildren();
+  postLogin.hidden = screen === 'title';
+  postLogin.dataset.screen = screen;
+  stage.dataset.screen = screen;
+  changeSoundscape(screen);
+}
+
+function returnToTitle(session, reason, focus = true) {
+  if (activeSession !== session) return;
+  activeSession = null;
+  changeScreen('title');
+  showStatus('idle');
+  if (reason && reason !== 'closed') {
+    const kind = reason === 'expired' ? 'expired' : 'network';
+    showError(kind, failureMessages[kind], username);
+  } else if (focus) {
+    username.focus({ preventScroll: true });
+  }
+}
+
+function requestLogout(session) {
+  if (activeSession !== session) return;
+  void session.close().catch(() => returnToTitle(session, 'network'));
+}
+
+function showLobby(session) {
+  if (activeSession !== session || !session.initialData?.avatar) return;
+  changeScreen('lobby');
+  cleanupScreen = mountLobby(postLogin, { session, onLogout: () => requestLogout(session) });
+}
+
+function showPostLogin(session) {
+  if (session.initialData.avatar) {
+    showLobby(session);
+  } else if (session.initialData.registration) {
+    changeScreen('onboarding');
+    cleanupScreen = mountOnboarding(postLogin, {
+      session,
+      onTutorialStart: () => {
+        if (activeSession === session) changeSoundscape('tutorial');
+      },
+      onComplete: () => showLobby(session),
+      onLogout: () => requestLogout(session),
+    });
+  } else {
+    throw new SessionError('protocol');
+  }
+}
+
 accountMode.addEventListener('click', () => {
   if (currentAttempt || loginAlert.open) return;
   const restoreFocus = document.activeElement === accountMode;
@@ -151,11 +215,17 @@ form.addEventListener('submit', async event => {
         || session.lobbyVerified !== true || session.dataVerified !== true || session.chatVerified !== true) {
       throw new SessionError('protocol');
     }
-    await closeSession(attempt);
-    if (currentAttempt !== attempt) return;
+    activeSession = session;
+    try {
+      showPostLogin(session);
+    } catch (error) {
+      returnToTitle(session, null, false);
+      throw error;
+    }
+    attempt.session = null;
     username.value = '';
-    target = username;
-    showStatus('success', '登入成功。');
+    showStatus('idle');
+    void session.closed.then(reason => returnToTitle(session, reason), () => returnToTitle(session, 'network'));
   } catch (error) {
     if (currentAttempt !== attempt) return;
     const messages = registering ? registrationFailures : failureMessages;
@@ -184,6 +254,11 @@ window.addEventListener('pagehide', () => {
   if (attempt) {
     attempt.controller.abort();
     void closeSession(attempt).catch(() => {});
+  }
+  const session = activeSession;
+  if (session) {
+    returnToTitle(session, null, false);
+    void session.close().catch(() => {});
   }
   alertReturnFocus = null;
   if (loginAlert.open) loginAlert.close();

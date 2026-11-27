@@ -11,6 +11,8 @@ from xml.etree import ElementTree
 from aiohttp import WSMsgType, web
 from yarl import URL
 
+import source_stage_art
+
 
 HOST = "127.0.0.1"
 SERVICES = (
@@ -58,6 +60,24 @@ SOURCE_LOGIN_BGM_SHA256 = "82924cf090817ea98e5c6b524f46a90e6dbe3cb79ee6413ab1010
 SOURCE_LOGIN_SOUND_EFFECTS = {
     "public/sound/se/ulse01.mp3": "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
     "public/sound/se/ulse02.mp3": "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
+}
+SOURCE_LOBBY_TRACKS = {
+    "public/sound/bgm/ulbgm02.mp3": "7ed9b16414f8691f080cc592830f0d120b372bb3aa77f183106a8c7fe6bbfbfd",
+    "public/sound/bgm/bgm011.mp3": "95971edab9cab6e762ac8d59b207fc82696fcf510c544ad7a6db787ceae31789",
+}
+SOURCE_SCENE_ART = {
+    "onboarding-opening.jpg": (
+        "data/image/regist/prestory_ch.swf", "b543be147b194c5e572c9c58e2494bfe3e23f4cc591b8d2f9c55168c5c2504b2",
+        source_stage_art.jpeg, "image/jpeg",
+    ),
+    "onboarding-create.jpg": (
+        "data/image/regist/make_bg.swf", "82fc4b98f75214e32544ce170f1af182c44ccae24e5abd40716f3551f5493ca8",
+        source_stage_art.jpeg, "image/jpeg",
+    ),
+    "lobby-background.png": (
+        "data/image/lobby/entrance_bg.swf", "04b573b540a394e2e2377fffed42809a7826fb936900b6badf30dbc6d2c67827",
+        source_stage_art.indexed_png, "image/png",
+    ),
 }
 # Historical cwming.ttf pin from tools/legacy-build/build.sh.
 TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
@@ -417,6 +437,11 @@ def create_app(
             return web.FileResponse(path, headers=headers)
         return handle_file
 
+    def serve_bytes(data, content_type):
+        async def handle_bytes(_request):
+            return web.Response(body=data, content_type=content_type)
+        return handle_bytes
+
     async def config(_request):
         return web.Response(
             body=client_config(server_offset, direct_sockets), content_type="application/xml"
@@ -462,6 +487,20 @@ def create_app(
                 if path is None:
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
+            for filename, digest in SOURCE_LOBBY_TRACKS.items():
+                if path := pinned_native_asset(assets, filename, digest):
+                    app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
+            for target, (filename, digest, decode, content_type) in SOURCE_SCENE_ART.items():
+                if path := pinned_native_asset(assets, filename, digest):
+                    app.router.add_get(f"/source-login/assets/{target}", serve_bytes(decode(path), content_type))
+            for part_id, (filename, digest) in source_stage_art.starter_icon_sources.items():
+                if path := pinned_native_asset(assets, filename, digest):
+                    body, content_type = source_stage_art.decode_starter_icon(part_id, path)
+                    app.router.add_get(f"/source-login/assets/starter-parts/{part_id}", serve_bytes(body, content_type))
+            if path := pinned_native_asset(assets, *source_stage_art.starter_portrait_source):
+                for card_id in source_stage_art.starter_portrait_ids:
+                    body = source_stage_art.decode_starter_portrait(card_id, path)
+                    app.router.add_get(f"/source-login/assets/starter-cards/{card_id}", serve_bytes(body, "image/png"))
             for filename, digest in SOURCE_LOGIN_SWFS.items():
                 path = pinned_native_asset(assets, filename, digest)
                 if path is None:
@@ -470,6 +509,7 @@ def create_app(
             app.router.add_get("/source-login/", serve_file(SOURCE_LOGIN_ROOT / "index.html"))
             for filename in (
                 "style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
+                "onboarding.js", "onboarding.css", "lobby.js", "lobby.css",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))

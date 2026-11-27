@@ -43,6 +43,7 @@ const AUTH_REGISTER_REPLY = 0;
 const SERVER_SB = 0;
 const LOBBY_PORT = 12002;
 const DATA_PORT = 12003;
+const DATA_AVATAR_CREATED_REQUEST = 4;
 const QUEST_PORT = 12005;
 const LOBBY_CREATE_AVATAR_REQUEST = 10;
 const LOBBY_CHECK_NAME_REQUEST = 11;
@@ -126,6 +127,7 @@ const messages = {
   'avatar-starter-invalid': '請選擇伺服器提供的外觀和起始角色卡。',
   'avatar-create-rejected': '伺服器未接受建立角色。',
   'avatar-create-uncertain': '未能確認角色是否已建立，請重新登入查看。',
+  'avatar-tutorial-uncertain': '角色已建立，但角色資料尚未切換。請重新登入。',
   'avatar-registration-unavailable': '本次登入目前無法建立角色。',
   'deck-edit-unavailable': '目前無法編輯牌組。',
   'deck-card-unavailable': '目前無法將這張卡移入牌組。',
@@ -434,15 +436,22 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
 
 function avatarRegistrationOptions(registration) {
   if (!registration) return null;
-  const partGroups = AVATAR_STARTER_PART_GROUPS.map((group) => group.filter((id) => registration.partIds.includes(id)));
-  const cardIds = AVATAR_STARTER_CARDS.filter((id) => registration.cardIds.includes(id));
-  return partGroups.every((group) => group.length) && cardIds.length ? { partGroups, cardIds } : null;
+  const partGroups = AVATAR_STARTER_PART_GROUPS.map((group) => Object.freeze(
+    group.filter((id) => registration.partIds.includes(id)),
+  ));
+  const cardIds = Object.freeze(AVATAR_STARTER_CARDS.filter((id) => registration.cardIds.includes(id)));
+  if (!partGroups.every((group) => group.length) || !cardIds.length) return null;
+  return Object.freeze({ partGroups: Object.freeze(partGroups), cardIds });
 }
 
-function avatarRegistrationFields({ name, partIds, cardId }, { partGroups, cardIds }) {
+function validateAvatarName(name) {
   if (typeof name !== 'string' || name.length < 3 || name.length > 12 || /[ ",\u3000]|\*{3}|\p{Cc}|\p{Cs}/u.test(name)) {
     throw new SessionError('avatar-name-invalid');
   }
+}
+
+function avatarRegistrationFields({ name, partIds, cardId }, { partGroups, cardIds }) {
+  validateAvatarName(name);
   if (!Array.isArray(partIds) || partIds.length !== partGroups.length
       || !partGroups.every((group, index) => group.includes(partIds[index])) || !cardIds.includes(cardId)) {
     throw new SessionError('avatar-starter-invalid');
@@ -455,11 +464,13 @@ async function finishLobbyObservation(socket, signal) {
   pong.done();
 }
 
-async function checkAvatarName(socket, name, signal) {
+async function requestAvatarName(socket, name, signal, markSent) {
   let unexpected = false;
   const unsubscribe = socket.observe(AVATAR_REGISTRATION_REPLIES, () => { unexpected = true; });
   try {
-    const reply = await socket.ask(LOBBY_CHECK_NAME_REQUEST, [name], [LOBBY_CHECK_NAME_REPLY], { signal, allowOther: true });
+    const reply = await socket.ask(LOBBY_CHECK_NAME_REQUEST, [name], [LOBBY_CHECK_NAME_REPLY], {
+      signal, allowOther: true, onSend: markSent,
+    });
     const code = reply.int();
     reply.done();
     if (code < 0 || code > 2) throw new SessionError('protocol');
@@ -473,6 +484,7 @@ async function checkAvatarName(socket, name, signal) {
 
 async function submitAvatarRegistration(socket, fields, signal, markSent) {
   let accepted;
+  let receivedAt;
   let profileStarted = false;
   let invalid = false;
   let unsubscribe;
@@ -488,6 +500,7 @@ async function submitAvatarRegistration(socket, fields, signal, markSent) {
           if (!accepted) resolve(null);
         } else if (reply.command === LOBBY_AVATAR_COMMAND && accepted && !profileStarted) {
           profileStarted = true;
+          receivedAt = performance.now();
           resolve(readLobbyAvatar(reply, signal));
         } else throw new SessionError('protocol');
       } catch {
@@ -511,7 +524,7 @@ async function submitAvatarRegistration(socket, fields, signal, markSent) {
         || avatar.energy < 0 || avatar.energyMax < 1 || !questData || !avatar.questDecks.some(({ index }) => index === 1)) {
       throw new SessionError('protocol');
     }
-    return { avatarId: avatar.id, name: avatar.name };
+    return { ...profile, questData: { ...questData, receivedAt } };
   } finally {
     unsubscribe();
   }
@@ -1797,10 +1810,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
 
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
+  const data = channels.find(({ port }) => port === DATA_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
   let registrationState = registrationOptions ? 'available' : 'unavailable';
-  let lobbyRequest;
-  let lobbyHeartbeat;
+  let confirmedAvatar = null;
+  let profileRequest;
   let deckEditState;
   let closing;
   let questRequest;
@@ -1817,20 +1831,21 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       clearInterval(timer);
       initialData = null;
       questData = null;
+      confirmedAvatar = null;
       boundQuestDecks.clear();
       sessionKey.fill(0);
       const request = questRequest;
       const returning = questReturn;
-      const lobbyOperation = lobbyRequest;
+      const profileOperation = profileRequest;
       const retained = adventure;
       if (retained) retained.state = 'closed';
-      for (const operation of [request, returning, lobbyOperation]) {
+      for (const operation of [request, returning, profileOperation]) {
         operation?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       }
       closing = (async () => {
         if (request) await request.task.catch(() => {});
         if (returning) await returning.task.catch(() => {});
-        if (lobbyOperation) await lobbyOperation.task.catch(() => {});
+        if (profileOperation) await profileOperation.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
           retained.nonCombatObserver?.stop();
@@ -1844,7 +1859,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   function assertQuestAvailable() {
-    if (questRequest || questReturn || lobbyRequest) throw new SessionError('busy');
+    if (questRequest || questReturn || profileRequest) throw new SessionError('busy');
     if (adventure) {
       if (adventure.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
       throw new SessionError(adventure.state === 'uncertain' ? 'quest-land-uncertain' : 'quest-adventure-active');
@@ -1852,12 +1867,42 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   function editableDeck() {
-    if (!initialData?.avatar || !questData || adventure || questRequest || questReturn || lobbyRequest
+    if (!initialData?.avatar || !questData || adventure || questRequest || questReturn || profileRequest
         || searchUncertain || questStartUncertain || questData.rows.some((row) => row.status === QUEST_IN_PROGRESS)) return null;
     const deck = initialData.deckCollection?.deck;
     if (deck?.index !== 1 || deck.status !== 0 || deck.cards.length >= CHARACTER_DECK_SIZE
         || deck.cards.some((card, index) => card.position !== index)) return null;
     return deck;
+  }
+
+  function assertAvatarRegistration(expected, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (!initialData) throw new SessionError('network');
+    if (questRequest || questReturn || profileRequest) throw new SessionError('busy');
+    if (registrationState !== expected) throw new SessionError('avatar-registration-unavailable');
+    auth.assertOpen();
+    for (const { socket } of channels) socket.assertOpen();
+  }
+
+  async function withRegistrationChannel(channel, signal, work) {
+    const controller = new AbortController();
+    const requestSignal = controller.signal;
+    const cancel = () => controller.abort(new SessionError('cancelled'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+    const task = (async () => {
+      if (channel.heartbeat) await bounded(channel.heartbeat, requestSignal);
+      requestSignal.throwIfAborted();
+      return work(channel.socket, requestSignal);
+    })();
+    profileRequest = { channel, controller, task };
+    try {
+      return await task;
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', cancel);
+      profileRequest = null;
+    }
   }
 
   function assertQuestDeckCurrent() {
@@ -1958,10 +2003,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         auth.ask(6, [], [7], { allowOther: true }),
         ...channels.map((channel) => {
           const { socket, pong } = channel;
-          if (channel !== lobby) return socket.ask(3, [], [pong], { allowOther: true });
-          if (lobbyRequest) return null;
-          lobbyHeartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => { lobbyHeartbeat = null; });
-          return lobbyHeartbeat;
+          if (profileRequest?.channel === channel) return null;
+          channel.heartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => { channel.heartbeat = null; });
+          return channel.heartbeat;
         }),
       ]);
       for (const reply of replies) reply?.done();
@@ -1979,53 +2023,82 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     chatVerified: true,
     get initialData() { return initialData; },
     get avatarRegistrationState() { return initialData ? registrationState : 'unavailable'; },
+    get avatarRegistrationOptions() { return initialData?.registration ? registrationOptions : null; },
+    async checkAvatarName(name, { signal } = {}) {
+      assertAvatarRegistration('available', signal);
+      validateAvatarName(name);
+      let namePending = false;
+      try {
+        await withRegistrationChannel(lobby, signal, async (socket, requestSignal) => {
+          const code = await requestAvatarName(socket, name, requestSignal, () => { namePending = true; });
+          namePending = false;
+          if (code !== 0) throw new SessionError(code === 1 ? 'avatar-name-taken' : 'avatar-name-invalid', code);
+        });
+      } catch (error) {
+        if (namePending) {
+          registrationState = 'uncertain';
+          throw new SessionError('avatar-name-uncertain');
+        }
+        throw error;
+      }
+    },
     async createAvatar(selection, { signal } = {}) {
-      if (signal?.aborted) throw new SessionError('cancelled');
-      if (!initialData) throw new SessionError('network');
-      if (lobbyRequest) throw new SessionError('busy');
-      if (registrationState !== 'available') throw new SessionError('avatar-registration-unavailable');
+      assertAvatarRegistration('available', signal);
       const fields = avatarRegistrationFields(selection ?? {}, registrationOptions);
-      auth.assertOpen();
-      for (const { socket } of channels) socket.assertOpen();
 
-      const controller = new AbortController();
-      const registrationSignal = controller.signal;
-      const cancel = () => controller.abort(new SessionError('cancelled'));
-      signal?.addEventListener('abort', cancel, { once: true });
-      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
       let namePending = false;
       let createSent = false;
       registrationState = 'creating';
-      const task = (async () => {
-        if (lobbyHeartbeat) await bounded(lobbyHeartbeat, registrationSignal);
-        registrationSignal.throwIfAborted();
-        namePending = true;
-        const code = await checkAvatarName(lobby.socket, fields[0], registrationSignal);
-        namePending = false;
-        if (code !== 0) throw new SessionError(code === 1 ? 'avatar-name-taken' : 'avatar-name-invalid', code);
-        const reply = await submitAvatarRegistration(lobby.socket, fields, registrationSignal, () => { createSent = true; });
-        registrationSignal.throwIfAborted();
-        if (!reply) {
-          createSent = false;
-          throw new SessionError('avatar-create-rejected');
-        }
-        return reply;
-      })();
-      lobbyRequest = { controller, task };
       try {
-        const receipt = await task;
-        registrationSignal.throwIfAborted();
-        registrationState = 'confirmed';
-        return receipt;
+        return await withRegistrationChannel(lobby, signal, async (socket, requestSignal) => {
+          const code = await requestAvatarName(socket, fields[0], requestSignal, () => { namePending = true; });
+          namePending = false;
+          if (code !== 0) throw new SessionError(code === 1 ? 'avatar-name-taken' : 'avatar-name-invalid', code);
+          const reply = await submitAvatarRegistration(socket, fields, requestSignal, () => { createSent = true; });
+          requestSignal.throwIfAborted();
+          if (!reply) {
+            createSent = false;
+            throw new SessionError('avatar-create-rejected');
+          }
+          confirmedAvatar = reply;
+          registrationState = 'confirmed';
+          return { avatarId: reply.avatar.id, name: reply.avatar.name };
+        });
       } catch (error) {
         registrationState = createSent || namePending ? 'uncertain' : 'available';
         if (createSent) throw new SessionError('avatar-create-uncertain');
         if (namePending) throw new SessionError('avatar-name-uncertain');
         throw error;
-      } finally {
-        clearTimeout(timeout);
-        signal?.removeEventListener('abort', cancel);
-        lobbyRequest = null;
+      }
+    },
+    async enterAvatarTutorial({ signal } = {}) {
+      assertAvatarRegistration('confirmed', signal);
+      let notified = false;
+      registrationState = 'activating';
+      try {
+        return await withRegistrationChannel(data, signal, async (socket, requestSignal) => {
+          // The original client rebinds the new avatar on Data before playing the tutorial.
+          // This command has no profile reply. The profile comes from the verified Lobby SC4.
+          socket.send(DATA_AVATAR_CREATED_REQUEST, []);
+          notified = true;
+          const pong = await socket.ask(3, [], [data.pong], { signal: requestSignal, allowOther: true });
+          pong.done();
+          requestSignal.throwIfAborted();
+          socket.assertOpen();
+          const { questData: profileQuests, ...profile } = confirmedAvatar;
+          initialData = { ...initialData, ...profile, registration: null };
+          questData = profileQuests;
+          confirmedAvatar = null;
+          registrationState = 'active';
+          return initialData.avatar;
+        });
+      } catch (error) {
+        registrationState = notified ? 'uncertain' : 'confirmed';
+        if (notified) {
+          confirmedAvatar = null;
+          throw new SessionError('avatar-tutorial-uncertain');
+        }
+        throw error;
       }
     },
     get deckEditState() {
@@ -2035,7 +2108,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     async addDeckCard(inventoryId, { signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
-      if (questRequest || questReturn || lobbyRequest) throw new SessionError('busy');
+      if (questRequest || questReturn || profileRequest) throw new SessionError('busy');
       const deck = editableDeck();
       if (deckEditState || !deck) throw new SessionError('deck-edit-unavailable');
       const candidate = initialData.deckCollection.binder.find((card) => card.inventoryId === inventoryId);
@@ -2055,7 +2128,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       let sent = false;
       deckEditState = 'moving';
       const task = (async () => {
-        if (lobbyHeartbeat) await bounded(lobbyHeartbeat, editSignal);
+        if (lobby.heartbeat) await bounded(lobby.heartbeat, editSignal);
         if (!await verifyDeckAppend(ticket.cardId, ticket.previousCards, editSignal)) {
           throw new SessionError('deck-card-unavailable');
         }
@@ -2066,7 +2139,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           throw new SessionError('deck-edit-rejected', rejection);
         }
       })();
-      lobbyRequest = { controller, task };
+      profileRequest = { channel: lobby, controller, task };
       try {
         await task;
         editSignal.throwIfAborted();
@@ -2083,7 +2156,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       } finally {
         clearTimeout(timeout);
         signal?.removeEventListener('abort', cancel);
-        lobbyRequest = null;
+        profileRequest = null;
       }
     },
     get questAdventure() {

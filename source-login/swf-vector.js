@@ -299,7 +299,7 @@ function frameShapes(timeline, dictionary, tick) {
   return shapes;
 }
 
-function frameBounds(shapes) {
+function frameBounds(shapes, scale, offsetX, offsetY) {
   let left = Infinity;
   let top = Infinity;
   let right = -Infinity;
@@ -308,8 +308,8 @@ function frameBounds(shapes) {
     const [xmin, xmax, ymin, ymax] = symbol.bounds;
     for (const u of [xmin, xmax]) {
       for (const v of [ymin, ymax]) {
-        const px = (a * u + c * v + x) / TWIPS_PER_PIXEL;
-        const py = (b * u + d * v + y) / TWIPS_PER_PIXEL;
+        const px = (a * u + c * v + x) * scale / TWIPS_PER_PIXEL + offsetX;
+        const py = (b * u + d * v + y) * scale / TWIPS_PER_PIXEL + offsetY;
         left = Math.min(left, px);
         top = Math.min(top, py);
         right = Math.max(right, px);
@@ -322,15 +322,16 @@ function frameBounds(shapes) {
   return { x, y, width: Math.ceil(right) - x, height: Math.ceil(bottom) - y };
 }
 
-function drawFrame(shapes, { x, y, width, height }) {
+function drawFrame(shapes, { x, y, width, height }, scale, offsetX, offsetY) {
   const image = document.createElement("canvas");
   image.width = width;
   image.height = height;
   const context = image.getContext("2d");
   if (!context) throw new Error("Canvas 2D is unavailable");
+  const factor = scale / TWIPS_PER_PIXEL;
   for (const { symbol, matrix: [a, b, c, d, u, v], alpha } of shapes) {
-    context.setTransform(a / TWIPS_PER_PIXEL, b / TWIPS_PER_PIXEL, c / TWIPS_PER_PIXEL,
-      d / TWIPS_PER_PIXEL, u / TWIPS_PER_PIXEL - x, v / TWIPS_PER_PIXEL - y);
+    context.setTransform(a * factor, b * factor, c * factor, d * factor,
+      u * factor + offsetX - x, v * factor + offsetY - y);
     context.globalAlpha = alpha;
     for (const { color, path } of symbol.paths) {
       context.fillStyle = color;
@@ -354,15 +355,18 @@ export function parseVectorMovie(fws) {
   const dictionary = new Map();
   const root = readTimeline(reader, reader.little(2), dictionary);
   const frameCount = cycleLength(root, dictionary);
-  const rasterize = index => {
+  const rasterize = (index, { scale = 1, x = 0, y = 0 } = {}) => {
     if (!Number.isInteger(index) || index < 0 || index >= frameCount) throw new Error("Invalid SWF frame index");
+    if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error("Invalid SWF raster transform");
+    }
     const shapes = frameShapes(root, dictionary, index);
-    const bounds = frameBounds(shapes);
+    const bounds = frameBounds(shapes, scale, x, y);
     if (!Number.isSafeInteger(bounds.x) || !Number.isSafeInteger(bounds.y)
         || bounds.width < 1 || bounds.height < 1 || bounds.width > 2048 || bounds.height > 2048) {
       throw new Error("SWF canvas exceeds bounds");
     }
-    return drawFrame(shapes, bounds);
+    return drawFrame(shapes, bounds, scale, x, y);
   };
   return { frameRate, frameCount, rasterize };
 }
