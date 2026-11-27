@@ -83,44 +83,52 @@
           </div>
         </details>
         <section id="session-quest" class="session-quest" aria-labelledby="session-quest-title" hidden>
-          <div class="quest-heading">
+          <header class="quest-heading quest-workspace-heading">
             <div>
-              <h3 id="session-quest-title">任務資料</h3>
+              <h3 id="session-quest-title">任務</h3>
               <p id="session-quest-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">可查看任務清單與進度。</p>
             </div>
             <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-map-caption session-quest-search session-quest-deck-group session-quest-inventory session-quest-details">讀取任務資料</button>
-          </div>
-          <dl id="session-quest-progress" class="session-metadata quest-metadata" hidden>
-            <div><dt>持有任務數</dt><dd id="session-quest-count"></dd></div>
-            <div><dt>任務持有上限</dt><dd id="session-quest-capacity"></dd></div>
-            <div><dt>地圖進度代碼</dt><dd id="session-quest-flag"></dd></div>
-            <div><dt>地圖通關數</dt><dd id="session-quest-clear-count"></dd></div>
-          </dl>
-          <p id="session-quest-map-progress" class="quest-map-progress" hidden>
-            <strong id="session-quest-map-name"></strong>
-            <span id="session-quest-map-count"></span>
-          </p>
-          <p id="session-quest-map-caption" class="quest-original-text quest-map-caption" hidden></p>
-          <div id="session-quest-search" class="quest-search" hidden>
-            <div>
-              <p id="session-quest-search-description">3 分鐘設定，消耗 <span id="session-quest-search-cost">行動力（AP）</span>。倒數依伺服器回覆估算。</p>
-              <p id="session-quest-search-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
+          </header>
+          <div class="quest-route native-surface">
+            <div class="quest-current-map">
+              <div id="session-quest-map-progress" class="quest-map-progress" hidden>
+                <h4 id="session-quest-map-name"></h4>
+                <div class="quest-map-completion">
+                  <span id="session-quest-map-progress-label">區域通關進度</span>
+                  <strong id="session-quest-map-count"></strong>
+                </div>
+                <progress id="session-quest-map-meter" max="1" value="0" aria-labelledby="session-quest-map-name session-quest-map-progress-label"></progress>
+              </div>
+              <p id="session-quest-map-caption" class="quest-original-text quest-map-caption" hidden></p>
             </div>
-            <button id="session-quest-search-start" type="button" class="button primary" aria-describedby="session-quest-map-name session-quest-search-description" aria-controls="session-quest-inventory" disabled>開始搜尋</button>
+            <section id="session-quest-search" class="quest-search" aria-labelledby="session-quest-search-title" hidden>
+              <h4 id="session-quest-search-title">搜尋任務</h4>
+              <p id="session-quest-search-description">3 分鐘設定，消耗 <span id="session-quest-search-cost">行動力（AP）</span>。倒數依伺服器回覆估算。</p>
+              <p class="quest-search-balance" hidden>目前行動力 <strong id="session-quest-search-balance"></strong></p>
+              <p id="session-quest-search-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
+              <button id="session-quest-search-start" type="button" class="button primary" aria-describedby="session-quest-map-name session-quest-search-description" aria-controls="session-quest-inventory" disabled>開始搜尋</button>
+            </section>
           </div>
-          <div id="session-quest-deck-group" class="quest-deck" hidden>
-            <label for="session-quest-deck">任務用牌組</label>
-            <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
-            <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
-          </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>原版服務會在重新登入時清除進行中的任務。</p>
-          <table id="session-quest-inventory" class="quest-inventory" hidden>
-            <caption class="sr-only">任務清單</caption>
-            <thead>
-              <tr><th scope="col">持有紀錄 ID</th><th scope="col">任務 ID</th><th scope="col">狀態代碼</th><th scope="col">任務名稱與地圖</th></tr>
-            </thead>
-            <tbody id="session-quest-rows"></tbody>
-          </table>
+          <section class="quest-workspace-list native-surface" aria-labelledby="session-quest-list-title">
+            <header class="native-surface-header quest-list-heading">
+              <h4 id="session-quest-list-title">我的任務</h4>
+              <div id="session-quest-progress" class="quest-list-progress" hidden>
+                <p class="quest-capacity">持有 <strong id="session-quest-count"></strong>／<span id="session-quest-capacity"></span></p>
+              </div>
+            </header>
+            <div class="native-surface-body quest-list-body">
+              <div id="session-quest-deck-group" class="quest-deck" hidden>
+                <label for="session-quest-deck">任務用牌組</label>
+                <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
+                <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
+              </div>
+              <p id="session-quest-entry-note" class="quest-status" hidden>原版服務會在重新登入時清除進行中的任務。</p>
+              <div id="session-quest-inventory" hidden>
+                <ol id="session-quest-rows" class="quest-cards" aria-labelledby="session-quest-list-title" role="list"></ol>
+              </div>
+            </div>
+          </section>
           <section id="session-quest-land" class="quest-region quest-land-record" aria-labelledby="session-quest-land-title" hidden>
             <h4 id="session-quest-land-title">地形紀錄</h4>
             <p id="session-quest-land-status" class="quest-status quest-land-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
@@ -344,39 +352,46 @@
             <h4 id="session-quest-details-title">關卡說明</h4>
             <div id="session-quest-detail-list" class="quest-detail-list"></div>
           </section>
-          <section id="session-quest-maps" class="quest-region" aria-labelledby="session-quest-maps-title">
-            <div class="quest-heading">
-              <div>
-                <h4 id="session-quest-maps-title">區域 0 地圖</h4>
-                <p id="session-quest-maps-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">尚未讀取地圖清單。</p>
+          <details id="session-quest-source-details" class="quest-source-details">
+            <summary>原版資料與服務</summary>
+            <dl class="session-metadata quest-land-metadata quest-source-progress">
+              <div><dt>地圖進度代碼</dt><dd id="session-quest-flag"></dd></div>
+              <div><dt>地圖通關數</dt><dd id="session-quest-clear-count"></dd></div>
+            </dl>
+            <section id="session-quest-maps" class="quest-region" aria-labelledby="session-quest-maps-title">
+              <div class="quest-heading">
+                <div>
+                  <h4 id="session-quest-maps-title">區域 0 地圖</h4>
+                  <p id="session-quest-maps-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">尚未讀取地圖清單。</p>
+                </div>
+                <button id="session-quest-maps-load" type="button" class="button secondary" aria-controls="session-quest-maps-result">讀取區域地圖</button>
               </div>
-              <button id="session-quest-maps-load" type="button" class="button secondary" aria-controls="session-quest-maps-result">讀取區域地圖</button>
-            </div>
-            <div id="session-quest-maps-result" class="quest-region-result" hidden>
-              <p>任務服務回傳 <strong id="session-quest-maps-count"></strong> 筆地圖 ID</p>
-              <ol id="session-quest-maps-list" class="quest-region-ids" aria-label="地圖 ID" role="list" hidden></ol>
-            </div>
-          </section>
-          <section id="session-quest-service-inventory" class="quest-service" aria-labelledby="session-quest-service-title">
-            <div class="quest-heading">
-              <div>
-                <h4 id="session-quest-service-title">任務服務清單</h4>
-                <p id="session-quest-service-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">尚未讀取任務服務清單。</p>
+              <div id="session-quest-maps-result" class="quest-region-result" hidden>
+                <p>任務服務回傳 <strong id="session-quest-maps-count"></strong> 筆地圖 ID</p>
+                <ol id="session-quest-maps-list" class="quest-region-ids" aria-label="地圖 ID" role="list" hidden></ol>
               </div>
-              <button id="session-quest-service-load" type="button" class="button secondary" aria-controls="session-quest-service-result" aria-describedby="session-quest-service-description">讀取任務服務清單</button>
-            </div>
-            <p id="session-quest-service-description" class="quest-service-description">服務會重送已發現的任務紀錄。搜尋中與進度可按上方「讀取任務資料」查看。</p>
-            <div id="session-quest-service-result" class="quest-region-result" hidden>
-              <p>任務服務回傳 <strong id="session-quest-service-count"></strong> 筆紀錄</p>
-              <table id="session-quest-service-table" class="quest-inventory" hidden>
-                <caption class="sr-only">任務服務重送的清單</caption>
-                <thead>
-                  <tr><th scope="col">持有紀錄 ID</th><th scope="col">任務 ID</th><th scope="col">狀態代碼</th></tr>
-                </thead>
-                <tbody id="session-quest-service-rows"></tbody>
-              </table>
-            </div>
-          </section>
+            </section>
+            <section id="session-quest-service-inventory" class="quest-service" aria-labelledby="session-quest-service-title">
+              <div class="quest-heading">
+                <div>
+                  <h4 id="session-quest-service-title">任務服務清單</h4>
+                  <p id="session-quest-service-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">尚未讀取任務服務清單。</p>
+                </div>
+                <button id="session-quest-service-load" type="button" class="button secondary" aria-controls="session-quest-service-result" aria-describedby="session-quest-service-description">讀取任務服務清單</button>
+              </div>
+              <p id="session-quest-service-description" class="quest-service-description">服務會重送已發現的任務紀錄。搜尋中與進度可按上方「讀取任務資料」查看。</p>
+              <div id="session-quest-service-result" class="quest-region-result" hidden>
+                <p>任務服務回傳 <strong id="session-quest-service-count"></strong> 筆紀錄</p>
+                <table id="session-quest-service-table" class="quest-inventory" hidden>
+                  <caption class="sr-only">任務服務重送的清單</caption>
+                  <thead>
+                    <tr><th scope="col">持有紀錄 ID</th><th scope="col">任務 ID</th><th scope="col">狀態代碼</th></tr>
+                  </thead>
+                  <tbody id="session-quest-service-rows"></tbody>
+                </table>
+              </div>
+            </section>
+          </details>
         </section>
       </section>
 
@@ -463,6 +478,26 @@
         </section>
       </section>
 
+      <template id="session-quest-card-template">
+        <li class="quest-card">
+          <div class="quest-card-header">
+            <div class="quest-card-heading">
+              <h5 class="quest-name"></h5>
+              <p class="quest-map" hidden></p>
+            </div>
+            <p class="quest-stage-label"></p>
+          </div>
+          <div class="quest-card-actions"></div>
+          <details class="quest-card-source">
+            <summary>原版資料</summary>
+            <dl>
+              <div><dt>持有紀錄 ID</dt><dd data-quest-field="inventoryId"></dd></div>
+              <div><dt>任務 ID</dt><dd data-quest-field="questId"></dd></div>
+              <div><dt>狀態代碼</dt><dd data-quest-field="status"></dd></div>
+            </dl>
+          </details>
+        </li>
+      </template>
       <template id="session-quest-detail-template">
         <details class="quest-detail">
           <summary></summary>

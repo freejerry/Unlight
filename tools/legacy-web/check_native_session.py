@@ -222,7 +222,7 @@ def quest_database_snapshot(database, username):
 def expect_quest_cleared(page):
     expect(page.locator("#session-quest")).to_be_hidden()
     expect(page.locator("#session-quest-status")).to_have_attribute("data-state", "idle")
-    expect(page.locator("#session-quest-inventory tr[data-inventory-id]")).to_have_count(0)
+    expect(page.locator("#session-quest-rows > [data-inventory-id]")).to_have_count(0)
     for field in QUEST_SUMMARY:
         expect(page.locator(f"#session-quest-{field}")).to_be_empty()
     expect(page.locator("#session-quest-map-progress")).to_be_hidden()
@@ -248,15 +248,20 @@ def verify_quest_inventory(page, database, username, sockets):
     expect(page.locator("#session-quest-progress")).to_be_visible()
     for field, value in summary.items():
         expect(page.locator(f"#session-quest-{field}")).to_have_text(str(value))
-    inventory = page.locator("#session-quest-inventory tr[data-inventory-id]")
+    inventory = page.locator("#session-quest-rows > [data-inventory-id]")
     expect(inventory).to_have_count(len(rows))
     for inventory_id, quest_id, status, name, map_name in rows:
-        row = page.locator(f'#session-quest-inventory tr[data-inventory-id="{inventory_id}"]')
+        row = page.locator(f'#session-quest-rows > [data-inventory-id="{inventory_id}"]')
         expect(row).to_be_visible()
         expect(row).to_have_attribute("data-quest-id", str(quest_id))
         expect(row).to_have_attribute("data-quest-status", str(status))
-        for index, value in enumerate((inventory_id, quest_id, status)):
-            expect(row.get_by_role("cell").nth(index)).to_have_text(str(value))
+        details = row.locator(".quest-card-source > summary")
+        details.click()
+        for key, value in (("inventoryId", inventory_id), ("questId", quest_id), ("status", status)):
+            raw = row.locator(f'[data-quest-field="{key}"]')
+            expect(raw).to_be_visible()
+            expect(raw).to_have_text(str(value))
+        details.click()
         if quest_id == 0:
             expect(row.locator(".quest-name")).to_have_text("尚未發現")
         if name:
@@ -272,6 +277,9 @@ def verify_quest_inventory(page, database, username, sockets):
         expect(gauge).to_have_attribute("data-map-id", str(map_id))
         expect(page.locator("#session-quest-map-name")).to_have_text(name)
         expect(page.locator("#session-quest-map-count")).to_have_text(f"{min(summary['clear-count'], target)} / {target}")
+        meter = page.locator("#session-quest-map-meter")
+        expect(meter).to_have_attribute("max", str(target))
+        expect(meter).to_have_attribute("value", str(min(summary["clear-count"], target)))
     else:
         expect(gauge).to_be_hidden()
     assert outbound == [(url, len(sent)) for url, sent, _ in sockets], "Quest read sent a Ruby socket command"

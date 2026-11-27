@@ -128,14 +128,10 @@ main { padding-block: 1.6rem 1.8rem; }
 .session-detail, .session-format { margin-top: .55rem; color: var(--muted); font-size: .9rem; }
 .session-detail:empty { margin-top: 0; }
 
-.session-quest { max-width: 44rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.session-quest { max-width: 60rem; margin-top: 1.2rem; }
 .quest-heading h3 { font-size: 1rem; }
 .quest-status { margin-top: .2rem; color: var(--muted); font-size: .9rem; }
 .quest-status[data-state="failed"] { color: var(--failure); }
-.quest-metadata { margin-top: .65rem; }
-.quest-map-progress { display: flex; flex-wrap: wrap; gap: .25rem .7rem; margin-top: .65rem; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
-.quest-search { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem .75rem; margin-top: .65rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: .45rem; background: #f2f7f9; }
-.quest-search > div { flex: 1 1 14rem; min-width: 0; color: #2d444f; font-size: .9rem; }
 .quest-search .quest-status:empty { margin-top: 0; }
 .quest-search .quest-status[data-state="rejected"], .quest-search .quest-status[data-state="uncertain"] { color: var(--failure); }
 .quest-deck { display: flex; flex-wrap: wrap; align-items: center; gap: .33rem .7rem; margin-top: .75rem; }
@@ -156,7 +152,6 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-discovery-status[data-state="failed"], .quest-start-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"]) { color: var(--failure); }
 .quest-start-status:focus { outline: 2px solid #007f69; outline-offset: 2px; }
 .quest-original-text { color: #2d444f; font-size: .92rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-.quest-map-caption { margin-top: .35rem; }
 .quest-details { margin-top: .8rem; }
 .quest-details h4 { margin: 0 0 .4rem; font-size: .96rem; }
 .quest-detail-list, .quest-lands { display: grid; gap: .45rem; }
@@ -358,7 +353,66 @@ main { padding-block: 1.6rem 1.8rem; }
 .native-diagnostics { margin-top: clamp(1.5rem, 4vw, 2.6rem); padding-top: 1.25rem; border-block-start: 1px solid var(--native-edge); }
 .native-diagnostics #page-title { font-size: clamp(1.25rem, 3vw, 1.8rem); line-height: 1.25; }
 
-.native-client .session-quest:has(.quest-first-turn:not([hidden])) { max-width: 60rem; }
+.quest-workspace-heading { margin-bottom: .75rem; padding-block: .7rem; border-block-start: 1px solid var(--native-edge); }
+.quest-workspace-heading h3 { color: var(--native-ink); font-size: clamp(1.25rem, 2.2vw, 1.55rem); }
+.quest-workspace-heading .quest-status { line-height: 1.5; }
+.quest-workspace-heading .button,
+.quest-route .button,
+.quest-list-body :is(.button, select),
+#session-quest-source-details .button { min-height: 44px; white-space: normal; }
+
+.quest-route { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr)); margin-bottom: .85rem; overflow: clip; }
+.quest-route:not(:has(.quest-map-progress:not([hidden]), .quest-map-caption:not([hidden]), .quest-search:not([hidden]))),
+.quest-current-map:not(:has(> :not([hidden]))),
+.quest-workspace-list:not(:has(#session-quest-progress:not([hidden]))),
+.quest-list-body:not(:has(> :not([hidden]))),
+.session-quest:not(:has(#session-quest-progress:not([hidden]))) .quest-source-progress { display: none; }
+.quest-current-map {
+  min-width: 0;
+  padding: clamp(.9rem, 3vw, 1.65rem);
+  background: #183730;
+  color: #f7faf4;
+}
+.quest-current-map h4, .quest-search h4, .quest-list-heading h4 { margin: 0; font-size: 1.13rem; line-height: 1.35; overflow-wrap: anywhere; }
+.quest-current-map h4 { font-size: clamp(1.2rem, 2.75vw, 1.65rem); }
+.quest-map-completion { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .35rem .7rem; margin-top: .8rem; color: #e3eee6; font-size: .9rem; font-variant-numeric: tabular-nums; }
+#session-quest-map-meter { display: block; width: 100%; height: .55rem; margin-top: .4rem; accent-color: #b1d8bd; }
+.quest-route .quest-map-caption { margin-top: .75rem; color: #e3eee6; }
+.quest-search { display: grid; align-content: start; justify-items: start; gap: .5rem; min-width: 0; padding: clamp(.9rem, 3vw, 1.65rem); background: var(--native-tint); }
+.quest-search h4 { color: var(--native-ink); }
+.quest-search :is(#session-quest-search-description, .quest-search-balance) { color: var(--native-muted); font-size: .93rem; line-height: 1.5; }
+.quest-search-balance strong { color: var(--native-ink); font-variant-numeric: tabular-nums; }
+.quest-search .quest-status { margin: 0; }
+.quest-search .primary { background: var(--native-action); }
+.quest-search .primary:hover:not(:disabled) { background: #163e32; }
+
+.quest-list-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .45rem .85rem; }
+.quest-list-heading h4 { color: var(--native-ink); }
+.quest-capacity { color: var(--native-muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.quest-capacity strong { color: var(--native-ink); }
+.quest-list-body { display: grid; gap: .75rem; }
+.quest-list-body .quest-deck { margin: 0; }
+.quest-list-body .quest-deck select { font-size: 1rem; }
+.quest-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr)); gap: .65rem; margin: 0; padding: 0; list-style: none; }
+.quest-card { min-width: 0; padding: .65rem .75rem .3rem; border: 1px solid var(--native-edge); border-radius: .5rem; background: var(--native-tint); }
+.quest-card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: .35rem .65rem; }
+.quest-card-heading { flex: 1 1 12rem; min-width: 0; }
+.quest-card .quest-name { margin: 0; color: var(--native-ink); font-size: 1.02rem; line-height: 1.45; overflow-wrap: anywhere; }
+.quest-card .quest-map { margin-top: .12rem; color: var(--native-muted); line-height: 1.45; overflow-wrap: anywhere; }
+.quest-stage-label { padding: .2rem .45rem; border-radius: .35rem; background: #e8efe9; color: #29513e; font-size: .83rem; font-weight: 680; }
+.quest-card[data-quest-status="4"] .quest-stage-label { background: #fbefde; color: #744d28; }
+.quest-card[data-quest-status="5"] .quest-stage-label { background: #fbebe4; color: #78372b; }
+.quest-card-actions:not(:empty) { margin-top: .48rem; }
+.quest-card-actions .quest-countdown { color: var(--native-ink); font-size: 1rem; font-weight: 670; font-variant-numeric: tabular-nums; }
+.quest-card-actions .quest-countdown[data-state="elapsed"] { color: #744d28; }
+.quest-card-actions .button { margin-block: .38rem .18rem; padding-inline: .75rem; font-size: .92rem; }
+.quest-card-actions .quest-land-name { font-size: .92rem; }
+.quest-card-source { margin-top: .4rem; border-block-start: 1px solid var(--native-edge); color: var(--native-muted); }
+.quest-card-source summary { min-height: 44px; padding-block: .65rem; font-size: .85rem; cursor: pointer; }
+.quest-card-source summary:focus-visible { outline: 2px solid var(--native-action); outline-offset: 1px; }
+.quest-card-source dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(6rem, 100%), 1fr)); gap: .45rem; margin: 0 0 .45rem; font-size: .83rem; }
+.quest-card-source dd { color: var(--native-ink); font-weight: 640; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
 .quest-board-header { background: #183730; color: #f7faf4; }
 .quest-board-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; }
 .quest-board-header h5 { margin: 0; color: inherit; font-size: clamp(1.12rem, 2.1vw, 1.4rem); line-height: 1.3; }
@@ -497,6 +551,7 @@ main { padding-block: 1.6rem 1.8rem; }
 
 @media (max-width: 35rem) {
   .native-client .session-fields button { justify-self: stretch; }
+  .quest-search > .primary { width: 100%; }
   .quest-board .quest-move-card-item .quest-card-label { flex-basis: 100%; }
   .quest-settlement .button { width: 100%; }
 }

@@ -33,9 +33,12 @@ const questUi = {
   mapProgress: document.querySelector('#session-quest-map-progress'),
   mapName: document.querySelector('#session-quest-map-name'),
   mapCount: document.querySelector('#session-quest-map-count'),
+  mapMeter: document.querySelector('#session-quest-map-meter'),
   mapCaption: document.querySelector('#session-quest-map-caption'),
   inventory: document.querySelector('#session-quest-inventory'),
   rows: document.querySelector('#session-quest-rows'),
+  cardTemplate: document.querySelector('#session-quest-card-template'),
+  sourceDetails: document.querySelector('#session-quest-source-details'),
   details: document.querySelector('#session-quest-details'),
   detailList: document.querySelector('#session-quest-detail-list'),
   detailTemplate: document.querySelector('#session-quest-detail-template'),
@@ -45,6 +48,7 @@ const questUi = {
 const searchUi = {
   section: document.querySelector('#session-quest-search'),
   cost: document.querySelector('#session-quest-search-cost'),
+  balance: document.querySelector('#session-quest-search-balance'),
   start: document.querySelector('#session-quest-search-start'),
   status: document.querySelector('#session-quest-search-status'),
 };
@@ -311,6 +315,7 @@ const MAX_CATALOG_ID = 0x7fffffff;
 const NORMAL_QUEST_MAP_COUNT = 35;
 const QUEST_PENDING = 4;
 const QUEST_IN_PROGRESS = 2;
+const questCardStages = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '獲贈任務'];
 const questCountdowns = [];
 const questDeckNames = new Map();
 const confirmedQuestStarts = new Set();
@@ -351,6 +356,14 @@ function formatAvatarEnergy(energy, maximum) {
   return Number.isSafeInteger(maximum) && energy <= maximum ? `${energy} / ${maximum}` : String(energy);
 }
 
+function displayAvatarEnergy(energy, maximum) {
+  const known = Number.isSafeInteger(energy) && energy >= 0;
+  const value = known ? formatAvatarEnergy(energy, maximum) : '';
+  ui.avatarEnergy.textContent = value;
+  searchUi.balance.textContent = value;
+  searchUi.balance.parentElement.hidden = !known;
+}
+
 function displayBootstrap(initialData) {
   const avatar = initialData?.avatar;
   const registration = initialData?.registration;
@@ -364,7 +377,7 @@ function displayBootstrap(initialData) {
     ? [avatar.name, avatar.id, avatar.level, avatar.gems, avatar.exp]
     : [];
   ui.avatarFields.forEach((field, index) => { field.textContent = avatarValues[index] ?? ''; });
-  ui.avatarEnergy.textContent = avatar ? formatAvatarEnergy(avatar.energy, avatar.energyMax) : '';
+  displayAvatarEnergy(avatar?.energy, avatar?.energyMax);
   const registrationValues = registration ? [registration.partCount, registration.cardCount] : [];
   ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
 }
@@ -479,10 +492,20 @@ function clearQuestRegionProgress() {
   delete questUi.mapProgress.dataset.clearTarget;
   questUi.mapName.textContent = '';
   questUi.mapCount.textContent = '';
+  questUi.mapMeter.hidden = true;
+  questUi.mapMeter.value = 0;
   setOriginalText(questUi.mapCaption, '');
   searchUi.section.hidden = true;
   delete searchUi.section.dataset.mapId;
   searchUi.cost.textContent = '行動力（AP）';
+}
+
+function displayQuestMapCount(count, target) {
+  const completed = Math.min(count, target);
+  questUi.mapCount.textContent = `${completed} / ${target}`;
+  questUi.mapMeter.max = target;
+  questUi.mapMeter.value = completed;
+  questUi.mapMeter.hidden = false;
 }
 
 function clearQuestResults() {
@@ -507,6 +530,29 @@ function appendQuestRow(tableBody, { inventoryId, questId, status }) {
   row.dataset.questStatus = String(status);
   for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
   return row;
+}
+
+function updateQuestCardStatus(card, status) {
+  card.dataset.questStatus = String(status);
+  card.querySelector('[data-quest-field="status"]').textContent = String(status);
+  const stage = card.querySelector('.quest-stage-label');
+  stage.textContent = questCardStages[status] ?? '';
+  stage.hidden = !stage.textContent;
+}
+
+function appendQuestCard({ inventoryId, questId, status }) {
+  const card = questUi.cardTemplate.content.firstElementChild.cloneNode(true);
+  card.dataset.inventoryId = String(inventoryId);
+  card.dataset.questId = String(questId);
+  const name = card.querySelector('.quest-name');
+  name.id = `quest-name-${inventoryId}`;
+  name.tabIndex = -1;
+  name.textContent = questId === 0 ? '尚未發現' : '未取得名稱';
+  card.querySelector('[data-quest-field="inventoryId"]').textContent = String(inventoryId);
+  card.querySelector('[data-quest-field="questId"]').textContent = String(questId);
+  updateQuestCardStatus(card, status);
+  questUi.rows.append(card);
+  return card;
 }
 
 function findServiceQuestRow(inventoryId, questId) {
@@ -1452,7 +1498,7 @@ function appendQuestLandOption(row) {
   button.setAttribute('aria-controls', 'session-quest-land');
   button.setAttribute('aria-describedby', `${name.id} session-quest-entry-note`);
   option.append(name, button);
-  row.cells[3].append(option);
+  row.querySelector('.quest-card-actions').append(option);
   button.addEventListener('click', () => void enterQuestLand(row, inventoryId, land, button));
 }
 
@@ -1550,7 +1596,7 @@ function refreshSettledQuestProgress(snapshot, session) {
   const mapId = String(snapshot.questFlag + 1);
   const target = Number(questUi.mapProgress.dataset.clearTarget);
   if (questUi.mapProgress.dataset.mapId === mapId && Number.isSafeInteger(target) && target > 0) {
-    questUi.mapCount.textContent = `${Math.min(snapshot.questClearNum, target)} / ${target}`;
+    displayQuestMapCount(snapshot.questClearNum, target);
     return;
   }
 
@@ -1629,7 +1675,10 @@ async function enterQuestLand(row, inventoryId, land, button) {
   } finally {
     finishLiveQuestRequest(request);
     if (restoreFocus && active === session && (document.activeElement === document.body || document.activeElement === button)) {
-      questLandUi.status.focus();
+      const start = questBattleUi.start;
+      const next = questNextLandUi.options.querySelector('button:not(:disabled)');
+      const ready = !questBattleUi.section.hidden && !start.hidden && !start.disabled;
+      (ready ? start : next ?? questLandUi.status).focus();
     }
   }
 }
@@ -1727,7 +1776,7 @@ function updateQuestRowStatus(row, status) {
 }
 
 function displayStartedQuest(row, statusElement, deckIndex) {
-  updateQuestRowStatus(row, QUEST_IN_PROGRESS);
+  updateQuestCardStatus(row, QUEST_IN_PROGRESS);
   row.dataset.deckIndex = String(deckIndex);
   showQuestActionStatus(statusElement, 'started', `伺服器已開始任務。使用 ${deckLabel(deckIndex)}。`);
 }
@@ -1736,7 +1785,7 @@ function appendQuestStart(row, { inventoryId, questId, status, deckIndex }) {
   const startable = questId > 0 && (status === 0 || status === 1);
   const assigned = status === QUEST_IN_PROGRESS && Number.isSafeInteger(deckIndex) && deckIndex > 0;
   if (!startable && !assigned) return;
-  const description = row.cells[3];
+  const description = row.querySelector('.quest-card-actions');
   const statusElement = document.createElement('span');
   statusElement.className = 'quest-start-status';
   statusElement.setAttribute('role', 'status');
@@ -1781,7 +1830,7 @@ async function startQuest(row, inventoryId, questId, button, statusElement) {
       throw new SessionError('quest-start-uncertain');
     }
 
-    ui.avatarEnergy.textContent = formatAvatarEnergy(energy, session.initialData.avatar.energyMax);
+    displayAvatarEnergy(energy, session.initialData.avatar.energyMax);
     displayStartedQuest(row, statusElement, deckIndex);
     confirmedQuestStarts.add(inventoryId);
     appendQuestLandOption(row);
@@ -1807,8 +1856,9 @@ async function startQuest(row, inventoryId, questId, button, statusElement) {
   } finally {
     finishLiveQuestRequest(request);
     if (restoreFocus && row.isConnected && (document.activeElement === document.body || document.activeElement === button)) {
-      const target = button.isConnected && !button.disabled ? button : statusElement;
-      target.focus({ preventScroll: true });
+      const land = row.querySelector('.quest-land-enter:not(:disabled)');
+      const target = button.isConnected && !button.disabled ? button : land ?? statusElement;
+      target.focus();
     }
   }
 }
@@ -1842,6 +1892,7 @@ function updateQuestCountdowns() {
 
 async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement) {
   if (!row.isConnected || countdown.element.dataset.state !== 'elapsed') return;
+  const restoreFocus = document.activeElement === countdown.button;
   const request = beginLiveQuestRequest('discovery');
   if (!request) return;
   const { session, controller } = request;
@@ -1866,13 +1917,13 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
       map.hidden = true;
     }
     row.dataset.questId = String(result.questId);
-    row.dataset.questStatus = String(result.status);
-    row.cells[1].textContent = String(result.questId);
-    row.cells[2].textContent = String(result.status);
+    row.querySelector('[data-quest-field="questId"]').textContent = String(result.questId);
+    updateQuestCardStatus(row, result.status);
     questCountdowns.splice(questCountdowns.indexOf(countdown), 1);
     countdown.element.remove();
     countdown.button.remove();
     showQuestActionStatus(statusElement, 'confirmed', '伺服器已確認搜尋結果。');
+    if (restoreFocus && [document.body, countdown.button].includes(document.activeElement)) statusElement.focus();
     appendQuestStart(row, result);
     displayQuestDecks();
 
@@ -1891,6 +1942,12 @@ async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement)
     }
   } finally {
     finishLiveQuestRequest(request);
+    if (restoreFocus && active === session && row.isConnected) {
+      if (document.activeElement === statusElement) row.querySelector('.quest-start:not(:disabled)')?.focus();
+      else if (document.activeElement === document.body && countdown.button.isConnected && !countdown.button.disabled) {
+        countdown.button.focus();
+      }
+    }
   }
 }
 
@@ -1905,16 +1962,8 @@ function displayQuestSnapshot(snapshot, newestEntry) {
   displayQuestProgress(snapshot);
 
   for (const entry of newestEntry ? [newestEntry] : rows) {
-    const row = appendQuestRow(questUi.rows, entry);
-    const name = document.createElement('span');
-    name.className = 'quest-name';
-    name.id = `quest-name-${entry.inventoryId}`;
-    name.textContent = entry.questId === 0 ? '尚未發現' : '未取得名稱';
-    const map = document.createElement('span');
-    map.className = 'quest-map';
-    map.hidden = true;
-    const description = row.insertCell();
-    description.append(name, map);
+    const row = appendQuestCard(entry);
+    const actions = row.querySelector('.quest-card-actions');
     const rowReceivedAt = entry.receivedAt ?? receivedAt;
     if (entry.status === QUEST_PENDING && Number.isSafeInteger(entry.findSeconds)
         && Number.isFinite(rowReceivedAt) && rowReceivedAt >= 0) {
@@ -1930,8 +1979,9 @@ function displayQuestSnapshot(snapshot, newestEntry) {
       const statusElement = document.createElement('span');
       statusElement.className = 'quest-discovery-status';
       statusElement.setAttribute('role', 'status');
+      statusElement.tabIndex = -1;
       statusElement.dataset.state = 'idle';
-      description.append(element, button, statusElement);
+      actions.append(element, button, statusElement);
       // Data reports truncated remaining seconds. A new Quest row has the exact duration.
       const tolerance = entry.receivedAt === undefined ? 1 : 0;
       const deadline = entry.findSeconds < 0 ? 0 : rowReceivedAt + (entry.findSeconds + tolerance) * 1000;
@@ -1998,9 +2048,8 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
 
   const currentProgress = questUi.fields[2].textContent === String(questFlag) && questUi.fields[3].textContent === String(questClearNum);
   if (currentProgress && map?.id === mapId && Number.isSafeInteger(map.clearTarget) && map.clearTarget > 0) {
-    const completed = Math.min(questClearNum, map.clearTarget);
     questUi.mapName.textContent = typeof map.name === 'string' && map.name ? map.name : `地圖 ${mapId}`;
-    questUi.mapCount.textContent = `${completed} / ${map.clearTarget}`;
+    displayQuestMapCount(questClearNum, map.clearTarget);
     questUi.mapProgress.dataset.mapId = String(mapId);
     questUi.mapProgress.dataset.clearTarget = String(map.clearTarget);
     questUi.mapProgress.hidden = false;
@@ -2013,7 +2062,7 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, s
 
   if (!Array.isArray(quests)) return;
   const catalog = new Map(quests.filter(quest => ids.has(quest?.id)).map(quest => [quest.id, quest]));
-  for (const row of questUi.rows.rows) {
+  for (const row of questUi.rows.children) {
     const quest = catalog.get(Number(row.dataset.questId));
     if (!quest) continue;
     if (typeof quest.name === 'string' && quest.name) row.querySelector('.quest-name').textContent = quest.name;
@@ -2053,10 +2102,12 @@ function supportedFirstQuestLand({ firstLand: land, positions, mapId }) {
 
 async function startQuestSearch() {
   if (searchUi.start.disabled) return;
+  const restoreFocus = document.activeElement === searchUi.start;
   const request = beginLiveQuestRequest('search');
   if (!request) return;
   const { session, controller } = request;
   const { signal } = controller;
+  let countdownTitle;
   showQuestActionStatus(searchUi.status, 'starting', '正在向伺服器開始搜尋…');
 
   try {
@@ -2068,7 +2119,7 @@ async function startQuestSearch() {
       throw new SessionError('search-uncertain');
     }
 
-    ui.avatarEnergy.textContent = formatAvatarEnergy(energy, session.initialData.avatar.energyMax);
+    displayAvatarEnergy(energy, session.initialData.avatar.energyMax);
     showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。');
     try {
       const snapshot = await session.readQuestInventory({ signal });
@@ -2078,6 +2129,7 @@ async function startQuestSearch() {
         throw new SessionError('protocol');
       }
       displayQuestSnapshot(snapshot, { ...newestEntry, receivedAt: row.receivedAt });
+      countdownTitle = questUi.rows.querySelector(`[data-inventory-id="${row.inventoryId}"] .quest-name`);
     } catch {
       if (isCurrentLiveQuestRequest(request)) {
         showQuestActionStatus(searchUi.status, 'started', '伺服器已開始搜尋。請重新讀取任務資料以查看倒數。');
@@ -2097,6 +2149,8 @@ async function startQuestSearch() {
     }
   } finally {
     finishLiveQuestRequest(request);
+    if (restoreFocus && active === session && countdownTitle?.isConnected
+        && [document.body, searchUi.start].includes(document.activeElement)) countdownTitle.focus();
   }
 }
 
@@ -2172,6 +2226,7 @@ function show(state, label, detail = '', kind) {
   if (!signedIn) {
     clearNews();
     clearLiveQuest();
+    questUi.sourceDetails.open = false;
     questRequest?.abort();
     questRequest = null;
     clearQuestResults();
