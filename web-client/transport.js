@@ -1,3 +1,5 @@
+import { encodeCommand } from './wire.js';
+
 export class ProbeError extends Error {
   constructor(kind, message, response = new Uint8Array()) {
     super(message);
@@ -18,12 +20,7 @@ function validateCommand(command) {
 
 export function buildKeepAliveRequest(ping) {
   validateCommand(ping);
-  const request = new Uint8Array(5);
-  const view = new DataView(request.buffer);
-  view.setUint16(0, 2, false);
-  view.setUint16(2, ping, false);
-  view.setUint8(4, 0x0a);
-  return request;
+  return encodeCommand(ping);
 }
 
 export function buildKeepAliveResponse(pong) {

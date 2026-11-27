@@ -34,7 +34,7 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 ## 與原版核對
 
-- **連線。** 依原版的 KeepAlive 命令向認證、大廳、資料、戰鬥、任務和全域聊天服務送出二進位訊息，逐位元組比對 Ruby 回應。單項失敗時可重試。[原版命令範例](../app/client/src/net/command/AuthCommand.as) · [原版封包格式](../app/client/src/net/ULSocket.as)
+- **連線。** KeepAlive 與登入共用請求封包編碼。依原版的 KeepAlive 命令向認證、大廳、資料、戰鬥、任務和全域聊天服務送出二進位訊息，逐位元組比對 Ruby 回應。單項失敗時可重試。[共用編碼](wire.js#L15) · [原版命令範例](../app/client/src/net/command/AuthCommand.as#L93) · [ActionScript 封包格式](../app/client/src/net/ULSocket.as#L85) · [Ruby 封包格式](../app/server/src/protocol/ulserver.rb#L107)
 - **登入。** 瀏覽器以原版 SRP 協定計算認證證明，驗證伺服器憑證後，使用原版工作階段金鑰完成大廳、資料和全域聊天的交握。密碼在瀏覽器記憶體內處理。此入口供回環介面的隔離驗收使用。[原版認證流程](../app/client/src/net/server/AuthServer.as) · [原版大廳交握](../app/client/src/net/server/LobbyServer.as)
 - **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，唯讀解析角色摘要，或彙整未創角帳號收到的起始選項數量。登出或連線中斷時清空摘要。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
 - **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得地圖，並以該地圖門檻為顯示上限。找不到名稱時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
