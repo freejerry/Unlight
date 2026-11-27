@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**第一張普通地圖的進入、已發現／搜尋中清單、Back 及認證等待中取消。**部分**原版地圖與共用 Ruby 協定。 | 接入 MAP 選區、地標的搜尋預覽及原版場景音樂淡出，接續探索和首戰。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、MAP 選區、搜尋預覽、兩秒場景音樂淡出、已發現／搜尋中清單與 Back。**部分**探索與共用 Ruby 協定。 | 接入確認搜尋、原版 AP 扣除和等待到期，接續首戰。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -65,4 +65,9 @@
 ### 第一張普通任務地圖
 
 - 大廳任務入口已在 `/source-login/` 切入同次登入的 780×680 原版地圖。從原始 SWF 沿用底圖、滑入地標、清單容量幀、任務列圖示、牌組底板和 Back。使用原來的 `ulbgm03.mp3`、入口 `ulse02` 與 Back `ulse01`。列表顯示真實繁中資料、原版進度與實際選定牌組，卡位目前顯示真卡名。[素材與來源雜湊](../../source-login/quest-art/sources.json) · [原版空清單](/workspace/shared/unlight-web-port/flash-parity/quest-map/01-map1-empty-original.png)
-- 隔離 Ruby 實跑開圖、讀到已發現和搜尋中兩筆庫存、返回及認證延遲時取消。每次正常進入只保留一條 Quest，Back 發一次 `CS2` 並等該連線關閉。四條原本登入連線、AP、庫存與裝備均通過核對。MAP 選區、地標搜尋視窗、元素分層退場、切場兩秒音樂淡出、完整卡面和戰鬥仍待移植。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [可重跑測例](flash-parity/qa.md#重跑任務地圖的庫存及返回)
+- 隔離 Ruby 實跑開圖、讀到已發現和搜尋中兩筆庫存、返回及認證延遲時取消。每次正常進入只保留一條 Quest，Back 發一次 `CS2` 並等該連線關閉。四條原本登入連線、AP、庫存與裝備均通過核對。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [可重跑測例](flash-parity/qa.md#重跑任務地圖的庫存及返回)
+
+### 任務選區、搜尋預覽與音樂淡出
+
+- 依原版旗標顯示六張普通地圖與 MemoryLand。原始 MAP 選區按鈕與 300 ms 滑入、地名飾帶的點擊範圍與即時預覽均接入遊戲。實跑核對 11 個時間選項、原始縮圖與 AP 費用，保留同次任務中關閉前的時間。兩個視窗操作全程維持原五條連線，角色 AP、庫存及裝備均維持原資料。[原版時間重開測試](/workspace/shared/unlight-web-port/flash-parity/quest-map/picker-preview/README.md) · [選單並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-map-picker.png) · [搜尋並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-search-3m.png)
+- 真實 Chromium 量到大廳及任務兩方向各十步音量衰減，均約 2001 ms，切換時前後 BGM 可重疊。MemoryLand 保留原版可見飾帶，以真實解鎖旗標提供可操作地標；未修補 Ruffle 曾保留前一張底圖，新版依已選區域換圖。確認搜尋仍停用，下一步驗收 Ruby 的 `CS5`、AP 扣除、庫存回覆與到期處理。[MemoryLand 並排](/workspace/shared/unlight-web-port/flash-parity/quest-preview/qa-comparison-memoryland.png) · [原始模式與來源驗收](flash-parity/quest-pve.md#map-選區搜尋預覽與音樂)

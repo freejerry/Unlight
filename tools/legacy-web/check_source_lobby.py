@@ -37,6 +37,10 @@ OPTION_DEFAULTS = {"bgm": 50, "se": 50, "cv": 50, "toolTip": True, "arrow": True
 OPTION_EDITS = {"bgm": 0, "se": 99, "cv": 1, "toolTip": False, "arrow": False}
 OPTION_STORAGE = "unlight.source-login.preferences"
 LOBBY_REFRESH = [0, 2, 0, 17, 10]
+QUEST_SEARCH_TIMES = tuple(zip(
+    (0, 180, 600, 1800, 3600, 7200, 14400, 28800, 57600, 86400, 259200),
+    ("0分", "3分", "10分", "30分", "1小時", "2小時", "4小時", "8小時", "16小時", "1天", "3天"),
+))
 # Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
 LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
@@ -73,6 +77,44 @@ def music(page, scene, filename):
       return audio?.currentSrc.endsWith('/sound/bgm/' + filename) && audio.loop
         && !audio.paused && audio.currentTime > 0.2;
     }""", arg={"scene": scene, "filename": filename}, timeout=TIMEOUT)
+
+
+def observe_scene_music_fade(page, scene):
+    audio = page.locator(f'#stage > audio[data-bgm-scene="{scene}"]')
+    assert audio.evaluate("""(audio, scene) => {
+      window.qaSceneMusic ??= {};
+      const trace = {audio, steps: []};
+      window.qaSceneMusic[scene] = trace;
+      document.getElementById('stage').addEventListener('game-screen-change', function boundary() {
+        if (this.dataset.soundscape !== 'silent' || trace.started) return;
+        trace.started = performance.now();
+      });
+      function sample() {
+        const previous = trace.steps.at(-1);
+        if (previous?.volume !== audio.volume) {
+          trace.steps.push({volume: audio.volume, at: performance.now(), time: audio.currentTime, paused: audio.paused});
+        }
+      }
+      audio.addEventListener('volumechange', sample);
+      sample();
+      return audio.volume === 0.5 && !audio.paused;
+    }""", scene)
+
+
+def check_scene_music_fade(page, scene):
+    page.wait_for_function("""scene => {
+      const {audio, steps} = window.qaSceneMusic[scene];
+      return audio.paused && !audio.isConnected && steps.at(-1)?.volume === 0;
+    }""", arg=scene, timeout=TIMEOUT)
+    started, steps = page.evaluate("scene => [window.qaSceneMusic[scene].started, window.qaSceneMusic[scene].steps]", scene)
+    assert [round(step["volume"], 2) for step in steps] == [round(step / 20, 2) for step in range(10, -1, -1)], steps
+    assert not any(step["paused"] for step in steps[:-1]), steps
+    # Source schedules the first gain change at 200ms and the last at 2000ms.
+    duration = steps[-1]["at"] - started
+    assert 1800 <= duration <= 2800, (started, steps)
+    assert 1650 <= steps[-1]["at"] - steps[1]["at"] <= 2600, steps
+    assert steps[-1]["time"] - steps[0]["time"] >= 1.3, steps
+    return duration
 
 
 def active_session_traffic(sockets, live, start, player_id):
@@ -335,6 +377,136 @@ def close_lobby_news(page, stage, directory):
     expect(page.locator("#lobby-title")).to_be_focused()
 
 
+def wait_quest_art(page):
+    page.wait_for_function("""() => [...document.querySelectorAll('#quest-map-view img')]
+      .filter(image => image.getClientRects().length && image.getAttribute('src'))
+      .every(image => image.complete && image.naturalWidth > 0)""", timeout=TIMEOUT)
+
+
+def check_quest_previews(page, stage, directory, live, *, animate):
+    active = [socket for socket in live if not socket.is_closed()]
+    assert len(active) == 5
+    audio = page.locator('#stage > audio[data-bgm-scene="quest"]')
+    clock = audio.evaluate("audio => { window.qaPreviewAudio = audio; return audio.currentTime; }")
+    open_picker = page.locator("#quest-map-region-open")
+    picker = page.locator("#quest-map-region-picker")
+    picker_close = page.locator("#quest-map-region-close")
+    landmark = page.get_by_role("button", name="魔女山谷", exact=True)
+    search = page.locator("#quest-map-search-preview")
+    search_close = page.locator("#quest-map-search-close")
+    picker.evaluate("""dialog => {
+      const originalAnimate = dialog.animate.bind(dialog);
+      window.qaPickerSlides = [];
+      dialog.animate = (frames, timing) => {
+        window.qaPickerSlides.push([frames[0].transform, frames.at(-1).transform, timing.duration]);
+        return originalAnimate(frames, timing);
+      };
+    }""")
+
+    open_picker.press("Enter")
+    expect(picker).to_be_visible()
+    expect(search).to_be_hidden()
+    expect(picker.locator('button[data-region-page="1"]')).to_have_accessible_name("HexRealm")
+    memory_land = picker.get_by_role("button", name="MemoryLand", exact=True)
+    expect(memory_land).to_be_enabled()
+    picker.evaluate("dialog => Promise.allSettled(dialog.getAnimations().map(animation => animation.finished))")
+    assert picker.bounding_box() == {"x": 32, "y": 64, "width": 384, "height": 384}
+    stage.evaluate("stage => document.fonts.ready")
+    wait_quest_art(page)
+    capture(stage, directory, "11b1-quest-map-picker.png")
+    page.keyboard.press("Tab")
+    assert picker.evaluate("dialog => dialog.contains(document.activeElement)")
+    page.keyboard.press("Escape")
+    expect(picker).to_be_hidden()
+    expect(open_picker).to_be_focused()
+    open_picker.press("Enter")
+    expect(picker).to_be_visible()
+    picker_close.click()
+    expect(picker).to_be_hidden()
+    expect(open_picker).to_be_focused()
+    slides = page.evaluate("window.qaPickerSlides")
+    if animate:
+        assert len(slides) == 4 and all(slide[2] == 300 for slide in slides), slides
+        assert [slide[1] for slide in slides] == ["translateY(0px)", "translateY(-500px)"] * 2, slides
+    else:
+        assert not slides, slides
+
+    page.mouse.click(245, 249)  # The authored tower is decorative; the adjacent ribbon is interactive.
+    expect(search).to_be_hidden()
+    landmark.hover()
+    capture(stage, directory, "11b2-quest-map-landmark-hover.png")
+    landmark.press("Enter")
+    expect(search).to_be_visible()
+    expect(picker).to_be_hidden()
+    assert search.bounding_box() == {"x": 270, "y": 280, "width": 368, "height": 152}
+    expect(page.locator("#quest-map-search-name")).to_have_text("魔女山谷")
+    thumb = page.locator("#quest-map-search-thumbnail")
+    expect(thumb).to_have_attribute("src", "/source-login/quest-art/quest-search-thumbnail-06.jpg")
+    page.wait_for_function("() => document.querySelector('#quest-map-search-thumbnail').naturalWidth === 88", timeout=TIMEOUT)
+    slider = page.locator("#quest-map-search-time")
+    value = page.locator("#quest-map-search-time-value")
+    confirm = page.locator("#quest-map-search-confirm")
+    expect(slider).to_have_attribute("min", "0")
+    expect(slider).to_have_attribute("max", "10")
+    expect(slider).to_have_value("0")
+    assert search.evaluate("dialog => dialog.contains(document.activeElement)")
+    for index, (seconds, label) in enumerate(QUEST_SEARCH_TIMES):
+        if index:
+            slider.press("ArrowRight")
+        expect(slider).to_have_value(str(index))
+        expect(slider).to_have_attribute("aria-valuetext", label)
+        expect(value).to_have_text(label)
+        expect(value).to_have_attribute("data-seconds", str(seconds))
+        expect(page.locator("#quest-map-search-ap")).to_have_text(re.compile(r"(?:^|\D)1(?:\D|$)"))
+        expect(confirm).to_be_disabled()
+        if index <= 1:
+            capture(stage, directory, f"11b{3 + index}-quest-search-{seconds}s.png")
+    assert [socket for socket in live if not socket.is_closed()] == active
+    slider.press("Enter")
+    button = confirm.bounding_box()
+    page.mouse.click(button["x"] + button["width"] / 2, button["y"] + button["height"] / 2)
+    expect(search).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(search).to_be_hidden()
+    expect(landmark).to_be_focused()
+    landmark.press("Enter")
+    expect(slider).to_have_value("10")
+    search_close.click()
+    expect(search).to_be_hidden()
+    expect(landmark).to_be_focused()
+    open_picker.press("Enter")
+    memory_land.press("Enter")
+    expect(picker).to_be_hidden()
+    expect(open_picker).to_be_focused()
+    quest = page.locator("#quest-map-view")
+    expect(quest).to_have_attribute("data-map-type", "tutorial")
+    expect(quest).to_have_attribute("data-region-page", "tutorial")
+    expect(quest).to_have_attribute("data-state", "ready")
+    expect(page.locator("#quest-map-progress")).to_have_text("0/2")
+    tutorial = page.get_by_role("button", name="微笑的平原", exact=True)
+    expect(tutorial).to_be_enabled()
+    wait_quest_art(page)
+    capture(stage, directory, "11b5-quest-map-memoryland.png")
+    page.mouse.click(156, 135)  # The original locked 屍之森 ribbon must not open a search preview.
+    expect(search).to_be_hidden()
+    tutorial.press("Enter")
+    expect(search).to_have_attribute("data-map-id", "2009")
+    expect(page.locator("#quest-map-search-name")).to_have_text("微笑的平原")
+    expect(slider).to_have_value("10")
+    expect(confirm).to_be_disabled()
+    search_close.press("Enter")
+    expect(tutorial).to_be_focused()
+    open_picker.press("Enter")
+    picker.get_by_role("button", name="HexRealm", exact=True).press("Enter")
+    expect(picker).to_be_hidden()
+    expect(quest).to_have_attribute("data-region-page", "1")
+    expect(quest).to_have_attribute("data-map-type", "normal")
+    expect(landmark).to_be_enabled()
+    expect(page.locator("#quest-map-progress")).to_have_text("0/3")
+    assert audio.evaluate("(audio, time) => window.qaPreviewAudio === audio && audio.currentTime > time && !audio.paused", clock)
+    assert [socket for socket in live if not socket.is_closed()] == active
+
+
 def check_quest_scene(page, stage, directory, database, player_id, profile, sockets, live, *, cancel=False, animate=False):
     core = [socket for socket in live if not socket.is_closed()]
     assert len(core) == 4 and {urlsplit(socket.url).path for socket in core} == SESSION_PORTS
@@ -347,6 +519,7 @@ def check_quest_scene(page, stage, directory, database, player_id, profile, sock
     quest_count = page.evaluate("window.qaQuestWire.sockets.length")
     page.evaluate("hold => { window.qaQuestWire.hold = hold; }", cancel)
     if animate:
+        observe_scene_music_fade(page, "lobby")
         page.emulate_media(reduced_motion="no-preference")
         stage.evaluate("""stage => {
           window.qaQuestFades = [];
@@ -373,7 +546,7 @@ def check_quest_scene(page, stage, directory, database, player_id, profile, sock
         expect(quest).to_have_attribute("data-map-id", "1")
         expect(page.locator("#quest-map-progress")).to_have_text("0/3")
         expect(page.locator("#quest-map-capacity")).to_have_text(f"{len(rows)}/4")
-        expect(page.locator("#quest-map-world").get_by_role("img", name="魔女山谷")).to_be_visible()
+        expect(page.locator("#quest-map-world").get_by_role("button", name="魔女山谷")).to_be_visible()
         deck = page.locator("#quest-map-deck")
         expect(deck).to_contain_text("Deck 1")
         expect(deck).to_have_attribute("data-deck-index", "1")
@@ -400,10 +573,12 @@ def check_quest_scene(page, stage, directory, database, player_id, profile, sock
         expect(back).to_be_focused()
         music(page, "quest", "ulbgm03.mp3")
         assert len(live) == count + 1 and [socket for socket in live if not socket.is_closed()] == [*core, live[-1]]
-        page.wait_for_function("""() => [...document.querySelectorAll('#quest-map-view img')]
-          .filter(image => image.getClientRects().length && image.getAttribute('src'))
-          .every(image => image.complete && image.naturalWidth > 0)""", timeout=TIMEOUT)
+        wait_quest_art(page)
         capture(stage, directory, "11b-quest-map.png")
+        check_quest_previews(page, stage, directory, live, animate=animate)
+        if animate:
+            lobby_fade = check_scene_music_fade(page, "lobby")
+            observe_scene_music_fade(page, "quest")
         back.press("Enter")
 
     screen(stage, "lobby")
@@ -441,6 +616,8 @@ def check_quest_scene(page, stage, directory, database, player_id, profile, sock
         ]
     music(page, "lobby", "ulbgm02.mp3")
     if animate:
+        quest_fade = check_scene_music_fade(page, "quest")
+        print(f"Observed ten audio fade steps in {lobby_fade:.0f}ms (Lobby) and {quest_fade:.0f}ms (Quest).")
         fades = page.evaluate("window.qaQuestFades")
         assert [(phase, inert) for phase, inert, _ in fades] == [("to-quest", True), ("to-lobby", True)], fades
         assert all(isclose(duration, 800 / 1.7, abs_tol=0.01) for _, _, duration in fades), fades

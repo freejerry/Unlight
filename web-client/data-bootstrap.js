@@ -122,6 +122,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       profile.deckCollection = quests?.deckCollection() ?? null;
       profile.selectedDeck = quests?.selectedDeck() ?? null;
     }
+    profile.tutorialQuestProgress = quests?.tutorialQuestProgress() ?? null;
     return profile;
   } finally {
     signal.removeEventListener('abort', cancel);

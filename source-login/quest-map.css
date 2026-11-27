@@ -14,7 +14,7 @@
 .quest-map-world img,
 .quest-map-landmark-hit,
 .quest-map-frame,
-.quest-map-select-art,
+.quest-map-art-button,
 .quest-map-deck-back-art,
 .quest-map-deck-next-art,
 .quest-map-item-art,
@@ -34,22 +34,26 @@
 }
 
 .quest-map-world { inset: 0 auto 0 0; z-index: 0; width: 760px; }
-.quest-map-landscape { top: 32px; left: 0; }
 .quest-map-frame { inset: 0 auto auto 0; z-index: 1; pointer-events: none; }
-.quest-map-select-art { top: 416px; left: 0; z-index: 1; }
 .quest-map-deck-back-art { top: 632px; left: 8px; z-index: 1; }
 .quest-map-deck-next-art { top: 632px; left: 40px; z-index: 1; }
 .quest-map-item-art { top: 576px; left: 712px; z-index: 6; }
-.quest-map-landmark-base { z-index: 1; }
-:is(.quest-map-landmark-up, .quest-map-landmark-over) { z-index: 2; }
-.quest-map-badge { left: 227px; top: 230px; z-index: 3; }
 .quest-map-world img { pointer-events: none; }
-.quest-map-landmark-hit { display: block; z-index: 4; }
-.quest-map-landmark-over { visibility: hidden; }
-.quest-map-landmark:has(.quest-map-landmark-hit:is(:hover, :focus-visible)) .quest-map-landmark-up { visibility: hidden; }
-.quest-map-landmark:has(.quest-map-landmark-hit:is(:hover, :focus-visible)) .quest-map-landmark-over { visibility: visible; }
+.quest-map-landmark-hit, .quest-map-art-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
 
-#quest-map-progress { z-index: 5; pointer-events: none; }
+.quest-map-art-button:disabled, .quest-map-landmark-hit:disabled { cursor: default; }
+.quest-map-landmark-over { visibility: hidden; }
+.quest-map-landmark:has(.quest-map-landmark-hit:not(:disabled):is(:hover, :focus-visible, :active)) .quest-map-landmark-up { visibility: hidden; }
+.quest-map-landmark:has(.quest-map-landmark-hit:not(:disabled):is(:hover, :focus-visible, :active)) .quest-map-landmark-over { visibility: visible; }
+
+#quest-map-progress { z-index: 100; pointer-events: none; }
 
 #quest-map-progress progress,
 #quest-map-progress::before {
@@ -216,7 +220,121 @@
 #quest-map-back:is(:hover, :focus-visible, :active) .quest-map-back-over { visibility: visible; }
 #quest-map-back:disabled { cursor: default; }
 
-.source-quest-map :is(button, [tabindex]):focus-visible {
+.source-quest-map :is(button, input, [tabindex]):focus-visible {
   outline: 2px solid #ffdf9c;
   outline-offset: -2px;
+}
+
+.quest-map-art-button > img { position: absolute; top: 0; left: 0; max-width: none; pointer-events: none; }
+.quest-map-art-over { visibility: hidden; }
+.quest-map-art-button:not(:disabled):is(:hover, :focus-visible, :active) > img:first-child { visibility: hidden; }
+.quest-map-art-button:not(:disabled):is(:hover, :focus-visible, :active) > .quest-map-art-over { visibility: visible; }
+
+#quest-map-region-open { top: 422px; left: 8px; z-index: 2; width: 40px; height: 44px; }
+#quest-map-region-open > img { top: -6px; left: -8px; }
+.source-quest-map:has(#quest-map-region-picker[open]) #quest-map-region-open { visibility: hidden; }
+
+.quest-map-dialog {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.quest-map-dialog::backdrop { background: transparent; }
+.quest-map-dialog > img:first-of-type { position: absolute; top: 0; left: 0; pointer-events: none; }
+
+#quest-map-region-picker { width: 384px; height: 384px; }
+#quest-map-region-close { top: 12px; left: 332px; width: 24px; height: 24px; }
+.quest-map-region-option > img { top: -8px; left: -12px; width: 80px; height: 80px; }
+
+#quest-map-search-preview { width: 368px; height: 152px; }
+#quest-map-search-close { top: 4.5px; left: 344.5px; width: 23px; height: 23px; }
+#quest-map-search-close > img { top: -4.5px; left: -4.5px; }
+#quest-map-search-confirm { top: 112px; left: 104px; width: 160px; height: 40px; opacity: .68; }
+
+#quest-map-search-name,
+#quest-map-search-time-value {
+  position: absolute;
+  margin: 0;
+  color: #fff;
+  text-align: center;
+  font: 12px/16px "Noto Serif TC", "Noto Serif CJK TC", var(--interface-font);
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}
+
+#quest-map-search-name { top: 30px; left: 230px; width: 135px; }
+#quest-map-search-time-value { top: 43px; left: 25px; width: 200px; }
+#quest-map-search-thumbnail { position: absolute; top: 58px; left: 252px; }
+
+#quest-map-search-ap {
+  position: absolute;
+  top: 87px;
+  left: 100px;
+  width: 28px;
+  color: #000;
+  font: 20px/25px "Bradley Gratis", Georgia, serif;
+  text-align: center;
+  text-shadow: 0 0 2px #fff, 0 0 4px #fff;
+}
+
+#quest-map-search-time {
+  position: absolute;
+  top: 64px;
+  left: 23px;
+  appearance: none;
+  width: 200px;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.quest-map-search-ticks {
+  position: absolute;
+  top: 73px;
+  left: 29px;
+  width: 188px;
+  height: 3px;
+  border-right: 1px solid #000;
+  background: repeating-linear-gradient(to right, #000 0 1px, transparent 1px 10%);
+  pointer-events: none;
+}
+
+#quest-map-search-time::-webkit-slider-runnable-track {
+  height: 2px;
+  margin-inline: 5px;
+  background: linear-gradient(#e00, #b30000) left top / var(--quest-time-complete, 0%) 100% no-repeat,
+    linear-gradient(#8c9393, #d7d8d8);
+}
+
+#quest-map-search-time::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 11px;
+  margin-top: 2px;
+  background: linear-gradient(#d9dbdb, #aaafaf);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+#quest-map-search-time::-moz-range-track { height: 2px; background: #a5a9a9; }
+#quest-map-search-time::-moz-range-progress { height: 2px; background: #d00; }
+#quest-map-search-time::-moz-range-thumb {
+  width: 12px;
+  height: 11px;
+  border: 0;
+  background: linear-gradient(#d9dbdb, #aaafaf);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform: translateY(7px);
+}
+
+@media (forced-colors: active) {
+  #quest-map-search-time { appearance: auto; }
 }

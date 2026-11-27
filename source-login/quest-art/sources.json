@@ -662,6 +662,2745 @@
       "width": 329,
       "height": 156,
       "sha256": "a7131e7529496e2c92b6737bc78959afe5f6f512d9a7659b5ba8990af7aa1ac8"
+    },
+    "quest-picker-plate.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "x": 32,
+      "y": 64,
+      "width": 384,
+      "height": 384,
+      "sha256": "41363c390fa69bb634146bbfcc3e369b253be58554bbec3eadfa4aa48c97a8b9"
+    },
+    "quest-picker-close-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 3,
+      "sourceState": "up",
+      "sourceInstance": "btn_close",
+      "x": 364,
+      "y": 76,
+      "width": 24,
+      "height": 24,
+      "sha256": "bd0cee7ef3495afffba4dbf9d774c3b2152c4a7a50dbedaadd7d7fd02e3ca837"
+    },
+    "quest-picker-close-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 5,
+      "sourceState": "over",
+      "sourceInstance": "btn_close",
+      "x": 364,
+      "y": 76,
+      "width": 24,
+      "height": 24,
+      "sha256": "c635695e43d2e9ba9f6775bddb4161d83ee0c7579eb4f3c8808f0d88e59ec92a"
+    },
+    "quest-picker-normal-1-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 13,
+      "sourceState": "up",
+      "sourceInstance": "btn_map1",
+      "hitRect": [
+        76,
+        136,
+        56,
+        60
+      ],
+      "x": 64,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "d865b736957d806df8984855acc25ce3a64edaa30d163213eeac862c100594b0"
+    },
+    "quest-picker-normal-1-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 15,
+      "sourceState": "over",
+      "sourceInstance": "btn_map1",
+      "hitRect": [
+        76,
+        136,
+        56,
+        60
+      ],
+      "x": 64,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "1bd589f97ee54686de14118b2fc3db04252c9fb968f2b5926470e449b4ca41a8"
+    },
+    "quest-picker-normal-2-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 18,
+      "sourceState": "up",
+      "sourceInstance": "btn_map2",
+      "hitRect": [
+        156,
+        136,
+        56,
+        60
+      ],
+      "x": 144,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "005afce98f57ae5fe39a9b81814e8df52f91e12ed889098a4bac67be7bbfa7c4"
+    },
+    "quest-picker-normal-2-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 20,
+      "sourceState": "over",
+      "sourceInstance": "btn_map2",
+      "hitRect": [
+        156,
+        136,
+        56,
+        60
+      ],
+      "x": 144,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "ac6f6e1e6e82300b7c10d1deda463cf2621e379b0147f4fa7744247760637ade"
+    },
+    "quest-picker-normal-3-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 23,
+      "sourceState": "up",
+      "sourceInstance": "btn_map3",
+      "hitRect": [
+        236,
+        136,
+        56,
+        60
+      ],
+      "x": 224,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "5dbc9a586dfe840921d513713e7d8ae47610aaa054b9f9cfc5b255aaec408e90"
+    },
+    "quest-picker-normal-3-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 25,
+      "sourceState": "over",
+      "sourceInstance": "btn_map3",
+      "hitRect": [
+        236,
+        136,
+        56,
+        60
+      ],
+      "x": 224,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "7c922cd4a0446584d2c0cb526d2f94547d203ba21f971a4cf347f5fdc92c661c"
+    },
+    "quest-picker-normal-4-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 28,
+      "sourceState": "up",
+      "sourceInstance": "btn_map4",
+      "hitRect": [
+        316,
+        136,
+        56,
+        60
+      ],
+      "x": 304,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "2e976b4c8c5f1deecd4cc938c032010c06164b330f1413de6d0799f5b97a3944"
+    },
+    "quest-picker-normal-4-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 30,
+      "sourceState": "over",
+      "sourceInstance": "btn_map4",
+      "hitRect": [
+        316,
+        136,
+        56,
+        60
+      ],
+      "x": 304,
+      "y": 128,
+      "width": 80,
+      "height": 80,
+      "sha256": "8dc908b6c3e8c99339d43b8f62f61c938375c38d8515663157d1131426463619"
+    },
+    "quest-picker-normal-5-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 33,
+      "sourceState": "up",
+      "sourceInstance": "btn_map5",
+      "hitRect": [
+        76,
+        216,
+        56,
+        60
+      ],
+      "x": 64,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "61a9c736d1cfdd0d9c5a932c28180a343bbe5d3f62435d99c3cbf5e4eaf9b5ff"
+    },
+    "quest-picker-normal-5-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 35,
+      "sourceState": "over",
+      "sourceInstance": "btn_map5",
+      "hitRect": [
+        76,
+        216,
+        56,
+        60
+      ],
+      "x": 64,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "5cfec62b2d2e3c0de89903d074ab697d114c2a19a94c3ce93f4470ca966538a7"
+    },
+    "quest-picker-normal-6-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 38,
+      "sourceState": "up",
+      "sourceInstance": "btn_map6",
+      "hitRect": [
+        156,
+        216,
+        56,
+        60
+      ],
+      "x": 144,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "f22f4cb4b7ad0b62a7d5ebf299366fdd25f01050a75dab383bba416d90414d1e"
+    },
+    "quest-picker-normal-6-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 40,
+      "sourceState": "over",
+      "sourceInstance": "btn_map6",
+      "hitRect": [
+        156,
+        216,
+        56,
+        60
+      ],
+      "x": 144,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "684c6ec1de67bbaa8afe614237427b0a4a92d7457e81515034bb9981b62f616f"
+    },
+    "quest-picker-tutorial-up.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 48,
+      "sourceState": "up",
+      "sourceInstance": "btn_map0",
+      "hitRect": [
+        316,
+        216,
+        56,
+        60
+      ],
+      "x": 304,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "11dc6a52c39bed679ddfb4e5576bdef14f96d4af11698db96ab6c046270675f0"
+    },
+    "quest-picker-tutorial-over.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 50,
+      "sourceState": "over",
+      "sourceInstance": "btn_map0",
+      "hitRect": [
+        316,
+        216,
+        56,
+        60
+      ],
+      "x": 304,
+      "y": 208,
+      "width": 80,
+      "height": 80,
+      "sha256": "5388fa655dfa06bd629be5b7c2396153278d3c64af32c70549c8cc585c399be6"
+    },
+    "quest-picker-arrow-back.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 8,
+      "sourceInstance": "btn_back",
+      "sourceStates": [
+        "up",
+        "over",
+        "down"
+      ],
+      "sourceVisible": false,
+      "x": 80,
+      "y": 416,
+      "width": 16,
+      "height": 16,
+      "sha256": "d9e5817785c6cc5503aa34f7515ac19b7b30c6e54fd3d8eeaa463c58f59e6810"
+    },
+    "quest-picker-arrow-next.png": {
+      "source": "data/image/quest/select_map.swf",
+      "sourceSha256": "2b59ab7088fb0ad358851736509c8c002a9d0b0aad13e9a9364ccb7e7b0cb320",
+      "sourceFrame": 1,
+      "bitmapId": 8,
+      "sourceInstance": "btn_next",
+      "sourceStates": [
+        "up",
+        "over",
+        "down"
+      ],
+      "sourceVisible": false,
+      "x": 352,
+      "y": 416,
+      "width": 16,
+      "height": 16,
+      "sha256": "dd9fd73005f0bf3abb30cebd20506e5e2be2dc0fa73bb2257d6c2fde3ecef412"
+    },
+    "quest-search-plate.png": {
+      "source": "data/image/quest/quest_search_ch.swf",
+      "sourceSha256": "9dd9b4d2b1554f72f3030899c13a5c1374819cb6fa50363648c5cf7b301ba343",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "x": 270,
+      "y": 280,
+      "width": 368,
+      "height": 152,
+      "sha256": "2b8f4e3e8b078a679f04cd9e32e86c23c5ebe4de707fe62878198208841891da"
+    },
+    "quest-search-ok-up.png": {
+      "source": "data/image/quest/quest_search_ch.swf",
+      "sourceSha256": "9dd9b4d2b1554f72f3030899c13a5c1374819cb6fa50363648c5cf7b301ba343",
+      "sourceFrame": 1,
+      "bitmapId": 3,
+      "sourceState": "up",
+      "sourceInstance": "ok",
+      "sourceOffsetX": 0.05,
+      "x": 374,
+      "y": 392,
+      "width": 160,
+      "height": 40,
+      "sha256": "824ba582b09c7f9bb41ee7fc92761fef7b3109b59169b9fa59bc8bcdfd0b3a0c"
+    },
+    "quest-search-ok-over.png": {
+      "source": "data/image/quest/quest_search_ch.swf",
+      "sourceSha256": "9dd9b4d2b1554f72f3030899c13a5c1374819cb6fa50363648c5cf7b301ba343",
+      "sourceFrame": 1,
+      "bitmapId": 5,
+      "sourceState": "over",
+      "sourceInstance": "ok",
+      "sourceOffsetX": 0.05,
+      "x": 374,
+      "y": 392,
+      "width": 160,
+      "height": 40,
+      "sha256": "f35704741daa3af2240222108e55bbe019abd924de8e8516d115f471aeab2b54"
+    },
+    "quest-search-close-up.png": {
+      "source": "data/image/quest/quest_search_ch.swf",
+      "sourceSha256": "9dd9b4d2b1554f72f3030899c13a5c1374819cb6fa50363648c5cf7b301ba343",
+      "sourceFrame": 1,
+      "bitmapId": 8,
+      "sourceState": "up",
+      "sourceInstance": "btn_search_close",
+      "hitRect": [
+        614.5,
+        284.5,
+        23,
+        23
+      ],
+      "x": 610,
+      "y": 280,
+      "width": 24,
+      "height": 24,
+      "sha256": "8f0e0bfff94d19d9f0a97f5237224ae0a8219583afd97059e7e67ebc477c349d"
+    },
+    "quest-search-close-over.png": {
+      "source": "data/image/quest/quest_search_ch.swf",
+      "sourceSha256": "9dd9b4d2b1554f72f3030899c13a5c1374819cb6fa50363648c5cf7b301ba343",
+      "sourceFrame": 1,
+      "bitmapId": 10,
+      "sourceState": "over",
+      "sourceInstance": "btn_search_close",
+      "hitRect": [
+        614.5,
+        284.5,
+        23,
+        23
+      ],
+      "x": 610,
+      "y": 280,
+      "width": 24,
+      "height": 24,
+      "sha256": "39487ac9e011a09a775dce905ff87021f8491133e2626a8c6194a7dfd5994c2e"
+    },
+    "quest-search-thumbnail-00.jpg": {
+      "source": "data/image/quest/searchthum00.swf",
+      "sourceSha256": "cd8a81c667adbca063f8e170342c316912fb7fe77450d8b5b89eb8d1c667af7e",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "cb758d61b6edbb7ba9bed3f377d0fd58db430e8b5cc872739e88b3f0a1737c66"
+    },
+    "quest-search-thumbnail-01.jpg": {
+      "source": "data/image/quest/searchthum01.swf",
+      "sourceSha256": "85b795b99147ef216e5c7157e87904d10471631614139cf1d7e44c0ddc276eb8",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "e49f3e1b0f61d429ba236880cc1804691f51b5a77229dcf1380053ef0045f7da"
+    },
+    "quest-search-thumbnail-02.jpg": {
+      "source": "data/image/quest/searchthum02.swf",
+      "sourceSha256": "59bef0601ccb86a403a09c5f41bfe8bb28a2b6a44b55d7781f664780c083855d",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "acfb1b4c58859d4776a788cceb8b68ce451bef00d4b98b41d5866e16d9a71d71"
+    },
+    "quest-search-thumbnail-03.jpg": {
+      "source": "data/image/quest/searchthum03.swf",
+      "sourceSha256": "f34926e0acec5e94484fb4834ce9b2a1b6078e372fcadd55c7de6aa1bdaa41e7",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "40146690ddf60b0611c7aa49606e61d08de4a5fa9a4d7e5e6d1fe8067d89b7ad"
+    },
+    "quest-search-thumbnail-04.jpg": {
+      "source": "data/image/quest/searchthum04.swf",
+      "sourceSha256": "2022c21f2d82ae6cd17c417834466331d2e151e87ab0a2ab61692cad072e89c8",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "a57d1def7fe6c3728100d5a0eea015b7e5c23effe744cfef2e71697be62b911d"
+    },
+    "quest-search-thumbnail-05.jpg": {
+      "source": "data/image/quest/searchthum05.swf",
+      "sourceSha256": "9dbd4dd22a743c6598c9c91f087b7df633b539827af41f1464286c3dcd84c26d",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "b3468077d2d64c10a7a6ee1b65c4b8485f0fd1dc4c3073fc04d2b4256b2e0d77"
+    },
+    "quest-search-thumbnail-06.jpg": {
+      "source": "data/image/quest/searchthum06.swf",
+      "sourceSha256": "6b38f72dba7c85913b6a3205b8cd20e91de94bd40268bdfe6985d40c08c5bf26",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "e659590a5bbf5c3f55e04809a13765a1f83f37d79a84fe59280a8c5bd1c48045"
+    },
+    "quest-search-thumbnail-07.jpg": {
+      "source": "data/image/quest/searchthum07.swf",
+      "sourceSha256": "f485095441b3b185c58df26df0d2f825eec3e46fd0b683e9dddab16bfdcab359",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "ac5746b7df2c67064d8d5d9874e89069e6ab8aafb5ae19ee87b74fda1a16bef3"
+    },
+    "quest-search-thumbnail-12.jpg": {
+      "source": "data/image/quest/searchthum12.swf",
+      "sourceSha256": "c47989192095e751a3f325110a4bbeafaefa18c2e54fc009f6415559bbd3f067",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "bb75c62b0a1947889631d86cf4f8ba5d245c0b79d24ef36781df070052694576"
+    },
+    "quest-search-thumbnail-99.jpg": {
+      "source": "data/image/quest/searchthum99.swf",
+      "sourceSha256": "925e2ed565c93f68eced1f3c4ff2d31072dd1a48267381815e533adee15f5647",
+      "sourceFrame": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 522,
+      "y": 338,
+      "width": 88,
+      "height": 44,
+      "sha256": "9890e174e99acc6e363d0d510c0e2c3ed868bc7ea722a6b2fca83c05e76e3912"
+    },
+    "map02.jpg": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "7685cf8cfe76adbfbf9c2f09519a985911c7662a9817dbba7a6fb5306bba7f61"
+    },
+    "map02-landmark-a-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        63
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_a",
+      "x": 30.0,
+      "y": 298.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "05f85ad794e029fd1e1a1e856e2f3fbd294c88cba9ae6dba9d7430a46c66a49e"
+    },
+    "map02-landmark-a-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        65
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_a",
+      "x": 30.05,
+      "y": 239.0,
+      "width": 192,
+      "height": 227,
+      "sha256": "f78038e2cc776f32743d13a75194fc01f90371ebd367f3c699fbaabc1ac54920"
+    },
+    "map02-landmark-a-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map02_a",
+      "x": 31.0,
+      "y": 239.0,
+      "width": 191,
+      "height": 227,
+      "sha256": "2af728966a13b7e067dd2f04b186d29bd3f200e30d4fcdc851fc4136c6637eee"
+    },
+    "map02-landmark-b-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        53
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_b",
+      "x": 212.0,
+      "y": 386.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "21633cd66855a1093b21f5b009df8f3afa8f188844d830c58f24f8c6dd5d0f10"
+    },
+    "map02-landmark-b-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        55
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_b",
+      "x": 174.0,
+      "y": 269.0,
+      "width": 243,
+      "height": 198,
+      "sha256": "0bbc98c676be5a6a68f6ec4aec614afb49addbbb68c0d44300b6f7f1dc6f0b03"
+    },
+    "map02-landmark-b-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "map02_b",
+      "x": 174.0,
+      "y": 269.0,
+      "width": 243,
+      "height": 198,
+      "sha256": "db721223f8438f0e3547bb09a5b05ac6a0846393e5c3864cc6cd0f855c56635a"
+    },
+    "map02-landmark-c-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        58
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_c",
+      "x": 217.0,
+      "y": 312.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "b43364ef7de3a596f79451c90dd51aac0316af418dd711cbff87d7f9a6cbd71a"
+    },
+    "map02-landmark-c-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        60
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_c",
+      "x": 148.0,
+      "y": 268.0,
+      "width": 211,
+      "height": 104,
+      "sha256": "ccc804d98252ca97eeeaf2f7a6bbcad26a839884e4765093a95347d5f24fc870"
+    },
+    "map02-landmark-c-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 6,
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map02_c",
+      "x": 148.0,
+      "y": 268.0,
+      "width": 184,
+      "height": 104,
+      "sha256": "3b325e951813926a5a79e3fcd4f8de4e81ebac6f8f64de1c85d421e90153533a"
+    },
+    "map02-landmark-d-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        48
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_d",
+      "x": 83.0,
+      "y": 205.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "dc8e947606365167bc1c90c2c62e567f60d6750d54786e919e27e5ab383791ca"
+    },
+    "map02-landmark-d-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        50
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_d",
+      "x": 73.05,
+      "y": 199.0,
+      "width": 152,
+      "height": 99,
+      "sha256": "781a5ad37bac61aadc644ffdb52ff3fb3a80879dc4fe385897e1d32d4268551a"
+    },
+    "map02-landmark-d-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 8,
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "map02_d",
+      "x": 73.0,
+      "y": 199.0,
+      "width": 152,
+      "height": 99,
+      "sha256": "8f1f64689f4b5fde838b8fc05ac41cee58a6b56670fc6a408afd084372d79c77"
+    },
+    "map02-landmark-e-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        43
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_e",
+      "x": 213.0,
+      "y": 249.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "72a7296b14f89d2dd51d04fd1a45fe2a2c4503d96fe685d6d7210c55147e9a92"
+    },
+    "map02-landmark-e-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        45
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_e",
+      "x": 186.0,
+      "y": 146.0,
+      "width": 169,
+      "height": 157,
+      "sha256": "e536837f1918542109b7eb6a83bb4696ff08002875daf834dcdb3ba0607ffd3f"
+    },
+    "map02-landmark-e-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 10,
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map02_e",
+      "x": 186.0,
+      "y": 146.0,
+      "width": 160,
+      "height": 157,
+      "sha256": "12cca72c7d8590022185d8d40d49bf5c45f5008e33d9f48bec6363e766a796ee"
+    },
+    "map02-landmark-f-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        38
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_f",
+      "x": 321.0,
+      "y": 175.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "e321d509516a11a5d7a8990b49a9f1f0dc58778258d96563e8c766b36af49b79"
+    },
+    "map02-landmark-f-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        40
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_f",
+      "x": 316.0,
+      "y": 111.0,
+      "width": 151,
+      "height": 196,
+      "sha256": "28cf20175812f75335ca066d5b72e361fcacef5d094f1e1fda4c1c5992fbf5e3"
+    },
+    "map02-landmark-f-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        18
+      ],
+      "sourceInstance": "map02_f",
+      "x": 316.0,
+      "y": 111.0,
+      "width": 151,
+      "height": 196,
+      "sha256": "31c1205b1802de8d3148ad9bf48722d9e3b2a14e87260fb46f0c2a48c0a1c194"
+    },
+    "map02-landmark-g-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        33
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_g",
+      "x": 244.0,
+      "y": 87.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "b07f213fd8424f9964342238c3b2b53f873bf842f490b94c6404778376d1e4d7"
+    },
+    "map02-landmark-g-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        35
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_g",
+      "x": 173.05,
+      "y": 53.0,
+      "width": 270,
+      "height": 166,
+      "sha256": "0e733f3cda438347146c57e808e11151a3eccbd96b1b9ca33328ef8b86dae997"
+    },
+    "map02-landmark-g-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "map02_g",
+      "x": 173.0,
+      "y": 53.0,
+      "width": 270,
+      "height": 166,
+      "sha256": "c573864b27f8b60653c906f63d03878f82f62071a548cdb42b69ea9d46cbebcb"
+    },
+    "map02-landmark-h-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        27
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map02_h",
+      "x": 32.0,
+      "y": 132.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "23cdab0c1706632745825240ed7b1265fb8e123a50156746db452d0e10ff4a30"
+    },
+    "map02-landmark-h-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        29
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map02_h",
+      "x": 19.0,
+      "y": 34.0,
+      "width": 212,
+      "height": 201,
+      "sha256": "7fc6ea7e81d2376bc039f6c3b365ab8174fd2330ec96e9a159de5456403bd325"
+    },
+    "map02-landmark-h-base.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        24
+      ],
+      "sourceInstance": "map02_h",
+      "x": 19.0,
+      "y": 34.0,
+      "width": 212,
+      "height": 202,
+      "sha256": "a9a7039dcd68f4c08255dcb6e1720836e38557f879819e0c489eeb4206140ef3"
+    },
+    "map02-back-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_back",
+      "x": 69.0,
+      "y": 349.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map02-back-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_back",
+      "x": 69.0,
+      "y": 349.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map02-next-up.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_next",
+      "x": 29.0,
+      "y": 85.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map02-next-over.png": {
+      "source": "data/image/quest/map02_ch.swf",
+      "sourceSha256": "efc882238889d2f9059c68f02e3277bde196bd88a96c247108d09c0c41dd91fc",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_next",
+      "x": 29.0,
+      "y": 85.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map03.jpg": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "b32a8468747103cb6caa1e7f4bf8a07ee8b495096c87c709967878a0ab92e4d5"
+    },
+    "map03-landmark-a-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        27
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_a",
+      "x": 239.0,
+      "y": 52.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "c9d23088311ba0353a4f6229dd4175f2e23bfd8bf8d60b796f99ee10dadd780b"
+    },
+    "map03-landmark-a-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        29
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_a",
+      "x": 205.0,
+      "y": 35.0,
+      "width": 187,
+      "height": 123,
+      "sha256": "74de572296ea9efd52364d568b42fffb063f7d1e90bf16de40dd4c7fb8fcf311"
+    },
+    "map03-landmark-a-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map03_a",
+      "x": 205.0,
+      "y": 35.0,
+      "width": 187,
+      "height": 123,
+      "sha256": "f7cd62829b82c53f27c7b371437b7f7c0dcb0c4ef198a94653ee2bf78a407746"
+    },
+    "map03-landmark-b-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        33
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_b",
+      "x": 56.0,
+      "y": 91.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "bcbb6a6b0cb46a2792eb130fa3b9bdbba721e78dc0d2a2b93f5b6d820ad2040a"
+    },
+    "map03-landmark-b-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        35
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_b",
+      "x": 56.0,
+      "y": 42.0,
+      "width": 199,
+      "height": 134,
+      "sha256": "bd38010871ec39bf699161ab8ed86e2b4bc9c0b2d197d8d86d338fdcf30ecd2d"
+    },
+    "map03-landmark-b-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "map03_b",
+      "x": 72.0,
+      "y": 42.0,
+      "width": 183,
+      "height": 134,
+      "sha256": "6f4fee435c9c4a9417a8b5e3a036bcbb0c9294fd85285f4734b84eb457929c5a"
+    },
+    "map03-landmark-c-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        38
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_c",
+      "x": 43.0,
+      "y": 185.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "eebbb19c5f21751fe47646a9a4515bb728d8cb5114378eccd0d3bcd10847e396"
+    },
+    "map03-landmark-c-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        40
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_c",
+      "x": 43.0,
+      "y": 120.0,
+      "width": 180,
+      "height": 132,
+      "sha256": "79527621ba6fa1cb96b517b7e107fadc6f7ca77dfc5c35289df2625011a5d1f0"
+    },
+    "map03-landmark-c-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 6,
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map03_c",
+      "x": 49.0,
+      "y": 120.0,
+      "width": 174,
+      "height": 132,
+      "sha256": "197e4004ae53771df4a196081e6f3b9adc9c53bcecbf6787a442bb01c436836b"
+    },
+    "map03-landmark-d-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        43
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_d",
+      "x": 214.35,
+      "y": 148.05,
+      "width": 142,
+      "height": 39,
+      "sha256": "2b13b093de163e792a2b662406fb523631e713c95ffe870597e4ac47c0c26f89"
+    },
+    "map03-landmark-d-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        45
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_d",
+      "x": 190.35,
+      "y": 124.05,
+      "width": 218,
+      "height": 126,
+      "sha256": "66f05207e6e7ea8a1a1130064dd0da591e2cec9b7875c9508911fc717a7e2116"
+    },
+    "map03-landmark-d-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 8,
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "map03_d",
+      "x": 190.0,
+      "y": 124.0,
+      "width": 218,
+      "height": 126,
+      "sha256": "4f8c9db627b5266abe172a0fbcd2a4befa332d81ffe452c826ec5c09a221c039"
+    },
+    "map03-landmark-e-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        48
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_e",
+      "x": 248.0,
+      "y": 238.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "6de35cc2a4f411ca26909e3064db1f3cdaeb5a6206f4cdc11926530fbed4580f"
+    },
+    "map03-landmark-e-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        50
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_e",
+      "x": 212.4,
+      "y": 195.0,
+      "width": 214,
+      "height": 188,
+      "sha256": "fd91f84ef59b1209bf80af345dea8cbb4415d49a5a160db2be7bfea135bc81e2"
+    },
+    "map03-landmark-e-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 10,
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map03_e",
+      "x": 212.0,
+      "y": 195.0,
+      "width": 214,
+      "height": 188,
+      "sha256": "7c20a24b9c13c93f1b0511f8dd808b84c08283730b5637c8e6abb1703321800a"
+    },
+    "map03-landmark-f-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        53
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_f",
+      "x": 49.35,
+      "y": 286.35,
+      "width": 142,
+      "height": 39,
+      "sha256": "ee2b19531d403e5cd26b7cbca8dc727d4868f88ff7c9986b1416ba30416e21ca"
+    },
+    "map03-landmark-f-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        55
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_f",
+      "x": 32.35,
+      "y": 218.35,
+      "width": 214,
+      "height": 124,
+      "sha256": "7f6512d9f9d76cd8b9ed3f8151dc4f0aca6741a0f26ae7c2e2ffd866845a79c1"
+    },
+    "map03-landmark-f-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        18
+      ],
+      "sourceInstance": "map03_f",
+      "x": 32.0,
+      "y": 218.0,
+      "width": 214,
+      "height": 124,
+      "sha256": "910cf5a1ea34781f6c551fc2095b9e1e130ee82700f2a202597d67538b16b169"
+    },
+    "map03-landmark-g-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        58
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_g",
+      "x": 166.85,
+      "y": 352.85,
+      "width": 142,
+      "height": 39,
+      "sha256": "612062a650780157bdddbcc506f515ebfc35aa6af98978738851e18532313de5"
+    },
+    "map03-landmark-g-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        60
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_g",
+      "x": 126.85,
+      "y": 286.85,
+      "width": 239,
+      "height": 191,
+      "sha256": "fa3efe46b09ee0147c0ff047092a2d593be7ef888672a87d529b07baff105bc9"
+    },
+    "map03-landmark-g-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "map03_g",
+      "x": 126.9,
+      "y": 286.9,
+      "width": 239,
+      "height": 191,
+      "sha256": "da1af7c2be9a14d80e0cdad26900781f85754c31abd1fc311e3388821d006040"
+    },
+    "map03-landmark-h-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        63
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map03_h",
+      "x": 18.5,
+      "y": 405.35,
+      "width": 142,
+      "height": 39,
+      "sha256": "794cfd67b087c78e627efc37633d65b616734e3949698c7ba7b8e19d69f851bc"
+    },
+    "map03-landmark-h-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        65
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map03_h",
+      "x": 18.5,
+      "y": 309.35,
+      "width": 201,
+      "height": 166,
+      "sha256": "8d3aa685c5331ac5f2497af9b8c4c53d845731e94da783ef50024ca08d9830b8"
+    },
+    "map03-landmark-h-base.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        24
+      ],
+      "sourceInstance": "map03_h",
+      "x": 21.0,
+      "y": 309.0,
+      "width": 198,
+      "height": 166,
+      "sha256": "03aef640fba589e7beefcfac2b2d5b2d686484bfcc55822562b9c65f808328d6"
+    },
+    "map03-back-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_back",
+      "x": 333.0,
+      "y": 109.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map03-back-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_back",
+      "x": 333.0,
+      "y": 109.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map03-next-up.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_next",
+      "x": 77.0,
+      "y": 437.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map03-next-over.png": {
+      "source": "data/image/quest/map03_ch.swf",
+      "sourceSha256": "4133075460c0713da79742dc9bb46c78140a539bac087c0560eff26b3b73a417",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_next",
+      "x": 77.0,
+      "y": 437.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map04.jpg": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapId": 1,
+      "representation": "unchanged SWF JPEG stream",
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "7624c171c6f3024e0ae0246081486974d9a3bed605458c8b23109b346e82ecba"
+    },
+    "map04-landmark-a-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        27
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_a",
+      "x": 65.0,
+      "y": 81.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "b723b055c0b09629ed60d030332926cc4bc14d85fda7abd626baa701fe8e14ae"
+    },
+    "map04-landmark-a-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        29
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_a",
+      "x": 44.0,
+      "y": 33.0,
+      "width": 204,
+      "height": 121,
+      "sha256": "f0fa049aa7f9d0878510837b33ebad9d37e439bb5ca63b97971f1ff348dc1134"
+    },
+    "map04-landmark-a-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map04_a",
+      "x": 44.0,
+      "y": 33.0,
+      "width": 204,
+      "height": 121,
+      "sha256": "d45ee9894798c88da0df4a28a2945acba6c0cdce45884615b1903f0d47b2c81d"
+    },
+    "map04-landmark-b-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        33
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_b",
+      "x": 233.05,
+      "y": 89.05,
+      "width": 142,
+      "height": 39,
+      "sha256": "46456722b8459c4d6612bd7787a6f0e392e72eb71a53e3e4d7da2f9ca08fb520"
+    },
+    "map04-landmark-b-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        35
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_b",
+      "x": 175.05,
+      "y": 39.05,
+      "width": 200,
+      "height": 168,
+      "sha256": "3c0ef17623adbf3e5da7418f40be698c722b58b577206bc69a169bca763f1025"
+    },
+    "map04-landmark-b-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "map04_b",
+      "x": 175.05,
+      "y": 39.05,
+      "width": 194,
+      "height": 168,
+      "sha256": "2dc6e449c9fe7b6e16d0a20f0615c0204cc93a362dc1a2fdcccbea778da84cf3"
+    },
+    "map04-landmark-c-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        53
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_c",
+      "x": 67.05,
+      "y": 188.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "8e7f1f81f63e38a5295354372e4ea90b20e2adf568fce4725fa309d0ac2f7d9f"
+    },
+    "map04-landmark-c-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        55
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_c",
+      "x": 27.0,
+      "y": 108.0,
+      "width": 186,
+      "height": 166,
+      "sha256": "0528e4ea138da5fe6663029f7c6e64bc033e7b12acd2f8337902e98de96bc292"
+    },
+    "map04-landmark-c-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 6,
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map04_c",
+      "x": 27.0,
+      "y": 108.0,
+      "width": 186,
+      "height": 166,
+      "sha256": "82abbb8a2678eab247a8e777786ebf85f866957a5fdefcff8e3219ae215954d7"
+    },
+    "map04-landmark-d-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        48
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_d",
+      "x": 162.0,
+      "y": 260.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "9774deb167243977865b0cf8c25e62fe7d73e300f9e72c117cab163a2eea33a0"
+    },
+    "map04-landmark-d-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        50
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_d",
+      "x": 131.0,
+      "y": 172.0,
+      "width": 271,
+      "height": 142,
+      "sha256": "f5313a35dab8057da062858e96e3e7b1b36da4df2bca34421dd6412f943bcb44"
+    },
+    "map04-landmark-d-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 8,
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "map04_d",
+      "x": 131.0,
+      "y": 172.0,
+      "width": 271,
+      "height": 142,
+      "sha256": "6aa972a7ba4605407bf2fb155dc40d6a5343db7252232c9dc146dc39bae3e272"
+    },
+    "map04-landmark-e-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        43
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_e",
+      "x": 12.0,
+      "y": 341.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "829d8eb7a5ce98f248880a073843f9472eca06bcd14dfdf7fa7ec498956b27d9"
+    },
+    "map04-landmark-e-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        45
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_e",
+      "x": 12.0,
+      "y": 241.0,
+      "width": 241,
+      "height": 198,
+      "sha256": "7a445f3b5a105d95aa12af5e1ea22681122fdb4648ae6d6ea3b683fba4a1cd35"
+    },
+    "map04-landmark-e-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 10,
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map04_e",
+      "x": 27.05,
+      "y": 241.05,
+      "width": 226,
+      "height": 198,
+      "sha256": "fb8862b2c6f6e075a112c9d7ec56394ee211ba49c7d06a0ec2d1d1c4c3558dee"
+    },
+    "map04-landmark-f-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        38
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_f",
+      "x": 113.0,
+      "y": 421.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "5de21dc43717165edf868254bd664f890c01ce88ca60203299c9c34345830f53"
+    },
+    "map04-landmark-f-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        40
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_f",
+      "x": 79.0,
+      "y": 339.0,
+      "width": 246,
+      "height": 143,
+      "sha256": "879ad1aa0712c60eb8854ddbdf659acfb3fef1933de79f00a66c1076f8d80f75"
+    },
+    "map04-landmark-f-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        18
+      ],
+      "sourceInstance": "map04_f",
+      "x": 79.0,
+      "y": 339.0,
+      "width": 246,
+      "height": 143,
+      "sha256": "a0922604f7b945835282f111fe45061f65e3d63e6f13fc2ce3d0d2ca6bd83172"
+    },
+    "map04-landmark-g-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        63
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_g",
+      "x": 259.0,
+      "y": 346.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "b18bcb9e232f9399d05ab9f81d4e8e88d8a753aa757b94781e81a303c3c3094f"
+    },
+    "map04-landmark-g-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        65
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_g",
+      "x": 212.0,
+      "y": 277.0,
+      "width": 217,
+      "height": 183,
+      "sha256": "41e40c081289e7d0f3b911c35c66f9fff9f9778e716e2241b8d5e60936c6c6b8"
+    },
+    "map04-landmark-g-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "map04_g",
+      "x": 212.0,
+      "y": 277.0,
+      "width": 217,
+      "height": 183,
+      "sha256": "4e6656c6aed3e1f985bcced1cfd9e90adc2b21f6dc5bc369458a5b857f7c1278"
+    },
+    "map04-landmark-h-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        58
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map04_h",
+      "x": 322.0,
+      "y": 230.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "e80ce42580ae0b98076dc1d25b2ae90abc274e5c76e636f5a8862f895cf1e309"
+    },
+    "map04-landmark-h-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        60
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map04_h",
+      "x": 300.0,
+      "y": 201.0,
+      "width": 164,
+      "height": 207,
+      "sha256": "49aa9ad82ed330ed537b3edccc9a58741bd296dbd9be304b08b470d07d2f527c"
+    },
+    "map04-landmark-h-base.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        24
+      ],
+      "sourceInstance": "map04_h",
+      "x": 300.0,
+      "y": 201.0,
+      "width": 163,
+      "height": 207,
+      "sha256": "5a1f02247080bbf2fb00843ffa70c90de6de3320b161e9feef80d623235a6732"
+    },
+    "map04-back-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_back",
+      "x": 189.0,
+      "y": 45.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map04-back-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_back",
+      "x": 189.0,
+      "y": 45.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map04-next-up.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_next",
+      "x": 405.0,
+      "y": 261.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map04-next-over.png": {
+      "source": "data/image/quest/map04_ch.swf",
+      "sourceSha256": "b2ca4124ccf405e5356882be39e5ee51d6768ea860d46dde02723c994fa1f1df",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_next",
+      "x": 405.0,
+      "y": 261.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map05.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": null,
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "830e603945947312d2db15beacbb20b97fffcea097ae3955da8cfc15c2361492"
+    },
+    "map05-landmark-a-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        33
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_a",
+      "x": 54.0,
+      "y": 172.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "aae207b902d90245e7a086db6c35b8746ca61860399cf438ab0f73b695230dd8"
+    },
+    "map05-landmark-a-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        35
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_a",
+      "x": 0.0,
+      "y": 143.0,
+      "width": 196,
+      "height": 164,
+      "sha256": "d90cdf452e716673c1ec781b490221eaff0c64dca33c7e7013ccb218997dc079"
+    },
+    "map05-landmark-a-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map05_a",
+      "x": 0.0,
+      "y": 143.0,
+      "width": 195,
+      "height": 164,
+      "sha256": "3b3a65bd0a6e42f24e5dcf1eb7b8d9442f981c2915d05ea4f83d2c9949f68499"
+    },
+    "map05-landmark-b-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        38
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_b",
+      "x": 33.0,
+      "y": 347.95,
+      "width": 142,
+      "height": 39,
+      "sha256": "8cfa10976969394c8f78d9b2953e5fb8209d220c4178e332e2cb70741b1701c2"
+    },
+    "map05-landmark-b-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 22,
+      "bitmapIds": [
+        40
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_b",
+      "x": 33.05,
+      "y": 241.0,
+      "width": 185,
+      "height": 217,
+      "sha256": "c6f5941e57a58f1a6f4befec97c437bbf748c4393ab203dead697aeab1dc9275"
+    },
+    "map05-landmark-b-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "map05_b",
+      "x": 39.0,
+      "y": 241.0,
+      "width": 179,
+      "height": 217,
+      "sha256": "b0313187dd2f4ee15e6864f10d0198f3c2bd50c6c19bac674ec8cfbff2e7f7a5"
+    },
+    "map05-landmark-c-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        43
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_c",
+      "x": 153.05,
+      "y": 409.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "a6919e6bc2c33bef9218583ede38c9bea80dcea23942dac1364edad0fdffdd67"
+    },
+    "map05-landmark-c-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 24,
+      "bitmapIds": [
+        45
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_c",
+      "x": 143.0,
+      "y": 305.0,
+      "width": 210,
+      "height": 157,
+      "sha256": "8e6e33b2b42f7b17e1602fc2b2b3c75bce6d9421b063dd12b4d4e71b8c2b04b7"
+    },
+    "map05-landmark-c-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 6,
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map05_c",
+      "x": 143.0,
+      "y": 305.0,
+      "width": 210,
+      "height": 157,
+      "sha256": "adb92d94d16baf94fce8f1f0360810c73fd56ce8674c3309765acce6387c539c"
+    },
+    "map05-landmark-d-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        48
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_d",
+      "x": 302.0,
+      "y": 300.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "931cc145075867f17b12a2aa4c9b82f3c37ef59fa08d4a5f510f6e5c926ff64c"
+    },
+    "map05-landmark-d-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 26,
+      "bitmapIds": [
+        50
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_d",
+      "x": 254.0,
+      "y": 261.0,
+      "width": 190,
+      "height": 186,
+      "sha256": "7bda2850c6d0f86e4ff2e71b8b7238ee4c8b5967117c044575b0645a3b2036d6"
+    },
+    "map05-landmark-d-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 8,
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "map05_d",
+      "x": 254.0,
+      "y": 261.0,
+      "width": 181,
+      "height": 186,
+      "sha256": "9a89a88cf26af485a3ef979f7cceefc4c0d0ad2f3e317c6195793ea0987cfe41"
+    },
+    "map05-landmark-e-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        53
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_e",
+      "x": 164.0,
+      "y": 273.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "94a2b444c633265431c5f735b7c2693a12fc808a8880c1363e73595af747b74e"
+    },
+    "map05-landmark-e-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 28,
+      "bitmapIds": [
+        55
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_e",
+      "x": 153.0,
+      "y": 184.0,
+      "width": 178,
+      "height": 145,
+      "sha256": "f13fe78889fcef3e2e37ebda864f346b196bb56744345d11956ee6d44caa2ff5"
+    },
+    "map05-landmark-e-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 10,
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map05_e",
+      "x": 153.0,
+      "y": 184.0,
+      "width": 178,
+      "height": 145,
+      "sha256": "7312e83c31c32beca60f8611a49d350cbb8541fa49619504b3740af8b795cf61"
+    },
+    "map05-landmark-f-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        27
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_f",
+      "x": 100.0,
+      "y": 76.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "3ef0a0b077c32dc71a5e5d83562ad4890e055fdf1e85aefb299030ac146f0226"
+    },
+    "map05-landmark-f-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        29
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_f",
+      "x": 89.0,
+      "y": 45.0,
+      "width": 184,
+      "height": 172,
+      "sha256": "830f03c71694fac65d6520fd087ccf48817de9cc9530f875892c65fbfd451397"
+    },
+    "map05-landmark-f-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        18
+      ],
+      "sourceInstance": "map05_f",
+      "x": 89.0,
+      "y": 45.0,
+      "width": 184,
+      "height": 172,
+      "sha256": "f803e8206e70d7f1cf98774e4bef39e27ce6fa9124f49089aa082d148597744b"
+    },
+    "map05-landmark-g-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        58
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_g",
+      "x": 267.0,
+      "y": 66.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "321a5455b8de711864f15bbf7978c9931626daa83af999fbe8b99fb5cfd3074e"
+    },
+    "map05-landmark-g-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 30,
+      "bitmapIds": [
+        60
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_g",
+      "x": 225.0,
+      "y": 34.0,
+      "width": 212,
+      "height": 188,
+      "sha256": "664437b58f7e13d8fb258b2b8cfb8f6662391225c0be406a9feb11097cbf90fc"
+    },
+    "map05-landmark-g-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        21
+      ],
+      "sourceInstance": "map05_g",
+      "x": 225.0,
+      "y": 34.0,
+      "width": 212,
+      "height": 188,
+      "sha256": "abba3a7ebe37841b5ba6d393f6c2247561b4fdd74e089e560e93912e79d13924"
+    },
+    "map05-landmark-h-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        63
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map05_h",
+      "x": 318.0,
+      "y": 178.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "a72897bbc681f790bf3e9b188bba6aa4f65d37409bc94e632b765228a6aa1aeb"
+    },
+    "map05-landmark-h-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 32,
+      "bitmapIds": [
+        65
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map05_h",
+      "x": 295.0,
+      "y": 126.0,
+      "width": 167,
+      "height": 166,
+      "sha256": "3372e014137c85f9b9307fdd5972361570f0c73742c8ad4ebd830efa7a4e8f2f"
+    },
+    "map05-landmark-h-base.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        24
+      ],
+      "sourceInstance": "map05_h",
+      "x": 295.0,
+      "y": 126.0,
+      "width": 167,
+      "height": 166,
+      "sha256": "9f9cea4a514e7caddd2b136fb78d8b74dd2f88b72862c3b873b9a8b279a1b201"
+    },
+    "map05-back-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_back",
+      "x": 13.0,
+      "y": 272.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map05-back-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 34,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_back",
+      "x": 13.0,
+      "y": 272.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map05-next-up.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        68
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_next",
+      "x": 405.0,
+      "y": 261.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map05-next-over.png": {
+      "source": "data/image/quest/map05_ch.swf",
+      "sourceSha256": "186153386fe2ad009dfe75b6ab9d2ebb7c42a53498360b64bde8ffdb62491075",
+      "sourceFrame": 1,
+      "sourceDepth": 36,
+      "bitmapIds": [
+        70
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_next",
+      "x": 405.0,
+      "y": 261.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map06.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": null,
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "a121b8d17afd5c1e600d9ec071d3042ec4fe545146e0c23d800eb313c352d162"
+    },
+    "map06-landmark-a-up.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6,
+        8
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map06_a",
+      "x": 155,
+      "y": 159,
+      "width": 142,
+      "height": 110,
+      "sha256": "14a2b018cd75e561e10ccc5bd901b969fb385fed0ceea47d4f6a13a8bb4d6cb6"
+    },
+    "map06-landmark-a-over.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        10,
+        8
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map06_a",
+      "x": 136,
+      "y": 136,
+      "width": 283,
+      "height": 155,
+      "sha256": "be2277f508fe7d6892a82571e73ccf9f5a7014cab80e67e9dabfa536b19e1517"
+    },
+    "map06-landmark-a-base.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map06_a",
+      "x": 136.0,
+      "y": 136.0,
+      "width": 283,
+      "height": 155,
+      "sha256": "f50be549da52c0f53f0db1e9a3c07f2a31a2fea47977c8c9a83f48ce7f5f0268"
+    },
+    "map06-back-up.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 7,
+      "bitmapIds": [
+        14
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_back",
+      "x": 405.0,
+      "y": 301.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "440eb362f1312185936b4aa4ad07a85f42ae02c921877d16085bcbad5e1971b0"
+    },
+    "map06-back-over.png": {
+      "source": "data/image/quest/map06_ch.swf",
+      "sourceSha256": "8126c56df24345361789ca4f7637a631f7c2d6ec7cdb21034c04aa136610f7b3",
+      "sourceFrame": 1,
+      "sourceDepth": 7,
+      "bitmapIds": [
+        16
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_back",
+      "x": 405.0,
+      "y": 301.0,
+      "width": 21,
+      "height": 27,
+      "sha256": "c648842568c0abb1d1a56d2669d31e1fb8e221bb9d4bd936a36341abf1d1ec2b"
+    },
+    "map-tutorial.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 1,
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": null,
+      "x": 0.0,
+      "y": 32.0,
+      "width": 760,
+      "height": 444,
+      "sha256": "7a4af8f61ade877aebd38b76783a2d0e298f0e715acdb3641c92cb295fe978af"
+    },
+    "map-tutorial-landmark-a-up.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        34
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map_e0_a",
+      "x": 265.0,
+      "y": 131.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "f95ed03f14f8b3b58b0dbcb9086a2de44f2441f30d97b79313f59a9471075998"
+    },
+    "map-tutorial-landmark-a-over.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 18,
+      "bitmapIds": [
+        36
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map_e0_a",
+      "x": 186.0,
+      "y": 47.0,
+      "width": 260,
+      "height": 172,
+      "sha256": "aa9b464867234c60014f97397966f6c675ba4b291092cd7aaae32cae90fcb856"
+    },
+    "map-tutorial-landmark-a-base.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 10,
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "map_e0_a",
+      "x": 186.0,
+      "y": 47.0,
+      "width": 260,
+      "height": 172,
+      "sha256": "19b6275edf4161243549181ff8e880174e5e8badc615ed24e97961968e6f5165"
+    },
+    "map-tutorial-landmark-b-up.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        39
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map_e0_b",
+      "x": 89.0,
+      "y": 122.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "31e194db570576ae274049cbdcd56496901567f54463090c0b2f548664c82c2b"
+    },
+    "map-tutorial-landmark-b-over.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 20,
+      "bitmapIds": [
+        41
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map_e0_b",
+      "x": 6.0,
+      "y": 48.0,
+      "width": 233,
+      "height": 190,
+      "sha256": "95ea6712d9f9f0a81f90c8484d4d6b751d150100341dbaf605a93c26d94a522a"
+    },
+    "map-tutorial-landmark-b-base.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 8,
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "map_e0_b",
+      "x": 6.0,
+      "y": 48.0,
+      "width": 233,
+      "height": 190,
+      "sha256": "2266ae0cf633bae41ad87af1b19bfe18966933d9ed97e6902b8c50c863b00454"
+    },
+    "map-tutorial-landmark-c-up.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        18
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map_e0_c",
+      "x": 68.0,
+      "y": 331.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "2e5fb018f9691cba5316fdd86d8f43994e5860e77cfb4f84273a748d7194944a"
+    },
+    "map-tutorial-landmark-c-over.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 12,
+      "bitmapIds": [
+        20
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map_e0_c",
+      "x": 1.0,
+      "y": 202.0,
+      "width": 236,
+      "height": 258,
+      "sha256": "b97add7e56853d52823338555bb9ca272090ed91af8f136a9d1169a9ed89740d"
+    },
+    "map-tutorial-landmark-c-base.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 6,
+      "bitmapIds": [
+        9
+      ],
+      "sourceInstance": "map_e0_c",
+      "x": 1.0,
+      "y": 202.0,
+      "width": 236,
+      "height": 258,
+      "sha256": "e4a74bb313425a8f892da60f8a1bbe0b8e2ffac2f7e5ff98f138c57dc55ca26f"
+    },
+    "map-tutorial-landmark-d-up.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        29
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map_e0_d",
+      "x": 232.0,
+      "y": 358.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "6a30bd826d19bcc15630192ebf712072b55b0c5093cd530c87017318cb55f88a"
+    },
+    "map-tutorial-landmark-d-over.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 16,
+      "bitmapIds": [
+        31
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map_e0_d",
+      "x": 207.0,
+      "y": 277.0,
+      "width": 237,
+      "height": 177,
+      "sha256": "42243dd49b6e0cbed4aefcb65af4d7c427e6d9107ce3072e03028f8fda8be131"
+    },
+    "map-tutorial-landmark-d-base.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 4,
+      "bitmapIds": [
+        6
+      ],
+      "sourceInstance": "map_e0_d",
+      "x": 207.0,
+      "y": 277.0,
+      "width": 237,
+      "height": 177,
+      "sha256": "327f5ed0823299b5fbd1652651e7db7da14f1a876dbfd7406f12fbc8c39f67b1"
+    },
+    "map-tutorial-landmark-e-up.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        24
+      ],
+      "sourceState": "up",
+      "sourceInstance": "btn_map_e0_e",
+      "x": 237.0,
+      "y": 241.0,
+      "width": 142,
+      "height": 39,
+      "sha256": "0b3a7f7a750caa8d2a9bebd1d2a4feb78f8087f297f71ec6b25a97cb5f83309d"
+    },
+    "map-tutorial-landmark-e-over.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 14,
+      "bitmapIds": [
+        26
+      ],
+      "sourceState": "over",
+      "sourceInstance": "btn_map_e0_e",
+      "x": 166.0,
+      "y": 188.0,
+      "width": 285,
+      "height": 126,
+      "sha256": "32f177a81d272244684c4e55da37acd5856a4cc730676691e167ff22642bd84e"
+    },
+    "map-tutorial-landmark-e-base.png": {
+      "source": "data/image/quest/map_e00_ch.swf",
+      "sourceSha256": "a838a08913971d0c45f6deb111b7cf966ece44d8eb544b34bcfaade8eb5bc84f",
+      "sourceFrame": 1,
+      "sourceDepth": 2,
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "map_e0_e",
+      "x": 166.0,
+      "y": 188.0,
+      "width": 285,
+      "height": 126,
+      "sha256": "8c652f420fa0849b15fc8a23488f7ad6d95df89cd543b3c07058e2ef7efbd23e"
     }
+  },
+  "searchThumbnails": {
+    "1": "quest-search-thumbnail-06.jpg",
+    "2": "quest-search-thumbnail-02.jpg",
+    "3": "quest-search-thumbnail-05.jpg",
+    "4": "quest-search-thumbnail-01.jpg",
+    "5": "quest-search-thumbnail-02.jpg",
+    "6": "quest-search-thumbnail-06.jpg",
+    "7": "quest-search-thumbnail-07.jpg",
+    "8": "quest-search-thumbnail-03.jpg",
+    "9": "quest-search-thumbnail-05.jpg",
+    "10": "quest-search-thumbnail-04.jpg",
+    "11": "quest-search-thumbnail-01.jpg",
+    "12": "quest-search-thumbnail-00.jpg",
+    "13": "quest-search-thumbnail-06.jpg",
+    "14": "quest-search-thumbnail-02.jpg",
+    "15": "quest-search-thumbnail-00.jpg",
+    "16": "quest-search-thumbnail-05.jpg",
+    "17": "quest-search-thumbnail-01.jpg",
+    "18": "quest-search-thumbnail-05.jpg",
+    "19": "quest-search-thumbnail-00.jpg",
+    "20": "quest-search-thumbnail-04.jpg",
+    "21": "quest-search-thumbnail-07.jpg",
+    "22": "quest-search-thumbnail-00.jpg",
+    "23": "quest-search-thumbnail-03.jpg",
+    "24": "quest-search-thumbnail-01.jpg",
+    "25": "quest-search-thumbnail-12.jpg",
+    "26": "quest-search-thumbnail-05.jpg",
+    "27": "quest-search-thumbnail-06.jpg",
+    "28": "quest-search-thumbnail-04.jpg",
+    "29": "quest-search-thumbnail-07.jpg",
+    "30": "quest-search-thumbnail-00.jpg",
+    "31": "quest-search-thumbnail-02.jpg",
+    "32": "quest-search-thumbnail-05.jpg",
+    "33": "quest-search-thumbnail-04.jpg",
+    "34": "quest-search-thumbnail-04.jpg",
+    "35": "quest-search-thumbnail-00.jpg",
+    "36": "quest-search-thumbnail-99.jpg",
+    "2009": "quest-search-thumbnail-00.jpg",
+    "2010": "quest-search-thumbnail-00.jpg",
+    "2011": "quest-search-thumbnail-00.jpg",
+    "2012": "quest-search-thumbnail-00.jpg",
+    "2013": "quest-search-thumbnail-00.jpg"
   }
 }

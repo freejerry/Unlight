@@ -6,7 +6,7 @@
 
 | 項目 | 整合分支 `cc2ef53` | 暫停分支及診斷證據 |
 | --- | --- | --- |
-| `/source-login/` | 大廳「任務」切換到真正的固定舞台與 Quest 連線。第一張普通地圖接入原素材、持有清單、可用牌組、角色及 Back。 | 其餘地圖頁、選圖視窗、探索、道具、完整卡面、選牌組及戰鬥待接入。歷史暫停分支 `8595426`、`b04db83` 僅供原生運輸參考。 |
+| `/source-login/` | 大廳「任務」切換到固定舞台與 Quest 連線。接入六張普通地圖、MemoryLand、MAP 選區、搜尋預覽、持有清單、實際選定牌組、角色及 Back。 | 搜尋提交、等待中的伺服器查詢、道具、完整卡面、選牌組及戰鬥待接入。歷史暫停分支 `8595426`、`b04db83` 僅供原生運輸參考。 |
 | `/web-client/` 診斷實作（原生根入口） | 共享 `web-client/session.js`／`quest-data.js` 已可讀原版 Quest、搜尋、開始、地形、真實 Ruby AI 對戰、結算和返回清單。一般唯讀與搜尋/開始用短 Quest 連線。第一格後留住原版 socket。`startQuestSearch()` 目前固定使用 `questFlag+1` 的 1–35 普通地圖以及計時選項 1。 | 多段實際 Chromium、Ruby 和 SQLite 驗收留在 `docs/playtest/README.md`。此處的結果證明傳輸與遊戲行為可複用。固定舞台版面須另驗收。 |
 | 原版 Ruffle | 原版對照可使用既有隔離 Ruby 與 Flash 載入流程。 | 地圖、首關戰鬥、兩個結果確認及通關進度已有瀏覽器截圖和隔離資料核對。 |
 | Rust 倒數示範與 68 事件回放 | 各自獨立驗證工具，可維持現有用途。 | 具有倒數或播放 UI。首關的 Ruby 持有紀錄、AP、地形和對局仍由 Quest 服務管理。 |
@@ -83,7 +83,17 @@
 
 第一區 `map01_ch.swf` 原底圖是 `(0,32)` 的 760×444 JPEG，主地標及 Up／Over 位於 `(239,214)`。`quest_base.swf` 提供上下框與導航，`questlist_ch.swf` 在 `(464,36)` 依容量選固定幀，任務列從 `(464,44)` 起每排 16 px。兩個畫面的 AP 共享原封包狀態。任務角色為 `(525,230)`，大廳的右側三個入口在任務模式隱藏。[地圖來源](../../../app/client/src/view/image/quest/WorldMapImage.as#L381) · [清單初始化](../../../app/client/src/view/scene/quest/QuestList.as#L184) · [共用角色模式](../../../app/client/src/view/scene/common/AvatarView.as#L221)
 
-1. 第一張地圖沿用 `SessionSocket`、原版 Quest 登入重播、同源任務目錄及同次登入角色資料。原始地圖、透明地標、容量幀、列狀態與牌組底板均按原始座標與來源雜湊封裝。第一張圖的前三區可渲染，實跑涵蓋魔女山谷。進到尚未移植的地圖頁會保留共用框架、清單及 Back。登入等待中提供 Back 取消，正常返回等 Quest 確認關閉後回大廳。完整卡面、MAP 視窗、探索及選牌組仍待接入。當前牌組使用原版 `current_deck` 和實際卡位。新版切場仍直接切換 BGM，原版大廳和任務離開時各有兩秒淡出。[來源清單](../../../source-login/quest-art/sources.json) · [場景渲染](../../../source-login/quest-map.js) · [Quest 連線](../../../web-client/session.js) · [原版任務聲道淡出](../../../app/client/src/controller/QuestCtrl.as)
+### MAP 選區、搜尋預覽與音樂
+
+| 項目 | 原版規格與新版行為 |
+| --- | --- |
+| MAP | 部件起點 `(0,416)`，選單底圖 `(32,64)` 起 384×384，約 300 ms 正弦減速滑入及滑出。開啟時暫停後方操作，關閉恢復焦點。普通世界依角色旗標開放六個區域、36 個地標。MemoryLand 沿用實跑畫面上的五條地名飾帶，互動依 Data 或建角交接傳回的獨立旗標啟用。選區及地圖箭頭沿用同一條 Quest 連線。[選單原始行為](../../../app/client/src/view/scene/quest/QuestSelectMapWindow.as#L47) · [原始地理畫面](../../../source-login/quest-art/worlds.json) |
+| 搜尋預覽 | 點地名飾帶立即開 `(270,280)` 起 368×152 的原版視窗。縮圖 `(522,338)` 起 88×44，費用取對應地圖的原始 AP。魔女山谷從 `0分` 開始即為 1 AP。時間選項依序為 0、3、10、30 分，1、2、4、8、16 小時，1、3 天。同次任務開關保留所選時間，X 播放 `ulse01`。OK 目前停用。[原始滑桿及預覽](../../../app/client/src/view/image/quest/GetSendPanel.as#L248) · [費用字形放大](/workspace/shared/unlight-web-port/flash-parity/quest-preview/original-ap-glyph-comparison.png) |
+| 音樂 | 結束大廳及任務時在兩秒內分十步衰減。新場景的原版音軌可在舊音軌淡出期間由起點播放。進出設定仍使用同一大廳音軌。[大廳原始淡出](../../../app/client/src/controller/LobbyCtrl.as#L323) · [任務原始淡出](../../../app/client/src/controller/QuestCtrl.as#L695) · [新版播放](../../../source-login/bgm.js) |
+
+隔離 Ruby 實跑有普通旗標 `0`、`3` 及教學旗標 `2008`。旗標 `3` 的角色初次進入普通第二頁，只能點已解鎖的黑森林。MAP 回第一頁時可點三個原版地標，並以地圖箭頭往返。切區、開關預覽及試選時間全程維持相同 Quest 連線、AP、裝備和庫存。未修補的原版另曾在從 MemoryLand 選回 HexRealm 後保留前一張底圖，已留存該次差異。[新版第二頁實跑](/workspace/shared/unlight-web-port/flash-parity/quest-preview/root-01-native-region2.png) · [原版畫面與步驟](/workspace/shared/unlight-web-port/flash-parity/quest-map/picker-preview/README.md)
+
+1. 地圖沿用 `SessionSocket`、原版 Quest 登入重播、同源任務目錄及同次登入角色資料。原始地圖、透明地標、容量幀、列狀態與牌組底板均按原始座標與來源雜湊封裝。登入等待中提供 Back 取消，正常返回等 Quest 確認關閉後回大廳。當前牌組使用原版 `current_deck` 和實際卡位，完整卡面、搜尋提交及選牌組仍待接入。[來源清單](../../../source-login/quest-art/sources.json) · [場景渲染](../../../source-login/quest-map.js) · [Quest 連線](../../../web-client/session.js)
 2. 在已保留的**一條** Quest 上把原版三分鐘魔女山谷搜尋、pending、已發現和真 AP 接入固定舞台，再串同一張手牌可判定的 CS13 + 首格 CS16。把認證與 read/write 區分可重用，短 socket 診斷仍可維持。入口和遞進共用租期，不能為同一個在進行冒險再開第二條。實測時間要包含真 180 秒或分開標明 Ruby 原模型的可控 fixture 係數，故障測例只留真回覆不把未知成功算進。之後接實際對戰 phase、局結果和 Quest 結算，保留 SC24 ↔ inventory 準確關聯。其他搜尋索引、舊區和額外分支按各自證據擴展。
 3. 回歸優先順序。首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。不要在測試的記錄內寫帳密或會話憑證。
 4. 故障不可續進的最小檢查為延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。所有資料核對在隔離原版 Ruby 的 SQLite 只讀查詢。已通過的早期原版、共享傳輸和暫停測例分別標示，待這一分支重跑後才認定固定舞台行為完成。

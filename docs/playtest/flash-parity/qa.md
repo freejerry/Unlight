@@ -65,7 +65,7 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 ### 重跑任務地圖的庫存及返回
 
-一般 `check_source_lobby.py` 包含新角色進入魔女山谷與 Back。要驗已發現、搜尋中兩筆真庫存，以及暫緩真的 Quest 認證後取消，建立另一個隔離副本並以 `--playtest-user questqa --playtest-first-quest` 準備角色。以下程式先驗證登出及原始單筆庫存，使用相同 Ruby 模型增加搜尋中項目。[原版任務模型](../../../app/server/src/model/avatar.rb#L2798)
+一般 `check_source_lobby.py` 包含新角色進入魔女山谷、MAP 選區、搜尋預覽、兩方向十步 BGM 淡出與 Back。要驗已發現、搜尋中兩筆真庫存，以及暫緩真的 Quest 認證後取消，建立另一個隔離副本並以 `--playtest-user questqa --playtest-first-quest` 準備角色。以下程式先驗證登出及原始單筆庫存，使用相同 Ruby 模型增加搜尋中項目。[原版任務模型](../../../app/server/src/model/avatar.rb#L2798)
 
 ```bash
 repo="$PWD"

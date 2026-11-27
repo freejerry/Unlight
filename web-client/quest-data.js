@@ -135,6 +135,9 @@ const fields = [
   ...questFields,
   2 * 4, { key: 'freeDuelCount', width: 1 }, // friend_max, part_max, free_duel_count.
   3 * 4, { key: 'currentDeck', width: 1 }, // Original exp, gem and Quest find power, then current_deck.
+  1 + 5 * 4, // Sale type/time, favorite character, tower floor, and event flag/count.
+  { key: 'tutorialQuestFlag', width: 4 },
+  { key: 'tutorialQuestClearNum', width: 4 },
 ];
 
 function integerList(csv, signed = false) {
@@ -785,6 +788,12 @@ export function createQuestDataReader() {
       } catch {
         return null;
       }
+    },
+    tutorialQuestProgress() {
+      const { tutorialQuestFlag, tutorialQuestClearNum } = values;
+      // The original tutorial uses map IDs starting above the tutorial flag 2008.
+      if (!(tutorialQuestFlag >= 2008 && tutorialQuestClearNum >= 0)) return null;
+      return Object.freeze({ tutorialQuestFlag, tutorialQuestClearNum });
     },
     result() {
       if (fieldIndex < questFields.length) throw new Error('Incomplete quest data.');

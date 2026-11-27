@@ -40,7 +40,8 @@ REBORN_CHARACTER_ID_OFFSET = 4000  # CHARACTOR_ID_OFFSET_REBORN
 AVATAR_STARTER_PART_IDS = (1, 2, 3, 5, 6, 7, 10, 11, 12, 15, 16, 17, 24, 25, 26,
                            27, 28, 29, 32, 33, 34, 37, 38, 39)
 AVATAR_STARTER_CARD_IDS = (1, 21, 31, 101, 111)
-TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
+TCN_NORMAL_MAP_COUNT = 36  # QUEST_CAP 35 is the zero-based last ordinary progression flag.
+TCN_TUTORIAL_MAP_IDS = range(2009, 2014)
 QUEST_LAND_FIELDS = tuple(
     f"quest_land_id_{column}_{row}" for column in range(5) for row in range(3)
 )  # Same slot order as Quest#land_set.
@@ -229,7 +230,10 @@ def native_quest_catalog():
                     "firstLand": first_land,
                     "positions": positions,
                 }
-    return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
+    return quests, {
+        key: area for key, area in maps.items()
+        if 1 <= key <= TCN_NORMAL_MAP_COUNT or key in TCN_TUTORIAL_MAP_IDS
+    }
 
 
 def native_action_card_catalog():
@@ -540,7 +544,7 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
-                "quest-map.js", "quest-map.css",
+                "quest-map.js", "quest-map.css", "quest-preview-data.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
@@ -558,7 +562,8 @@ def create_app(
                 filename = f"option-art/{name}"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             quest_art = SOURCE_LOGIN_ROOT / "quest-art"
-            app.router.add_get("/source-login/quest-art/sources.json", serve_file(quest_art / "sources.json"))
+            for document in ("sources.json", "worlds.json"):
+                app.router.add_get(f"/source-login/quest-art/{document}", serve_file(quest_art / document))
             for image in sorted(quest_art.glob("*")):
                 if image.suffix in (".png", ".jpg"):
                     app.router.add_get(f"/source-login/quest-art/{image.name}", serve_file(image))

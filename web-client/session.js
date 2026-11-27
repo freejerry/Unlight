@@ -2393,6 +2393,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             rows: Object.freeze(rows.map((row) => Object.freeze({ ...row }))),
             questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
             selectedDeck: staleDeck ? null : initialData.selectedDeck,
+            tutorialQuestFlag: initialData.tutorialQuestProgress?.tutorialQuestFlag ?? null,
+            tutorialQuestClearNum: initialData.tutorialQuestProgress?.tutorialQuestClearNum ?? null,
           });
           return {
             snapshot,

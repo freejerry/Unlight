@@ -21,6 +21,7 @@ let music = titleMusic;
 let active = true;
 let musicContext;
 const musicOutputs = new WeakMap();
+const sceneFades = new Map();
 let titleFade;
 let warmingMusic = false;
 let musicRequest = 0;
@@ -65,7 +66,8 @@ function setMusicVolume(audio, volume) {
 }
 
 function updateMusicVolume(audio) {
-  const fade = audio === titleMusic && titleFade ? (10 - titleFade.step) / 10 : 1;
+  const departure = audio === titleMusic ? titleFade : sceneFades.get(audio);
+  const fade = (10 - (departure?.step ?? 0)) / 10;
   setMusicVolume(audio, warmingMusic ? 0 : audioVolume("bgm") * fade);
 }
 
@@ -76,6 +78,37 @@ function discardSceneMusic(audio) {
   output?.gain.disconnect();
   musicOutputs.delete(audio);
   audio.remove();
+}
+
+function finishSceneFade(audio) {
+  clearInterval(sceneFades.get(audio)?.timer);
+  sceneFades.delete(audio);
+  setMusicVolume(audio, 0);
+  discardSceneMusic(audio);
+}
+
+function clearSceneFades(scene) {
+  for (const audio of sceneFades.keys()) {
+    if (scene === undefined || scene === audio.dataset.bgmScene) finishSceneFade(audio);
+  }
+}
+
+function fadeSceneMusic() {
+  const audio = music;
+  music = null;
+  musicRequest += 1;
+  delete stage.dataset.musicState;
+  if (audio.paused || audio.readyState < audio.HAVE_FUTURE_DATA) {
+    finishSceneFade(audio);
+    return;
+  }
+  // LobbyCtrl and QuestCtrl delegate to BaseSound.fade(0, 2).
+  const departure = { step: 0, timer: setInterval(() => {
+    departure.step += 1;
+    if (departure.step === 10) finishSceneFade(audio);
+    else updateMusicVolume(audio);
+  }, 200) };
+  sceneFades.set(audio, departure);
 }
 
 function clearTitleFade() {
@@ -129,7 +162,7 @@ function sceneEntered() {
 }
 
 function confirmMusicPlaying(audio = music) {
-  if (!active || audio !== music || !sceneEntered() || audio.paused || audio.seeking
+  if (!active || !audio || audio !== music || !sceneEntered() || audio.paused || audio.seeking
       || audio.readyState < audio.HAVE_FUTURE_DATA) return;
   if (musicOutputs.has(audio) && musicContext.state !== "running") return;
   updateMusicVolume(audio);
@@ -154,25 +187,34 @@ function playSceneMusic() {
   entryObserver.disconnect();
   const wasWarming = warmingMusic;
   warmingMusic = false;
+  const departingScene = music?.dataset.bgmScene;
   if (scene === "silent") {
-    musicRequest += 1;
-    music.pause();
-    delete stage.dataset.musicState;
+    if (departingScene === "lobby" || departingScene === "quest") fadeSceneMusic();
+    else {
+      musicRequest += 1;
+      music?.pause();
+      delete stage.dataset.musicState;
+    }
     return;
+  }
+  if ((scene === "quest" && departingScene === "lobby") || (scene === "lobby" && departingScene === "quest")) {
+    fadeSceneMusic();
   }
   const path = sceneTracks[scene] ?? theme;
   if (scene === "title" && music !== titleMusic) {
     musicRequest += 1;
-    discardSceneMusic(music);
+    if (music) discardSceneMusic(music);
+    clearSceneFades();
     music = titleMusic;
     clearTitleFade();
     updateMusicVolume(titleMusic);
     titleMusic.currentTime = 0;
     delete stage.dataset.musicState;
-  } else if (scene !== "title" && music === titleMusic) {
-    // Registration uses the title MP3 on its own channel, starting at frame zero.
+  } else if (scene !== "title" && (!music || music === titleMusic)) {
+    // A scene starts at frame zero; a same-track reentry retires the previous channel.
     musicRequest += 1;
-    if (!titleFade) titleMusic.pause();
+    if (music === titleMusic && !titleFade) titleMusic.pause();
+    clearSceneFades(scene);
     music = createAudio(path, audioVolume("bgm"));
     if (musicContext) {
       try {
@@ -197,7 +239,7 @@ function playSceneMusic() {
 }
 
 function warmMusic() {
-  if (music.error || typeof AudioContext !== "function") return;
+  if (!music || music.error || typeof AudioContext !== "function") return;
   if (!musicContext) {
     // Attenuate in the audio graph so an early gesture stays silent on iOS too.
     try {
@@ -306,12 +348,15 @@ window.addEventListener("pagehide", () => {
   musicRequest += 1;
   warmingMusic = false;
   clearTitleFade();
+  clearSceneFades();
   delete stage.dataset.musicState;
   entryObserver.disconnect();
   setMusicVolume(titleMusic, 0);
   titleMusic.pause();
-  setMusicVolume(music, 0);
-  music.pause();
+  if (music && music !== titleMusic) {
+    setMusicVolume(music, 0);
+    music.pause();
+  }
   clickSound.pause();
   const playback = alertPlayback;
   alertPlayback = null;
@@ -327,7 +372,8 @@ window.addEventListener("pageshow", event => {
 subscribePreferences((next, previous) => {
   if (next.bgm !== previous.bgm && active) {
     updateMusicVolume(titleMusic);
-    if (music !== titleMusic) updateMusicVolume(music);
+    if (music && music !== titleMusic) updateMusicVolume(music);
+    for (const audio of sceneFades.keys()) updateMusicVolume(audio);
   }
   if (next.se !== previous.se) {
     clickSound.volume = audioVolume("se");
