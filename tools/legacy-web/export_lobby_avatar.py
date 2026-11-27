@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Rasterize the selected original avatar components using the offline SWF fixture."""
+"""Rasterize the pinned original avatar components with the offline SWF fixture."""
 
 import argparse
+import asyncio
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -12,7 +13,7 @@ from threading import Thread
 from urllib.parse import urlsplit
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from playwright.async_api import Error as PlaywrightError, async_playwright
 
 
 PAGE = b"""<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,">
@@ -56,7 +57,7 @@ def source_responses(args, manifest):
     return responses, names
 
 
-def capture_parts(args, responses, names):
+async def capture_parts(args, responses, names, expected_anchors):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass
@@ -74,48 +75,93 @@ def capture_parts(args, responses, names):
             self.end_headers()
             self.wfile.write(data)
 
-    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+    class Server(ThreadingHTTPServer):
+        request_queue_size = 64
+
+    batches = asyncio.Queue()
+    ordered = sorted(names)
+    for start in range(0, len(ordered), args.batch_size):
+        batches.put_nowait(ordered[start:start + args.batch_size])
+    anchors, parts, errors = {}, {}, {}
+
+    async def capture_batch(page, origin, batch):
+        try:
+            await page.goto(origin + "/")
+            await page.evaluate("ids => exportAvatar(ids)", batch)
+            await page.wait_for_function("capture.done || capture.error !== null", timeout=20000)
+            result = await page.evaluate("capture")
+        except PlaywrightError as error:
+            result = {"error": str(error).splitlines()[0], "anchors": {}, "parts": {}}
+        if set(result["anchors"]) == expected_anchors:
+            if anchors and anchors != result["anchors"]:
+                raise ValueError("Original rig anchors changed between batches")
+            anchors.update(result["anchors"])
+            parts.update({name: result["parts"][name] for name in batch if name in result["parts"]})
+        missing = [name for name in batch if name not in parts]
+        if len(batch) == 1 and missing:
+            errors[batch[0]] = result["error"] or "Source clip could not be rasterized"
+        if len(batch) > 1 and missing:
+            split = (len(missing) + 1) // 2
+            await capture_batch(page, origin, missing[:split])
+            if missing[split:]:
+                await capture_batch(page, origin, missing[split:])
+
+    async def worker_batches(browser, origin):
+        page = await browser.new_page()
+        await page.route(lambda url: url.startswith(("http://", "https://"))
+                         and not url.startswith(origin + "/"), lambda request: request.abort())
+        try:
+            while not batches.empty():
+                await capture_batch(page, origin, batches.get_nowait())
+                print(f"Rasterized {len(parts)} / {len(names)} clips ({len(errors)} unavailable)", flush=True)
+        finally:
+            await page.close()
+
+    with Server(("127.0.0.1", 0), Handler) as server:
         worker = Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
-            with sync_playwright() as playwright:
-                browser = playwright.chromium.launch(executable_path=args.chromium, args=[
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch(executable_path=args.chromium, args=[
                     "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
                 ])
-                page = browser.new_page()
-                page.goto(f"http://127.0.0.1:{server.server_port}/")
-                page.evaluate("ids => exportAvatar(ids)", sorted(names))
-                page.wait_for_function("capture.done || capture.error !== null", timeout=30000)
-                result = page.evaluate("capture")
-                browser.close()
-                return result
+                origin = f"http://127.0.0.1:{server.server_port}"
+                await asyncio.gather(*(worker_batches(browser, origin) for _ in range(args.jobs)))
+                await browser.close()
         finally:
             server.shutdown()
             worker.join()
+    return anchors, parts, errors
 
 
-def write_parts(output, anchors, parts):
+def write_parts(output, anchors, parts, errors):
     output.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=output.parent) as scratch:
         cache = Path(scratch) / "avatar-rendered"
         layers = cache / "parts"
         layers.mkdir(parents=True)
+        rendered = {}
         for name, part in parts.items():
             width, height = part["width"], part["height"]
             raw = bytes.fromhex(part.pop("argb"))
             part["src"] = None
             if (width, height) == (0, 0) and not raw:
+                rendered[name] = part
                 continue
             if not 0 < width <= 512 or not 0 < height <= 512 or len(raw) != width * height * 4:
-                raise ValueError(f"Incorrect exported image dimensions: {name}")
+                errors[name] = "Incorrect exported image dimensions"
+                continue
             image = Image.frombytes("RGBA", (width, height), raw, "raw", "ARGB")
             if not image.getchannel("A").getbbox():
-                raise ValueError(f"Original visible layer became blank: {name}")
+                errors[name] = "Original visible layer became blank"
+                continue
             image.save(layers / f"{name}.png", optimize=True)
             part["src"] = f"./avatar-rendered/parts/{name}.png"
-        index = {"anchors": anchors, "parts": parts}
+            rendered[name] = part
+        index = {"anchors": anchors, "parts": rendered, "errors": errors}
         (cache / "index.json").write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
         cache.rename(output)
+        return len(rendered)
 
 
 def main():
@@ -123,17 +169,21 @@ def main():
     for name in ("manifest", "mirror", "ruffle", "movie", "output"):
         parser.add_argument(f"--{name}", type=lambda value: Path(value).resolve(), required=True)
     parser.add_argument("--chromium", default="/usr/bin/chromium")
+    parser.add_argument("--jobs", type=int, choices=range(1, 9), default=3)
+    parser.add_argument("--batch-size", type=int, choices=range(1, 129), default=48)
     args = parser.parse_args()
     if args.output.exists():
         parser.error("--output must be a new directory")
     manifest = json.loads(args.manifest.read_text())
     responses, names = source_responses(args, manifest)
-    result = capture_parts(args, responses, names)
-    anchors, parts = result["anchors"], result["parts"]
-    if result["error"] or set(anchors) != set(manifest["anchorNames"]) or set(parts) != names:
-        raise ValueError(f"Incomplete avatar export: {result['error']}")
-    write_parts(args.output, anchors, parts)
-    print(f"Exported {len(parts)} source clips and {len(anchors)} bone anchors.")
+    expected_anchors = set(manifest["anchorNames"])
+    if not names:
+        raise ValueError("No original avatar parts in manifest")
+    anchors, parts, errors = asyncio.run(capture_parts(args, responses, names, expected_anchors))
+    if set(anchors) != expected_anchors or set(parts) | set(errors) != names or not parts:
+        raise ValueError("Incomplete avatar export")
+    visible = write_parts(args.output, anchors, parts, errors)
+    print(f"Exported {visible} source clips and {len(anchors)} bone anchors; {len(errors)} unavailable.")
 
 
 if __name__ == "__main__":

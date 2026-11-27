@@ -1,24 +1,154 @@
 .source-lobby {
   position: absolute;
   inset: 0;
-  background: #080808 url("/source-login/assets/lobby-background.png") no-repeat left top 160px / 760px 496px;
-  color: #eef3fb;
+  isolation: isolate;
+  width: 780px;
+  height: 680px;
+  overflow: hidden;
+  background: #111720;
+  color: #e6ebf2;
+  font: 14px/1.35 var(--interface-font);
 }
 
-.source-lobby-heading {
+.lobby-backdrop,
+.source-lobby .art-slot,
+.source-lobby .avatar-layer,
+.source-lobby .entrance-layer,
+.source-lobby .top-entries,
+.source-lobby .play-entries li,
+.source-lobby .utility-entries li,
+.source-lobby .lower-slot,
+.source-lobby .side-entries,
+.source-lobby .avatar-status,
+.source-lobby .avatar-status > div { position: absolute; }
+
+/* EntranceBG's bitmap is placed at (0, 160) in the 760-wide authored scene. */
+.lobby-backdrop {
+  top: 160px;
+  left: 0;
+  width: 760px;
+  height: 496px;
+  background: #202a36 url("./lobby-art/background.png") no-repeat;
+}
+
+.source-lobby .avatar-layer, .source-lobby .entrance-layer { inset: 0; }
+
+.source-lobby .entrance-layer ul, .source-lobby .side-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source-lobby .standing-character { left: 0; top: 202px; width: 248px; height: 420px; }
+.source-lobby .standing-character::before {
   position: absolute;
-  inset: 20px 24px auto 20px;
+  top: 4px;
+  left: 0;
+  width: 295px;
+  height: 458px;
+  background: url("./lobby-art/favorite.png") no-repeat;
+  content: "";
+}
+
+.source-lobby .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
+#lobby-avatar { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
+
+.source-lobby .entrance-art { position: absolute; top: 0; left: 0; display: block; }
+.source-lobby .top-entries {
+  inset: 32px auto auto 0;
+  width: 760px;
+  height: 112px;
+  display: grid;
+  grid-template-columns: 208px 216px repeat(3, 112px);
+}
+
+/* These named SWF placement origins are at the center of each tile. */
+.source-lobby .play-entries li {
+  width: 156px;
+  height: 156px;
+  translate: -50% -50%;
+}
+.source-lobby .duel { left: 272px; top: 240px; }
+.source-lobby .quest { left: 464px; top: 240px; }
+.source-lobby .raid { left: 368px; top: 368px; }
+
+.source-lobby-quest-entry {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.source-lobby-quest-entry:hover { box-shadow: inset 0 0 0 1px #ffdf9c80; }
+
+.source-lobby .utility-entries li { height: 27px; }
+.source-lobby .options { left: 536px; top: 160px; width: 104px; }
+.source-lobby .tutorial { left: 640.05px; top: 159.95px; width: 119.95px; }
+.source-lobby .serial { left: 652px; top: 200px; width: 108px; }
+
+.source-lobby .side-entries {
+  left: 713px;
+  top: 480px;
+  width: 44px;
+  display: grid;
+  grid-auto-rows: 38px;
+  gap: 10px;
+}
+.source-lobby .side-entries img { position: absolute; left: -1px; display: block; }
+.source-lobby .record-art { top: 0; }
+.source-lobby .friend-art { top: 43px; }
+.source-lobby .item-art { top: 96px; }
+
+.source-lobby .ranking { left: 0; top: 445px; width: 258px; height: 211px; }
+.source-lobby .ranking::before {
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 256px;
+  height: 216px;
+  background: url("./lobby-art/ranking.png") no-repeat;
+  content: "";
+}
+.source-lobby .chat { left: 262px; top: 567px; width: 247px; height: 89px; pointer-events: none; }
+
+/* AvatarView's status sits at the lower edge; AP has its separate (705, 646) origin. */
+.source-lobby .avatar-status { top: 660px; width: 760px; height: 20px; margin: 0; isolation: isolate; }
+.source-lobby .avatar-status::before {
+  position: absolute;
+  z-index: -1;
+  inset: -4px 0 0;
+  background: #263243 url("./lobby-art/status.png") no-repeat;
+  content: "";
+}
+.source-lobby .avatar-status > div {
+  top: 0;
+  min-height: 20px;
+  padding-inline: 8px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-end;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-
-.source-lobby-heading h1 {
-  margin: 0;
-  font-size: 21px;
-  letter-spacing: .08em;
+.source-lobby .avatar-status dd { margin: 0; }
+.source-lobby .avatar-status .name { left: 0; width: 185px; font-size: 11.5px; }
+.source-lobby .avatar-status .name dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-lobby .avatar-status .gem { left: 185px; width: 195px; }
+.source-lobby .avatar-status .exp { left: 380px; width: 218px; }
+.source-lobby .avatar-status .ap {
+  left: 705px;
+  top: -14px;
+  width: 55px;
+  height: 34px;
+  justify-content: flex-start;
+  padding-inline: 0;
+  background: url("./lobby-art/ap.png") no-repeat;
 }
+.source-lobby .avatar-status .ap dd { width: 44px; text-align: center; font-weight: 700; text-shadow: 0 1px 3px #000; }
 
 .source-lobby-button {
   min-block-size: 28px;
@@ -34,48 +164,40 @@
 .source-lobby-button:hover:not(:disabled) { background: #d9dbe0; }
 .source-lobby-button:disabled { opacity: .66; cursor: default; }
 
-.source-lobby :is(button, .source-lobby-scroll, h1):focus-visible {
+.source-lobby :is(button, .source-lobby-scroll):focus-visible {
   outline: 2px solid #ffdf9c;
   outline-offset: 2px;
 }
 
+.source-lobby-actions {
+  position: absolute;
+  inset: 3px 20px auto auto;
+  display: flex;
+  gap: 6px;
+}
+
+.source-lobby-actions .source-lobby-button {
+  min-block-size: 25px;
+  padding: 2px 7px;
+  border-color: #707984;
+  background: #1b2029;
+  color: #eef3fb;
+  font-size: 12px;
+}
+
+.source-lobby-actions .source-lobby-button:hover:not(:disabled) { background: #343e4b; }
+
 .source-lobby-status {
   position: absolute;
-  inset: 57px 24px auto 20px;
+  inset: 3px 145px auto auto;
   margin: 0;
+  padding: 4px 6px;
+  background: #111720;
   color: #e5edf9;
-  text-align: end;
   font-size: 13px;
 }
 
-.source-lobby-entries {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.source-lobby-entries .source-lobby-button {
-  position: absolute;
-  min-inline-size: 136px;
-  min-block-size: 44px;
-  padding-inline: 18px;
-  border-color: #aeb9c9;
-  border-radius: 4px;
-  background: #e2e7ee;
-  color: #182331;
-  font-size: 15px;
-  pointer-events: auto;
-}
-
-.source-lobby-entries .source-lobby-button:hover { background: #f5f8fc; }
-
-#lobby-quest-load { inset: 223px auto auto 392px; }
-
-.source-lobby-entries #lobby-news-open {
-  inset: 12px 92px auto auto;
-  min-inline-size: 112px;
-  font-size: 13px;
-}
+.source-lobby-status:empty { padding: 0; }
 
 .source-lobby-dialog {
   inset: auto;
@@ -142,48 +264,6 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
-
-#lobby-profile {
-  position: absolute;
-  inset: auto 20px 20px;
-  display: grid;
-  grid-template-columns: minmax(0, 176px) minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  min-block-size: 64px;
-  padding: 8px 14px;
-  border: 1px solid #738294;
-  border-radius: 4px;
-  background: #142031;
-}
-
-.source-lobby-avatar {
-  margin: 0;
-  color: #f8f9fb;
-  font-size: 15px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.source-lobby-values {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0;
-}
-
-.source-lobby-values:has(#lobby-deck-row:not([hidden])) {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.source-lobby-values > div {
-  min-inline-size: 0;
-  padding-inline: 12px 6px;
-  border-inline-start: 1px solid #5b687b;
-  overflow-wrap: anywhere;
-}
-
-.source-lobby-values dt { color: #d2dce9; font-size: 12px; }
-.source-lobby-values dd { margin: 2px 0 0; font-size: 14px; font-variant-numeric: tabular-nums; }
 
 .source-lobby-quest-body, .source-lobby-news-body {
   display: flex;

@@ -129,6 +129,18 @@ def validate_source_login_wasm(path):
     raise ValueError("--source-login-wasm must point to a WebAssembly module")
 
 
+def source_avatar_levels():
+    # Avatar.nextExp indexes the original client table up to LEVEL_MAX.
+    source = (ROOT.parents[1] / "app/client/lib/Const.as").read_text(encoding="utf-8")
+    level_max = int(source.split("const LEVEL_MAX:int", 1)[1].split(";", 1)[0].split("=", 1)[1])
+    table = source.split("const LEVEL_EXP_TABLE:Array", 1)[1].split("[", 1)[1].split("]", 1)[0]
+    values = " ".join(line.partition("//")[0] for line in table.splitlines())
+    thresholds = [int(value) for value in values.split(",") if value.strip()]
+    if level_max < 1 or len(thresholds) < level_max or thresholds[0] != 0:
+        raise ValueError("Invalid avatar level progression in Const.as")
+    return {"levelMax": level_max, "thresholds": thresholds[:level_max]}
+
+
 def native_quest_catalog():
     with (SERVER_CSV / "ja/QuestMaps.csv").open(encoding="utf-8-sig", newline="") as source:
         maps = {
@@ -507,11 +519,23 @@ def create_app(
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/source-login/assets/{Path(filename).name}", serve_file(path))
             app.router.add_get("/source-login/", serve_file(SOURCE_LOGIN_ROOT / "index.html"))
+            avatar_levels = source_avatar_levels()
+
+            async def avatar_level_curve(_request):
+                return web.json_response(avatar_levels)
+
+            app.router.add_get("/source-login/avatar-levels.json", avatar_level_curve)
             for filename in (
                 "style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css",
+                "lobby-avatar.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            for name in ("ap", "background", "entrances", "favorite", "friend", "item", "ranking", "record", "status"):
+                filename = f"lobby-art/{name}.png"
+                app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            for sheet in sorted((SOURCE_LOGIN_ROOT / "avatar-wardrobe").glob("sheet-*.png")):
+                app.router.add_get(f"/source-login/avatar-wardrobe/{sheet.name}", serve_file(sheet))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))
             app.router.add_get("/source-login/fonts/bradley-gratis.ttf", serve_file(
                 SOURCE_LOGIN_ROOT / "fonts/bradley-gratis.ttf", {"Content-Type": "font/ttf"},

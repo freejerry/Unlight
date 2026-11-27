@@ -1,29 +1,63 @@
 import { readNews } from '/news.js';
+import { renderLobbyAvatar } from './lobby-avatar.js';
 
 const layout = `
-  <section id="lobby-view" class="source-lobby" aria-labelledby="lobby-title">
-    <header class="source-lobby-heading">
-      <h1 id="lobby-title" tabindex="-1">大廳</h1>
-      <button id="lobby-logout" class="source-lobby-button" type="button">登出</button>
-    </header>
-    <p id="lobby-status" class="source-lobby-status" role="status" aria-atomic="true"></p>
-    <nav id="lobby-entries" class="source-lobby-entries" aria-label="大廳入口">
-      <button id="lobby-quest-load" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-quest">任務</button>
-      <button id="lobby-news-open" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-news">最新消息</button>
-    </nav>
-    <section id="lobby-profile" aria-labelledby="lobby-profile-title">
-      <h2 id="lobby-profile-title" class="sr-only">角色狀態</h2>
-      <p id="lobby-avatar-name" class="source-lobby-avatar"></p>
-      <span id="lobby-player-id" hidden></span>
-      <span id="lobby-avatar-id" hidden></span>
-      <dl class="source-lobby-values">
-        <div><dt>等級</dt><dd id="lobby-level"></dd></div>
-        <div><dt>Gem</dt><dd id="lobby-gems"></dd></div>
-        <div><dt>經驗值</dt><dd id="lobby-exp"></dd></div>
-        <div><dt>行動力</dt><dd id="lobby-energy"></dd></div>
+  <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
+    <h1 id="lobby-title" class="sr-only" tabindex="-1">大廳</h1>
+    <!-- LobbyView.as: PRIO_BG, PRIO_CHARA, PRIO_AVATAR, PRIO_ENTRANCE. -->
+    <div class="lobby-backdrop" data-source="entrance_bg.swf" aria-hidden="true"></div>
+    <div class="art-slot standing-character" role="img" aria-label="艾伯李斯特立繪" data-source="standchara01.swf"></div>
+    <div class="avatar-layer">
+      <div class="art-slot avatar" aria-hidden="true"></div>
+      <canvas id="lobby-avatar" width="290" height="450" aria-label="虛擬人物"></canvas>
+      <ul class="side-entries" aria-label="角色入口">
+        <li><span class="sr-only">紀錄</span><img class="record-art" src="/source-login/lobby-art/record.png" width="48" height="32" alt="" /></li>
+        <li><span class="sr-only">好友</span><img class="friend-art" src="/source-login/lobby-art/friend.png" width="48" height="37" alt="" /></li>
+        <li><span class="sr-only">道具</span><img class="item-art" src="/source-login/lobby-art/item.png" width="48" height="32" alt="" /></li>
+      </ul>
+      <dl id="lobby-profile" class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
+        <div class="name">
+          <dt class="sr-only">Name</dt>
+          <dd><span id="lobby-level-label" hidden>Lv.<span id="lobby-level"></span> </span><span id="lobby-avatar-name"></span></dd>
+        </div>
+        <div class="gem"><dt class="sr-only">Gem</dt><dd id="lobby-gems"></dd></div>
+        <div class="exp"><dt class="sr-only">Exp</dt><dd><span id="lobby-exp"></span><span id="lobby-exp-next"></span></dd></div>
+        <div class="ap"><dt class="sr-only">AP</dt><dd id="lobby-energy"></dd></div>
         <div id="lobby-deck-row" hidden><dt>牌組</dt><dd id="lobby-deck-name"></dd></div>
       </dl>
-    </section>
+      <span id="lobby-player-id" hidden></span>
+      <span id="lobby-avatar-id" hidden></span>
+    </div>
+    <div id="lobby-entries" class="entrance-layer" role="group" aria-label="大廳入口">
+      <img class="entrance-art" src="/source-login/lobby-art/entrances.png" width="760" height="680" alt="" />
+      <!-- EntranceSet.as binds these instance names from the TCN entrance SWF. -->
+      <ul class="top-entries" aria-label="館舍入口">
+        <li data-symbol="btn_i"><span class="sr-only">商店</span></li>
+        <li data-symbol="btn_j"><span class="sr-only">暗房</span></li>
+        <li data-symbol="btn_g"><span class="sr-only">牌組</span></li>
+        <li data-symbol="btn_e"><span class="sr-only">道具</span></li>
+        <li data-symbol="btn_c"><span class="sr-only">圖書館</span></li>
+      </ul>
+      <ul class="play-entries" aria-label="遊戲入口">
+        <li class="duel" data-symbol="btn_f"><span class="sr-only">對戰</span></li>
+        <li class="quest" data-symbol="btn_b">
+          <button id="lobby-quest-load" class="source-lobby-quest-entry" type="button" aria-label="任務" aria-haspopup="dialog" aria-controls="lobby-quest"></button>
+        </li>
+        <li class="raid" data-symbol="btn_k"><span class="sr-only">襲擊</span></li>
+      </ul>
+      <ul class="utility-entries" aria-label="輔助入口">
+        <li class="options" data-symbol="btn_h"><span class="sr-only">設定</span></li>
+        <li class="tutorial" data-symbol="btn_d"><span class="sr-only">教學</span></li>
+        <li class="serial" data-symbol="btn_serial"><span class="sr-only">序號</span></li>
+      </ul>
+      <div class="lower-slot ranking" role="img" aria-label="排行榜外框" data-source="entrance_rank.swf"></div>
+      <div class="source-lobby-actions">
+        <button id="lobby-news-open" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-news">最新消息</button>
+        <button id="lobby-logout" class="source-lobby-button" type="button">登出</button>
+      </div>
+    </div>
+    <div class="lower-slot chat" aria-hidden="true"></div>
+    <p id="lobby-status" class="source-lobby-status" role="status" aria-atomic="true"></p>
     <dialog id="lobby-quest" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-quest-title" data-state="idle">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-quest-title" class="stage-panel-title">任務清單</h2>
@@ -69,10 +103,30 @@ function displayProfile(view, playerId, avatar) {
   for (const [field, value] of Object.entries(fields)) {
     view.querySelector(`#lobby-${field}`).textContent = value ?? '—';
   }
+  view.querySelector('#lobby-level-label').hidden = !Number.isSafeInteger(level);
+  view.querySelector('#lobby-avatar-name').title = name ?? '';
   const firstDeck = questDecks?.find(deck => deck.index === 1);
   if (typeof firstDeck?.name === 'string' && firstDeck.name.trim()) {
     view.querySelector('#lobby-deck-name').textContent = firstDeck.name;
-    view.querySelector('#lobby-deck-row').hidden = false;
+  }
+}
+
+async function displayExperienceTarget(view, { level, exp }, signal) {
+  if (!Number.isSafeInteger(level) || level < 1 || !Number.isSafeInteger(exp)) return;
+  try {
+    const response = await fetch('/source-login/avatar-levels.json', {
+      redirect: 'error',
+      signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
+    });
+    if (!response.ok) return;
+    const { levelMax, thresholds } = await response.json();
+    if (signal.aborted || !Number.isSafeInteger(levelMax) || levelMax < 1) return;
+    const target = level >= levelMax ? 0 : thresholds?.[level];
+    if (Number.isSafeInteger(target) && target >= 0) {
+      view.querySelector('#lobby-exp-next').textContent = `/${target || '-----'}`;
+    }
+  } catch {
+    // The current experience value is available even without the original table.
   }
 }
 
@@ -236,6 +290,10 @@ export function mountLobby(host, { session, onLogout }) {
   }, { signal });
 
   host.append(view);
+  void renderLobbyAvatar(view.querySelector('#lobby-avatar'), avatar.equippedPartIds, { signal }).catch(() => {
+    // The portrait renderer marks its own failure; the signed-in view remains usable.
+  });
+  void displayExperienceTarget(view, avatar, signal);
   title.focus({ preventScroll: true });
   void requestNews().then(available => {
     if (available && !newsSeen.has(session.playerId) && document.activeElement === title) openNews();

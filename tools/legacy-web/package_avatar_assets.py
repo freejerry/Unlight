@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 
 
 REPO = Path(__file__).resolve().parents[2]
-MANIFEST = REPO / "source-login/avatar-loadouts.json"
+MANIFEST = REPO / "source-login/avatar-catalog.json"
 PART_DIRECTORY = "public/image/avatar_parts"
 PART_NAME = re.compile(r"[A-Za-z0-9_]+_p[0-9]+")
 
@@ -38,12 +38,8 @@ def part_paths(manifest):
     return {f"{PART_DIRECTORY}/{name}.swf" for name in names}
 
 
-def asset_objects(mirror, manifest, referred):
-    rig = manifest["rig"]["path"]
-    license_path = manifest["assetLicense"]["originalPath"]
-    desired = referred | {rig, license_path}
-    tree = git_mirror(mirror, "ls-tree", "-r", "-z", manifest["assetRevision"], "--",
-                      PART_DIRECTORY, rig, license_path)
+def asset_objects(mirror, revision, desired, rig, license_path):
+    tree = git_mirror(mirror, "ls-tree", "-r", "-z", revision, "--", PART_DIRECTORY, rig, license_path)
     objects = {}
     for entry in tree.split(b"\0"):
         if not entry:
@@ -53,8 +49,6 @@ def asset_objects(mirror, manifest, referred):
         path = name.decode()
         if kind == b"blob" and mode in (b"100644", b"100755") and path in desired:
             objects[path] = oid
-    if sorted(desired - objects.keys()) != manifest["coverage"]["missingSwfPaths"]:
-        raise ValueError("The pinned source asset set differs from the manifest")
     return dict(sorted(objects.items()))
 
 
@@ -75,11 +69,15 @@ def read_originals(mirror, objects):
 
 def package(mirror, destination):
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    objects = asset_objects(mirror, manifest, part_paths(manifest))
+    rig = manifest["rig"]["path"]
     license_path = manifest["assetLicense"]["originalPath"]
+    desired = part_paths(manifest) | {rig, license_path}
+    objects = asset_objects(mirror, manifest["assetRevision"], desired, rig, license_path)
+    if sorted(desired - objects.keys()) != manifest["coverage"]["missingSwfPaths"]:
+        raise ValueError("The pinned source asset set differs from the manifest")
     pinned = {**manifest["assets"], license_path: manifest["assetLicense"]}
-    if not pinned.keys() <= objects.keys():
-        raise ValueError("One of the required sample assets is unavailable")
+    if pinned.keys() != objects.keys():
+        raise ValueError("The catalog does not pin the full original asset set")
 
     target = destination / "avatar-assets"
     if target.exists():
@@ -90,7 +88,8 @@ def package(mirror, destination):
         temporary = Path(scratch)
         for path, original in read_originals(mirror, objects):
             digest = sha256(original).hexdigest()
-            if path in pinned and (digest != pinned[path]["sha256"] or len(original) != pinned[path]["bytes"]):
+            expected = pinned[path]
+            if digest != expected["sha256"] or len(original) != expected["bytes"]:
                 raise ValueError(f"Original bytes do not match the manifest: {path}")
             output = temporary / path
             output.parent.mkdir(parents=True, exist_ok=True)

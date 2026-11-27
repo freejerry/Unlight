@@ -1,4 +1,5 @@
 const MAX_ID_LIST_BYTES = 4096;
+const MAX_PART_LIST_BYTES = 64 * 1024;
 const MAX_CARD_LIST_BYTES = 1024 * 1024;
 const MIN_INT32 = -0x80000000;
 const MAX_INT32 = 0x7fffffff;
@@ -12,6 +13,7 @@ const REFILL_ORIENTATION_BITS = 32;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
 const SEARCH_BASE_SECONDS = 3 * 60; // QFT_SET[1] in the original Quest service.
+const EQUIPPED_PART = 1; // Original PartInventory APS_USED bit.
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
@@ -108,7 +110,9 @@ const settlementFields = {
 
 // Order from DataCommand.scAvatarInfo. Length-prefixed fields can span inflated chunks.
 const fields = [
-  4, skipString, 12 * 4, ...skipStrings(4), // Avatar header and parts.
+  4, skipString, 11 * 4, // Avatar header.
+  { key: 'partCount', width: 4 }, optionalList('partInventoryIds', MAX_PART_LIST_BYTES),
+  optionalList('partIds', MAX_PART_LIST_BYTES), optionalList('partUsage', MAX_PART_LIST_BYTES), skipString,
   ...skipGroup(3), // Items.
   { key: 'deckCount', width: 4 }, optionalList('deckNames'), ...skipStrings(3),
   optionalList('deckStatuses'), ...skipStrings(2),
@@ -134,6 +138,22 @@ function integerList(csv, signed = false) {
   const list = csv.split(',').map(Number);
   if (!list.every(Number.isSafeInteger)) throw new Error('Quest list value exceeds bounds.');
   return list;
+}
+
+function readEquippedPartIds({ partCount, partInventoryIds, partIds, partUsage }) {
+  if (!Number.isInteger(partCount) || partCount < 0 || [partInventoryIds, partIds, partUsage].includes(undefined)) {
+    return null;
+  }
+  const inventoryIds = integerList(partInventoryIds);
+  const ids = integerList(partIds);
+  const usage = integerList(partUsage);
+  if ([inventoryIds, ids, usage].some((list) => list.length !== partCount)
+    || new Set(inventoryIds).size !== partCount
+    || [inventoryIds, ids].some((list) => list.some((id) => id <= 0 || id > MAX_INT32))
+    || usage.some((bits) => bits > MAX_INT32)) {
+    return null;
+  }
+  return Object.freeze(ids.filter((_, index) => (usage[index] & EQUIPPED_PART) === EQUIPPED_PART));
 }
 
 function readDeckLists(values) {
@@ -687,7 +707,7 @@ export function createQuestDataReader() {
         try {
           values[field.key] = text.decode(buffer);
         } catch {
-          // Invalid optional deck metadata does not invalidate the quest inventory.
+          // Invalid optional metadata does not invalidate the quest inventory.
         }
       } else values[field.key] = integerList(text.decode(buffer), field.signed);
     }
@@ -706,6 +726,13 @@ export function createQuestDataReader() {
         offset += length;
         left -= length;
         if (left === 0) finishField();
+      }
+    },
+    equippedPartIds() {
+      try {
+        return readEquippedPartIds(values);
+      } catch {
+        return null;
       }
     },
     deckChoices() {

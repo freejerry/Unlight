@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from secrets import token_hex
 from time import monotonic
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -17,9 +17,10 @@ from check_native_session import command_ids, ensure_no_password, frames_for, ve
 
 ENTRY = "/source-login/"
 SESSION_PORTS = {"/socket/12001", "/socket/12002", "/socket/12003", "/socket/12020"}
-STARTER_PARTS = (1, 5, 24, 27)
+STARTER_CHOICES = ((1, 5, 24, 27), (2, 17, 26, 37))
 STARTER_CARD = 21
 TIMEOUT = 16000
+LOBBY_ART = {"ap", "background", "entrances", "favorite", "friend", "item", "ranking", "record", "status"}
 
 
 def query(database, statement, *parameters):
@@ -76,7 +77,14 @@ def wait_logout(page, live, database, name, player_id):
         page.wait_for_timeout(50)
 
 
-def verify_starter(database, avatar_id):
+def equipped_parts(database, avatar_id):
+    return [part_id for (part_id,) in query(database, """
+        SELECT avatar_part_id FROM part_inventories
+        WHERE avatar_id = ? AND (used & 1) = 1 ORDER BY id
+    """, avatar_id)]
+
+
+def verify_starter(database, avatar_id, selected_parts):
     decks = dict(query(database, "SELECT name, id FROM chara_card_decks WHERE avatar_id = ?", avatar_id))
     assert set(decks) == {"Binder", "Deck 1", "Deck 2", "Deck 3"}
     starter = query(database, """
@@ -84,8 +92,60 @@ def verify_starter(database, avatar_id):
         WHERE chara_card_deck_id = ? ORDER BY position
     """, decks["Deck 1"])
     assert starter == [(STARTER_CARD, 0)], "The original first deck does not contain the chosen starter"
-    parts = query(database, "SELECT avatar_part_id FROM part_inventories WHERE avatar_id = ? AND used = 1", avatar_id)
-    assert set(STARTER_PARTS) <= {part_id for (part_id,) in parts}
+    assert equipped_parts(database, avatar_id) == [*selected_parts, 42, 43]
+
+
+def check_avatar_assets(responses, parts):
+    by_path = {urlsplit(response.url).path: response for response in responses}
+    art = {Path(path).stem: response for path, response in by_path.items() if "/lobby-art/" in path}
+    assert set(art) == LOBBY_ART, sorted(art)
+    catalog = by_path["/source-login/avatar-catalog.json"]
+    wardrobe = by_path["/source-login/avatar-wardrobe/index.json"]
+    assert catalog.ok and wardrobe.ok
+    definitions = catalog.json()["parts"]
+    index = wardrobe.json()
+    sheets = index["sheets"]
+    expected = set()
+    layers = 0
+    for part_id in parts:
+        for layer in definitions[str(part_id)]["layers"]:
+            clip = index["parts"][Path(layer["path"]).stem]
+            if clip["width"] == clip["height"] == 0:
+                continue
+            layers += 1
+            sheet = sheets[int(clip["sheet"])] if isinstance(sheets, list) else sheets[str(clip["sheet"])]
+            expected.add(urlsplit(urljoin(wardrobe.url, sheet["file"])).path)
+    actual = {path: response for path, response in by_path.items()
+              if "/avatar-wardrobe/" in path and path.endswith(".png")}
+    assert actual.keys() == expected, (sorted(actual), sorted(expected))
+    assert all(response.ok and response.headers["content-type"].split(";")[0] == "image/png"
+               for response in [*art.values(), *actual.values()])
+    return layers
+
+
+def check_avatar_canvas(page, stage, parts, responses):
+    canvas = page.locator("#post-login #lobby-avatar")
+    expect(canvas).to_have_attribute("data-avatar-state", "ready", timeout=TIMEOUT)
+    expect(canvas).to_have_attribute("data-avatar-parts", ",".join(map(str, parts)))
+    expected_layers = check_avatar_assets(responses, parts)
+    assert expected_layers > 0
+    expect(canvas).to_have_attribute("data-avatar-layers", str(expected_layers))
+    assert canvas.get_attribute("data-avatar-missing-parts") is None
+    art = canvas.bounding_box()
+    stage_box = stage.bounding_box()
+    assert (art["x"] - stage_box["x"], art["y"] - stage_box["y"], art["width"], art["height"]) == (489, 230, 290, 450), art
+    return canvas.evaluate("""async image => {
+      if (image.width !== 290 || image.height !== 450) throw new Error('Invalid source canvas size');
+      const { data } = image.getContext('2d').getImageData(0, 0, image.width, image.height);
+      let transparent = 0, drawn = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i]) drawn++;
+        else transparent++;
+      }
+      if (drawn === 0 || transparent === 0) throw new Error('Missing composed avatar silhouette');
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }""")
 
 
 def check_lobby(page, player_id, profile):
@@ -99,6 +159,7 @@ def check_lobby(page, player_id, profile):
     expect(page.locator("#lobby-avatar-id")).to_be_hidden()
     expect(page.locator("#lobby-deck-name")).to_have_text("Deck 1")
     expect(page.locator("#lobby-energy")).to_have_text(re.compile(rf"{energy}\s*[/／]\s*{energy_max}"))
+    expect(page.locator("#lobby-exp-next")).to_have_text("/10")
     entries = page.locator("#lobby-entries")
     quest_entry = entries.get_by_role("button", name="任務", exact=True)
     news_entry = entries.get_by_role("button", name="最新消息", exact=True)
@@ -109,9 +170,10 @@ def check_lobby(page, player_id, profile):
     news = news_entry.bounding_box()
     logout = page.locator("#lobby-logout").bounding_box()
     status = page.locator("#lobby-profile").bounding_box()
-    assert (quest["x"] + quest["width"] / 2 - shell["x"], quest["y"] + quest["height"] / 2 - shell["y"]) == (460, 245), quest
-    assert news["x"] + news["width"] <= logout["x"] and news["y"] - shell["y"] == 12, news
-    assert (status["x"] - shell["x"], status["y"] - shell["y"], status["width"], status["height"]) == (20, 596, 740, 64), status
+    center = (quest["x"] + quest["width"] / 2 - shell["x"], quest["y"] + quest["height"] / 2 - shell["y"])
+    assert center == (464, 240) and (quest["width"], quest["height"]) == (156, 156), quest
+    assert news["x"] + news["width"] <= logout["x"] and news["y"] - shell["y"] == 3, news
+    assert (status["x"] - shell["x"], status["y"] - shell["y"], status["width"], status["height"]) == (0, 660, 760, 20), status
 
 
 def check_lobby_dialogs(page, stage, directory):
@@ -153,14 +215,15 @@ def check_lobby_dialogs(page, stage, directory):
     expect(news_open).to_be_focused()
 
 
-def check(page, origin, database, directory):
+def check(page, origin, database, directory, selected_parts):
     name = "flowqa" + token_hex(5)
     password = token_hex(8)
     avatar_name = "夜行者" + token_hex(3).translate(str.maketrans("0123456789abcdef", "零一二三四五六七八九甲乙丙丁戊己"))
     assert not player(database, name)
     _, sockets, errors = observe(page)
-    requests, live = [], []
+    requests, responses, live = [], [], []
     page.on("request", lambda request: requests.append(request))
+    page.on("response", lambda response: responses.append(response))
     page.on("websocket", lambda socket: live.append(socket))
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
@@ -220,7 +283,7 @@ def check(page, origin, database, directory):
     page.locator("#onboarding-next").click()
     expect(onboarding).to_have_attribute("data-step", "appearance", timeout=TIMEOUT)
     assert not avatar(database, player_id), "A name check created the avatar"
-    for index, part in enumerate(STARTER_PARTS):
+    for index, part in enumerate(selected_parts):
         page.locator(f"#onboarding-part-{index}").select_option(str(part))
         preview = page.locator(f"#onboarding-preview-{index}")
         expect(preview).to_have_attribute("src", f"/source-login/assets/starter-parts/{part}")
@@ -242,7 +305,7 @@ def check(page, origin, database, directory):
     expect(onboarding).to_have_attribute("data-chapter", "0")
     (profile,) = avatar(database, player_id)
     assert profile[1] == avatar_name
-    verify_starter(database, profile[0])
+    verify_starter(database, profile[0], selected_parts)
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     music(page, "bgm011.mp3")
     capture(stage, directory, "07-avatar-created-guidance.png")
@@ -257,6 +320,10 @@ def check(page, origin, database, directory):
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
     check_lobby_dialogs(page, stage, directory)
+    first_portrait = check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses)
+    assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
+        "lobby-logout", "lobby-news-open", "lobby-quest-load",
+    ]
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
     music(page, "ulbgm02.mp3")
@@ -283,15 +350,18 @@ def check(page, origin, database, directory):
     assert "onboarding" not in page.evaluate("window.reloginScreens")
     active_session_traffic(sockets, live, second, player_id)
     assert avatar(database, player_id) == [profile]
-    verify_starter(database, profile[0])
+    verify_starter(database, profile[0], selected_parts)
+    assert check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses) == first_portrait
     music(page, "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
     page.locator("#lobby-logout").click()
     screen(stage, "title")
     wait_logout(page, live, database, name, player_id)
     assert page.url == origin + ENTRY and not errors, errors
+    assert [request.url for request in requests if request.resource_type == "document"] == [origin + ENTRY]
     assert all(urlsplit(request.url).netloc == urlsplit(origin).netloc for request in requests)
     ensure_no_password(requests, sockets, [password])
+    return first_portrait
 
 
 def main():
@@ -302,19 +372,26 @@ def main():
     parser.add_argument("--screens", type=Path, help="Save verified 780×680 screenshots in this directory")
     parser.add_argument("--chromium", default="/usr/bin/chromium")
     args = parser.parse_args()
-    if args.screens is not None:
-        args.screens.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
             "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
         ])
+        portraits = []
         try:
-            page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1)
-            page.emulate_media(reduced_motion="reduce")
-            check(page, f"http://127.0.0.1:{args.port}", args.database, args.screens)
+            for number, selected_parts in enumerate(STARTER_CHOICES, 1):
+                directory = args.screens / f"avatar-{number}" if args.screens is not None else None
+                if directory is not None:
+                    directory.mkdir(parents=True, exist_ok=True)
+                page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
+                                        reduced_motion="reduce")
+                try:
+                    portraits.append(check(page, f"http://127.0.0.1:{args.port}", args.database, directory, selected_parts))
+                finally:
+                    page.close()
         finally:
             browser.close()
-    print("Real account creation, guided avatar setup, starter inventory, live lobby and direct relogin passed.")
+    assert len(set(portraits)) == len(STARTER_CHOICES), "Distinct equipped IDs rendered the same avatar"
+    print("Real account creation, guided avatar setup, distinct equipped lobby art and direct relogin passed.")
 
 
 if __name__ == "__main__":

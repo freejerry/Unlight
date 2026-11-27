@@ -64,14 +64,8 @@ Logo 向量直接按原版舞台中的尺寸與位置光柵化。WebGL 在開啟
 
 程式來源依本倉庫的 [MIT 授權](../LICENSE)。原版美術 © CPA。素材原檔來自上述素材鏡像，依 [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/) 使用。登入文字載入歷史 `nbr.ttf` 原檔，檔內標示 Bradley Gratis、Justin Callaghan 與公有領域授權。[歷史字型來源](https://github.com/UnlightCloud/shell/tree/4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc/res/data)
 
-## 大廳素材預覽
+## 登入後的大廳素材
 
-大廳預覽是獨立的 780 × 680 頁面。在倉庫根目錄用靜態 HTTP 開啟即可。`/lobby-layout.html` 顯示初始外觀，`/lobby-layout.html?avatar=equipped` 顯示替換裝備。
+從 `/source-login/` 登入後，大廳在同一個 780 × 680 舞台繪製。虛擬人物讀取 Ruby Data 或 Lobby 傳回的實際已裝備部件，依原版圖層順序、骨架定位及色彩倍率合成。原始的 290 × 450 快取、入場位移與淡入都使用原版設定。[AvatarClip](../app/client/src/view/scene/common/AvatarClip.as#L184) · [原始大廳素材清單](lobby-art/sources.json)
 
-```sh
-python3 -m http.server 8080 --bind 127.0.0.1 --directory source-login
-```
-
-虛擬人物依原版裝備圖層順序、骨架定位及色彩倍率在瀏覽器合成。原版的 290 × 450 快取與入場位移、淡入套用於預覽。`avatar-rendered` 包含兩套樣本的透明圖層，`avatar-loadouts.json` 記錄原始部件、定位與缺檔。來源鏡像的 19 個缺檔均位於這兩套樣本之外。[AvatarClip](../app/client/src/view/scene/common/AvatarClip.as#L184) · [原始大廳素材清單](lobby-art/sources.json)
-
-`package_avatar_assets.py` 從固定素材版本封裝所有現有的原始部件和骨架。重新輸出樣本圖層時，可用 Flex 3.6 編譯 `AvatarAssetExport.as`，將該 SWF 及 Ruffle 0.8 的解壓目錄傳給 `export_lobby_avatar.py`。頁面以 PNG 快取合成。[原檔封裝工具](../tools/legacy-web/package_avatar_assets.py) · [離線圖層輸出工具](../tools/legacy-web/export_lobby_avatar.py)
+`avatar-catalog.json` 記錄原始部件、定位與缺檔，`avatar-wardrobe` 保存瀏覽器使用的 PNG 圖集。若某件裝備的來源缺失，大廳仍可顯示其他可用部件。`package_avatar_assets.py` 可從固定素材版本封裝原始部件及骨架。重新輸出圖層時，可用 Flex 3.6 編譯 `AvatarAssetExport.as`，並將該 SWF 及 Ruffle 0.8 的解壓目錄傳給 `export_lobby_avatar.py`。[原檔封裝工具](../tools/legacy-web/package_avatar_assets.py) · [離線圖層輸出工具](../tools/legacy-web/export_lobby_avatar.py)

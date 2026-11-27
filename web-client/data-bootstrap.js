@@ -34,12 +34,13 @@ function starterIds(list) {
 }
 
 async function readAvatar(compressed, signal, includeDeckCollection = false) {
-  // Keep the fixed-size avatar header and selected deck and quest fields only.
+  // Keep the fixed-size avatar header and selected appearance, deck and quest fields only.
   const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 5 * 4);
   let prefixLength = 0;
   let total = 0;
   let reader;
   let quests = createQuestDataReader();
+  let equippedPartIds = null;
   const cancel = () => {
     void reader?.cancel().catch(() => {});
   };
@@ -72,7 +73,8 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
         try {
           quests?.push(value);
         } catch {
-          quests?.dispose();
+          equippedPartIds = quests.equippedPartIds();
+          quests.dispose();
           quests = null;
         }
       } finally {
@@ -89,6 +91,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       level: fields.int(),
       energy: fields.int(),
       energyMax: fields.int(),
+      equippedPartIds: quests?.equippedPartIds() ?? equippedPartIds,
       questDecks: quests?.deckChoices() ?? [],
     };
     if (avatar.id < 1) throw new Error('Invalid avatar ID.');
