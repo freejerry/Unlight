@@ -1,4 +1,4 @@
-"use strict";
+import { relayURL } from "./protocol.mjs";
 
 const launch = document.querySelector("#launch");
 const start = document.querySelector("#start");
@@ -33,7 +33,7 @@ start.addEventListener("click", async () => {
       socketProxy: serverPorts.map(port => ({
         host: "127.0.0.1",
         port,
-        proxyUrl: new URL("/socket/" + port, location.href.replace(/^http/, "ws")).href,
+        proxyUrl: relayURL(port),
       })),
     });
     launch.hidden = true;

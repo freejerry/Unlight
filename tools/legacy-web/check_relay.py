@@ -6,9 +6,6 @@ import asyncio
 import struct
 import sys
 
-from aiohttp import ClientSession, ClientTimeout, WSMsgType, WSServerHandshakeError
-
-
 SERVICES = (
     ("Auth", 12001, 6, 7),
     ("Lobby", 12002, 3, 35),
@@ -20,6 +17,8 @@ SERVICES = (
 
 
 async def check_service(session, origin, port, ping, pong):
+    from aiohttp import WSMsgType, WSServerHandshakeError
+
     try:
         async with session.ws_connect(f"{origin}/socket/{port}", origin=origin) as relay:
             await relay.send_bytes(struct.pack("!HH", 2, ping) + b"\n")
@@ -40,6 +39,8 @@ async def check_service(session, origin, port, ping, pong):
 
 
 async def main(port):
+    from aiohttp import ClientSession, ClientTimeout, WSServerHandshakeError
+
     origin = f"http://127.0.0.1:{port}"
     all_passed = True
     async with ClientSession(timeout=ClientTimeout(total=6)) as session:

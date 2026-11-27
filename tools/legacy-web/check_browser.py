@@ -7,6 +7,8 @@ from tempfile import TemporaryDirectory
 
 from playwright.sync_api import expect, sync_playwright
 
+from check_relay import SERVICES
+
 
 TITLE_BGM = "/public/sound/bgm/ulbgm01.mp3"
 
@@ -85,6 +87,47 @@ def check_no_webgl(browser, url):
     print("The launcher reports missing WebGL 2 and supports retry.")
 
 
+def check_native_relay(browser, url):
+    page = browser.new_page()
+    page.route("**/ruffle/**", lambda route: route.abort())
+    page.goto(url)
+    page.evaluate("""async (services) => {
+      const { encodeClientFrame, relayURL, ServerFrameDecoder } = await import('/protocol.mjs');
+      await Promise.all(services.map(([name, port, ping, pong]) => new Promise((resolve, reject) => {
+        const socket = new WebSocket(relayURL(port));
+        socket.binaryType = 'arraybuffer';
+        const decoder = new ServerFrameDecoder();
+        const timer = setTimeout(() => finish(new Error(`${name}: response timed out`)), 5000);
+
+        function finish(error) {
+          clearTimeout(timer);
+          socket.onclose = null;
+          socket.close();
+          if (error) reject(error);
+          else resolve();
+        }
+
+        socket.onopen = () => socket.send(encodeClientFrame(Uint8Array.of(0, ping)));
+        socket.onerror = () => finish(new Error(`${name}: WebSocket failed`));
+        socket.onclose = () => finish(new Error(`${name}: WebSocket closed early`));
+        socket.onmessage = ({ data }) => {
+          try {
+            const [payload] = decoder.push(new Uint8Array(data));
+            if (!payload) return;
+            if (payload.length !== 2 || payload[0] !== 0 || payload[1] !== pong) {
+              throw new Error(`${name}: incorrect KeepAlive response`);
+            }
+            finish();
+          } catch (error) {
+            finish(error);
+          }
+        };
+      })));
+    }""", SERVICES)
+    page.close()
+    print("Native browser WebSockets received all six legacy KeepAlive responses.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chromium", default="/usr/bin/chromium")
@@ -103,6 +146,7 @@ def main():
             env=dict(os.environ, XDG_CONFIG_HOME=profile, XDG_CACHE_HOME=profile),
         )
         try:
+            check_native_relay(browser, url)
             check_title(browser, url, options.screenshot)
             check_no_webgl(browser, url)
         finally:

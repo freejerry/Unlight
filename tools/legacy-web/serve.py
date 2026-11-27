@@ -131,7 +131,7 @@ def create_app(client, assets, ruffle, listen_port, server_offset, preview_origi
     app = web.Application()
     app.on_response_prepare.append(add_headers)
     app.router.add_get("/", serve_file(ROOT / "index.html"))
-    for filename in ("player.css", "player.js"):
+    for filename in ("player.css", "player.js", "protocol.mjs"):
         app.router.add_get(f"/{filename}", serve_file(ROOT / filename))
     app.router.add_get("/Unlight.swf", serve_file(client))
     app.router.add_get("/public/config.xml", config)
