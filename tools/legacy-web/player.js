@@ -4,6 +4,9 @@ const launch = document.querySelector("#launch");
 const start = document.querySelector("#start");
 const status = document.querySelector("#status");
 const serverPorts = [12001, 12002, 12003, 12004, 12005, 12020];
+const tcnDeviceFont = document.querySelector('meta[name="unlight-tcn-device-font"]')?.content;
+// The historical font's internal full name is the name Ruffle registers.
+const tcnFamilies = ["cwTeX 明體", "Noto Sans"];
 
 start.addEventListener("click", async () => {
   start.disabled = true;
@@ -30,6 +33,17 @@ start.addEventListener("click", async () => {
       allowScriptAccess: false,
       openUrlMode: "deny",
       upgradeToHttps: false,
+      ...(tcnDeviceFont ? {
+        fontSources: [tcnDeviceFont],
+        defaultFonts: {
+          sans: tcnFamilies,
+          serif: tcnFamilies,
+          typewriter: tcnFamilies,
+          japaneseMincho: tcnFamilies,
+          japaneseGothic: tcnFamilies,
+          japaneseGothicMono: tcnFamilies,
+        },
+      } : {}),
       socketProxy: serverPorts.map(port => ({
         host: "127.0.0.1",
         port,

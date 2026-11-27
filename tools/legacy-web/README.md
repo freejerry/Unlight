@@ -20,6 +20,10 @@ python3 tools/legacy-web/serve.py \
 
 在執行該指令的機器上開啟 `http://127.0.0.1:4330/`。原 Flash 設定保留舊協定埠，瀏覽器透過同一個 HTTP 服務的 WebSocket 接到實際 Ruby TCP 埠。其他配置可指定 `--server-offset`。相容 SWF 的 `ExternalInterface` 檢查會略過舊 debug 主控台寫入。選用 `wgpu-webgl` 以支援原版需要的離屏 `BitmapData.draw`。
 
+有既有的繁中公告檔時，可加上 `--news /path/to/news.xml`，讓原版登入後的「最新消息」讀取該檔。服務會原樣提供 XML，預設沿用版本庫內的歷史日文範例。[原版公告讀取程式](../../app/client/lib/News.as)
+
+若要檢查原版裝置字型的缺字，可在同一指令加上 `--tcn-device-font "$unlight_build/app/client/data/cwming.ttf"`。這會使用建置時取得並驗證過的歷史明體，供 Ruffle 繪製裝置文字。這項設定會影響裝置文字的字面尺寸。需保持原版比對條件的測例可沿用預設設定。[字型來源與版本](../legacy-build/README.md#來源版本)
+
 若這個 Codex 環境提供擁有者專用的 HTTP 預覽，可將前端埠加入預覽，再以 `--preview-origin` 傳入回傳的 HTTPS 網址。HTTP 層會監聽所有介面。Ruby 仍使用回環位址，WebSocket 只接受指定來源及同埠的回環來源。歷史驗收工作區只有 SSH 入口，沒有成功建立 Mac 到雲端的轉送。
 
 ### 雲端桌面或本機 Ruffle Desktop
@@ -48,4 +52,4 @@ python3 tools/legacy-web/check_browser.py --port 4330 --chromium /path/to/chromi
 
 軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。標題啟動後會量測約一秒的瀏覽器 `requestAnimationFrame`，輸出回呼次數與間隔的中位數、p95 和最大值。SWF 內的動畫進度另依畫面變化、原版時間軸與音效觸發點驗證。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
 
-雲端 Ruffle Desktop 實際打完「落日大蝙蝠」並看到通關結算。獨立 Chromium 實測登入、大廳、魔女山谷及對戰開場，觀察到 Web Audio 訊號，並確認戰鬥場景載入原始 `bgm000.mp3`。瀏覽器內的單場完整結算、各別戰鬥音效及部分彈窗缺字仍待驗證。[實機畫面與驗收紀錄](../../docs/playtest/README.md)
+雲端 Ruffle Desktop 實際打完「落日大蝙蝠」並看到通關結算。獨立 Chromium 實測到第二回合抽牌，並確認原始 `bgm000.mp3` 和 Web Audio 混音輸出。相容版需要重新編譯才能套用任務列表的內嵌繁中字型。瀏覽器內的單場完整結算、各別戰鬥音效及其他畫面的缺字仍待驗收。[重新建置](../legacy-build/README.md) · [實機畫面與驗收紀錄](../../docs/playtest/README.md)

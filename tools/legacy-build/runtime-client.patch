@@ -6,3 +6,9 @@
              var inspect:Function = function(arg:*, bracket:Boolean = true):String {
                  var className:String = getQualifiedClassName(arg);
                  var str:String;
+--- src/view/scene/quest/QuestItem.as
++++ src/view/scene/quest/QuestItem.as
+@@ -279,2 +279,3 @@
+             _name.height = _NAME_HEIGHT;
++            _name.setStyle("fontFamily", "minchoB");
+             _name.setStyle("color","#AAAAAA");

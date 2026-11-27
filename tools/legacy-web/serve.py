@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 from contextlib import suppress
+from hashlib import sha256
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -27,6 +28,9 @@ NATIVE_ASSETS = {
     "image": "image/rm_shop/item_id020.png",
     "audio": "sound/bgm/ulbgm01.mp3",
 }
+# Historical cwming.ttf pin from tools/legacy-build/build.sh.
+TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
+TCN_FONT_URL = "/tcn-device-font.ttf"
 
 
 def native_asset_files(assets):
@@ -69,10 +73,13 @@ def https_origin(value):
 
 def create_app(
     client, assets, ruffle, listen_port, server_offset,
-    preview_origin=None, direct_sockets=False, *, native=False,
+    preview_origin=None, direct_sockets=False, *, native=False, news=None,
+    tcn_device_font=None,
 ):
     if native and (preview_origin or direct_sockets):
         raise ValueError("native mode uses loopback WebSocket clients")
+    if native and tcn_device_font is not None:
+        raise ValueError("--tcn-device-font is only available in Ruffle mode")
     origins = {f"http://{HOST}:{listen_port}"}
     socket_sources = [f"ws://{HOST}:{listen_port}"]
     if preview_origin:
@@ -191,14 +198,34 @@ def create_app(
         app.router.add_get("/api/assets", assets_info)
         return app
 
-    app.router.add_get("/", serve_file(ROOT / "index.html"))
+    index_path = ROOT / "index.html"
+    if tcn_device_font is None:
+        app.router.add_get("/", serve_file(index_path))
+    else:
+        try:
+            font_bytes = tcn_device_font.read_bytes()
+        except OSError as error:
+            raise ValueError(f"--tcn-device-font must point to a readable cwming.ttf: {error}") from error
+        if sha256(font_bytes).hexdigest() != TCN_FONT_SHA256:
+            raise ValueError("--tcn-device-font must match the pinned historical cwming.ttf SHA-256")
+        font_tag = f'<meta name="unlight-tcn-device-font" content="{TCN_FONT_URL}">'
+        index = index_path.read_text(encoding="utf-8").replace("</head>", f"  {font_tag}\n</head>", 1)
+
+        async def font_index(_request):
+            return web.Response(text=index, content_type="text/html")
+
+        async def device_font(_request):
+            return web.Response(body=font_bytes, content_type="font/ttf")
+
+        app.router.add_get("/", font_index)
+        app.router.add_get(TCN_FONT_URL, device_font)
     for filename in ("player.css", "player.js"):
         app.router.add_get(f"/{filename}", serve_file(ROOT / filename))
     app.router.add_get("/Unlight.swf", serve_file(client))
     app.router.add_get("/public/config.xml", config)
     app.router.add_get(
         "/public/news.xml",
-        serve_file(PUBLIC_CONFIG / "news.xml.orig", {"Content-Type": "application/xml"}),
+        serve_file(news or PUBLIC_CONFIG / "news.xml.orig", {"Content-Type": "application/xml"}),
     )
     app.router.add_get("/public/{filename:.*}", static_asset)
     app.router.add_static("/ruffle/", ruffle)
@@ -210,6 +237,8 @@ def main():
     parser.add_argument("--client", type=Path, help="Compiled Unlight SWF")
     parser.add_argument("--assets", type=Path, help="Original assets' public directory")
     parser.add_argument("--ruffle", type=Path, help="Extracted Ruffle Web release")
+    parser.add_argument("--news", type=Path, help="An existing original-client news.xml feed")
+    parser.add_argument("--tcn-device-font", type=Path, help="Use the pinned historical cwming.ttf for Ruffle device text")
     parser.add_argument("--port", type=int, default=4330, help="HTTP port")
     parser.add_argument("--server-offset", type=int, default=0, help="Offset of legacy TCP ports")
     parser.add_argument("--preview-origin", type=https_origin, help="URL of an authenticated HTTP preview")
@@ -222,10 +251,13 @@ def main():
     if not 0 < args.port <= 65535 or any(not 0 < port + args.server_offset <= 65535 for port in PORTS):
         parser.error("ports must be between 1 and 65535")
     if args.native:
-        if args.client or args.ruffle or args.preview_origin:
-            parser.error("--native accepts --assets but cannot use --client, --ruffle, or --preview-origin")
+        if args.client or args.ruffle or args.preview_origin or args.news:
+            parser.error("--native accepts --assets but cannot use --client, --ruffle, --news, or --preview-origin")
         try:
-            app = create_app(None, args.assets, None, args.port, args.server_offset, native=True)
+            app = create_app(
+                None, args.assets, None, args.port, args.server_offset,
+                native=True, tcn_device_font=args.tcn_device_font,
+            )
         except ValueError as error:
             parser.error(str(error))
     else:
@@ -240,10 +272,22 @@ def main():
             parser.error("--assets must point to the original public assets")
         if not (args.ruffle / "ruffle.js").is_file():
             parser.error("--ruffle must point to an extracted Ruffle Web release")
-        app = create_app(
-            args.client.resolve(), args.assets.resolve(), args.ruffle.resolve(),
-            args.port, args.server_offset, args.preview_origin, args.direct_sockets,
-        )
+        if args.news:
+            try:
+                feed = ElementTree.parse(args.news).getroot()
+            except (OSError, ElementTree.ParseError) as error:
+                parser.error(f"--news must point to a readable news XML file: {error}")
+            if feed.find("news") is None:
+                parser.error("--news XML must have the original client's news element")
+        try:
+            app = create_app(
+                args.client.resolve(), args.assets.resolve(), args.ruffle.resolve(),
+                args.port, args.server_offset, args.preview_origin, args.direct_sockets,
+                news=args.news.resolve() if args.news else None,
+                tcn_device_font=args.tcn_device_font,
+            )
+        except ValueError as error:
+            parser.error(str(error))
     web.run_app(app, host="0.0.0.0" if args.preview_origin else HOST, port=args.port)
 
 

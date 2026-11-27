@@ -10,13 +10,25 @@
 
 ## 瀏覽器 Ruffle
 
-在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳及魔女山谷。從地圖啟動「落日大蝙蝠」後，原版客戶端進入第一回合的抽牌階段，畫面顯示雙方角色及五張手牌。原版標題及戰鬥 BGM 成功載入，並測到 Web Audio 輸出。各別戰鬥音效、瀏覽器版通關結算和部分彈窗的繁中字型仍待核對。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
+在啟用軟體 WebGL 2 的獨立 Chromium 中，驗證標題動畫、登入、大廳及魔女山谷。啟動「落日大蝙蝠」後實際經過抽牌、移動、防禦、擲骰、玩家攻擊和第二回合抽牌。攻擊截圖當下的攻擊力為 0。原版標題及戰鬥 BGM 成功載入，並測到 Web Audio 混音輸出。擲骰和勝利音效檔皆回傳 HTTP 200，屬於戰前預載。個別音效的觸發和瀏覽器通關結算仍待驗收。缺少 WebGL 2 的環境會顯示啟動錯誤並允許重試。[瀏覽器啟動與驗收](../../tools/legacy-web/README.md)
 
 Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯示 780 × 680 的播放器，390 × 844 視窗顯示 390 × 340。兩個播放器都維持原版比例，頁面沒有溢出。這次標題取樣在 1.20 秒收到 9 次瀏覽器畫面回呼，回呼間隔中位數為 175.1 毫秒，p95 與最大值均為 233.3 毫秒。這組結果記錄軟體渲染環境的瀏覽器排程，無法據此驗收 SWF 動畫流暢度。[量測腳本](../../tools/legacy-web/check_browser.py)
 
 [標題](browser/01-browser-title.png) · [大廳](browser/02-browser-lobby.png) · [任務地圖](browser/03-browser-quest.png) · [對戰開場](browser/04-browser-battle.png) · [展示入口標題](browser/05-demo-title.png)
 
-[任務啟動](browser/06-browser-quest-start.png) · [第一回合抽牌](browser/07-browser-draw.png)
+[任務啟動](browser/06-browser-quest-start.png) · [第一回合抽牌](browser/07-browser-draw.png) · [移動](browser/08-browser-move.png) · [玩家攻擊](browser/09-browser-attack.png)
+
+### 畫面驗收項目
+
+| 畫面 | 驗收內容 | 目前觀察 |
+| --- | --- | --- |
+| 標題頁登入表單 | `Name`、`Pass` 和欄位都完整顯示，按鈕可操作 | Web 和桌面 Ruffle 截圖都可見 `Name` 標籤跨到面板淺色區，文字上半部難辨識。播放器外框仍保持 780 × 680 比例。 |
+| 標題頁消息欄 | 標題、面板邊界與內文的排列，視窗改變大小時保持完整 | 目前兩種 Ruffle 的歷史截圖都重現空白消息欄，面板邊界位置相近。原版標題頁的 `NewsPanel.updateNews()` 在此版本沒有呼叫者。 |
+| 登入提示 | 檢查原版錯誤提示的繁中文字 | 空白送出時，預設設定下提示內文是空白。載入原版歷史明體的選用設定後，Chromium 實測顯示「請輸入名字。」。兩種設定的播放器尺寸相同，拉丁裝置文字的字面尺寸略有差異。 |
+| 登入後「最新消息」 | 核對公告內容來源、繁中字形、換行和捲動 | 版本庫預設公告是歷史日文範例。使用既有繁中公告時可指定 `--news`。文字是否完整顯示仍需就實際公告驗收。 |
+| 關卡與戰鬥 | 核對列表名稱、地圖標題、關卡描述和圖片圖層 | 原先魔女山谷的列表名稱空白。相容版指定既有內嵌明體後，已在實際魔女山谷確認「落日大蝙蝠」顯示。其他關卡文字和圖片圖層仍待實測。 |
+
+[標題頁截圖](browser/01-browser-title.png) · [繁中登入提示](browser/11-browser-tcn-alert.png) · [原先空白的列表](browser/03-browser-quest.png) · [修正後的任務名稱](browser/10-browser-quest-name.png) · [登入後公告視窗](../../app/client/src/view/scene/lobby/NoticePanel.as)
 
 ## 原生瀏覽器驗收
 

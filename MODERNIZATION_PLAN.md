@@ -8,6 +8,8 @@
 
 原生登入以同一個隔離帳號對照原版 Flash 畫面的輸入，核對未註冊、錯誤密碼及成功三種認證回應。瀏覽器驗證 Ruby 的 SRP 憑證後，使用同一玩家 ID 完成大廳、資料與全域聊天交握。實測涵蓋登出和重新登入。[登入驗收紀錄](docs/playtest/README.md#原生瀏覽器登入) · [登入截圖](docs/playtest/native/02-native-session.png)
 
+原版相容入口的 Chromium 試玩已進到首場 PvE 的第二回合，並以原有內嵌明體恢復任務列表的繁中名稱。標題登入表單、標題頁消息欄、登入後的最新消息，以及其他關卡文字與圖片圖層各自有畫面驗收紀錄。軟體 WebGL 的標題回呼取樣仍不足以驗收動畫流暢度。[原版畫面驗收](docs/playtest/README.md#畫面驗收項目)
+
 《霧潮航線》位於 `modern/`，是一個獨立的技術試驗，已驗證 Rust／Wasm 回放、Axum、WebSocket 和瀏覽器端出牌流程。[技術試驗](modern/README.md)
 
 舊版 Ruby 後端以 `015d92e4` 啟動在雲端隔離環境，使用獨立 SQLite 與 Memcached。認證、大廳、資料、戰鬥、任務及全域聊天六個服務均通過 KeepAlive。測試副本已匯入 30 張原版資料表，共 54,034 列，並以原版初始化建立 1,614 副 CPU 牌組。[舊版啟動與檢查程式](tools/legacy-server/run.py)
