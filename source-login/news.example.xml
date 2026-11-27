@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XML>
+  <news><![CDATA[
+    <ul>
+      <li><strong>【測試公告】登入驗證</strong><br>此頁供開發環境驗證原始伺服器登入流程。</li>
+      <li><strong>【測試公告】標題畫面維護</strong><br>本次驗收包含標題畫面的素材載入與動態顯示。</li>
+      <li><strong>【測試公告】公告讀取驗證</strong><br>這三則為繁體中文測試資料，供驗證公告欄的版面與內容。</li>
+    </ul>
+  ]]></news>
+</XML>

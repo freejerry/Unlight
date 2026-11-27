@@ -1,8 +1,15 @@
+@font-face {
+  font-family: "Bradley Gratis";
+  src: url("/source-login/fonts/bradley-gratis.ttf") format("truetype");
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   color: #eef3fb;
   background: #141a24;
-  font-family: "Noto Sans TC", "Noto Sans CJK TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --interface-font: "Noto Sans TC", "Noto Sans CJK TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-family: var(--interface-font);
 }
 
 *, *::before { box-sizing: border-box; }
@@ -35,16 +42,21 @@ body { min-inline-size: 780px; margin: 0; }
   font-size: .8125rem;
 }
 
-#login {
+.stage-panel {
   position: absolute;
   isolation: isolate;
+}
+
+#login {
   inset-block-start: 20px;
   inset-inline-start: 500px;
   inline-size: 220px;
   min-block-size: 215px;
 }
 
-#login::before {
+.LoginPanel { font-family: "Bradley Gratis", Georgia, serif; }
+
+.stage-panel::before {
   position: absolute;
   z-index: -1;
   inset: 0;
@@ -55,7 +67,7 @@ body { min-inline-size: 780px; margin: 0; }
   background: linear-gradient(#ececf0 31px, #212e44 31px);
 }
 
-#login-title {
+.stage-panel-title {
   min-block-size: 38px;
   margin: 0;
   padding: 6px 14px 8px;
@@ -64,23 +76,29 @@ body { min-inline-size: 780px; margin: 0; }
   line-height: 1.3;
 }
 
-.login-body { padding: 3px 14px 10px; }
+.LoginPanel .stage-panel-title { font-size: 9px; font-weight: 400; letter-spacing: 2px; }
+
+.login-body { padding: 10px 14px; }
 
 #login-fields {
   display: grid;
-  gap: 6px;
+  gap: 9px;
   min-inline-size: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-#login-fields label {
+.LoginLabel {
   display: grid;
-  gap: 3px;
-  color: #f5f6fa;
-  font-size: .875rem;
+  grid-template-columns: 50px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 1rem;
+  letter-spacing: 1px;
   line-height: 1.3;
+  text-align: center;
 }
 
 #login input {
@@ -92,11 +110,14 @@ body { min-inline-size: 780px; margin: 0; }
   border-radius: 4px;
   background: #f7f8fb;
   color: #171e2a;
-  font: inherit;
-  font-size: 1rem;
+  font: .75rem Arial, sans-serif;
+  letter-spacing: normal;
+  text-align: left;
 }
 
 #login-submit {
+  justify-self: center;
+  inline-size: 80px;
   min-block-size: 34px;
   margin-block-start: 2px;
   padding: 4px 10px;
@@ -105,7 +126,8 @@ body { min-inline-size: 780px; margin: 0; }
   background: #deebf7;
   color: #1e3049;
   font: inherit;
-  font-weight: 750;
+  font-size: 1rem;
+  letter-spacing: 1px;
   cursor: pointer;
 }
 
@@ -116,6 +138,7 @@ body { min-inline-size: 780px; margin: 0; }
 #login-status, #login noscript p {
   margin: 6px 0 0;
   color: #e5edf9;
+  font-family: var(--interface-font);
   font-size: .8rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -125,10 +148,54 @@ body { min-inline-size: 780px; margin: 0; }
 #login-status[data-state="success"] { color: #a8efe0; }
 #login-status[data-state="error"] { color: #ffd1ca; }
 
-#login :focus-visible, .attribution a:focus-visible {
+#login :focus-visible, #news-content:focus-visible, .attribution a:focus-visible {
   outline: 2px solid #ffdf9c;
   outline-offset: 2px;
 }
+
+#news {
+  inset-inline-end: 60px;
+  inset-block-end: 30px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  inline-size: 270px;
+  block-size: 250px;
+}
+
+#news-title {
+  font: 10px/1.3 "Bradley Gratis", Georgia, serif;
+  letter-spacing: 4px;
+}
+
+.news-body {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: 3px 14px 10px;
+  color: #f5f6fa;
+  font-size: .8125rem;
+  line-height: 1.5;
+}
+
+#news-status { margin: 0; }
+#news[data-state="error"] #news-status { color: #ffd1ca; }
+
+#news-content {
+  flex: 1 1 0;
+  min-block-size: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+}
+
+#news-content :is(p, ol, ul) { margin-block: 0 .45rem; }
+#news-content :is(ol, ul) { padding-inline-start: 1.2em; }
+#news-content li + li { margin-block-start: .48rem; }
+
+[data-entry="loading"] > .stage-panel,
+[data-entry="loading"] + .attribution { visibility: hidden; }
+[data-entry="entering"] > .stage-panel,
+[data-entry="entering"] + .attribution { opacity: 0; }
 
 .attribution {
   inline-size: 780px;

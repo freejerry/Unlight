@@ -48,7 +48,12 @@ NATIVE_ASSETS = {
 }
 PANEL_SKIN_URL = "/public/panel_gene.png"
 PANEL_SKIN_SHA256 = "81038be00fa27a1143ac651a789d0a665d51a7be326f322685c7f6cddb85ee3b"
-SOURCE_LOGIN_TITLE_SHA256 = "1beaf454eb37ed427c17efe8c631c95336a6f94c2a577fae9b96a1a755102fe8"
+SOURCE_LOGIN_SWFS = {
+    "data/image/title/event_title.swf": "1beaf454eb37ed427c17efe8c631c95336a6f94c2a577fae9b96a1a755102fe8",
+    "data/image/title/logo.swf": "0d71262469a6c6bb3f27667b97a96bc2d73d108b985e0d5ee5441f4b18178b9d",
+    "data/image/title/loading.swf": "759d3d3472b6af37946400ee31e997be92706f80e14f11bcb92f7d4aefbe3d37",
+    "data/image/ageha.swf": "6057434e0237674ba226dd7b98ee1c9be65eb684ae9a5bf0186a0e28469e0320",
+}
 # Historical cwming.ttf pin from tools/legacy-build/build.sh.
 TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
 TCN_FONT_URL = "/tcn-device-font.ttf"
@@ -318,6 +323,8 @@ def create_app(
         if not native:
             raise ValueError("--source-login-wasm requires --native")
         source_login_wasm = validate_source_login_wasm(source_login_wasm)
+        if news is None:
+            news = SOURCE_LOGIN_ROOT / "news.example.xml"
     if news is not None:
         news = validate_news(news)
     origins = {f"http://{HOST}:{listen_port}"}
@@ -440,14 +447,20 @@ def create_app(
         if panel:
             app.router.add_get(PANEL_SKIN_URL, serve_file(panel))
         if source_login_wasm is not None:
-            title = pinned_native_asset(assets, "data/image/title/event_title.swf", SOURCE_LOGIN_TITLE_SHA256)
-            if title is None or panel is None:
-                raise ValueError("--source-login-wasm requires the pinned title and panel in the original --assets mirror")
+            if panel is None:
+                raise ValueError("--source-login-wasm requires the pinned panel in the original --assets mirror")
+            for filename, digest in SOURCE_LOGIN_SWFS.items():
+                path = pinned_native_asset(assets, filename, digest)
+                if path is None:
+                    raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
+                app.router.add_get(f"/source-login/assets/{Path(filename).name}", serve_file(path))
             app.router.add_get("/source-login/", serve_file(SOURCE_LOGIN_ROOT / "index.html"))
-            for filename in ("style.css", "login.js", "stage.js"):
+            for filename in ("style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js"):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
-            app.router.add_get("/source-login/assets/event_title.swf", serve_file(title))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))
+            app.router.add_get("/source-login/fonts/bradley-gratis.ttf", serve_file(
+                SOURCE_LOGIN_ROOT / "fonts/bradley-gratis.ttf", {"Content-Type": "font/ttf"},
+            ))
             app.router.add_get("/source-login/asset-decoder.wasm", serve_file(
                 source_login_wasm, {"Content-Type": "application/wasm"},
             ))
