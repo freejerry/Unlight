@@ -212,8 +212,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-move .quest-status { flex-basis: 100%; }
 .quest-move-table { flex: 1 1 100%; min-width: 0; padding: .35rem .55rem .48rem; border: 1px solid var(--line); border-radius: .4rem; background: #f2f7f9; color: #2d444f; font-size: .86rem; }
 .quest-move-table h6 { margin-top: 0; }
-.quest-combat { min-width: 0; margin-top: .75rem; padding-top: .2rem; border-top: 1px solid var(--line); }
-.quest-combat-controls, .quest-combat-data { margin-top: .5rem; }
+.quest-combat-data { margin-top: .5rem; }
 .quest-combat-controls > p:first-child, .quest-combat-subtitle { margin-bottom: .28rem; color: #203b46; font-size: .88rem; font-weight: 680; }
 .quest-combat-subtitle span { color: var(--muted); font-weight: 450; }
 .quest-combat-damage { margin: .25rem 0; padding-inline-start: 1.3rem; color: #2d444f; font-size: .9rem; overflow-wrap: anywhere; }
@@ -222,8 +221,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-previous-exchange summary { cursor: pointer; color: #203b46; font-size: .88rem; font-weight: 680; }
 .quest-previous-exchange summary:focus-visible { outline: 2px solid #007f69; outline-offset: 2px; }
 .quest-previous-exchange summary span { margin-inline-start: .25rem; color: var(--muted); font-weight: 450; }
-.quest-settlement { min-width: 0; margin-top: .75rem; padding: .35rem .55rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: #fbfdfd; }
-.quest-settlement h5 { margin-top: .1rem; }
+.quest-settlement { margin-top: .85rem; }
 .quest-settlement h6 { margin: .65rem 0 .28rem; color: #203b46; font-size: .9rem; }
 .quest-settlement .button { max-width: 100%; margin-top: .55rem; white-space: normal; }
 .quest-region, .quest-service { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--line); }
@@ -421,6 +419,63 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-board .quest-move > .primary:hover:not(:disabled) { background: #163e32; }
 .quest-board .quest-move-result > .session-metadata { margin: 0; }
 .quest-board .quest-move-result .session-metadata > div { min-width: 0; border-color: var(--native-edge); background: var(--native-tint); }
+.quest-board-actions:has(> .quest-move-result:not([hidden])) .quest-move { padding: .55rem .75rem; background: var(--native-tint); }
+.quest-board-actions:has(> .quest-move-result:not([hidden])) .quest-move > :is(h6, .quest-board-direction) { display: none; }
+.quest-board-actions:has(> .quest-move-result:not([hidden])) .quest-move:not(:has(#session-quest-move-confirmed-direction[data-direction]:not([data-direction=""]))) { display: none; }
+
+.quest-combat { display: grid; gap: .65rem; }
+.quest-combat-header {
+  padding: .7rem .8rem;
+  border-inline-start: 3px solid #87968d;
+  border-radius: .32rem;
+  background: var(--native-tint);
+}
+.quest-combat-header h6 { margin: 0; color: var(--native-ink); font-size: 1.12rem; }
+.quest-combat-header .quest-status { margin-top: .26rem; line-height: 1.5; }
+.quest-combat[data-role="attack"] .quest-combat-header { border-color: #9b6229; background: #fbefde; }
+.quest-combat[data-role="defense"] .quest-combat-header { border-color: var(--native-action); background: #e9f3ed; }
+.quest-board .quest-combat-controls { display: grid; gap: .4rem; padding: .7rem; border-color: #bdcec2; background: #f0f5ef; }
+.quest-combat-controls > p:first-child { margin: 0; color: var(--native-ink); font-size: .92rem; }
+.quest-combat-controls > .primary { width: 100%; background: var(--native-action); }
+.quest-combat-controls > .primary:hover:not(:disabled) { background: #163e32; }
+.quest-combat-results { min-width: 0; padding: .65rem; border: 1px solid var(--native-edge); border-radius: .45rem; background: var(--native-tint); }
+.quest-combat-results:not(:has(> :not([hidden]))) { display: none; }
+.quest-combat-results > :not([hidden]) ~ :not([hidden]) { margin-top: .6rem; padding-top: .6rem; border-block-start: 1px solid var(--native-edge); }
+.quest-combat-results > :not([hidden]) { margin-top: 0; }
+.quest-combat-subtitle { color: var(--native-ink); }
+.quest-board .quest-combat .quest-hand-piles { grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr)); gap: .45rem; }
+.quest-board .quest-combat .quest-hand-piles > div { padding: .5rem; border: 1px solid var(--native-edge); background: #fff; }
+.quest-board .quest-combat .quest-hand-piles li { background: #fff; }
+.quest-dice-list li[data-value] {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  border-radius: .37rem;
+  color: var(--native-ink);
+  font-weight: 700;
+}
+.quest-combat-damage:has(> li[data-damage]) { margin: .4rem 0 0; padding: 0; list-style: none; }
+.quest-combat-damage > li[data-damage] { padding: .4rem .55rem; border-radius: .35rem; background: #fbebe4; color: #753d32; }
+.quest-combat .session-metadata > div { min-width: 0; border-color: var(--native-edge); background: #fff; }
+.quest-previous-exchange { margin: 0; border-color: var(--native-edge); background: #fff; }
+.quest-previous-exchange summary { min-height: 44px; padding-block: .65rem; overflow-wrap: anywhere; }
+
+.quest-land-progress-summary > div { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem; color: var(--native-muted); font-size: .875rem; }
+.quest-source-details { margin-top: .85rem; padding: 0 .7rem .1rem; border-block-start: 1px solid var(--native-edge); }
+.quest-source-details summary { min-height: 44px; padding-block: .65rem; cursor: pointer; color: var(--native-muted); font-size: .9rem; }
+.quest-source-details summary:focus-visible { outline: 2px solid var(--native-action); outline-offset: 2px; }
+.quest-source-details .session-metadata > div { min-width: 0; overflow-wrap: anywhere; }
+
+.quest-settlement-header { background: #e9f3ed; }
+.quest-settlement-header h5 { margin: 0; color: var(--native-ink); font-size: 1.12rem; }
+.quest-settlement-header .quest-status { margin-top: .3rem; line-height: 1.5; }
+.quest-settlement-metadata { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); max-width: none; }
+.quest-settlement-metadata > div { min-width: 0; border-color: var(--native-edge); background: var(--native-tint); }
+.quest-settlement-metadata > .quest-settlement-outcome { grid-column: 1 / -1; padding: .55rem .7rem; border-color: #aac8b5; background: #edf5ed; }
+.quest-settlement-outcome:has(dd[data-value="1"]) { border-color: #e2baa9; background: #fbebe4; }
+.quest-settlement-outcome dd { color: var(--native-ink); font-size: 1.25rem; }
+.quest-settlement .button { min-height: 44px; }
 
 .quest-next-land { margin-top: .85rem; }
 .quest-next-land h5 { margin: 0; font-size: 1.05rem; }
@@ -443,4 +498,5 @@ main { padding-block: 1.6rem 1.8rem; }
 @media (max-width: 35rem) {
   .native-client .session-fields button { justify-self: stretch; }
   .quest-board .quest-move-card-item .quest-card-label { flex-basis: 100%; }
+  .quest-settlement .button { width: 100%; }
 }

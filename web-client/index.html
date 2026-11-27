@@ -127,32 +127,13 @@
             <div id="session-quest-land-result" class="quest-land-result" hidden>
               <p id="session-quest-land-name" class="quest-land-record-name"></p>
               <p id="session-quest-land-caption" class="quest-original-text" hidden></p>
-              <dl class="session-metadata quest-land-metadata">
-                <div><dt>持有紀錄 ID</dt><dd id="session-quest-land-inventory-id"></dd></div>
-                <div><dt>地形 ID</dt><dd id="session-quest-land-id"></dd></div>
-                <div><dt>伺服器格位</dt><dd id="session-quest-land-slot"></dd></div>
+              <dl class="quest-land-progress-summary">
                 <div id="session-quest-land-progress" hidden><dt>伺服器進度碼</dt><dd></dd></div>
-                <div id="session-quest-land-finish" hidden><dt>任務結算代碼</dt><dd></dd></div>
               </dl>
               <dl id="session-quest-land-reward" class="session-metadata quest-land-reward" aria-label="寶箱收據" hidden>
                 <div><dt>獲得 Gem</dt><dd id="session-quest-land-reward-gems"></dd></div>
                 <div><dt>Gem 餘額</dt><dd id="session-quest-land-gem-balance"></dd></div>
               </dl>
-              <section id="session-quest-land-encounter" class="quest-land-battle" aria-labelledby="session-quest-land-encounter-title" hidden>
-                <h5 id="session-quest-land-encounter-title">戰鬥開場</h5>
-                <dl id="session-quest-land-duel" class="session-metadata quest-land-metadata">
-                  <div><dt>我方角色卡 ID</dt><dd data-field="playerCardIds"></dd></div>
-                  <div><dt>對手角色卡 ID</dt><dd data-field="opponentCardIds"></dd></div>
-                  <div><dt>戰鬥場景代碼</dt><dd data-field="stage"></dd></div>
-                  <div><dt>我方既有傷害</dt><dd data-field="playerDamage"></dd></div>
-                  <div><dt>對手既有傷害</dt><dd data-field="opponentDamage"></dd></div>
-                  <div><dt>行動牌組張數</dt><dd data-field="deckSize"></dd></div>
-                  <div><dt>我方事件牌組張數</dt><dd data-field="playerEventDeckSize"></dd></div>
-                  <div><dt>對手事件牌組張數</dt><dd data-field="opponentEventDeckSize"></dd></div>
-                  <div><dt>初始距離代碼</dt><dd data-field="distance"></dd></div>
-                  <div><dt>多角色旗標</dt><dd data-field="multi"></dd></div>
-                </dl>
-              </section>
               <section id="session-quest-battle" class="quest-first-turn native-surface" aria-labelledby="session-quest-battle-title" hidden>
                 <header class="native-surface-header quest-board-header">
                   <div class="quest-board-heading">
@@ -167,8 +148,9 @@
                 </header>
                 <div class="native-surface-body quest-board-body">
                   <dl id="session-quest-active-character" class="session-metadata quest-land-metadata" aria-label="伺服器確認的我方出戰角色" hidden>
-                    <div><dt>我方出戰欄位代碼</dt><dd id="session-quest-active-slot"></dd></div>
-                    <div><dt>我方出戰角色卡 ID</dt><dd id="session-quest-active-card"></dd></div>
+                    <div><dt>出戰欄位</dt><dd id="session-quest-active-slot"></dd></div>
+                    <div><dt>我方角色卡</dt><dd id="session-quest-active-card"></dd></div>
+                    <div hidden><dt>生命值</dt><dd id="session-quest-active-hp"></dd></div>
                   </dl>
                   <p id="session-quest-character-last" class="quest-status" role="status" hidden></p>
                   <section id="session-quest-character-change" class="quest-character-switch" aria-labelledby="session-quest-character-title" hidden>
@@ -195,6 +177,45 @@
                       </div>
                     </section>
                     <div id="session-quest-board-actions" class="quest-board-actions">
+                      <section id="session-quest-combat" class="quest-combat quest-board-pane" aria-labelledby="session-quest-combat-title" hidden>
+                        <header class="quest-combat-header">
+                          <h6 id="session-quest-combat-title">攻防</h6>
+                          <p id="session-quest-combat-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                        </header>
+                        <div id="session-quest-combat-controls" class="quest-move-table quest-combat-controls" hidden>
+                          <p>已選攻防卡片</p>
+                          <p id="session-quest-combat-cards-empty" class="quest-status">尚未選取卡片。</p>
+                          <ol id="session-quest-combat-cards" class="quest-hand-cards" aria-label="已選攻防卡片" role="list"></ol>
+                          <button id="session-quest-combat-commit" class="button primary" type="button" aria-controls="session-quest-combat-reveal session-quest-combat-dice session-quest-combat-damage-detail" disabled>空手送出</button>
+                        </div>
+                        <div class="quest-combat-results">
+                          <div id="session-quest-combat-reveal" class="quest-combat-data" hidden>
+                            <p class="quest-combat-subtitle">公開卡片</p>
+                            <div class="quest-hand-piles">
+                              <div><p>我方</p><p id="session-quest-combat-player-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-player-cards" class="quest-hand-cards" aria-label="我方公開卡片" role="list"></ol></div>
+                              <div><p>對手</p><p id="session-quest-combat-opponent-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-opponent-cards" class="quest-hand-cards" aria-label="對手公開卡片" role="list"></ol></div>
+                            </div>
+                          </div>
+                          <div id="session-quest-combat-dice" class="quest-combat-data" hidden>
+                            <p class="quest-combat-subtitle">擲骰順序 <span>原始骰值（0–5）</span></p>
+                            <div class="quest-hand-piles">
+                              <div><p id="session-quest-combat-attack-label">攻擊方</p><p id="session-quest-combat-attack-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-attack-dice" class="quest-hand-cards quest-dice-list" aria-labelledby="session-quest-combat-attack-label" role="list"></ol></div>
+                              <div><p id="session-quest-combat-defense-label">防禦方</p><p id="session-quest-combat-defense-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-defense-dice" class="quest-hand-cards quest-dice-list" aria-labelledby="session-quest-combat-defense-label" role="list"></ol></div>
+                            </div>
+                          </div>
+                          <div id="session-quest-combat-damage-detail" class="quest-combat-data" hidden>
+                            <p class="quest-combat-subtitle">伺服器回傳的傷害</p>
+                            <p id="session-quest-combat-damage-empty" class="quest-status" hidden>本次沒有收到傷害數值。</p>
+                            <ul id="session-quest-combat-damage" class="quest-combat-damage"></ul>
+                          </div>
+                          <dl id="session-quest-combat-values" class="session-metadata quest-land-metadata" hidden>
+                            <div hidden><dt>我方生命值</dt><dd id="session-quest-combat-player-hp"></dd></div>
+                            <div hidden><dt>對手生命值</dt><dd id="session-quest-combat-opponent-hp"></dd></div>
+                            <div hidden><dt>戰鬥結果</dt><dd id="session-quest-combat-duel-finish"></dd></div>
+                            <div hidden><dt>任務結果</dt><dd id="session-quest-combat-quest-finish"></dd></div>
+                          </dl>
+                        </div>
+                      </section>
                       <section id="session-quest-move" class="quest-move quest-board-pane" aria-labelledby="session-quest-move-title" hidden>
                         <h6 id="session-quest-move-title">移動操作</h6>
                         <div class="quest-board-direction">
@@ -233,45 +254,10 @@
                       </section>
                     </div>
                   </div>
-                  <section id="session-quest-combat" class="quest-combat" aria-labelledby="session-quest-combat-title" hidden>
-                    <h6 id="session-quest-combat-title">本段攻防</h6>
-                    <p id="session-quest-combat-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
-                    <div id="session-quest-combat-controls" class="quest-move-table quest-combat-controls" hidden>
-                      <p>已選攻防卡片</p>
-                      <p id="session-quest-combat-cards-empty" class="quest-status">尚未選取卡片。</p>
-                      <ol id="session-quest-combat-cards" class="quest-hand-cards" aria-label="已選攻防卡片" role="list"></ol>
-                      <button id="session-quest-combat-commit" class="button primary" type="button" aria-controls="session-quest-combat-reveal session-quest-combat-dice" disabled>空手送出</button>
-                    </div>
-                    <div id="session-quest-combat-reveal" class="quest-combat-data" hidden>
-                      <p class="quest-combat-subtitle">伺服器公開的卡片</p>
-                      <div class="quest-hand-piles">
-                        <div><p>我方</p><p id="session-quest-combat-player-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-player-cards" class="quest-hand-cards" aria-label="我方公開卡片" role="list"></ol></div>
-                        <div><p>對手</p><p id="session-quest-combat-opponent-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-opponent-cards" class="quest-hand-cards" aria-label="對手公開卡片" role="list"></ol></div>
-                      </div>
-                    </div>
-                    <div id="session-quest-combat-dice" class="quest-combat-data" hidden>
-                      <p class="quest-combat-subtitle">擲骰順序 <span>原始骰值（0–5）</span></p>
-                      <div class="quest-hand-piles">
-                        <div><p id="session-quest-combat-attack-label">攻擊方</p><p id="session-quest-combat-attack-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-attack-dice" class="quest-hand-cards" aria-labelledby="session-quest-combat-attack-label" role="list"></ol></div>
-                        <div><p id="session-quest-combat-defense-label">防禦方</p><p id="session-quest-combat-defense-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-defense-dice" class="quest-hand-cards" aria-labelledby="session-quest-combat-defense-label" role="list"></ol></div>
-                      </div>
-                    </div>
-                    <div id="session-quest-combat-damage-detail" class="quest-combat-data" hidden>
-                      <p class="quest-combat-subtitle">伺服器回傳的傷害</p>
-                      <p id="session-quest-combat-damage-empty" class="quest-status" hidden>本次沒有收到傷害數值。</p>
-                      <ul id="session-quest-combat-damage" class="quest-combat-damage"></ul>
-                    </div>
-                    <dl id="session-quest-combat-values" class="session-metadata quest-land-metadata" hidden>
-                      <div hidden><dt>我方生命值</dt><dd id="session-quest-combat-player-hp"></dd></div>
-                      <div hidden><dt>對手生命值</dt><dd id="session-quest-combat-opponent-hp"></dd></div>
-                      <div hidden><dt>戰鬥結果</dt><dd id="session-quest-combat-duel-finish"></dd></div>
-                      <div hidden><dt>任務結果</dt><dd id="session-quest-combat-quest-finish"></dd></div>
-                    </dl>
-                  </section>
                   <details id="session-quest-previous-exchange" class="quest-previous-exchange" open hidden>
                     <summary>上一段攻防 <span id="session-quest-previous-exchange-label"></span></summary>
                     <div id="session-quest-previous-reveal" class="quest-combat-data" hidden>
-                      <p class="quest-combat-subtitle">伺服器公開的卡片</p>
+                      <p class="quest-combat-subtitle">公開卡片</p>
                       <div class="quest-hand-piles">
                         <div><p>我方</p><p id="session-quest-previous-player-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-previous-player-cards" class="quest-hand-cards" aria-label="上一段我方公開卡片" role="list"></ol></div>
                         <div><p>對手</p><p id="session-quest-previous-opponent-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-previous-opponent-cards" class="quest-hand-cards" aria-label="上一段對手公開卡片" role="list"></ol></div>
@@ -280,8 +266,8 @@
                     <div id="session-quest-previous-dice" class="quest-combat-data" hidden>
                       <p class="quest-combat-subtitle">擲骰順序 <span>原始骰值（0–5）</span></p>
                       <div class="quest-hand-piles">
-                        <div><p id="session-quest-previous-attack-label">攻擊方</p><p id="session-quest-previous-attack-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-previous-attack-dice" class="quest-hand-cards" aria-labelledby="session-quest-previous-attack-label" role="list"></ol></div>
-                        <div><p id="session-quest-previous-defense-label">防禦方</p><p id="session-quest-previous-defense-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-previous-defense-dice" class="quest-hand-cards" aria-labelledby="session-quest-previous-defense-label" role="list"></ol></div>
+                        <div><p id="session-quest-previous-attack-label">攻擊方</p><p id="session-quest-previous-attack-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-previous-attack-dice" class="quest-hand-cards quest-dice-list" aria-labelledby="session-quest-previous-attack-label" role="list"></ol></div>
+                        <div><p id="session-quest-previous-defense-label">防禦方</p><p id="session-quest-previous-defense-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-previous-defense-dice" class="quest-hand-cards quest-dice-list" aria-labelledby="session-quest-previous-defense-label" role="list"></ol></div>
                       </div>
                     </div>
                     <div id="session-quest-previous-damage-detail" class="quest-combat-data" hidden>
@@ -301,29 +287,57 @@
                   <ul id="session-quest-next-land-options" class="quest-next-land-options" aria-label="可進入的戰鬥地形"></ul>
                 </div>
               </section>
-              <section id="session-quest-settlement" class="quest-settlement" aria-labelledby="session-quest-settlement-title" hidden>
-                <h5 id="session-quest-settlement-title">任務結算</h5>
-                <p id="session-quest-settlement-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
-                <dl class="session-metadata quest-land-metadata">
-                  <div><dt>任務結果</dt><dd data-field="result"></dd></div>
-                  <div hidden><dt>本場獲得 Gem</dt><dd data-field="gemsDelta"></dd></div>
-                  <div hidden><dt>本場獲得經驗值</dt><dd data-field="expDelta"></dd></div>
-                  <div hidden><dt>等級變更</dt><dd data-field="levelDelta"></dd></div>
-                  <div hidden><dt>Gem 餘額</dt><dd data-field="gems"></dd></div>
-                  <div hidden><dt>角色經驗值</dt><dd data-field="exp"></dd></div>
-                  <div hidden><dt>角色等級</dt><dd data-field="level"></dd></div>
-                  <div hidden><dt>行動力</dt><dd data-field="energy"></dd></div>
-                  <div hidden><dt>地圖進度代碼</dt><dd data-field="questFlag"></dd></div>
-                  <div hidden><dt>地圖通關數</dt><dd data-field="questClearNum"></dd></div>
-                  <div hidden><dt>地形進度碼</dt><dd data-field="progress"></dd></div>
-                  <div hidden><dt>返回可用的牌組</dt><dd data-field="deckRestored"></dd></div>
-                </dl>
-                <div id="session-quest-settlement-cards" class="quest-settlement-cards" hidden>
-                  <h6>伺服器回報取得的角色卡</h6>
-                  <ul id="session-quest-settlement-card-list" class="quest-combat-damage"></ul>
+              <section id="session-quest-settlement" class="quest-settlement native-surface" aria-labelledby="session-quest-settlement-title" hidden>
+                <header class="native-surface-header quest-settlement-header">
+                  <h5 id="session-quest-settlement-title">任務結算</h5>
+                  <p id="session-quest-settlement-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                </header>
+                <div class="native-surface-body">
+                  <dl class="session-metadata quest-settlement-metadata">
+                    <div class="quest-settlement-outcome"><dt>任務結果</dt><dd data-field="result"></dd></div>
+                    <div hidden><dt>本場獲得 Gem</dt><dd data-field="gemsDelta"></dd></div>
+                    <div hidden><dt>本場獲得經驗值</dt><dd data-field="expDelta"></dd></div>
+                    <div hidden><dt>等級變更</dt><dd data-field="levelDelta"></dd></div>
+                    <div hidden><dt>Gem 餘額</dt><dd data-field="gems"></dd></div>
+                    <div hidden><dt>角色經驗值</dt><dd data-field="exp"></dd></div>
+                    <div hidden><dt>角色等級</dt><dd data-field="level"></dd></div>
+                    <div hidden><dt>行動力</dt><dd data-field="energy"></dd></div>
+                    <div hidden><dt>地圖進度代碼</dt><dd data-field="questFlag"></dd></div>
+                    <div hidden><dt>地圖通關數</dt><dd data-field="questClearNum"></dd></div>
+                    <div hidden><dt>地形進度碼</dt><dd data-field="progress"></dd></div>
+                    <div hidden><dt>返回可用的牌組</dt><dd data-field="deckRestored"></dd></div>
+                  </dl>
+                  <div id="session-quest-settlement-cards" class="quest-settlement-cards" hidden>
+                    <h6>伺服器回報取得的角色卡</h6>
+                    <ul id="session-quest-settlement-card-list" class="quest-combat-damage"></ul>
+                  </div>
+                  <button id="session-quest-return" class="button primary" type="button" aria-controls="session-quest-inventory session-quest-search" disabled>返回任務清單</button>
                 </div>
-                <button id="session-quest-return" class="button primary" type="button" aria-controls="session-quest-inventory session-quest-search" disabled>返回任務清單</button>
               </section>
+              <details id="session-quest-land-details" class="quest-source-details">
+                <summary>原版伺服器資料</summary>
+                <dl class="session-metadata quest-land-metadata">
+                  <div><dt>持有紀錄 ID</dt><dd id="session-quest-land-inventory-id"></dd></div>
+                  <div><dt>地形 ID</dt><dd id="session-quest-land-id"></dd></div>
+                  <div><dt>伺服器格位</dt><dd id="session-quest-land-slot"></dd></div>
+                  <div id="session-quest-land-finish" hidden><dt>任務結算代碼</dt><dd></dd></div>
+                </dl>
+                <section id="session-quest-land-encounter" class="quest-land-battle" aria-labelledby="session-quest-land-encounter-title" hidden>
+                  <h5 id="session-quest-land-encounter-title">戰鬥開場</h5>
+                  <dl id="session-quest-land-duel" class="session-metadata quest-land-metadata">
+                    <div><dt>我方角色卡 ID</dt><dd data-field="playerCardIds"></dd></div>
+                    <div><dt>對手角色卡 ID</dt><dd data-field="opponentCardIds"></dd></div>
+                    <div><dt>戰鬥場景代碼</dt><dd data-field="stage"></dd></div>
+                    <div><dt>我方既有傷害</dt><dd data-field="playerDamage"></dd></div>
+                    <div><dt>對手既有傷害</dt><dd data-field="opponentDamage"></dd></div>
+                    <div><dt>行動牌組張數</dt><dd data-field="deckSize"></dd></div>
+                    <div><dt>我方事件牌組張數</dt><dd data-field="playerEventDeckSize"></dd></div>
+                    <div><dt>對手事件牌組張數</dt><dd data-field="opponentEventDeckSize"></dd></div>
+                    <div><dt>初始距離代碼</dt><dd data-field="distance"></dd></div>
+                    <div><dt>多角色旗標</dt><dd data-field="multi"></dd></div>
+                  </dl>
+                </section>
+              </details>
             </div>
           </section>
           <section id="session-quest-details" class="quest-details" aria-labelledby="session-quest-details-title" hidden>
