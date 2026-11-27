@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#15202c" />
+    <title>Unlight 登入</title>
+    <link rel="stylesheet" href="/source-login/style.css" />
+    <script type="module" src="/source-login/stage.js"></script>
+    <script type="module" src="/source-login/login.js"></script>
+  </head>
+  <body>
+    <main id="stage" aria-labelledby="login-title">
+      <canvas id="stage-background" width="780" height="680" aria-hidden="true"></canvas>
+      <p id="stage-background-status" role="status" hidden></p>
+      <form id="login" method="post" aria-labelledby="login-title">
+        <h1 id="login-title">登入</h1>
+        <div class="login-body">
+          <fieldset id="login-fields" disabled>
+            <legend class="sr-only">帳號資料</legend>
+            <label for="username">
+              帳號
+              <input id="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" required />
+            </label>
+            <label for="password">
+              密碼
+              <input id="password" type="password" autocomplete="current-password" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" required />
+            </label>
+            <button id="login-submit" type="submit">登入</button>
+          </fieldset>
+          <p id="login-status" role="status" aria-atomic="true" tabindex="-1" data-state="idle"></p>
+          <noscript><p>請啟用 JavaScript 以登入。</p></noscript>
+        </div>
+      </form>
+    </main>
+    <footer class="attribution">
+      Unlight 原作 CPA ·
+      <a href="https://github.com/ni-light/Unlight-Images/tree/0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e">原始素材</a>
+      <a href="https://creativecommons.org/licenses/by-nd/4.0/" rel="license">CC BY-ND 4.0</a>
+    </footer>
+  </body>
+</html>

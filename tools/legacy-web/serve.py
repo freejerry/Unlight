@@ -25,6 +25,7 @@ PORTS = tuple(port for _, port, _, _ in SERVICES)
 ROOT = Path(__file__).resolve().parent
 PUBLIC_CONFIG = ROOT.parents[1] / "app/client/public"
 NATIVE_ROOT = ROOT.parents[1] / "web-client"
+SOURCE_LOGIN_ROOT = ROOT.parents[1] / "source-login"
 REPLAY_BASELINE = ROOT.parent / "legacy-server/fixtures/trace-2026.json"
 SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
@@ -47,6 +48,7 @@ NATIVE_ASSETS = {
 }
 PANEL_SKIN_URL = "/public/panel_gene.png"
 PANEL_SKIN_SHA256 = "81038be00fa27a1143ac651a789d0a665d51a7be326f322685c7f6cddb85ee3b"
+SOURCE_LOGIN_TITLE_SHA256 = "1beaf454eb37ed427c17efe8c631c95336a6f94c2a577fae9b96a1a755102fe8"
 # Historical cwming.ttf pin from tools/legacy-build/build.sh.
 TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
 TCN_FONT_URL = "/tcn-device-font.ttf"
@@ -66,19 +68,35 @@ def native_asset_files(assets):
     return files
 
 
-def native_panel_skin(assets):
+def pinned_native_asset(assets, filename, digest):
     if assets is None:
         return None
     # The build's original asset checkout has public/ and data/ next to each other.
     root = assets.resolve().parent
     try:
-        panel = (root / "data/image/panel_gene.png").resolve()
-        if (panel.is_relative_to(root) and panel.is_file()
-                and sha256(panel.read_bytes()).hexdigest() == PANEL_SKIN_SHA256):
-            return panel
+        path = (root / filename).resolve()
+        if (path.is_relative_to(root) and path.is_file()
+                and sha256(path.read_bytes()).hexdigest() == digest):
+            return path
     except (OSError, RuntimeError):
         pass
     return None
+
+
+def native_panel_skin(assets):
+    return pinned_native_asset(assets, "data/image/panel_gene.png", PANEL_SKIN_SHA256)
+
+
+def validate_source_login_wasm(path):
+    try:
+        path = path.resolve()
+        if path.is_file():
+            with path.open("rb") as file:
+                if file.read(8) == b"\x00asm\x01\x00\x00\x00":
+                    return path
+    except (OSError, RuntimeError):
+        pass
+    raise ValueError("--source-login-wasm must point to a WebAssembly module")
 
 
 def native_quest_catalog():
@@ -290,12 +308,16 @@ def validate_news(path):
 def create_app(
     client, assets, ruffle, listen_port, server_offset,
     preview_origin=None, direct_sockets=False, *, native=False, news=None,
-    tcn_device_font=None,
+    tcn_device_font=None, source_login_wasm=None,
 ):
     if native and (preview_origin or direct_sockets):
         raise ValueError("native mode uses loopback WebSocket clients")
     if native and tcn_device_font is not None:
         raise ValueError("--tcn-device-font is only available in Ruffle mode")
+    if source_login_wasm is not None:
+        if not native:
+            raise ValueError("--source-login-wasm requires --native")
+        source_login_wasm = validate_source_login_wasm(source_login_wasm)
     if news is not None:
         news = validate_news(news)
     origins = {f"http://{HOST}:{listen_port}"}
@@ -316,8 +338,11 @@ def create_app(
         "frame-ancestors 'none'",
     ))
 
-    async def add_headers(_request, response):
-        response.headers["Content-Security-Policy"] = csp
+    async def add_headers(request, response):
+        policy = csp
+        if source_login_wasm is not None and request.path == "/source-login/":
+            policy = csp.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+        response.headers["Content-Security-Policy"] = policy
         response.headers["X-Content-Type-Options"] = "nosniff"
 
     async def static_asset(request):
@@ -414,6 +439,18 @@ def create_app(
         asset_urls["panel"] = PANEL_SKIN_URL if panel else None
         if panel:
             app.router.add_get(PANEL_SKIN_URL, serve_file(panel))
+        if source_login_wasm is not None:
+            title = pinned_native_asset(assets, "data/image/title/event_title.swf", SOURCE_LOGIN_TITLE_SHA256)
+            if title is None or panel is None:
+                raise ValueError("--source-login-wasm requires the pinned title and panel in the original --assets mirror")
+            app.router.add_get("/source-login/", serve_file(SOURCE_LOGIN_ROOT / "index.html"))
+            for filename in ("style.css", "login.js", "stage.js"):
+                app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            app.router.add_get("/source-login/assets/event_title.swf", serve_file(title))
+            app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))
+            app.router.add_get("/source-login/asset-decoder.wasm", serve_file(
+                source_login_wasm, {"Content-Type": "application/wasm"},
+            ))
 
         async def services(_request):
             return web.json_response({"services": [
@@ -567,6 +604,7 @@ def main():
     parser.add_argument("--ruffle", type=Path, help="Extracted Ruffle Web release")
     parser.add_argument("--news", type=Path, help="An existing original-client news.xml feed")
     parser.add_argument("--tcn-device-font", type=Path, help="Use the pinned historical cwming.ttf for Ruffle device text")
+    parser.add_argument("--source-login-wasm", type=Path, help="Serve the opt-in source login page with this WASM decoder")
     parser.add_argument("--port", type=int, default=4330, help="HTTP port")
     parser.add_argument("--server-offset", type=int, default=0, help="Offset of legacy TCP ports")
     parser.add_argument("--preview-origin", type=https_origin, help="URL of an authenticated HTTP preview")
@@ -578,6 +616,8 @@ def main():
         parser.error("--direct-sockets is for a loopback Ruffle Desktop session")
     if not 0 < args.port <= 65535 or any(not 0 < port + args.server_offset <= 65535 for port in PORTS):
         parser.error("ports must be between 1 and 65535")
+    if args.source_login_wasm is not None and not args.native:
+        parser.error("--source-login-wasm requires --native")
     if args.native:
         if args.client or args.ruffle or args.preview_origin:
             parser.error("--native cannot use --client, --ruffle, or --preview-origin")
@@ -585,6 +625,7 @@ def main():
             app = create_app(
                 None, args.assets, None, args.port, args.server_offset,
                 native=True, news=args.news, tcn_device_font=args.tcn_device_font,
+                source_login_wasm=args.source_login_wasm,
             )
         except ValueError as error:
             parser.error(str(error))
