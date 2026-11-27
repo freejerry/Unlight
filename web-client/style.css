@@ -140,6 +140,27 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-inventory td { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .quest-map { display: block; color: var(--muted); font-size: .83rem; }
 
+.session-news { max-width: 44rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.session-news summary { width: fit-content; min-height: 2rem; padding: .22rem 0; font-size: 1rem; font-weight: 680; cursor: pointer; }
+.session-news summary:focus-visible, .session-news-content:focus-visible { outline: 2px solid #007f69; outline-offset: 3px; }
+.session-news-status { margin: .2rem 0 0; color: var(--muted); font-size: .9rem; }
+.session-news[data-state="failed"] .session-news-status { color: var(--failure); }
+#session-news-retry { margin-top: .5rem; }
+.session-news-content {
+  max-height: min(18rem, 48vh);
+  margin-top: .4rem;
+  padding: .65rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  background: #f3f7f8;
+  font-size: .92rem;
+  line-height: 1.65;
+}
+.session-news-content p { margin-bottom: .55rem; }
+.session-news-content ul, .session-news-content ol { margin-block: .4rem; padding-inline-start: 1.35rem; }
+
 @media (max-width: 52rem) {
   .service-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-heading { align-items: start; flex-direction: column; gap: .7rem; }

@@ -175,6 +175,12 @@
             <tbody id="session-quest-rows"></tbody>
           </table>
         </section>
+        <details id="session-news" class="session-news" data-state="idle" hidden>
+          <summary id="session-news-summary">最新消息</summary>
+          <p id="session-news-status" class="session-news-status" role="status" aria-atomic="true" hidden></p>
+          <div id="session-news-content" class="session-news-content" role="region" aria-labelledby="session-news-summary" tabindex="0" hidden></div>
+          <button id="session-news-retry" class="button secondary" type="button" hidden>重新讀取公告</button>
+        </details>
         <p id="session-detail" class="session-detail" aria-live="polite"></p>
       </section>
 

@@ -1,6 +1,8 @@
 import { startSession, SessionError } from './session.js';
+import { readNews } from './news.js';
 
 const ui = {
+  title: document.querySelector('#session-title'),
   form: document.querySelector('#session-form'),
   fields: document.querySelector('#session-fields'),
   username: document.querySelector('#session-username'),
@@ -34,6 +36,14 @@ const questUi = {
   fields: ['count', 'capacity', 'flag', 'clear-count'].map(field => document.querySelector(`#session-quest-${field}`)),
 };
 
+const newsUi = {
+  details: document.querySelector('#session-news'),
+  summary: document.querySelector('#session-news-summary'),
+  status: document.querySelector('#session-news-status'),
+  content: document.querySelector('#session-news-content'),
+  retry: document.querySelector('#session-news-retry'),
+};
+
 const errors = {
   credentials: ['登入被拒絕', '請確認帳號與密碼，再重新登入。'],
   network: ['連線失敗', '請確認認證、大廳、資料與全域聊天服務可用，再重新登入。'],
@@ -54,6 +64,7 @@ const MAX_CATALOG_ID = 0x7fffffff;
 let pending = null;
 let active = null;
 let questRequest = null;
+let newsRequest = null;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
   field.addEventListener('input', () => field.setCustomValidity(''));
@@ -167,6 +178,60 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
   }
 }
 
+function showNewsState(state, message = '') {
+  newsUi.details.dataset.state = state;
+  newsUi.status.textContent = message;
+  newsUi.status.hidden = !message;
+  newsUi.content.hidden = state !== 'ready';
+  newsUi.retry.hidden = state !== 'failed';
+}
+
+function clearNews() {
+  newsRequest?.abort();
+  newsRequest = null;
+  newsUi.details.open = false;
+  newsUi.content.replaceChildren();
+  showNewsState('idle');
+}
+
+async function loadNews() {
+  const session = active;
+  if (!session?.initialData || newsRequest) return;
+
+  const controller = new AbortController();
+  newsRequest = controller;
+  const isCurrent = () => newsRequest === controller && active === session && session.initialData;
+  showNewsState('loading', '正在讀取最新消息…');
+  try {
+    const timeout = AbortSignal.timeout(3500);
+    const response = await fetch('/public/news.xml', {
+      cache: 'no-store',
+      redirect: 'error',
+      signal: AbortSignal.any([controller.signal, timeout]),
+    });
+    if (!isCurrent()) return;
+    if (response.status === 404) {
+      if (newsUi.details.contains(document.activeElement)) ui.title.focus({ preventScroll: true });
+      newsUi.details.hidden = true;
+      newsUi.details.open = false;
+      showNewsState('unavailable');
+      return;
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const source = await response.text();
+    if (!isCurrent()) return;
+    const content = readNews(source);
+    const hasText = Boolean(content.textContent.trim());
+    newsUi.content.replaceChildren(content);
+    if (hasText) showNewsState('ready');
+    else showNewsState('empty', '目前沒有公告。');
+  } catch {
+    if (isCurrent()) showNewsState('failed', '暫時無法讀取最新消息。請重試。');
+  } finally {
+    if (newsRequest === controller) newsRequest = null;
+  }
+}
+
 function show(state, label, detail = '', kind) {
   const signedIn = state === 'signed-in';
   ui.status.dataset.state = state;
@@ -179,7 +244,9 @@ function show(state, label, detail = '', kind) {
   ui.result.hidden = !signedIn;
   ui.signOut.hidden = !signedIn;
   questUi.section.hidden = !signedIn || !active?.initialData?.avatar;
+  newsUi.details.hidden = !signedIn;
   if (!signedIn) {
+    clearNews();
     questRequest?.abort();
     questRequest = null;
     clearQuestResults();
@@ -281,6 +348,14 @@ questUi.load.addEventListener('click', async () => {
   } finally {
     if (questRequest === controller) questRequest = null;
   }
+});
+
+newsUi.details.addEventListener('toggle', () => {
+  if (newsUi.details.open && newsUi.details.dataset.state === 'idle') void loadNews();
+});
+newsUi.retry.addEventListener('click', () => {
+  if (document.activeElement === newsUi.retry) newsUi.summary.focus({ preventScroll: true });
+  void loadNews();
 });
 
 ui.signOut.addEventListener('click', async () => {

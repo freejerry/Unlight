@@ -124,6 +124,8 @@ Chromium 在等待原版 Ruby 的 Data 登入回覆時，由測試程式模擬�
 
 兩個隔離測試帳號分別驗收有角色和未創角的初始回應。角色名稱、等級 1、100 Gem、0 Exp 及 4／5 AP 都與原版 SQLite 相符，重新登入結果一致。未創角的帳號顯示 24 個起始外觀部件和 5 張起始角色卡，數量與原版設定一致。此階段的範圍為登入後的唯讀資料檢查。[角色資料](native/04-native-initial-data.png) · [未創角資料](native/05-native-starter-data.png)
 
+Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，核對同源取得的 UTF-8 `<XML><news>` 檔案位元組、公告文字和基本段落格式。庫內保存的是日文範例，繁中畫面採用明確標示的測試資料。在 320 CSS 像素、DPR 2 下驗證繁中字形及拉丁重音字元，並以鍵盤捲至末行。另驗證 HTTP 503 與無效 XML 可重試、同次登入重開沿用已取得的公告、登出會取消尚未完成的請求，以及未配置檔案時會隱藏區塊。[原始日文檔](../../app/client/public/news.xml.orig) · [日文實測](native/24-native-news-archive.png) · [繁中測例](native/25-native-news-tcn-sample.png) · [啟動方式](../../web-client/README.md#啟動)
+
 ## 原生瀏覽器任務快照
 
 用 Chromium 連到隔離 Ruby，核對三種測試帳號。新角色顯示一筆「落日大蝙蝠」，任務 ID 1、狀態 0，魔女山谷進度為 0/3。先前在原版客戶端完成首場 PvE 的帳號顯示空清單與 1/3。兩個帳號的任務清單上限均為 4。未創角帳號顯示原版的建立角色資料。[新任務截圖](native/06-native-quest-ready.png) · [已通關截圖](native/07-native-quest-cleared.png)

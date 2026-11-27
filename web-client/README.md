@@ -28,6 +28,8 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 開啟 `http://127.0.0.1:4334/`，在「登入驗收」用剛建立的測試帳號登入。登入成功會顯示玩家 ID、三項服務的驗證狀態及角色摘要。未創角的帳號會顯示可選的起始外觀部件與角色卡數量。
 
+要驗收登入後的「最新消息」，在上述啟動指令加上 `--news /path/to/news.xml`，登入後展開該區塊。可用 `--news app/client/public/news.xml.orig` 查看庫內保存的日文範例。瀏覽器讀取 UTF-8 XML 的 `<XML><news>` 內容，保留來源文字和段落、粗體、清單等基本格式。省略 `--news` 時，首次展開後會隱藏此區塊。[原版讀取方式](../app/client/lib/News.as#L130) · [公告驗收](../docs/playtest/README.md#原生瀏覽器登入)
+
 有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。繁中名稱及通關門檻取自版本庫的原版 CSV。按鈕讀取已收到的快照，再查詢同源名稱資料。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208)
 
 面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線、登入及任務快照。

@@ -110,6 +110,16 @@ def https_origin(value):
     raise argparse.ArgumentTypeError("use the HTTPS URL from the authenticated preview")
 
 
+def validate_news(path):
+    try:
+        feed = ElementTree.parse(path).getroot()
+    except (OSError, ElementTree.ParseError) as error:
+        raise ValueError(f"--news must point to a readable news XML file: {error}") from error
+    if feed.find("news") is None:
+        raise ValueError("--news XML must have the original client's news element")
+    return path.resolve()
+
+
 def create_app(
     client, assets, ruffle, listen_port, server_offset,
     preview_origin=None, direct_sockets=False, *, native=False, news=None,
@@ -119,6 +129,8 @@ def create_app(
         raise ValueError("native mode uses loopback WebSocket clients")
     if native and tcn_device_font is not None:
         raise ValueError("--tcn-device-font is only available in Ruffle mode")
+    if news is not None:
+        news = validate_news(news)
     origins = {f"http://{HOST}:{listen_port}"}
     socket_sources = [f"ws://{HOST}:{listen_port}"]
     if preview_origin:
@@ -209,6 +221,11 @@ def create_app(
     app = web.Application()
     app.on_response_prepare.append(add_headers)
     app.router.add_get(r"/socket/{port:\d+}", relay)
+    news_path = news if native else news or PUBLIC_CONFIG / "news.xml.orig"
+    if news_path is not None:
+        app.router.add_get(
+            "/public/news.xml", serve_file(news_path, {"Content-Type": "application/xml"})
+        )
 
     if native:
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
@@ -217,7 +234,7 @@ def create_app(
         for filename in (
             "client.js", "style.css", "transport.js", "session.js",
             "wire.js", "srp.js", "login.js", "panel.js", "panel-webgl.js", "data-bootstrap.js", "quest-data.js",
-            "replay.js", "replay-model.js", "replay.css",
+            "replay.js", "replay-model.js", "replay.css", "news.js",
         ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 
@@ -298,10 +315,6 @@ def create_app(
         app.router.add_get(f"/{filename}", serve_file(ROOT / filename))
     app.router.add_get("/Unlight.swf", serve_file(client))
     app.router.add_get("/public/config.xml", config)
-    app.router.add_get(
-        "/public/news.xml",
-        serve_file(news or PUBLIC_CONFIG / "news.xml.orig", {"Content-Type": "application/xml"}),
-    )
     app.router.add_get("/public/{filename:.*}", static_asset)
     app.router.add_static("/ruffle/", ruffle)
     return app
@@ -326,12 +339,12 @@ def main():
     if not 0 < args.port <= 65535 or any(not 0 < port + args.server_offset <= 65535 for port in PORTS):
         parser.error("ports must be between 1 and 65535")
     if args.native:
-        if args.client or args.ruffle or args.preview_origin or args.news:
-            parser.error("--native accepts --assets but cannot use --client, --ruffle, --news, or --preview-origin")
+        if args.client or args.ruffle or args.preview_origin:
+            parser.error("--native cannot use --client, --ruffle, or --preview-origin")
         try:
             app = create_app(
                 None, args.assets, None, args.port, args.server_offset,
-                native=True, tcn_device_font=args.tcn_device_font,
+                native=True, news=args.news, tcn_device_font=args.tcn_device_font,
             )
         except ValueError as error:
             parser.error(str(error))
@@ -347,19 +360,11 @@ def main():
             parser.error("--assets must point to the original public assets")
         if not (args.ruffle / "ruffle.js").is_file():
             parser.error("--ruffle must point to an extracted Ruffle Web release")
-        if args.news:
-            try:
-                feed = ElementTree.parse(args.news).getroot()
-            except (OSError, ElementTree.ParseError) as error:
-                parser.error(f"--news must point to a readable news XML file: {error}")
-            if feed.find("news") is None:
-                parser.error("--news XML must have the original client's news element")
         try:
             app = create_app(
                 args.client.resolve(), args.assets.resolve(), args.ruffle.resolve(),
                 args.port, args.server_offset, args.preview_origin, args.direct_sockets,
-                news=args.news.resolve() if args.news else None,
-                tcn_device_font=args.tcn_device_font,
+                news=args.news, tcn_device_font=args.tcn_device_font,
             )
         except ValueError as error:
             parser.error(str(error))
