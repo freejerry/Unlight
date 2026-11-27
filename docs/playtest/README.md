@@ -138,6 +138,12 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 此頁提供唯讀資料核對。原版首場 PvE 的地形缺字修正有獨立的前後畫面，完整遊玩流程可在原版相容入口驗收。[地形修正前](browser/30-browser-land-font-before.png) · [地形修正後](browser/31-browser-land-font-after.png) · [原版首場 PvE](#首場-pve-結算)
 
+### 區域地圖查詢
+
+在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)
+
+桌面及 320 CSS 像素、DPR 2 的頁面都能讀到完整清單。等待回覆時中斷 Quest 連線，原本的登入工作階段可繼續使用，同一按鈕可重試。另驗證登出會清除查詢，延遲抵達的回覆不會重新顯示清單。[桌面實測](native/28-native-quest-region.png) · [320 像素實測](native/29-native-quest-region-mobile.png) · [操作方式](../../web-client/README.md#啟動)
+
 ## 原生對局紀錄回放
 
 用原版 Ruby 重跑固定種子 `2026`，輸出的 68 筆事件與保存的基準逐位元組相同。原生對局紀錄頁由同源讀取該基準。Chromium 用鍵盤逐筆核對回合、階段、HP、各次抽牌數及原始事件 JSON。tick 0 有四筆紀錄，依輸出順序完整保留。第四回合在模擬時間 92.1 秒結算，玩家勝利，雙方 HP 為 5／0。[原版 Ruby 紀錄](../../tools/legacy-server/fixtures/trace-2026.json) · [抽牌截圖](native/11-native-replay-event.png) · [結算截圖](native/12-native-replay-finished.png)

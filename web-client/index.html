@@ -179,6 +179,19 @@
             <h4 id="session-quest-details-title">關卡說明</h4>
             <div id="session-quest-detail-list" class="quest-detail-list"></div>
           </section>
+          <section id="session-quest-maps" class="quest-region" aria-labelledby="session-quest-maps-title">
+            <div class="quest-heading">
+              <div>
+                <h4 id="session-quest-maps-title">區域 0 地圖</h4>
+                <p id="session-quest-maps-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">尚未讀取地圖清單。</p>
+              </div>
+              <button id="session-quest-maps-load" type="button" class="button secondary" aria-controls="session-quest-maps-result">讀取區域地圖</button>
+            </div>
+            <div id="session-quest-maps-result" class="quest-region-result" hidden>
+              <p>任務服務回傳 <strong id="session-quest-maps-count"></strong> 筆地圖 ID</p>
+              <ol id="session-quest-maps-list" class="quest-region-ids" aria-label="地圖 ID" role="list" hidden></ol>
+            </div>
+          </section>
         </section>
         <details id="session-news" class="session-news" data-state="idle" hidden>
           <summary id="session-news-summary">最新消息</summary>

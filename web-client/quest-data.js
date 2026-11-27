@@ -1,5 +1,9 @@
 const MAX_ID_LIST_BYTES = 4096;
+const MAX_MAP_ID = 0x7fffffff;
 const text = new TextDecoder('utf-8', { fatal: true });
+
+export const QUEST_MAP_REQUEST = 6;
+export const QUEST_MAP_REPLY = 14;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -23,13 +27,22 @@ const fields = [
   { key: 'questClearNum', width: 4 },
 ];
 
-function integerList(bytes) {
-  const csv = text.decode(bytes);
+function integerList(csv) {
   if (csv === '') return [];
   if (!/^\d+(?:,\d+)*$/.test(csv)) throw new Error('Invalid quest list.');
   const list = csv.split(',').map(Number);
   if (!list.every(Number.isSafeInteger)) throw new Error('Quest list value exceeds bounds.');
   return list;
+}
+
+export function readQuestMapReply(reply, region) {
+  if (reply.command !== QUEST_MAP_REPLY || reply.int() !== region) {
+    throw new Error('Unexpected quest map reply.');
+  }
+  const ids = integerList(reply.string(MAX_ID_LIST_BYTES));
+  reply.done();
+  if (ids.some((id) => id === 0 || id > MAX_MAP_ID)) throw new Error('Invalid quest map ID.');
+  return ids;
 }
 
 export function createQuestDataReader() {
@@ -66,7 +79,7 @@ export function createQuestDataReader() {
       const view = new DataView(buffer.buffer);
       if (field.width === 1) values[field.key] = view.getInt8(0);
       else if (field.width === 4) values[field.key] = view.getInt32(0);
-      else values[field.key] = integerList(buffer);
+      else values[field.key] = integerList(text.decode(buffer));
     }
     buffer?.fill(0);
     buffer = null;

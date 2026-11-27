@@ -151,6 +151,11 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-lands { margin: .45rem 0 .15rem; padding-inline-start: 1.2rem; }
 .quest-land-name { color: #2d444f; font-size: .88rem; overflow-wrap: anywhere; }
 .quest-land-caption { margin-top: .15rem; }
+.quest-region { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--line); }
+.quest-region h4 { margin: 0; font-size: .96rem; }
+.quest-region-result { margin-top: .55rem; color: #2d444f; font-size: .9rem; }
+.quest-region-ids { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; margin: .42rem 0 0; list-style: none; }
+.quest-region-ids li { min-width: 2.15rem; padding: .18rem .42rem; border: 1px solid var(--line); border-radius: .35rem; background: #f2f7f9; text-align: center; font-variant-numeric: tabular-nums; }
 
 .session-news { max-width: 44rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid var(--line); }
 .session-news summary { width: fit-content; min-height: 2rem; padding: .22rem 0; font-size: 1rem; font-weight: 680; cursor: pointer; }

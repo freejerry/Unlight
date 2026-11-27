@@ -32,6 +32,8 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。進度下方會顯示目前區域的說明。展開「關卡說明」下的任務可讀取原始繁中敘述及地形名稱和描述。頁面讀取已收到的快照和同源的 CSV 資料，供唯讀核對。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208) · [任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
 
+同一區塊的「讀取區域地圖」會在按下後另開原版 Quest 連線，查詢固定的區域 0，按伺服器回覆順序列出地圖 ID。清單依原版資料的區域欄位分組，角色進度顯示在 Data 任務快照。Quest 連線在查詢結束後關閉，失敗時可再按同一按鈕重試。[原版地圖查詢](../app/server/src/controller/quest_controller.rb#L33) · [區域地圖驗收](../docs/playtest/README.md#區域地圖查詢)
+
 面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線、登入及任務快照。
 
 ## 與原版核對

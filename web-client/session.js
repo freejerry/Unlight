@@ -3,9 +3,12 @@ import { applySessionKey, createFrameParser, encodeCommand, readReply } from './
 import {
   AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
 } from './data-bootstrap.js';
+import { QUEST_MAP_REQUEST, QUEST_MAP_REPLY, readQuestMapReply } from './quest-data.js';
 
 const AUTH_PORT = 12001;
 const DATA_PORT = 12003;
+const QUEST_PORT = 12005;
+const QUEST_REGION = 0;
 const CHANNELS = [
   { port: 12002, pong: 35 },
   { port: DATA_PORT, pong: 3 },
@@ -22,6 +25,7 @@ const messages = {
   protocol: '遊戲服務回傳的登入資料無法驗證。',
   timeout: '遊戲服務未及時回覆，請再試一次。',
   cancelled: '已取消連線。',
+  busy: '正在讀取任務區域。',
 };
 
 export class SessionError extends Error {
@@ -115,8 +119,8 @@ class SessionSocket {
       } catch {
         throw new SessionError('network');
       }
-      // The first Lobby request is plain. Ruby keys all following packets.
-      if (nextKey) this.#key = nextKey;
+      // The first service request is plain. Each socket owns its key thereafter.
+      if (nextKey) this.#key = nextKey.slice();
       return await bounded(response, signal);
     } finally {
       this.#waiting = null;
@@ -132,21 +136,24 @@ class SessionSocket {
     return () => { this.#observer = null; };
   }
 
-  async close(logout) {
+  async close(logout, { waitForPeer = false } = {}) {
     if (!this.#reason) {
       this.#reason = 'closed';
+      let sentLogout = false;
       if (logout !== undefined && this.#socket.readyState === WebSocket.OPEN) {
         try {
           this.#socket.send(encodeCommand(logout, [], this.#key));
+          sentLogout = true;
         } catch {
           // Closing the connection also detaches the session on the server.
         }
       }
-      this.#closeTransport();
+      if (!waitForPeer || !sentLogout) this.#closeTransport();
     }
     try {
       await bounded(this.closed, undefined, CLOSE_TIMEOUT);
     } catch {
+      this.#closeTransport();
       this.#finishClose();
     }
   }
@@ -245,8 +252,7 @@ function observeInitialData(socket, signal) {
 async function confirmChannel(channel, playerId, sessionKey, signal) {
   const { socket } = channel;
   await socket.open(signal);
-  const key = Uint8Array.from(sessionKey.match(/../g), (pair) => Number.parseInt(pair, 16));
-  const negotiation = await socket.ask(0, [playerId], [0, 2], { signal, nextKey: key });
+  const negotiation = await socket.ask(0, [playerId], [0, 2], { signal, nextKey: sessionKey });
   if (negotiation.command !== 0) throw new SessionError('protocol');
   const sign = negotiation.string(4);
   if (!/^\d{1,4}$/.test(sign) || negotiation.string(10) !== 'are you ok') {
@@ -272,14 +278,37 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
   }
 }
 
+function closeChannel({ socket, verified, port }) {
+  // The Quest server closes after removing its registration for this player.
+  return socket.close(verified ? 2 : undefined, { waitForPeer: port === QUEST_PORT });
+}
+
 async function closeSession(auth, channels) {
-  await Promise.all(channels.map(({ socket, verified }) => socket.close(verified ? 2 : undefined)));
+  await Promise.all(channels.map(closeChannel));
   // AuthServer handles logout in its disconnect callback.
   await auth?.close();
 }
 
-function activeSession(auth, channels, playerId, { questData, ...initialData }) {
+async function queryQuestMaps(playerId, sessionKey, signal) {
+  const socket = new SessionSocket(QUEST_PORT);
+  const channel = { socket, port: QUEST_PORT, verified: false };
+  try {
+    await confirmChannel(channel, playerId, sessionKey, signal);
+    // Quest login may also send the card count and the existing inventory.
+    const reply = await socket.ask(QUEST_MAP_REQUEST, [QUEST_REGION], [QUEST_MAP_REPLY], {
+      signal, allowOther: true,
+    });
+    return readQuestMapReply(reply, QUEST_REGION);
+  } catch (error) {
+    throw error instanceof SessionError ? error : new SessionError('protocol');
+  } finally {
+    await closeChannel(channel);
+  }
+}
+
+function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
+  let questMapRequest;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -288,7 +317,11 @@ function activeSession(auth, channels, playerId, { questData, ...initialData }) 
       clearInterval(timer);
       initialData = null;
       questData = null;
+      sessionKey.fill(0);
+      const request = questMapRequest;
+      request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       closing = (async () => {
+        if (request) await request.task.catch(() => {});
         await closeSession(auth, channels);
         resolveClosed(reason);
       })();
@@ -323,6 +356,29 @@ function activeSession(auth, channels, playerId, { questData, ...initialData }) 
       if (!questData) throw new SessionError('protocol');
       return { ...questData, rows: questData.rows.map((row) => ({ ...row })) };
     },
+    async readQuestMaps({ signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (questMapRequest) throw new SessionError('busy');
+      auth.assertOpen();
+      for (const { socket } of channels) socket.assertOpen();
+
+      const controller = new AbortController();
+      const cancel = () => controller.abort(new SessionError('cancelled'));
+      signal?.addEventListener('abort', cancel, { once: true });
+      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+      const task = queryQuestMaps(playerId, sessionKey, controller.signal);
+      questMapRequest = { controller, task };
+      try {
+        const ids = await task;
+        controller.signal.throwIfAborted();
+        return ids;
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', cancel);
+        questMapRequest = null;
+      }
+    },
     closed,
     close: () => stop('closed'),
   };
@@ -336,6 +392,7 @@ export async function startSession(username, password, { signal } = {}) {
   }
 
   let auth;
+  let sessionKeyBytes;
   const channels = [];
   const startup = new AbortController();
   const startupSignal = startup.signal;
@@ -375,6 +432,7 @@ export async function startSession(username, password, { signal } = {}) {
       || !await bounded(Promise.resolve(verify(cert)), startupSignal)) {
       throw new SessionError('protocol');
     }
+    sessionKeyBytes = Uint8Array.from(sessionKey.match(/../g), (pair) => Number.parseInt(pair, 16));
     auth.expireOn(8);
 
     let initialData;
@@ -382,16 +440,17 @@ export async function startSession(username, password, { signal } = {}) {
       startupSignal.throwIfAborted();
       const channel = { socket: new SessionSocket(port, rejectStartup), port, pong, verified: false };
       channels.push(channel);
-      const data = await confirmChannel(channel, playerId, sessionKey, startupSignal);
+      const data = await confirmChannel(channel, playerId, sessionKeyBytes, startupSignal);
       if (data) initialData = data;
     }
     startupSignal.throwIfAborted();
     auth.assertOpen();
     for (const { socket } of channels) socket.assertOpen();
     finishStartup();
-    return activeSession(auth, channels, playerId, initialData);
+    return activeSession(auth, channels, playerId, sessionKeyBytes, initialData);
   } catch (error) {
     finishStartup();
+    sessionKeyBytes?.fill(0);
     await closeSession(auth, channels);
     throw error instanceof SessionError ? error : new SessionError('protocol');
   }

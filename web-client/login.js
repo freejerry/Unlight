@@ -40,6 +40,14 @@ const questUi = {
   fields: ['count', 'capacity', 'flag', 'clear-count'].map(field => document.querySelector(`#session-quest-${field}`)),
 };
 
+const mapsUi = {
+  load: document.querySelector('#session-quest-maps-load'),
+  status: document.querySelector('#session-quest-maps-status'),
+  result: document.querySelector('#session-quest-maps-result'),
+  count: document.querySelector('#session-quest-maps-count'),
+  list: document.querySelector('#session-quest-maps-list'),
+};
+
 const newsUi = {
   details: document.querySelector('#session-news'),
   summary: document.querySelector('#session-news-summary'),
@@ -63,11 +71,19 @@ const questStatuses = {
   success: '已讀取登入時的任務資料。',
   failed: '無法讀取任務資料，請重試。',
 };
+const mapsStatuses = {
+  idle: '尚未讀取地圖清單。',
+  loading: '正在向任務服務查詢…',
+  success: '已讀取伺服器回傳的地圖清單。',
+  empty: '伺服器沒有回傳地圖。',
+  failed: '無法讀取區域地圖，請重試。',
+};
 const MAX_CATALOG_ID = 0x7fffffff;
 
 let pending = null;
 let active = null;
 let questRequest = null;
+let mapsRequest = null;
 let newsRequest = null;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
@@ -108,6 +124,21 @@ function showQuestStatus(state, kind) {
   if (kind) questUi.status.dataset.errorKind = kind;
   else delete questUi.status.dataset.errorKind;
   questUi.load.disabled = state === 'loading';
+}
+
+function showMapsStatus(state, kind) {
+  mapsUi.status.dataset.state = state;
+  mapsUi.status.textContent = mapsStatuses[state];
+  if (kind) mapsUi.status.dataset.errorKind = kind;
+  else delete mapsUi.status.dataset.errorKind;
+  mapsUi.load.disabled = state === 'loading';
+}
+
+function clearMapsResults() {
+  mapsUi.result.hidden = true;
+  mapsUi.count.textContent = '';
+  mapsUi.list.hidden = true;
+  mapsUi.list.replaceChildren();
 }
 
 function setOriginalText(element, text) {
@@ -294,6 +325,10 @@ function show(state, label, detail = '', kind) {
   newsUi.details.hidden = !signedIn;
   if (!signedIn) {
     clearNews();
+    mapsRequest?.abort();
+    mapsRequest = null;
+    clearMapsResults();
+    showMapsStatus('idle');
     questRequest?.abort();
     questRequest = null;
     clearQuestResults();
@@ -394,6 +429,37 @@ questUi.load.addEventListener('click', async () => {
     }
   } finally {
     if (questRequest === controller) questRequest = null;
+  }
+});
+
+mapsUi.load.addEventListener('click', async () => {
+  const session = active;
+  if (!session?.initialData?.avatar || mapsRequest) return;
+
+  const controller = new AbortController();
+  mapsRequest = controller;
+  const isCurrent = () => mapsRequest === controller && active === session && session.initialData;
+  clearMapsResults();
+  showMapsStatus('loading');
+  try {
+    const ids = await session.readQuestMaps({ signal: controller.signal });
+    if (!isCurrent()) return;
+    if (!Array.isArray(ids) || !ids.every(Number.isSafeInteger)) throw new SessionError('protocol');
+
+    for (const id of ids) {
+      const entry = document.createElement('li');
+      entry.dataset.mapId = String(id);
+      entry.textContent = String(id);
+      mapsUi.list.append(entry);
+    }
+    mapsUi.count.textContent = String(ids.length);
+    mapsUi.list.hidden = ids.length === 0;
+    mapsUi.result.hidden = false;
+    showMapsStatus(ids.length ? 'success' : 'empty');
+  } catch (error) {
+    if (isCurrent()) showMapsStatus('failed', error instanceof SessionError ? error.kind : 'protocol');
+  } finally {
+    if (mapsRequest === controller) mapsRequest = null;
   }
 });
 
