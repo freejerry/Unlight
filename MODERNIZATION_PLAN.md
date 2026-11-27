@@ -12,6 +12,8 @@
 
 原版相容入口的 Chromium 已跑完首場 PvE「落日大蝙蝠」，核對繁中關卡描述、勝利畫面、地圖進度及 Ruby 寫入的 11 Gem 與 15 Exp。戰鬥 BGM、擲骰、勝利及階段切換音效已比對 Web Audio 混音與原 MP3。相容版用原圖恢復了登入和消息面板的九宮格縮放，並以測試 XML 驗收標題頁消息與登入後的最新消息。標題動畫可重跑 SWF 宣告幀率、瀏覽器回呼和可見畫面變化的量測。目標硬體上的動畫流暢度仍待驗收。[首場 PvE](docs/playtest/README.md#首場-pve-結算) · [原版畫面驗收](docs/playtest/README.md#畫面驗收項目) · [標題量測](docs/playtest/README.md#標題動畫取樣)
 
+大廳淡出時會清理它持有的提示框。Chromium 實測直接點擊仍顯示提示的「任務」按鈕，進入地圖與戰鬥時提示都已清除。正常的地圖懸停提示也已驗證。[提示退場驗收](docs/playtest/README.md#大廳提示退場)
+
 《霧潮航線》位於 `modern/`，是一個獨立的技術試驗，已驗證 Rust／Wasm 回放、Axum、WebSocket 和瀏覽器端出牌流程。[技術試驗](modern/README.md)
 
 舊版 Ruby 後端以 `015d92e4` 啟動在雲端隔離環境，使用獨立 SQLite 與 Memcached。認證、大廳、資料、戰鬥、任務及全域聊天六個服務均通過 KeepAlive。測試副本已匯入 30 張原版資料表，共 54,034 列，並以原版初始化建立 1,614 副 CPU 牌組。[舊版啟動與檢查程式](tools/legacy-server/run.py)

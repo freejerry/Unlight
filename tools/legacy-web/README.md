@@ -65,6 +65,8 @@ python3 tools/legacy-web/check_browser.py --port 4330 --software \
 
 以 `--playtest-first-quest` 啟動隔離的原版 Ruby。登入後進入魔女山谷，選擇「落日大蝙蝠」。移動後依距離選擇槍牌或劍牌，按 OK 確認出牌。獲勝後依序關閉勝利與 `QUEST CLEAR`，確認地圖進度及 Gem、Exp。雲端 Ruffle Desktop 和獨立 Chromium 都已跑完這場測例。[隔離測試帳號](../legacy-server/README.md#首場-pve-驗收資料) · [瀏覽器通關紀錄](../../docs/playtest/README.md#首場-pve-結算)
 
+重跑大廳提示時，先將游標停在「任務」按鈕直到提示出現，接著在同一位置點擊。在魔女山谷停在關卡名稱上，可叫出關卡描述。移開游標後，關卡描述應消失。進入戰鬥時，畫面上應已清除大廳持有的提示框。從地圖按 `BACK` 回大廳後，可再次懸停確認「任務」提示。[提示退場驗收](../../docs/playtest/README.md#大廳提示退場)
+
 要比對個別音效，可在 Playwright 的隔離測試頁載入取樣程式，再進入關卡。`drain()` 取出並清空最近約 75 秒的聲音樣本。可在擲骰後和結算時，分別在測試工作區保存一份。
 
 ```python

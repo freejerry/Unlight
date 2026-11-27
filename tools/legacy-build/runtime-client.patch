@@ -146,3 +146,79 @@
 +
          public function updateNews(text:String):void
          {
+--- src/view/scene/lobby/Entrance.as
++++ src/view/scene/lobby/Entrance.as
+@@ -12,6 +12,7 @@
+     import mx.managers.ToolTipManager;
+
+     import model.Player;
++    import view.ClousureThread;
+     import view.scene.BaseScene;
+     import view.image.lobby.*;
+     import view.RealMoneyShopView;
+@@ -378,6 +379,7 @@
+ //            addChild(RealMoneyShopView.onShopButton(RealMoneyShopView.TYPE_CHARA_CARD));
+             initSaleMC();
+             initilizeToolTipOwners();
++            addEventListener(Event.REMOVED_FROM_STAGE, detachToolTips);
+             CONFIG::LOCALE_JP
+             {
+             serial.addEventListener(MouseEvent.CLICK, serialMouseClickHandler);
+@@ -425,6 +427,20 @@
+
+         public override function final():void
+         {
++            detachToolTips();
++            _bgSet.sale.removeEventListener(MouseEvent.CLICK, serialMouseClickHandler);
++            info.removeEventListener(MouseEvent.CLICK,infoClickHandler);
++            RemoveChild.all(_labelContainer);
++
++            if (_time) {
++                _time.stop();
++                _time.removeEventListener(TimerEvent.TIMER, updateDuration);
++            }
++        }
++
++        private function detachToolTips(event:Event = null):void
++        {
++            removeEventListener(Event.REMOVED_FROM_STAGE, detachToolTips);
+             _bgSet.card.removeEventListener(MouseEvent.ROLL_OVER, cardMouseOverHandler);
+             _bgSet.card.removeEventListener(MouseEvent.ROLL_OUT, cardMouseOutHandler);
+             _bgSet.option.removeEventListener(MouseEvent.ROLL_OVER, optionMouseOverHandler);
+@@ -445,16 +461,18 @@
+             _bgSet.library.removeEventListener(MouseEvent.ROLL_OUT, libraryMouseOutHandler);
+             _bgSet.raid.removeEventListener(MouseEvent.ROLL_OVER, raidMouseOverHandler);
+             _bgSet.raid.removeEventListener(MouseEvent.ROLL_OUT, raidMouseOutHandler);
+-            _bgSet.sale.removeEventListener(MouseEvent.CLICK, serialMouseClickHandler);
+-
+-            info.removeEventListener(MouseEvent.CLICK,infoClickHandler);
+-
+-            RemoveChild.all(_labelContainer);
+-
+-            if (_time) {
+-                _time.stop();
+-                _time.removeEventListener(TimerEvent.TIMER, updateDuration);
+-            }
++
++            // Flex places manual tips outside the lobby's display list.
++            cardMouseOutHandler(null);
++            optionMouseOutHandler(null);
++            battleMouseOutHandler(null);
++            questMouseOutHandler(null);
++            tutorialMouseOutHandler(null);
++            shopMouseOutHandler(null);
++            itemMouseOutHandler(null);
++            lotMouseOutHandler(null);
++            libraryMouseOutHandler(null);
++            raidMouseOutHandler(null);
+         }
+
+         // ツールチップが必要なオブジェクトをすべて追加する
+@@ -742,6 +760,7 @@
+         public override  function getHideThread(type:String=""):Thread
+         {
+             var sExec:SerialExecutor = new SerialExecutor();
++            sExec.addThread(new ClousureThread(detachToolTips));
+             sExec.addThread(new BeTweenAS3Thread(this, {alpha:0.0}, null, 0.8/Unlight.SPEED, BeTweenAS3Thread.EASE_OUT_SINE, 0.0 ,false));
+             sExec.addThread(super.getHideThread());
+             return sExec;

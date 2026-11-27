@@ -22,9 +22,17 @@ Chromium 156 使用 ANGLE SwiftShader 的標題量測中，900 × 760 視窗顯�
 
 在 Chromium 156、ANGLE SwiftShader、Ruffle Web 0.8.0 和合併相容 SWF `789ab2b8` 上，用新建的隔離測試帳號跑完魔女山谷的「落日大蝙蝠」。選取任務時可讀到繁中關卡名稱和描述。第一回合留在中距離，出一張槍牌後攻擊力為 5，原版 Ruby 回報獲勝。按下勝利畫面和通關提示的兩處 OK 後，回到魔女山谷，地圖進度由 0/3 變為 1/3。[關卡名稱與描述](browser/18-browser-pve-selected.png) · [首回合出牌](browser/19-browser-pve-attack.png) · [勝利畫面](browser/20-browser-pve-victory.png) · [通關提示](browser/21-browser-pve-clear.png) · [返回地圖](browser/22-browser-pve-map.png)
 
-回到地圖後，Gem 由 100 變為 111、Exp 由 0 變為 15，角色從 Lv.1 升到 Lv.2。瀏覽器關閉後以唯讀 SQLite 複查，一筆勝利及一點任務進度已寫入，原任務從庫存移除。畫面上仍可看到地圖提示留在戰鬥與勝利動畫上方。[首戰隔離帳號](../../tools/legacy-server/README.md#首場-pve-驗收資料)
+回到地圖後，Gem 由 100 變為 111、Exp 由 0 變為 15，角色從 Lv.1 升到 Lv.2。瀏覽器關閉後以唯讀 SQLite 複查，一筆勝利及一點任務進度已寫入，原任務從庫存移除。這一輪的戰鬥與勝利截圖保留了修正前殘留的大廳提示。[首戰隔離帳號](../../tools/legacy-server/README.md#首場-pve-驗收資料)
 
 在 Web Audio 的混音中辨認出原始戰鬥 BGM、擲骰和勝利音效。依排定播放時間重組取樣後，各片段與原 MP3 的最高正規化相關係數分別為 0.988、0.959 和 0.966。另一輪進到移動階段時，階段切換音效為 0.530。每個判定都有多個 0.45 秒區段對上同一播放起點。這些數值來自瀏覽器混音取樣。[音訊取樣重跑方式](../../tools/legacy-web/README.md#首場-pve-及音效)
+
+### 大廳提示退場
+
+大廳「任務」按鈕的提示由 Flex 的獨立圖層持有。相容版在大廳開始淡出時卸除懸停事件和已建立的提示，場景移除時也會清理。繁中 SWF `602db88d` 的 Chromium 實測直接點擊已顯示提示的任務按鈕，在進入地圖時原提示已消失。關卡名稱與可開始的任務地點各自仍會顯示提示，移開游標後消失。[原版提示建立](../../app/client/src/view/scene/lobby/Entrance.as#L608) · [相容版補丁](../../tools/legacy-build/runtime-client.patch) · [大廳懸停](browser/23-browser-lobby-quest-tip.png) · [地圖關卡提示](browser/24-browser-map-quest-tip.png)
+
+在任務地點再次懸停後立即點擊進入戰鬥。抽牌、移動、攻擊、勝利、通關和返回地圖的畫面均已清除先前的提示。該輪在第二回合獲勝，地圖進度為 1/3。SQLite 複查確認通關及 12 Gem、15 Exp。[抽牌畫面](browser/25-browser-draw-tip-cleared.png) · [修正後的攻擊畫面](browser/26-browser-attack-tip-cleared.png) · [修正前的勝利畫面](browser/20-browser-pve-victory.png) · [修正後的勝利畫面](browser/27-browser-victory-tip-cleared.png) · [返回地圖](browser/28-browser-map-tip-cleared.png)
+
+另在同一個已通關的測試帳號中，從地圖按 `BACK` 回到大廳，確認再次懸停「任務」可顯示原提示，移開後會消失。
 
 ### 標題動畫取樣
 
