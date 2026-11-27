@@ -1,6 +1,8 @@
 const MAX_ID_LIST_BYTES = 4096;
-const MAX_MAP_ID = 0x7fffffff;
+const MIN_INT32 = -0x80000000;
+const MAX_INT32 = 0x7fffffff;
 const MAX_SENDER_NAME_BYTES = 128;
+const PENDING_STATUS = 4;
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
@@ -23,15 +25,16 @@ const fields = [
   { key: 'inventoryIds' },
   { key: 'questIds' },
   { key: 'statuses' },
-  skipString, // Search times.
+  { key: 'findTimes', signed: true },
   skipString, // Sender names.
   { key: 'questFlag', width: 4 },
   { key: 'questClearNum', width: 4 },
 ];
 
-function integerList(csv) {
+function integerList(csv, signed = false) {
   if (csv === '') return [];
-  if (!/^\d+(?:,\d+)*$/.test(csv)) throw new Error('Invalid quest list.');
+  const pattern = signed ? /^-?\d+(?:,-?\d+)*$/ : /^\d+(?:,\d+)*$/;
+  if (!pattern.test(csv)) throw new Error('Invalid quest list.');
   const list = csv.split(',').map(Number);
   if (!list.every(Number.isSafeInteger)) throw new Error('Quest list value exceeds bounds.');
   return list;
@@ -43,7 +46,7 @@ export function readQuestMapReply(reply, region) {
   }
   const ids = integerList(reply.string(MAX_ID_LIST_BYTES));
   reply.done();
-  if (ids.some((id) => id === 0 || id > MAX_MAP_ID)) throw new Error('Invalid quest map ID.');
+  if (ids.some((id) => id === 0 || id > MAX_INT32)) throw new Error('Invalid quest map ID.');
   return ids;
 }
 
@@ -96,7 +99,7 @@ export function createQuestDataReader() {
       const view = new DataView(buffer.buffer);
       if (field.width === 1) values[field.key] = view.getInt8(0);
       else if (field.width === 4) values[field.key] = view.getInt32(0);
-      else values[field.key] = integerList(text.decode(buffer));
+      else values[field.key] = integerList(text.decode(buffer), field.signed);
     }
     buffer?.fill(0);
     buffer = null;
@@ -117,9 +120,10 @@ export function createQuestDataReader() {
     },
     result() {
       if (fieldIndex !== fields.length) throw new Error('Incomplete quest data.');
-      const { capacity, count, inventoryIds, questIds, statuses, questFlag, questClearNum } = values;
+      const { capacity, count, inventoryIds, questIds, statuses, findTimes, questFlag, questClearNum } = values;
       if (capacity < 0 || count < 0 || questFlag < 0 || questClearNum < 0
         || inventoryIds.length !== count || questIds.length !== count || statuses.length !== count
+        || findTimes.length !== count || findTimes.some((seconds) => seconds < MIN_INT32 || seconds > MAX_INT32)
         || inventoryIds.some((id) => id === 0)
         || new Set(inventoryIds).size !== count || statuses.some((status) => status > 6)) {
         throw new Error('Invalid quest data.');
@@ -129,11 +133,12 @@ export function createQuestDataReader() {
         capacity,
         questFlag,
         questClearNum,
-        rows: inventoryIds.map((inventoryId, index) => ({
-          inventoryId,
-          questId: questIds[index],
-          status: statuses[index],
-        })),
+        rows: inventoryIds.map((inventoryId, index) => {
+          const status = statuses[index];
+          const row = { inventoryId, questId: questIds[index], status };
+          if (status === PENDING_STATUS) row.findSeconds = findTimes[index];
+          return row;
+        }),
       };
     },
     dispose() {

@@ -139,6 +139,8 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-inventory th { color: var(--muted); font-size: .84rem; }
 .quest-inventory td { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .quest-map { display: block; color: var(--muted); font-size: .83rem; }
+.quest-countdown { display: block; margin-top: .2rem; color: var(--muted); font-size: .83rem; line-height: 1.4; }
+.quest-countdown[data-state="elapsed"] { color: #694828; }
 .quest-original-text { color: #2d444f; font-size: .92rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .quest-map-caption { margin-top: .35rem; }
 .quest-details { margin-top: .8rem; }

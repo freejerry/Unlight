@@ -234,8 +234,14 @@ function observeInitialData(socket, signal) {
         } else {
           if (!versions || profileStarted) throw new SessionError('protocol');
           profileStarted = true;
+          // Anchor the original relative times at frame arrival, before async inflation.
+          const receivedAt = performance.now();
           readDataProfile(reply, decoding.signal).then(
-            (profile) => resolve({ versions, ...profile }),
+            ({ questData, ...profile }) => resolve({
+              versions,
+              ...profile,
+              questData: questData ? { ...questData, receivedAt } : null,
+            }),
             reject,
           );
         }

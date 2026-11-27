@@ -95,12 +95,15 @@ const questStatuses = {
   failed: '無法讀取任務資料，請重試。',
 };
 const MAX_CATALOG_ID = 0x7fffffff;
+const QUEST_PENDING = 4;
+const questCountdowns = [];
 
 let pending = null;
 let active = null;
 let questRequest = null;
 let liveQuestRequest = null;
 let newsRequest = null;
+let questCountdownTimer;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
   field.addEventListener('input', () => field.setCustomValidity(''));
@@ -179,6 +182,9 @@ function setOriginalText(element, text) {
 }
 
 function clearQuestResults() {
+  clearTimeout(questCountdownTimer);
+  questCountdownTimer = undefined;
+  questCountdowns.length = 0;
   questUi.progress.hidden = true;
   questUi.mapProgress.hidden = true;
   delete questUi.mapProgress.dataset.mapId;
@@ -201,7 +207,33 @@ function appendQuestRow(tableBody, { inventoryId, questId, status }) {
   return row;
 }
 
-function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows }) {
+function formatQuestTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const minutesAndSeconds = `${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  return minutes >= 60 ? `${Math.floor(minutes / 60)}:${minutesAndSeconds}` : minutesAndSeconds;
+}
+
+function updateQuestCountdowns() {
+  clearTimeout(questCountdownTimer);
+  questCountdownTimer = undefined;
+  if (document.hidden || !active?.initialData) return;
+
+  const now = performance.now();
+  let nextUpdate = Infinity;
+  for (const { element, deadline } of questCountdowns) {
+    const remaining = Math.max(0, deadline - now);
+    const seconds = Math.ceil(remaining / 1000);
+    if (element.dataset.remainingSeconds !== String(seconds)) {
+      element.dataset.remainingSeconds = String(seconds);
+      element.dataset.state = seconds > 0 ? 'counting' : 'elapsed';
+      element.textContent = seconds > 0 ? `預估剩餘 ${formatQuestTime(seconds)}` : '預估已到期，待伺服器確認';
+    }
+    if (seconds > 0) nextUpdate = Math.min(nextUpdate, remaining - (seconds - 1) * 1000);
+  }
+  if (Number.isFinite(nextUpdate)) questCountdownTimer = setTimeout(updateQuestCountdowns, Math.ceil(nextUpdate));
+}
+
+function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receivedAt }) {
   const values = [rows.length, capacity, questFlag, questClearNum];
   questUi.fields.forEach((field, index) => { field.textContent = String(values[index]); });
 
@@ -213,12 +245,25 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows }) {
     const map = document.createElement('span');
     map.className = 'quest-map';
     map.hidden = true;
-    row.insertCell().append(name, map);
+    const description = row.insertCell();
+    description.append(name, map);
+    if (entry.status === QUEST_PENDING && Number.isSafeInteger(entry.findSeconds)
+        && Number.isFinite(receivedAt) && receivedAt >= 0) {
+      const element = document.createElement('span');
+      element.className = 'quest-countdown';
+      element.setAttribute('role', 'timer');
+      element.setAttribute('aria-live', 'off');
+      description.append(element);
+      // Ruby truncates toward zero. A nonnegative value can be up to one second short.
+      const deadline = entry.findSeconds < 0 ? 0 : receivedAt + (entry.findSeconds + 1) * 1000;
+      questCountdowns.push({ element, deadline });
+    }
   }
 
   questUi.progress.hidden = false;
   questUi.inventory.hidden = rows.length === 0;
   showQuestStatus(rows.length ? 'success' : 'empty');
+  updateQuestCountdowns();
 }
 
 function showQuestDetails(quests) {
@@ -516,6 +561,8 @@ mapsUi.load.addEventListener('click', () => {
 serviceInventoryUi.load.addEventListener('click', () => {
   void readLiveQuest(serviceInventoryUi, 'readQuestServiceInventory', appendServiceInventory);
 });
+
+document.addEventListener('visibilitychange', updateQuestCountdowns);
 
 newsUi.details.addEventListener('toggle', () => {
   if (newsUi.details.open && newsUi.details.dataset.state === 'idle') void loadNews();

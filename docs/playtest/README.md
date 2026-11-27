@@ -138,6 +138,12 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 此頁提供唯讀資料核對。原版首場 PvE 的地形缺字修正有獨立的前後畫面，完整遊玩流程可在原版相容入口驗收。[地形修正前](browser/30-browser-land-font-before.png) · [地形修正後](browser/31-browser-land-font-after.png) · [原版首場 PvE](#首場-pve-結算)
 
+### 搜尋中任務的預估倒數
+
+原版 Ruby 把搜尋中的剩餘時間換成向零截斷的相對整秒，隨 Data 登入回覆送出。原生頁面在收到完整回覆時用瀏覽器單調時鐘記下起點。非負秒數加一秒，涵蓋原本截去的不到一秒。負值直接顯示「預估已到期，待伺服器確認」。原版 Quest 的完成檢查 `17` 可寫入狀態，原生倒數只更新畫面，以登入快照為準。獨立的 Rust 搜尋示範由自身服務提供截止時間和已確認的結果。[原版整秒欄位](../../app/server/src/model/avatar.rb#L757) · [原版完成檢查](../../app/server/src/model/avatar_quest_inventory.rb#L120) · [Rust 搜尋示範](../../web-client/README.md#原生搜尋倒數示範)
+
+Chromium 使用隔離 Ruby 的真實 Data 回覆，取得任務 ID `0`、狀態 `4` 及 1149 秒。以瀏覽器受控時間驗證登入後延遲讀取、重讀、分頁隱藏後再顯示，以及 320 CSS 像素、DPR 2 的估計到期畫面。當估計到期時，畫面仍為任務 ID `0`、狀態 `4`。快照顯示期間未新增 Ruby 命令，SQLite 中的任務與截止時間維持一致。登出及 Data 連線中斷都會清除畫面。[桌面倒數](native/32-native-quest-countdown.png) · [320 像素預估到期](native/33-native-quest-countdown-elapsed-mobile.png)
+
 ### 區域地圖查詢
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)
