@@ -1,4 +1,4 @@
-import { startSession, SessionError } from './session.js';
+import { startSession, SessionError, canAppendDeckCharacter } from './session.js';
 import { readNews } from './news.js';
 
 const ui = {
@@ -33,6 +33,21 @@ const avatarCreateUi = {
   card: document.querySelector('#session-avatar-create-card'),
   status: document.querySelector('#session-avatar-create-status'),
   retry: document.querySelector('#session-avatar-create-retry'),
+};
+
+const deckUi = {
+  section: document.querySelector('#session-deck-collection'),
+  name: document.querySelector('#session-deck-name'),
+  slots: document.querySelector('#session-deck-slots'),
+  binder: document.querySelector('#session-deck-binder'),
+  empty: document.querySelector('#session-deck-binder-empty'),
+  status: document.querySelector('#session-deck-status'),
+  form: document.querySelector('#session-deck-add'),
+  fields: document.querySelector('#session-deck-add-fields'),
+  target: document.querySelector('#session-deck-add-target'),
+  card: document.querySelector('#session-deck-card'),
+  submit: document.querySelector('#session-deck-submit'),
+  retry: document.querySelector('#session-deck-catalog-retry'),
 };
 
 const questUi = {
@@ -338,6 +353,10 @@ const questBoardAnimations = new Set();
 let pending = null;
 let active = null;
 let avatarCreateRequest = null;
+let deckCatalogRequest = null;
+let deckEditRequest = null;
+let deckCatalog = null;
+const deckVerifications = new Map();
 let questRequest = null;
 let liveQuestRequest = null;
 let newsRequest = null;
@@ -532,6 +551,264 @@ async function submitAvatarCreate(event) {
   }
 }
 
+const deckSize = 3;
+const deckIdentityFields = ['characterId', 'unlightCharacterId', 'parentId'];
+const deckUncertainMessage = '尚未確認卡片是否已加入。請登出後以同一帳號重新登入，核對牌組。';
+
+function showDeckStatus(state, message = '', kind) {
+  deckUi.status.dataset.state = state;
+  deckUi.status.textContent = message;
+  if (kind) deckUi.status.dataset.errorKind = kind;
+  else delete deckUi.status.dataset.errorKind;
+}
+
+function clearDeckCollection() {
+  deckCatalogRequest?.abort();
+  deckCatalogRequest = null;
+  deckEditRequest?.abort();
+  deckEditRequest = null;
+  deckCatalog = null;
+  deckUi.section.hidden = true;
+  deckUi.form.hidden = true;
+  deckUi.fields.disabled = true;
+  deckUi.name.textContent = '';
+  for (const list of [deckUi.slots, deckUi.binder, deckUi.card]) list.replaceChildren();
+  deckUi.empty.hidden = true;
+  deckUi.retry.hidden = true;
+  showDeckStatus('idle');
+}
+
+function deckAppendPosition({ status, cards }) {
+  if (status !== 0 || cards.length >= deckSize
+      || cards.some(({ position }, index) => position !== index)) return null;
+  return cards.length;
+}
+
+function deckCardEligibility({ cardId }, deck) {
+  const card = deckCatalog?.get(cardId);
+  const existing = deck.cards.map(entry => deckCatalog?.get(entry.cardId));
+  if (!card || existing.some(entry => !entry)) return 'unavailable';
+  if (existing.some(entry => deckIdentityFields.some(field => entry[field] === card[field]))) return 'conflict';
+  return deckAppendPosition(deck) !== null && canAppendDeckCharacter(card, existing) ? 'available' : 'unavailable';
+}
+
+function displayDeckCards({ binder, deck }) {
+  deckUi.name.textContent = deck.name || '牌組 1';
+  deckUi.slots.replaceChildren(...Array.from({ length: deckSize }, (_, position) => {
+    const item = document.createElement('li');
+    item.className = 'deck-slot';
+    item.dataset.position = String(position);
+    const label = document.createElement('span');
+    label.className = 'deck-slot-label';
+    label.textContent = `第 ${position + 1} 欄`;
+    item.append(label);
+    return describeDeckCard(item, deck.cards.find(card => card.position === position));
+  }));
+  deckUi.card.replaceChildren(new Option('請選擇角色卡', ''));
+  deckUi.binder.replaceChildren(...binder.map(card => {
+    const item = document.createElement('li');
+    item.className = 'deck-card';
+    const eligibility = deckCardEligibility(card, deck);
+    item.dataset.eligibility = eligibility;
+    describeDeckCard(item, card);
+    const name = item.firstElementChild.textContent;
+    const option = new Option(`${name}（持有紀錄 ${card.inventoryId}）`, String(card.inventoryId));
+    option.dataset.cardId = String(card.cardId);
+    option.disabled = eligibility !== 'available';
+    if (eligibility === 'conflict') {
+      const note = document.createElement('span');
+      note.className = 'deck-card-note';
+      note.textContent = '同一角色已在牌組中';
+      item.append(note);
+      option.textContent += ` · ${note.textContent}`;
+    }
+    deckUi.card.append(option);
+    return item;
+  }));
+  deckUi.empty.hidden = binder.length !== 0;
+  const position = deckAppendPosition(deck);
+  deckUi.target.hidden = position === null;
+  deckUi.target.textContent = position === null ? '' : `加入第 ${position + 1} 欄`;
+}
+
+function describeDeckCard(item, card) {
+  const name = document.createElement('strong');
+  name.className = 'deck-card-name';
+  if (card) {
+    item.dataset.inventoryId = String(card.inventoryId);
+    item.dataset.cardId = String(card.cardId);
+    const title = deckCatalog?.get(card.cardId)?.name;
+    name.textContent = title ? `${title}（卡片 ${card.cardId}）` : `角色卡 ${card.cardId}`;
+  } else name.textContent = '空位';
+  item.append(name);
+  return item;
+}
+
+function updateDeckControls() {
+  if (deckUi.section.hidden) return;
+  const collection = active?.initialData?.deckCollection;
+  const state = active?.deckEditState;
+  const awaitingProof = deckVerifications.has(active?.playerId);
+  const currentStatus = deckUi.status.dataset.state;
+  const available = state === 'available' && !questLandLocked() && !liveQuestRequest && !deckEditRequest;
+  const options = [...deckUi.card.options].some(option => option.value !== '' && !option.disabled);
+  deckUi.form.hidden = !collection || awaitingProof && currentStatus !== 'moving';
+  deckUi.fields.disabled = !available || !deckCatalog || !options || awaitingProof;
+  deckUi.submit.disabled = deckUi.fields.disabled || !deckUi.card.value;
+  if (collection && ['ready', 'locked'].includes(currentStatus)) {
+    const ready = available && options;
+    showDeckStatus(ready ? 'ready' : 'locked', ready ? '' : available ? '目前沒有可加入牌組的角色卡。' : '牌組目前無法編輯。');
+  }
+}
+
+function sameDeckCard(first, second) {
+  return first?.inventoryId === second?.inventoryId && first?.cardId === second?.cardId && first?.position === second?.position;
+}
+
+function sameDeckCards(first, second) {
+  return Array.isArray(first) && first.length === second.length
+    && second.every(card => first.some(entry => sameDeckCard(entry, card)));
+}
+
+function matchesDeckTicket(ticket, expected) {
+  return ticket?.playerId === expected.playerId && ticket?.avatarId === expected.avatarId
+    && ticket?.deckIndex === expected.deckIndex && sameDeckCard(ticket, expected)
+    && sameDeckCards(ticket.previousCards, expected.previousCards);
+}
+
+function verifyDeckPlacement(session, collection, ticket) {
+  if (!collection || session.playerId !== ticket.playerId || session.initialData.avatar?.id !== ticket.avatarId
+      || collection.deck.index !== ticket.deckIndex) return 'uncertain';
+  const binderCard = collection.binder.find(card => card.inventoryId === ticket.inventoryId);
+  if (!binderCard && sameDeckCards(collection.deck.cards, [...ticket.previousCards, ticket])) return 'verified';
+  if (binderCard?.cardId === ticket.cardId && sameDeckCards(collection.deck.cards, ticket.previousCards)) return 'unchanged';
+  return 'uncertain';
+}
+
+async function loadDeckCatalog(session, focusFrom) {
+  const collection = session?.initialData?.deckCollection;
+  if (!collection || deckCatalogRequest) return;
+  const controller = new AbortController();
+  deckCatalogRequest = controller;
+  const isCurrent = () => deckCatalogRequest === controller && active === session;
+  const normalStatus = () => ['idle', 'loading', 'failed'].includes(deckUi.status.dataset.state);
+  if (normalStatus()) showDeckStatus('loading', '正在讀取角色卡資料…');
+  deckUi.retry.hidden = true;
+  if (focusFrom === deckUi.retry) deckUi.status.focus();
+  const ids = [...new Set([...collection.deck.cards, ...collection.binder].map(card => card.cardId))];
+  const catalog = new Map();
+  try {
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(3500)]);
+    // The original catalog reply allows up to 64 distinct definitions per request.
+    for (let offset = 0; offset < ids.length; offset += 64) {
+      const batch = ids.slice(offset, offset + 64);
+      const params = new URLSearchParams({ ids: batch.join(',') });
+      const response = await fetch(`/api/deck-character-catalog?${params}`, { redirect: 'error', signal });
+      if (!response.ok) throw new Error('Unavailable deck catalog.');
+      const { cards } = await response.json();
+      if (!Array.isArray(cards) || cards.length > batch.length) throw new Error('Invalid deck catalog.');
+      for (const card of cards) {
+        if (!batch.includes(card?.id) || catalog.has(card.id) || !Number.isSafeInteger(card.kind)
+            || typeof card.name !== 'string' || deckIdentityFields.some(field => !Number.isSafeInteger(card[field]) || card[field] < 1)) {
+          throw new Error('Invalid deck catalog entry.');
+        }
+        catalog.set(card.id, card);
+      }
+    }
+    if (!isCurrent()) return;
+    deckCatalog = catalog;
+    displayDeckCards(collection);
+    if (normalStatus()) showDeckStatus('ready');
+    updateDeckControls();
+    if (document.activeElement === deckUi.status && focusFrom === deckUi.retry && !deckUi.fields.disabled) deckUi.card.focus();
+  } catch {
+    if (!isCurrent()) return;
+    if (normalStatus()) showDeckStatus('failed', '暫時無法讀取角色卡資料。');
+    deckUi.retry.hidden = false;
+    if (document.activeElement === deckUi.status && focusFrom === deckUi.retry) deckUi.retry.focus();
+  } finally {
+    if (deckCatalogRequest === controller) deckCatalogRequest = null;
+  }
+}
+
+function displayDeckCollection(session, restoreFocus) {
+  const collection = session.initialData.deckCollection;
+  const pending = deckVerifications.get(session.playerId);
+  if (!collection && (!pending || !session.initialData.avatar)) return;
+  deckUi.section.hidden = false;
+  if (collection) displayDeckCards(collection);
+  if (pending) {
+    const verification = verifyDeckPlacement(session, collection, pending);
+    if (verification !== 'uncertain') deckVerifications.delete(session.playerId);
+    if (verification === 'verified') {
+      showDeckStatus('verified', `已從伺服器確認角色卡位於第 ${pending.position + 1} 欄。`);
+    } else if (verification === 'unchanged') {
+      showDeckStatus('rejected', '伺服器資料顯示卡片未移入牌組，仍在卡冊中。');
+    } else {
+      showDeckStatus('uncertain', '本次角色資料未能證實先前的卡片移動。', 'deck-edit-uncertain');
+    }
+    if (restoreFocus) deckUi.status.focus();
+  }
+  updateDeckControls();
+  void loadDeckCatalog(session);
+}
+
+const deckEditErrors = {
+  'deck-card-unavailable': '這張卡目前無法加入牌組。',
+  'deck-edit-rejected': '伺服器拒絕加入這張卡。',
+  'deck-edit-unavailable': '牌組目前無法編輯。',
+  busy: '請等候目前的操作完成。',
+  network: '連線中斷，請確認登入狀態。',
+  cancelled: '本次加入要求已取消。',
+};
+
+async function submitDeckEdit(event) {
+  event.preventDefault();
+  const session = active;
+  const collection = session?.initialData?.deckCollection;
+  if (!collection || deckEditRequest || deckUi.fields.disabled || deckUi.submit.disabled
+      || session.deckEditState !== 'available' || deckVerifications.has(session.playerId)) return;
+  const selected = collection.binder.find(card => card.inventoryId === Number(deckUi.card.value));
+  const position = deckAppendPosition(collection.deck);
+  if (!selected || position === null || deckCardEligibility(selected, collection.deck) !== 'available') return;
+  const ticket = {
+    playerId: session.playerId, avatarId: session.initialData.avatar.id, deckIndex: collection.deck.index,
+    ...selected, position, previousCards: collection.deck.cards,
+  };
+  const controller = new AbortController();
+  const isCurrent = () => deckEditRequest === controller && active === session && session.initialData?.deckCollection;
+  const remember = receipt => {
+    if (!deckVerifications.has(session.playerId)) deckVerifications.set(session.playerId, receipt);
+  };
+  const restoreFocus = deckUi.fields.contains(document.activeElement);
+  deckEditRequest = controller;
+  showDeckStatus('moving', '正在向伺服器送出卡片移動…');
+  if (restoreFocus) deckUi.status.focus();
+  try {
+    const result = session.addDeckCard(selected.inventoryId, { signal: controller.signal });
+    updateLiveQuestButtons();
+    const receipt = await result;
+    if (!matchesDeckTicket(receipt, ticket)) throw new SessionError('deck-edit-uncertain');
+    remember(receipt);
+    if (isCurrent()) showDeckStatus('pending-verification', '伺服器已處理加入要求。請登出後以同一帳號重新登入，確認牌組。');
+  } catch (error) {
+    const kind = error instanceof SessionError ? error.kind : 'deck-edit-uncertain';
+    if (kind === 'deck-edit-uncertain') remember(matchesDeckTicket(error.ticket, ticket) ? error.ticket : ticket);
+    if (!isCurrent()) return;
+    if (kind === 'deck-edit-uncertain') showDeckStatus('uncertain', deckUncertainMessage, kind);
+    else showDeckStatus('rejected', deckEditErrors[kind] ?? deckEditErrors['deck-edit-unavailable'], kind);
+  } finally {
+    if (deckEditRequest === controller) {
+      deckEditRequest = null;
+      updateLiveQuestButtons();
+      if (active === session && document.activeElement === deckUi.status) {
+        if (deckVerifications.has(session.playerId)) ui.signOut.focus();
+        else if (!deckUi.fields.disabled) deckUi.card.focus();
+      }
+    }
+  }
+}
+
 function showQuestStatus(state, kind) {
   questUi.status.dataset.state = state;
   questUi.status.textContent = questStatuses[state];
@@ -569,29 +846,35 @@ function questLandLocked() {
 
 function updateLiveQuestButtons() {
   const busy = liveQuestRequest !== null;
-  const networkBlocked = busy || questLandLocked();
+  const deckMoving = deckEditRequest !== null || active?.deckEditState === 'moving';
+  const staleDeck = deckMoving || ['pending-verification', 'uncertain'].includes(active?.deckEditState);
+  const networkBlocked = busy || questLandLocked() || deckMoving;
   mapsUi.load.disabled = networkBlocked;
   serviceInventoryUi.load.disabled = networkBlocked;
   questUi.load.disabled = questUi.status.dataset.state === 'loading'
     || (busy && liveQuestRequest.kind !== 'read' && liveQuestRequest.kind !== 'battle');
   searchUi.start.disabled = networkBlocked || searchUi.section.hidden || searchUi.status.dataset.state === 'uncertain';
-  questDeckUi.select.disabled = networkBlocked || questDeckUi.group.hidden || questDeckUi.select.options.length <= 1
+  questDeckUi.select.disabled = networkBlocked || staleDeck || questDeckUi.group.hidden || questDeckUi.select.options.length <= 1
     || questDeckUi.status.dataset.state === 'uncertain';
   for (const button of questUi.rows.querySelectorAll('.quest-start')) {
     button.disabled = questDeckUi.select.disabled || !questDeckUi.select.value;
   }
   for (const { button } of questCountdowns) button.disabled = networkBlocked;
-  for (const button of questUi.rows.querySelectorAll('.quest-land-enter')) button.disabled = networkBlocked;
+  for (const button of questUi.rows.querySelectorAll('.quest-land-enter')) button.disabled = networkBlocked || staleDeck;
   const nextLandBlocked = busy || active?.questAdventure?.state !== 'between-lands'
     || !['ready', 'rejected'].includes(questNextLandUi.status.dataset.state);
   for (const button of questNextLandUi.options.querySelectorAll('button')) button.disabled = nextLandBlocked;
   questSettlementUi.returnButton.disabled = busy || questSettlementUi.section.hidden
     || questSettlementUi.status.dataset.state !== 'ready';
   updateQuestBattleButtons();
+  updateDeckControls();
 }
 
 function beginLiveQuestRequest(kind) {
   const session = active;
+  const deckState = session?.deckEditState;
+  if (deckEditRequest || deckState === 'moving'
+      || (['start', 'land'].includes(kind) && ['pending-verification', 'uncertain'].includes(deckState))) return null;
   const blocked = kind === 'return' ? questSettlementUi.returnButton.disabled
     : kind === 'next-land' ? session?.questAdventure?.state !== 'between-lands'
     : kind === 'battle' ? questLandUi.status.dataset.state !== 'encounter' : questLandLocked();
@@ -2377,6 +2660,7 @@ function show(state, label, detail = '', kind) {
     clearNews();
     clearLiveQuest();
     clearAvatarCreate();
+    clearDeckCollection();
     questUi.sourceDetails.open = false;
     questRequest?.abort();
     questRequest = null;
@@ -2457,6 +2741,7 @@ ui.form.addEventListener('submit', async (event) => {
     show('signed-in', '登入成功');
     if (moveFocus) ui.title.focus();
     if (initialData.registration) void loadAvatarStarterOptions(session, moveFocus ? ui.title : null);
+    else displayDeckCollection(session, moveFocus);
     void session.closed.then((reason) => handleDisconnect(session, reason), () => handleDisconnect(session, 'network'));
   } catch (error) {
     if (pending === controller) showFailure(error);
@@ -2484,6 +2769,11 @@ avatarCreateUi.name.addEventListener('invalid', () => {
 avatarCreateUi.form.addEventListener('submit', submitAvatarCreate);
 avatarCreateUi.retry.addEventListener('click', () => {
   void loadAvatarStarterOptions(active, document.activeElement === avatarCreateUi.retry ? avatarCreateUi.retry : null);
+});
+deckUi.form.addEventListener('submit', submitDeckEdit);
+deckUi.card.addEventListener('change', updateDeckControls);
+deckUi.retry.addEventListener('click', () => {
+  void loadDeckCatalog(active, document.activeElement === deckUi.retry ? deckUi.retry : null);
 });
 
 questUi.load.addEventListener('click', async () => {

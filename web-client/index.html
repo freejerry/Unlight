@@ -104,6 +104,38 @@
                 <div><dt>起始外觀部件</dt><dd id="session-starter-parts"></dd></div>
                 <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
               </dl>
+              <section id="session-deck-collection" class="deck-collection native-surface" aria-labelledby="session-deck-heading" hidden>
+                <header class="native-surface-header deck-collection-header">
+                  <h4 id="session-deck-heading">角色牌組</h4>
+                  <p id="session-deck-name" class="deck-source-name"></p>
+                </header>
+                <div class="native-surface-body deck-collection-body">
+                  <div class="deck-collection-grid">
+                    <section class="deck-collection-pane" aria-labelledby="session-deck-slots-heading">
+                      <h5 id="session-deck-slots-heading">牌組欄位</h5>
+                      <ol id="session-deck-slots" class="deck-slots" aria-labelledby="session-deck-slots-heading" role="list"></ol>
+                    </section>
+                    <section class="deck-collection-pane" aria-labelledby="session-deck-binder-heading">
+                      <h5 id="session-deck-binder-heading">卡冊</h5>
+                      <p id="session-deck-binder-empty" class="deck-binder-empty" hidden>卡冊目前沒有角色卡。</p>
+                      <ul id="session-deck-binder" class="deck-binder" aria-labelledby="session-deck-binder-heading" role="list" tabindex="0"></ul>
+                    </section>
+                  </div>
+                  <p id="session-deck-status" class="deck-status" role="status" aria-atomic="true" tabindex="-1" data-state="idle"></p>
+                  <form id="session-deck-add" class="deck-add" method="post" aria-label="將卡冊角色卡加入牌組">
+                    <fieldset id="session-deck-add-fields" class="deck-add-fields" disabled>
+                      <legend class="sr-only">加入角色卡</legend>
+                      <p id="session-deck-add-target" class="deck-add-target" hidden></p>
+                      <div class="deck-add-choice">
+                        <label for="session-deck-card">選擇卡冊角色卡</label>
+                        <select id="session-deck-card" aria-describedby="session-deck-add-target" required><option value="">請選擇角色卡</option></select>
+                      </div>
+                      <button id="session-deck-submit" class="button primary" type="submit">加入牌組</button>
+                    </fieldset>
+                  </form>
+                  <button id="session-deck-catalog-retry" class="button secondary" type="button" hidden>重新讀取角色卡資料</button>
+                </div>
+              </section>
             </section>
           </div>
         </div>

@@ -112,7 +112,8 @@ const fields = [
   ...skipGroup(3), // Items.
   { key: 'deckCount', width: 4 }, optionalList('deckNames'), ...skipStrings(3),
   optionalList('deckStatuses'), ...skipStrings(2),
-  { key: 'cardCount', width: 4 }, skipString, optionalList('cardIds', MAX_CARD_LIST_BYTES),
+  { key: 'cardCount', width: 4 }, optionalList('cardInventoryIds', MAX_CARD_LIST_BYTES),
+  optionalList('cardIds', MAX_CARD_LIST_BYTES),
   optionalList('cardDeckIndices', MAX_CARD_LIST_BYTES), optionalList('cardPositions', MAX_CARD_LIST_BYTES),
   ...skipGroup(8), // Equipped slots.
   { key: 'capacity', width: 1 },
@@ -135,11 +136,11 @@ function integerList(csv, signed = false) {
   return list;
 }
 
-function readyQuestDecks(values) {
+function readDeckLists(values) {
   const { deckCount, deckNames, deckStatuses, cardCount, cardIds, cardDeckIndices, cardPositions } = values;
-  if (deckCount < 2 || deckCount > MAX_DECK_INDEX + 1 || cardCount < 1
+  if (deckCount < 2 || deckCount > MAX_DECK_INDEX + 1 || cardCount < 0
     || [deckNames, deckStatuses, cardIds, cardDeckIndices, cardPositions].some((list) => list === undefined)) {
-    return [];
+    return null;
   }
   const names = deckNames.split(',');
   const statuses = integerList(deckStatuses);
@@ -149,11 +150,18 @@ function readyQuestDecks(values) {
   if (names.length !== deckCount || statuses.length !== deckCount
     || ids.length !== cardCount || indices.length !== cardCount || positions.length !== cardCount
     || indices.some((index) => index >= deckCount)) {
-    return [];
+    return null;
   }
+  return { names, statuses, ids, indices, positions };
+}
 
+function readyQuestDecks(values) {
+  if (values.cardCount < 1) return [];
+  const lists = readDeckLists(values);
+  if (!lists) return [];
+  const { names, statuses, ids, indices, positions } = lists;
   const deckChoices = new Set();
-  for (let card = 0; card < cardCount; card += 1) {
+  for (let card = 0; card < ids.length; card += 1) {
     const index = indices[card];
     // The original start action requires a character in the selected deck's first position.
     if (index > 0 && positions[card] === 0 && ids[card] > 0 && ids[card] <= MAX_INT32 && statuses[index] === 0) {
@@ -161,6 +169,39 @@ function readyQuestDecks(values) {
     }
   }
   return names.flatMap((name, index) => deckChoices.has(index) ? [{ index, name }] : []);
+}
+
+function ownedDeckCollection(values) {
+  const lists = readDeckLists(values);
+  if (!lists || values.cardInventoryIds === undefined) return null;
+  const { names, statuses, ids, indices, positions } = lists;
+  const inventoryIds = integerList(values.cardInventoryIds);
+  if (inventoryIds.length !== ids.length || new Set(inventoryIds).size !== ids.length
+    || inventoryIds.some((id) => id <= 0 || id > MAX_INT32)
+    || ids.some((id) => id <= 0 || id > MAX_INT32) || statuses[1] > MAX_INT32) {
+    return null;
+  }
+
+  const binder = [];
+  const cards = [];
+  const deckPositions = new Set();
+  for (let i = 0; i < ids.length; i += 1) {
+    const inventoryId = inventoryIds[i];
+    const cardId = ids[i];
+    if (indices[i] === 0) {
+      binder.push(Object.freeze({ inventoryId, cardId }));
+    } else if (indices[i] === 1) {
+      const position = positions[i];
+      if (position < 0 || position > MAX_INT32 || deckPositions.has(position)) return null;
+      deckPositions.add(position);
+      cards.push(Object.freeze({ inventoryId, cardId, position }));
+    }
+  }
+  cards.sort((left, right) => left.position - right.position);
+  return Object.freeze({
+    binder: Object.freeze(binder),
+    deck: Object.freeze({ index: 1, name: names[1], status: statuses[1], cards: Object.freeze(cards) }),
+  });
 }
 
 export function readQuestMapReply(reply, region) {
@@ -672,6 +713,14 @@ export function createQuestDataReader() {
         return readyQuestDecks(values);
       } catch {
         return [];
+      }
+    },
+    deckCollection() {
+      if (fieldIndex !== fields.length) return null;
+      try {
+        return ownedDeckCollection(values);
+      } catch {
+        return null;
       }
     },
     result() {

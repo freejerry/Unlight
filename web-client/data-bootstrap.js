@@ -33,7 +33,7 @@ function starterIds(list) {
   return Object.freeze(ids);
 }
 
-async function readAvatar(compressed, signal) {
+async function readAvatar(compressed, signal, includeDeckCollection = false) {
   // Keep the fixed-size avatar header and selected deck and quest fields only.
   const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 5 * 4);
   let prefixLength = 0;
@@ -98,7 +98,9 @@ async function readAvatar(compressed, signal) {
     } catch {
       // A quest schema mismatch leaves the independently validated avatar available.
     }
-    return { avatar, questData };
+    const profile = { avatar, questData };
+    if (includeDeckCollection) profile.deckCollection = quests?.deckCollection() ?? null;
+    return profile;
   } finally {
     signal.removeEventListener('abort', cancel);
     prefix.fill(0);
@@ -113,7 +115,7 @@ async function readAvatar(compressed, signal) {
 
 export async function readDataProfile(reply, signal) {
   if (reply.command === AVATAR_COMMAND) {
-    const profile = await readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal);
+    const profile = await readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal, true);
     return { ...profile, registration: null };
   }
   if (reply.command !== REGISTRATION_COMMAND) throw new Error('Invalid data profile command.');
@@ -121,7 +123,7 @@ export async function readDataProfile(reply, signal) {
   const cardIds = starterIds(reply.string(MAX_REGISTRATION_BYTES, true));
   reply.done();
   const registration = Object.freeze({ partCount: partIds.length, cardCount: cardIds.length, partIds, cardIds });
-  return { avatar: null, registration, questData: null };
+  return { avatar: null, registration, questData: null, deckCollection: null };
 }
 
 export function readLobbyAvatar(reply, signal) {

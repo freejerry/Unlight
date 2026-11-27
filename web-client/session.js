@@ -45,6 +45,10 @@ const LOBBY_CREATE_AVATAR_REQUEST = 10;
 const LOBBY_CHECK_NAME_REQUEST = 11;
 const LOBBY_CREATE_AVATAR_REPLY = 5;
 const LOBBY_CHECK_NAME_REPLY = 6;
+const LOBBY_MOVE_DECK_CARD_REQUEST = 5;
+const LOBBY_MOVE_DECK_CARD_FAILED_REPLY = 10;
+const LOBBY_ERROR_REPLY = 34;
+const LOBBY_MOVE_DECK_CARD_FINISH_REPLY = 67;
 const LOBBY_PONG = 35;
 const AVATAR_REGISTRATION_REPLIES = [LOBBY_AVATAR_COMMAND, LOBBY_CREATE_AVATAR_REPLY, LOBBY_CHECK_NAME_REPLY];
 // Original AvatarParts.csv types, in the order sent by AvatarStyleEditor.
@@ -52,6 +56,11 @@ const AVATAR_STARTER_PART_GROUPS = [
   [1, 2, 3], [5, 6, 7, 10, 11, 12, 15, 16, 17], [24, 25, 26], [27, 28, 29, 32, 33, 34, 37, 38, 39],
 ];
 const AVATAR_STARTER_CARDS = [1, 21, 31, 101, 111];
+const DECK_EDIT_ERRORS = new Set([6, 10, 16, 17]); // Original update_chara_card_deck return codes.
+const DECK_CHARACTER_KINDS = new Set([0, 1, 8, 11, 12, 13]); // Original DeckEditor card kinds.
+const DECK_LEAD_KINDS = new Set([0, 8, 12, 13]);
+const DECK_CHARACTER_IDENTITIES = ['characterId', 'unlightCharacterId', 'parentId'];
+const CHARACTER_DECK_SIZE = 3;
 const QUEST_REGION = 0;
 const QUEST_NEW = 0;
 const QUEST_UNSOLVED = 1;
@@ -111,6 +120,10 @@ const messages = {
   'avatar-create-rejected': '伺服器未接受建立角色。',
   'avatar-create-uncertain': '未能確認角色是否已建立，請重新登入查看。',
   'avatar-registration-unavailable': '本次登入目前無法建立角色。',
+  'deck-edit-unavailable': '目前無法編輯牌組。',
+  'deck-card-unavailable': '目前無法將這張卡移入牌組。',
+  'deck-edit-rejected': '伺服器未接受這次移牌。',
+  'deck-edit-uncertain': '未能確認移牌結果，請重新登入查看。',
   'search-uncertain': '尚未確認搜尋結果，請重新登入後再搜尋。',
   'search-rejected': '遊戲服務未接受這次搜尋。',
   'quest-start-unavailable': '此任務目前無法開始。',
@@ -491,6 +504,78 @@ async function submitAvatarRegistration(socket, fields, signal, markSent) {
       throw new SessionError('protocol');
     }
     return { avatarId: avatar.id, name: avatar.name };
+  } finally {
+    unsubscribe();
+  }
+}
+
+export function canAppendDeckCharacter(card, currentCards) {
+  if (!Array.isArray(currentCards) || currentCards.length >= CHARACTER_DECK_SIZE
+      || !DECK_LEAD_KINDS.has((currentCards[0] ?? card)?.kind)) return false;
+  return [...currentCards, card].every((entry, index, roster) => DECK_CHARACTER_KINDS.has(entry?.kind)
+    && DECK_CHARACTER_IDENTITIES.every((key) => Number.isSafeInteger(entry[key]) && entry[key] > 0)
+    && roster.slice(0, index).every((other) => DECK_CHARACTER_IDENTITIES.every((key) => entry[key] !== other[key])));
+}
+
+async function verifyDeckAppend(cardId, previousCards, signal) {
+  const ids = new Set([cardId, ...previousCards.map((card) => card.cardId)]);
+  const params = new URLSearchParams({ ids: [...ids].join(',') });
+  try {
+    const response = await fetch(`/api/deck-character-catalog?${params}`, {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
+    });
+    if (!response.ok) return false;
+    const { cards } = await response.json();
+    if (!Array.isArray(cards) || cards.length !== ids.size) return false;
+    const known = new Map();
+    for (const card of cards) {
+      if (!ids.has(card.id) || known.has(card.id)) return false;
+      known.set(card.id, card);
+    }
+    return canAppendDeckCharacter(known.get(cardId), previousCards.map((card) => known.get(card.cardId)));
+  } catch {
+    signal.throwIfAborted();
+    return false;
+  }
+}
+
+async function submitDeckAppend(socket, { inventoryId, deckIndex, position }, signal, markSent) {
+  let rejection = null;
+  let finished = false;
+  let invalid = false;
+  let unsubscribe;
+  const confirmation = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe([LOBBY_ERROR_REPLY, LOBBY_MOVE_DECK_CARD_FINISH_REPLY, LOBBY_MOVE_DECK_CARD_FAILED_REPLY],
+      (reply) => {
+        if (invalid) return;
+        try {
+          if (finished) throw new SessionError('protocol');
+          if (reply.command === LOBBY_MOVE_DECK_CARD_FINISH_REPLY) {
+            reply.done();
+            finished = true;
+            resolve();
+          } else if (reply.command === LOBBY_ERROR_REPLY && rejection === null) {
+            const code = reply.int();
+            reply.done();
+            if (!DECK_EDIT_ERRORS.has(code)) throw new SessionError('protocol');
+            rejection = code;
+          } else throw new SessionError('protocol');
+        } catch {
+          invalid = true;
+          reject(new SessionError('protocol'));
+        }
+      });
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(LOBBY_MOVE_DECK_CARD_REQUEST, [inventoryId, deckIndex, position]);
+    markSent();
+    const lost = socket.closed.then(() => { throw new SessionError('network'); });
+    await bounded(Promise.race([confirmation, lost]), signal);
+    // SC67 is unconditional. Keep watching for an error or duplicate through the Pong's chunk.
+    await finishLobbyObservation(socket, signal);
+    if (invalid) throw new SessionError('protocol');
+    return rejection;
   } finally {
     unsubscribe();
   }
@@ -1706,8 +1791,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
   let registrationState = registrationOptions ? 'available' : 'unavailable';
-  let registrationRequest;
+  let lobbyRequest;
   let lobbyHeartbeat;
+  let deckEditState;
   let closing;
   let questRequest;
   let questReturn;
@@ -1727,16 +1813,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       sessionKey.fill(0);
       const request = questRequest;
       const returning = questReturn;
-      const registration = registrationRequest;
+      const lobbyOperation = lobbyRequest;
       const retained = adventure;
       if (retained) retained.state = 'closed';
-      for (const operation of [request, returning, registration]) {
+      for (const operation of [request, returning, lobbyOperation]) {
         operation?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       }
       closing = (async () => {
         if (request) await request.task.catch(() => {});
         if (returning) await returning.task.catch(() => {});
-        if (registration) await registration.task.catch(() => {});
+        if (lobbyOperation) await lobbyOperation.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
           retained.nonCombatObserver?.stop();
@@ -1750,10 +1836,25 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   function assertQuestAvailable() {
-    if (questRequest || questReturn) throw new SessionError('busy');
+    if (questRequest || questReturn || lobbyRequest) throw new SessionError('busy');
     if (adventure) {
       if (adventure.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
       throw new SessionError(adventure.state === 'uncertain' ? 'quest-land-uncertain' : 'quest-adventure-active');
+    }
+  }
+
+  function editableDeck() {
+    if (!initialData?.avatar || !questData || adventure || questRequest || questReturn || lobbyRequest
+        || searchUncertain || questStartUncertain || questData.rows.some((row) => row.status === QUEST_IN_PROGRESS)) return null;
+    const deck = initialData.deckCollection?.deck;
+    if (deck?.index !== 1 || deck.status !== 0 || deck.cards.length >= CHARACTER_DECK_SIZE
+        || deck.cards.some((card, index) => card.position !== index)) return null;
+    return deck;
+  }
+
+  function assertQuestDeckCurrent() {
+    if (deckEditState === 'pending-verification' || deckEditState === 'uncertain') {
+      throw new SessionError('deck-edit-unavailable');
     }
   }
 
@@ -1850,7 +1951,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         ...channels.map((channel) => {
           const { socket, pong } = channel;
           if (channel !== lobby) return socket.ask(3, [], [pong], { allowOther: true });
-          if (registrationRequest) return null;
+          if (lobbyRequest) return null;
           lobbyHeartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => { lobbyHeartbeat = null; });
           return lobbyHeartbeat;
         }),
@@ -1873,7 +1974,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     async createAvatar(selection, { signal } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
-      if (registrationRequest) throw new SessionError('busy');
+      if (lobbyRequest) throw new SessionError('busy');
       if (registrationState !== 'available') throw new SessionError('avatar-registration-unavailable');
       const fields = avatarRegistrationFields(selection ?? {}, registrationOptions);
       auth.assertOpen();
@@ -1902,7 +2003,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         }
         return reply;
       })();
-      registrationRequest = { controller, task };
+      lobbyRequest = { controller, task };
       try {
         const receipt = await task;
         registrationSignal.throwIfAborted();
@@ -1916,7 +2017,65 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       } finally {
         clearTimeout(timeout);
         signal?.removeEventListener('abort', cancel);
-        registrationRequest = null;
+        lobbyRequest = null;
+      }
+    },
+    get deckEditState() {
+      if (!initialData) return 'unavailable';
+      return deckEditState ?? (editableDeck() ? 'available' : 'unavailable');
+    },
+    async addDeckCard(inventoryId, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (questRequest || questReturn || lobbyRequest) throw new SessionError('busy');
+      const deck = editableDeck();
+      if (deckEditState || !deck) throw new SessionError('deck-edit-unavailable');
+      const candidate = initialData.deckCollection.binder.find((card) => card.inventoryId === inventoryId);
+      if (!candidate) throw new SessionError('deck-card-unavailable');
+      const ticket = Object.freeze({
+        playerId, avatarId: initialData.avatar.id, inventoryId: candidate.inventoryId, cardId: candidate.cardId,
+        deckIndex: deck.index, position: deck.cards.length, previousCards: deck.cards,
+      });
+      auth.assertOpen();
+      for (const { socket } of channels) socket.assertOpen();
+
+      const controller = new AbortController();
+      const editSignal = controller.signal;
+      const cancel = () => controller.abort(new SessionError('cancelled'));
+      signal?.addEventListener('abort', cancel, { once: true });
+      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+      let sent = false;
+      deckEditState = 'moving';
+      const task = (async () => {
+        if (lobbyHeartbeat) await bounded(lobbyHeartbeat, editSignal);
+        if (!await verifyDeckAppend(ticket.cardId, ticket.previousCards, editSignal)) {
+          throw new SessionError('deck-card-unavailable');
+        }
+        const rejection = await submitDeckAppend(lobby.socket, ticket, editSignal, () => { sent = true; });
+        editSignal.throwIfAborted();
+        if (rejection !== null) {
+          sent = false;
+          throw new SessionError('deck-edit-rejected', rejection);
+        }
+      })();
+      lobbyRequest = { controller, task };
+      try {
+        await task;
+        editSignal.throwIfAborted();
+        deckEditState = 'pending-verification';
+        return ticket;
+      } catch (error) {
+        deckEditState = sent ? 'uncertain' : undefined;
+        if (sent) {
+          const unknown = new SessionError('deck-edit-uncertain');
+          unknown.ticket = ticket;
+          throw unknown;
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', cancel);
+        lobbyRequest = null;
       }
     },
     get questAdventure() {
@@ -2006,6 +2165,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
       if (questRequest) throw new SessionError('busy');
+      assertQuestDeckCurrent();
       if (questStartUncertain) throw new SessionError('quest-start-uncertain');
       if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
           || !Number.isInteger(deckIndex) || deckIndex < 1 || deckIndex > 127) {
@@ -2052,6 +2212,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
       assertQuestAvailable();
+      assertQuestDeckCurrent();
       if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
           || !Number.isInteger(slot) || slot < 0 || slot > 2 || typeof emptyTerrain !== 'boolean'
           || typeof fixedGemTreasure !== 'boolean' || (emptyTerrain && fixedGemTreasure)) {

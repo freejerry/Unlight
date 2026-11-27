@@ -30,6 +30,9 @@ SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
 MAX_QUEST_CHARACTER_CARD_IDS = 6  # Two rosters have at most three slots each.
+MAX_DECK_CHARACTER_CARD_IDS = 64
+REBORN_CHARACTER_CARD_KIND = 8  # CC_KIND_REBORN_CHARA
+REBORN_CHARACTER_ID_OFFSET = 4000  # CHARACTOR_ID_OFFSET_REBORN
 # REGIST_PARTS and REGIST_CARDS in app/server/src/constants/constants.rb.
 AVATAR_STARTER_PART_IDS = (1, 2, 3, 5, 6, 7, 10, 11, 12, 15, 16, 17, 24, 25, 26,
                            27, 28, 29, 32, 33, 34, 37, 38, 39)
@@ -195,6 +198,34 @@ def native_quest_character_card_catalog():
     # The Traditional Chinese import uses this shared master when no TCN override exists.
     with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
         return {int(row["id"]): int(row["hp"]) for row in DictReader(source)}
+
+
+def native_deck_character_card_catalog():
+    with (SERVER_CSV / "ja/Charactors.csv").open(encoding="utf-8-sig", newline="") as source:
+        parents = {int(row["id"]): int(row["parent_id"] or 0) for row in DictReader(source)}
+
+    cards = {}
+    with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            card_id = int(row["id"])
+            character_id = int(row["charactor_id"])
+            name = row["name_tcn"] or ""
+            if character_id not in parents or not name.strip():
+                continue
+            kind = int(row["kind"])
+            # Match CharaCard#parent_id and #unlight_charactor_id independently.
+            unlight_id = character_id
+            if kind == REBORN_CHARACTER_CARD_KIND and character_id > REBORN_CHARACTER_ID_OFFSET:
+                unlight_id -= REBORN_CHARACTER_ID_OFFSET
+            cards[card_id] = {
+                "id": card_id,
+                "name": name,
+                "kind": kind,
+                "characterId": character_id,
+                "unlightCharacterId": unlight_id,
+                "parentId": parents[character_id] or character_id,
+            }
+    return cards
 
 
 def native_avatar_starter_catalog():
@@ -402,6 +433,9 @@ def create_app(
         character_hp = {}
         with suppress(OSError):
             character_hp = native_quest_character_card_catalog()
+        deck_characters = None
+        with suppress(OSError):
+            deck_characters = native_deck_character_card_catalog()
         avatar_starters = None
         with suppress(OSError):
             avatar_starters = native_avatar_starter_catalog()
@@ -456,12 +490,32 @@ def create_app(
                 raise web.HTTPServiceUnavailable(text="Avatar starter metadata is unavailable.", headers=headers)
             return web.json_response(avatar_starters, headers=headers)
 
+        async def deck_character_catalog(request):
+            headers = {"Cache-Control": "no-store"}
+            query = request.query.getall("ids", [])
+            if len(query) != 1:
+                raise web.HTTPBadRequest(text="Pass one comma-separated list of character card IDs.", headers=headers)
+            values = query[0].split(",", MAX_DECK_CHARACTER_CARD_IDS)
+            if len(values) > MAX_DECK_CHARACTER_CARD_IDS or any(
+                not value.isascii() or not value.isdecimal() or len(value) > 10
+                or not 0 < int(value) <= 2**31 - 1 for value in values
+            ):
+                raise web.HTTPBadRequest(text="Pass up to 64 positive character card IDs.", headers=headers)
+            if deck_characters is None:
+                raise web.HTTPServiceUnavailable(text="Deck character metadata is unavailable.", headers=headers)
+            ids = dict.fromkeys(map(int, values))
+            return web.json_response(
+                {"cards": [deck_characters[card_id] for card_id in ids if card_id in deck_characters]},
+                headers=headers,
+            )
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
         app.router.add_get("/api/quest-catalog", quest_catalog)
         app.router.add_get("/api/action-card-catalog", action_card_catalog)
         app.router.add_get("/api/quest-character-cards", quest_character_cards)
         app.router.add_get("/api/avatar-starter-catalog", avatar_starter_catalog)
+        app.router.add_get("/api/deck-character-catalog", deck_character_catalog)
         return app
 
     index_path = ROOT / "index.html"
