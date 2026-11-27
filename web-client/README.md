@@ -2,6 +2,8 @@
 
 這個 HTML／JavaScript 入口連接既有 Ruby 服務，並直接載入原版 PNG 和 MP3。可以驗收服務連線、登入憑證、角色與任務初始資料，以及面板九宮格縮放。角色建立、大廳操作和對局可透過原版相容入口試玩。[現代化計畫](../MODERNIZATION_PLAN.md) · [原版相容入口](../tools/legacy-web/README.md)
 
+另有可獨立啟動的 [原生搜尋倒數示範](#原生搜尋倒數示範)。
+
 ## 啟動
 
 先啟動原版 Ruby。下例沿用繁中建置產生的 SQLite 主資料副本，並把 Ruby 服務埠平移 `1000`。[繁中 Flash 和主資料建置](../tools/legacy-build/README.md) · [Ruby 啟動說明](../tools/legacy-server/README.md)
@@ -82,3 +84,33 @@ python3 tools/legacy-web/check_native_replay.py --port 4348 \
 ```
 
 驗收頁固定每 600 毫秒前進一筆。畫面中的 Ruby tick 每格為 0.1 秒的模擬時間，同一 tick 的各筆事件仍照原始順序顯示。[Ruby 時鐘](../tools/legacy-server/duel.rb#L44) · [回放驗收紀錄](../docs/playtest/README.md#原生對局紀錄回放)
+
+## 原生搜尋倒數示範
+
+Rust 服務在回環位址提供瀏覽器頁面及搜尋 API，使用獨立的 SQLite 檔和固定 8 秒的示範資料。從版本庫根目錄啟動，重啟時沿用相同的 `--db` 路徑即可保留測試資料。
+
+```bash
+source modern/rust-env.sh
+cargo run --locked --manifest-path tools/native-deadlines/Cargo.toml -- \
+  --db /tmp/native-deadlines.sqlite3 --port 4356
+```
+
+開啟 `http://127.0.0.1:4356/`，按「開始搜尋」。倒數取用伺服器提供的當前時間及截止時間。頁面收到完成狀態後會顯示「搜尋完成」及結果。以同一瀏覽器及網址重新整理，或斷線後恢復連線，都可查詢同一筆搜尋。
+
+頁面以同源 `PUT /api/searches/{id}` 啟動搜尋，再用 `GET` 查詢狀態。以相同 UUID 重送 `PUT` 會沿用原截止時間，完成後的查詢會回傳同一個結果。
+
+後端測試使用可控制的時鐘，檢查到期前一毫秒、恰好到期、回覆遺失後重送，以及重新開啟 SQLite 後取回結果。
+
+```bash
+source modern/rust-env.sh
+cargo test --locked --manifest-path tools/native-deadlines/Cargo.toml
+```
+
+服務啟動後，另開終端機以 Chromium 和 Python Playwright 重跑瀏覽器驗收。腳本會驗證時鐘偏移、搜尋中及完成後重載、回覆遺失後重試、斷線後恢復，以及 320 像素窄版。
+
+```bash
+python3 -Bu tools/legacy-web/check_native_deadlines.py --port 4356 \
+  --screenshot-dir /tmp/unlight-native-deadlines
+```
+
+瀏覽器漏收建立搜尋的回覆後，重試沿用原 UUID 和截止時間。測試流量只送往同源 Rust 的頁面、靜態檔及搜尋 API。另以相同 SQLite 檔重啟服務，確認可取回既有結果。[桌面搜尋中](../docs/playtest/native/15-native-search-pending.png) · [桌面搜尋完成](../docs/playtest/native/16-native-search-ready.png) · [320 像素窄版](../docs/playtest/native/17-native-search-mobile.png)

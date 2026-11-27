@@ -1,0 +1,48 @@
+.deadline-body { min-height: 100vh; min-height: 100dvh; background: #f3f0e9; color: #202833; }
+.deadline-shell { width: min(66rem, calc(100% - 3rem)); margin-inline: auto; padding-block: clamp(2.4rem, 8vw, 6rem); }
+.deadline-heading { margin-bottom: clamp(1.1rem, 3.8vw, 2.15rem); }
+.deadline-heading h1 { font-size: clamp(2.45rem, 6vw, 4.15rem); letter-spacing: -.055em; line-height: 1.08; }
+.deadline-heading p { max-width: 36rem; margin-top: .7rem; color: #475463; font-size: 1.03rem; line-height: 1.55; }
+.deadline-layout { display: grid; grid-template-columns: minmax(0, 1.36fr) minmax(0, 1fr); gap: .85rem; align-items: stretch; }
+
+.search-console, .search-record { min-width: 0; padding: clamp(1.15rem, 3vw, 2.05rem); border-radius: .9rem; }
+.search-console { background: #182839; color: #f8f4ec; }
+.search-console-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .45rem .7rem; }
+.search-console h2, .search-record h2 { font-size: 1.13rem; }
+#deadline-status { padding: .24rem .62rem; border: 1px solid #596b7b; border-radius: .36rem; color: #e6eef6; font-size: .86rem; font-weight: 650; }
+#deadline[data-state="pending"] #deadline-status { border-color: #a37b53; color: #ffca96; }
+#deadline[data-state="ready"] #deadline-status { border-color: #5b978e; color: #b4f1dc; }
+#deadline[data-state="failed"] #deadline-status { border-color: #ba7b71; color: #ffd0bd; }
+.search-clock { display: flex; align-items: baseline; gap: .6rem; margin: .45rem 0 .65rem; color: #ffbf87; font-variant-numeric: tabular-nums; }
+#deadline-countdown { font-size: clamp(4.5rem, 11vw, 7.5rem); font-weight: 730; line-height: 1; letter-spacing: -.075em; }
+.search-clock-unit { color: #d4dce3; font-size: 1.1rem; }
+#deadline-progress { display: block; appearance: none; width: 100%; height: .55rem; overflow: hidden; border: 0; border-radius: .32rem; background: #405162; accent-color: #ffbf87; }
+#deadline-progress::-webkit-progress-bar { background: #405162; }
+#deadline-progress::-webkit-progress-value { border-radius: .32rem; background: #ffbf87; }
+#deadline-progress::-moz-progress-bar { border-radius: .32rem; background: #ffbf87; }
+.search-detail { min-height: 2.9em; margin-top: .8rem; color: #d4dce3; font-size: .94rem; line-height: 1.45; }
+.search-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .6rem; }
+.search-actions .button { min-height: 2.82rem; min-width: 6.4rem; }
+.search-start { background: #ffbf87; color: #352418; }
+.search-start:hover:not(:disabled) { background: #ffdbb8; }
+.search-refresh { border-color: #738597; background: #243747; color: #f7f3eb; }
+.search-refresh:hover:not(:disabled) { border-color: #ccd9e6; background: #34495a; }
+.search-actions .button:focus-visible { outline-color: #fbe0c4; }
+
+.search-record { background: #fffcf6; border: 1px solid #ded8cc; }
+.search-record-fields { display: grid; gap: .8rem; margin-top: 1rem; }
+.search-record-fields > div { padding-bottom: .7rem; border-bottom: 1px solid #e6ded1; }
+.search-record-fields dt { margin-bottom: .25rem; color: #596574; font-size: .88rem; }
+.search-record-fields dd { color: #293646; font-size: .97rem; overflow-wrap: anywhere; }
+.search-record code { font: 630 .93rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.search-result { padding: .7rem .85rem; margin-top: 1rem; border: 1px solid #b6d5c9; border-radius: .45rem; background: #eaf5ee; color: #194f46; }
+.search-result h3 { margin-bottom: .2rem; font-size: .98rem; }
+
+@media (max-width: 44rem) {
+  .deadline-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 24rem) {
+  .deadline-shell { width: calc(100% - 1.5rem); padding-block: 1.65rem; }
+  .search-console, .search-record { padding: .9rem; }
+}

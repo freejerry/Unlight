@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f0e9" />
+    <meta name="description" content="啟動限時搜尋，從伺服器確認搜尋進度與結果。" />
+    <title>限時搜尋</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/deadline.css" />
+    <script type="module" src="/deadline.js"></script>
+  </head>
+  <body class="deadline-body">
+    <main id="deadline" class="deadline-shell" data-state="idle" aria-labelledby="deadline-title">
+      <header class="deadline-heading">
+        <h1 id="deadline-title">限時搜尋</h1>
+        <p>啟動一筆 8 秒搜尋。倒數結束後由伺服器確認結果。</p>
+      </header>
+
+      <div class="deadline-layout">
+        <section class="search-console" aria-labelledby="deadline-clock-title">
+          <header class="search-console-heading">
+            <h2 id="deadline-clock-title">剩餘時間</h2>
+            <p id="deadline-status" role="status" aria-atomic="true">尚未開始</p>
+          </header>
+          <div class="search-clock" role="timer" aria-labelledby="deadline-clock-title">
+            <span id="deadline-countdown">8.0</span><span class="search-clock-unit">秒</span>
+          </div>
+          <progress id="deadline-progress" max="8000" value="0" aria-label="搜尋時間進度"></progress>
+          <p id="deadline-detail" class="search-detail">開始後會保存搜尋編號，重新整理頁面也能接續查詢。</p>
+          <div class="search-actions">
+            <button id="deadline-start" class="button search-start" type="button">開始搜尋</button>
+            <button id="deadline-refresh" class="button search-refresh" type="button" hidden>查詢狀態</button>
+          </div>
+        </section>
+
+        <section class="search-record" aria-labelledby="deadline-record-title">
+          <h2 id="deadline-record-title">搜尋紀錄</h2>
+          <dl class="search-record-fields">
+            <div><dt>搜尋編號</dt><dd><code id="deadline-search-id">—</code></dd></div>
+            <div>
+              <dt>伺服器截止時間（台北時間）</dt>
+              <dd><span id="deadline-find-at-empty">—</span><time id="deadline-find-at" hidden></time></dd>
+            </div>
+          </dl>
+          <div id="deadline-result" class="search-result" hidden>
+            <h3>伺服器結果</h3>
+            <code id="deadline-result-id"></code>
+          </div>
+        </section>
+      </div>
+      <noscript><p>請啟用 JavaScript 以執行限時搜尋。</p></noscript>
+    </main>
+  </body>
+</html>
