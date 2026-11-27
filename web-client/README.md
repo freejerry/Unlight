@@ -1,6 +1,6 @@
 # 原生瀏覽器連線、登入與素材驗收
 
-這個 HTML／JavaScript 入口連接既有 Ruby 服務，並直接載入原版 PNG 和 MP3。可以驗收服務連線、登入憑證、角色初始資料，以及面板九宮格縮放。角色建立、大廳操作和對局可透過原版相容入口試玩。[現代化計畫](../MODERNIZATION_PLAN.md) · [原版相容入口](../tools/legacy-web/README.md)
+這個 HTML／JavaScript 入口連接既有 Ruby 服務，並直接載入原版 PNG 和 MP3。可以驗收服務連線、登入憑證、角色與任務初始資料，以及面板九宮格縮放。角色建立、大廳操作和對局可透過原版相容入口試玩。[現代化計畫](../MODERNIZATION_PLAN.md) · [原版相容入口](../tools/legacy-web/README.md)
 
 ## 啟動
 
@@ -26,13 +26,16 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 開啟 `http://127.0.0.1:4334/`，在「登入驗收」用剛建立的測試帳號登入。登入成功會顯示玩家 ID、三項服務的驗證狀態及角色摘要。未創角的帳號會顯示可選的起始外觀部件與角色卡數量。
 
-面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線及登入。
+有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。繁中名稱及通關門檻取自版本庫的原版 CSV。按鈕讀取已收到的快照，再查詢同源名稱資料。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208)
+
+面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線、登入及任務快照。
 
 ## 與原版核對
 
 - **連線。** 依原版的 KeepAlive 命令向認證、大廳、資料、戰鬥、任務和全域聊天服務送出二進位訊息，逐位元組比對 Ruby 回應。單項失敗時可重試。[原版命令範例](../app/client/src/net/command/AuthCommand.as) · [原版封包格式](../app/client/src/net/ULSocket.as)
 - **登入。** 瀏覽器以原版 SRP 協定計算認證證明，驗證伺服器憑證後，使用原版工作階段金鑰完成大廳、資料和全域聊天的交握。密碼在瀏覽器記憶體內處理。此入口供回環介面的隔離驗收使用。[原版認證流程](../app/client/src/net/server/AuthServer.as) · [原版大廳交握](../app/client/src/net/server/LobbyServer.as)
 - **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，唯讀解析角色摘要，或彙整未創角帳號收到的起始選項數量。登出或連線中斷時清空摘要。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
+- **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得地圖，並以該地圖門檻為顯示上限。找不到名稱時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
 - **資源。** 從既有素材目錄讀取商店 PNG `item_id020.png` 和標題 MP3 `ulbgm01.mp3`，比對新入口與原版入口交付的位元組，再由 Chromium 解碼圖片並用使用者手勢確認音訊開始播放。[原版標題音樂的載入位置](../app/client/src/sound/bgm/TitleBGM.as)
 - **九宮格。** Canvas 2D 使用 120 × 96 的原版面板圖與原始切片座標，並按可用寬度和裝置像素比重繪。驗收頁對 96、215、300 三種高度比對頂區及四角，也會檢查窄視窗。[原版切片設定](../app/client/data/css/UL.css.cn#L35) · [面板截圖](../docs/playtest/native/03-native-panel-slices.png)
 - **對局紀錄。** 固定種子 `2026` 的 68 個事件作為日後對照的 Ruby 輸出，包含順序、回合、HP、卡牌、擲骰和勝負。[對局比對方式](../tools/legacy-server/README.md#對局基準)
@@ -52,3 +55,5 @@ python3 tools/legacy-web/check_native_session.py --port 4334 --username playtest
 ```
 
 若第一個帳號已有角色，可加上 `--no-avatar-username` 和 `--no-avatar-password-file`，用同一個 Ruby 環境的第二個測試帳號驗證未創角回應。[有角色](../docs/playtest/native/04-native-initial-data.png) · [未創角](../docs/playtest/native/05-native-starter-data.png)
+
+加上 `--quest-database` 並指定該次 Ruby 測試環境的 `app/server/data/game_dev2.db`，可用唯讀連線核對實際清單及區域進度。腳本會比對按下讀取前後的資料及 Ruby 通訊。[任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)

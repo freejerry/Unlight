@@ -1,4 +1,5 @@
 import { readFields } from './wire.js';
+import { createQuestDataReader } from './quest-data.js';
 
 export const VERSION_COMMAND = 5;
 export const AVATAR_COMMAND = 6;
@@ -27,11 +28,12 @@ function countIds(list) {
 }
 
 async function readAvatar(compressed, signal) {
-  // Keep the fixed-size profile prefix while validating the complete zlib stream.
+  // Keep the fixed-size avatar header and selected quest fields only.
   const prefix = new Uint8Array(4 + 4 + MAX_NAME_BYTES + 5 * 4);
   let prefixLength = 0;
   let total = 0;
   let reader;
+  let quests = createQuestDataReader();
   const cancel = () => {
     void reader?.cancel().catch(() => {});
   };
@@ -61,6 +63,12 @@ async function readAvatar(compressed, signal) {
         const part = value.subarray(0, prefix.length - prefixLength);
         prefix.set(part, prefixLength);
         prefixLength += part.length;
+        try {
+          quests?.push(value);
+        } catch {
+          quests?.dispose();
+          quests = null;
+        }
       } finally {
         value.fill(0);
       }
@@ -77,11 +85,18 @@ async function readAvatar(compressed, signal) {
       energyMax: fields.int(),
     };
     if (avatar.id < 1) throw new Error('Invalid avatar ID.');
-    return avatar;
+    let questData = null;
+    try {
+      questData = quests?.result() ?? null;
+    } catch {
+      // A quest schema mismatch leaves the independently validated avatar available.
+    }
+    return { avatar, questData };
   } finally {
     signal.removeEventListener('abort', cancel);
     prefix.fill(0);
     compressed.fill(0);
+    quests?.dispose();
     if (reader) {
       cancel();
       reader.releaseLock();
@@ -91,12 +106,12 @@ async function readAvatar(compressed, signal) {
 
 export async function readDataProfile(reply, signal) {
   if (reply.command === AVATAR_COMMAND) {
-    const avatar = await readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal);
-    return { avatar, registration: null };
+    const profile = await readAvatar(reply.takeRest(MAX_COMPRESSED_BYTES), signal);
+    return { ...profile, registration: null };
   }
   if (reply.command !== REGISTRATION_COMMAND) throw new Error('Invalid data profile command.');
   const partCount = countIds(reply.string(MAX_REGISTRATION_BYTES, true));
   const cardCount = countIds(reply.string(MAX_REGISTRATION_BYTES, true));
   reply.done();
-  return { avatar: null, registration: { partCount, cardCount } };
+  return { avatar: null, registration: { partCount, cardCount }, questData: null };
 }

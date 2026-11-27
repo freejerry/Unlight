@@ -265,7 +265,7 @@ async function closeSession(auth, channels) {
   await auth?.close();
 }
 
-function activeSession(auth, channels, playerId, initialData) {
+function activeSession(auth, channels, playerId, { questData, ...initialData }) {
   let closing;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
@@ -274,6 +274,7 @@ function activeSession(auth, channels, playerId, initialData) {
     if (!closing) {
       clearInterval(timer);
       initialData = null;
+      questData = null;
       closing = (async () => {
         await closeSession(auth, channels);
         resolveClosed(reason);
@@ -302,6 +303,13 @@ function activeSession(auth, channels, playerId, initialData) {
     dataVerified: true,
     chatVerified: true,
     get initialData() { return initialData; },
+    async readQuestInventory({ signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (!initialData.avatar) return null;
+      if (!questData) throw new SessionError('protocol');
+      return { ...questData, rows: questData.rows.map((row) => ({ ...row })) };
+    },
     closed,
     close: () => stop('closed'),
   };

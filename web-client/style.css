@@ -95,7 +95,7 @@ main { padding-block: 1.6rem 1.8rem; }
 .panel-previews canvas[data-panel-height="215"] { height: 215px; }
 .panel-previews canvas[data-panel-height="300"] { height: 300px; }
 
-.session-heading, .session-result { display: flex; align-items: center; justify-content: space-between; gap: .65rem 1rem; }
+.session-heading, .session-result, .quest-heading { display: flex; align-items: center; justify-content: space-between; gap: .65rem 1rem; }
 .session-heading h2 { font-size: 1.1rem; }
 #session-description { margin-top: .25rem; color: var(--muted); font-size: .93rem; }
 .session-status { padding: .22rem .55rem; border-radius: .35rem; color: #425762; background: #e9eff3; font-size: .9rem; font-weight: 630; white-space: nowrap; }
@@ -119,6 +119,18 @@ main { padding-block: 1.6rem 1.8rem; }
 .session-detail, .session-format { margin-top: .55rem; color: var(--muted); font-size: .9rem; }
 .session-detail:empty { margin-top: 0; }
 
+.session-quest { max-width: 44rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.quest-heading h3 { font-size: 1rem; }
+.quest-status { margin-top: .2rem; color: var(--muted); font-size: .9rem; }
+.quest-status[data-state="failed"] { color: var(--failure); }
+.quest-metadata { margin-top: .65rem; }
+.quest-map-progress { display: flex; flex-wrap: wrap; gap: .25rem .7rem; margin-top: .65rem; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.quest-inventory { width: 100%; margin-top: .65rem; border-collapse: collapse; font-size: .9rem; }
+.quest-inventory th, .quest-inventory td { padding: .45rem .55rem; border-bottom: 1px solid var(--line); text-align: start; }
+.quest-inventory th { color: var(--muted); font-size: .84rem; }
+.quest-inventory td { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.quest-map { display: block; color: var(--muted); font-size: .83rem; }
+
 @media (max-width: 52rem) {
   .service-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-heading { align-items: start; flex-direction: column; gap: .7rem; }
@@ -129,8 +141,9 @@ main { padding-block: 1.6rem 1.8rem; }
   main { padding-block: 1rem; }
   .service-list, .asset-list { grid-template-columns: minmax(0, 1fr); }
   .summary { padding: .8rem; }
-  .session-heading, .session-result { align-items: start; flex-wrap: wrap; }
+  .session-heading, .session-result, .quest-heading { align-items: start; flex-wrap: wrap; }
   .session-fields { grid-template-columns: minmax(0, 1fr); }
   .session-fields button { justify-self: start; }
   .session-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
+  .quest-inventory th, .quest-inventory td { padding-inline: .3rem; }
 }

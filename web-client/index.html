@@ -133,6 +133,32 @@
             <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
           </dl>
         </section>
+        <section id="session-quest" class="session-quest" aria-labelledby="session-quest-title" hidden>
+          <div class="quest-heading">
+            <div>
+              <h3 id="session-quest-title">任務資料</h3>
+              <p id="session-quest-status" class="quest-status" data-state="idle" role="status" aria-atomic="true">可查看登入時取得的任務清單與進度。</p>
+            </div>
+            <button id="session-quest-load" type="button" class="button secondary" aria-controls="session-quest-progress session-quest-map-progress session-quest-inventory">讀取任務資料</button>
+          </div>
+          <dl id="session-quest-progress" class="session-metadata quest-metadata" hidden>
+            <div><dt>持有任務數</dt><dd id="session-quest-count"></dd></div>
+            <div><dt>任務持有上限</dt><dd id="session-quest-capacity"></dd></div>
+            <div><dt>地圖進度代碼</dt><dd id="session-quest-flag"></dd></div>
+            <div><dt>地圖通關數</dt><dd id="session-quest-clear-count"></dd></div>
+          </dl>
+          <p id="session-quest-map-progress" class="quest-map-progress" hidden>
+            <strong id="session-quest-map-name"></strong>
+            <span id="session-quest-map-count"></span>
+          </p>
+          <table id="session-quest-inventory" class="quest-inventory" hidden>
+            <caption class="sr-only">登入時的任務清單</caption>
+            <thead>
+              <tr><th scope="col">持有紀錄 ID</th><th scope="col">任務 ID</th><th scope="col">狀態代碼</th><th scope="col">任務名稱與地圖</th></tr>
+            </thead>
+            <tbody id="session-quest-rows"></tbody>
+          </table>
+        </section>
         <p id="session-detail" class="session-detail" aria-live="polite"></p>
       </section>
 

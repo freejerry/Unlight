@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 from contextlib import suppress
+from csv import DictReader
 from hashlib import sha256
 from pathlib import Path
 from xml.etree import ElementTree
@@ -24,6 +25,9 @@ PORTS = tuple(port for _, port, _, _ in SERVICES)
 ROOT = Path(__file__).resolve().parent
 PUBLIC_CONFIG = ROOT.parents[1] / "app/client/public"
 NATIVE_ROOT = ROOT.parents[1] / "web-client"
+QUEST_CSV = ROOT.parents[1] / "app/server/data/csv"
+MAX_QUEST_IDS = 127
+TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
 NATIVE_ASSETS = {
     "image": "image/rm_shop/item_id020.png",
     "audio": "sound/bgm/ulbgm01.mp3",
@@ -62,6 +66,23 @@ def native_panel_skin(assets):
     except (OSError, RuntimeError):
         pass
     return None
+
+
+def native_quest_catalog():
+    with (QUEST_CSV / "ja/QuestMaps.csv").open(encoding="utf-8-sig", newline="") as source:
+        maps = {
+            int(row["id"]): {"id": int(row["id"]), "name": row["name_tcn"] or row["name"],
+                             "clearTarget": int(row["difficulty"])}
+            for row in DictReader(source)
+        }
+    quests = {}
+    with (QUEST_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            if row["name"]:
+                quest_id = int(row["id"])
+                area = maps.get(int(row["quest_map_id"]), {})
+                quests[quest_id] = {"id": quest_id, "name": row["name"], "map": area.get("name", "")}
+    return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
 
 
 def client_config(server_offset, direct_sockets):
@@ -192,7 +213,7 @@ def create_app(
         app.router.add_get("/", serve_file(NATIVE_ROOT / "index.html"))
         for filename in (
             "client.js", "style.css", "transport.js", "session.js",
-            "wire.js", "srp.js", "login.js", "panel.js", "data-bootstrap.js",
+            "wire.js", "srp.js", "login.js", "panel.js", "data-bootstrap.js", "quest-data.js",
         ):
             app.router.add_get(f"/{filename}", serve_file(NATIVE_ROOT / filename))
 
@@ -215,8 +236,31 @@ def create_app(
         async def assets_info(_request):
             return web.json_response(asset_urls)
 
+        quests, maps = {}, {}
+        with suppress(OSError):
+            quests, maps = native_quest_catalog()
+
+        async def quest_catalog(request):
+            values = request.query.getall("id", [])
+            map_values = request.query.getall("map", [])
+            requested = values + map_values
+            if not requested or len(values) > MAX_QUEST_IDS or len(map_values) > 1 or any(
+                not value.isascii() or not value.isdecimal() or len(value) > 10
+                for value in requested
+            ):
+                raise web.HTTPBadRequest(text="Pass positive quest IDs or one map ID.")
+            if any(not 0 < int(value) <= 2**31 - 1 for value in requested):
+                raise web.HTTPBadRequest(text="Pass positive quest IDs or one map ID.")
+            ids = dict.fromkeys(map(int, values))
+            area = maps.get(int(map_values[0])) if map_values else None
+            return web.json_response({
+                "quests": [quests[quest_id] for quest_id in ids if quest_id in quests],
+                "map": area,
+            })
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
+        app.router.add_get("/api/quest-catalog", quest_catalog)
         return app
 
     index_path = ROOT / "index.html"

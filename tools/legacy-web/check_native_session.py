@@ -6,9 +6,10 @@ import json
 import os
 import re
 import secrets
+import sqlite3
 import struct
 import sys
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.parse import quote, quote_plus, urlsplit
@@ -22,6 +23,7 @@ FIELD_PATTERN = r"[A-Za-z0-9_.\-]{1,16}"
 SESSION_SERVICES = {"lobby": 12002, "data": 12003, "chat": 12020}
 AVATAR_VALUES = ("id", "name", "level", "gems", "exp", "energy")
 STARTER_VALUES = ("parts", "cards")
+QUEST_SUMMARY = ("count", "capacity", "flag", "clear-count")
 
 
 def read_password(options):
@@ -130,12 +132,119 @@ def initial_data(page, branch, fixture):
     return values
 
 
+def quest_database_snapshot(database, username):
+    """Read the fixture's quest records and rewards without changing the live database."""
+    with closing(sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True, timeout=3)) as db:
+        db.execute("PRAGMA query_only = ON")
+        db.execute("BEGIN")
+        avatar = db.execute(
+            """SELECT a.id, a.quest_inventory_max, a.quest_flag, a.quest_clear_num,
+                      a.quest_point, a.gems, a.exp, a.level, a.energy
+               FROM players p LEFT JOIN avatars a ON a.player_id = p.id
+               WHERE p.name = ? ORDER BY a.id LIMIT 1""",
+            (username,),
+        ).fetchone()
+        assert avatar is not None, "Could not find the disposable player in the original database"
+        avatar_id, capacity, flag, cleared, *_ = avatar
+        if avatar_id is None:
+            return None, None
+        records = db.execute(
+            """SELECT i.id, i.quest_id, i.status, q.name, m.name,
+                      i.progress, i.deck_index, i.hp0, i.hp1, i.hp2, i.find_at,
+                      i.before_avatar_id
+               FROM avatar_quest_inventories i LEFT JOIN quests q ON q.id = i.quest_id
+               LEFT JOIN quest_maps m ON m.id = q.quest_map_id
+               WHERE i.avatar_id = ? ORDER BY i.id""",
+            (avatar_id,),
+        ).fetchall()
+        clear_logs = db.execute(
+            """SELECT id, quest_inventory_id, result, finish_point, quest_point
+               FROM quest_clear_logs WHERE avatar_id = ? ORDER BY id""",
+            (avatar_id,),
+        ).fetchall()
+        # QuestClearGauge.as opens QuestMap.ID(questFlag + 1). TCN hides it at QUEST_CAP (35).
+        current_map = None
+        if 0 <= flag < 35:
+            current_map = db.execute(
+                "SELECT id, name, difficulty FROM quest_maps WHERE id = ?",
+                (flag + 1,),
+            ).fetchone()
+    rows = []
+    for inventory_id, quest_id, status, name, map_name, *_ in records:
+        # Data leaves a still-pending quest unidentified, even when its internal ID is set.
+        rows.append((inventory_id, 0, status, None, None) if status == 4
+                    else (inventory_id, quest_id, status, name, map_name))
+    summary = dict(zip(QUEST_SUMMARY, (len(rows), capacity, flag, cleared), strict=True))
+    return (summary, rows, current_map), (avatar, records, clear_logs)
+
+
+def expect_quest_cleared(page):
+    expect(page.locator("#session-quest")).to_be_hidden()
+    expect(page.locator("#session-quest-status")).to_have_attribute("data-state", "idle")
+    expect(page.locator("#session-quest-inventory tr[data-inventory-id]")).to_have_count(0)
+    for field in QUEST_SUMMARY:
+        expect(page.locator(f"#session-quest-{field}")).to_be_empty()
+    expect(page.locator("#session-quest-map-progress")).to_be_hidden()
+    expect(page.locator("#session-quest-map-name")).to_be_empty()
+    expect(page.locator("#session-quest-map-count")).to_be_empty()
+
+
+def verify_quest_inventory(page, database, username, sockets):
+    expected, unchanged = quest_database_snapshot(database, username)
+    if expected is None:
+        expect_quest_cleared(page)
+        return None
+
+    summary, rows, current_map = expected
+    expect(page.locator("#session-quest")).to_be_visible()
+    expect(page.locator("#session-quest-status")).to_have_attribute("data-state", "idle")
+    expect(page.locator("#session-quest-progress")).to_be_hidden()
+    outbound = [(url, len(sent)) for url, sent, _ in sockets]
+    page.locator("#session-quest-load").click()
+    expect(page.locator("#session-quest-status")).to_have_attribute(
+        "data-state", "success" if rows else "empty", timeout=TIMEOUT,
+    )
+    expect(page.locator("#session-quest-progress")).to_be_visible()
+    for field, value in summary.items():
+        expect(page.locator(f"#session-quest-{field}")).to_have_text(str(value))
+    inventory = page.locator("#session-quest-inventory tr[data-inventory-id]")
+    expect(inventory).to_have_count(len(rows))
+    for inventory_id, quest_id, status, name, map_name in rows:
+        row = page.locator(f'#session-quest-inventory tr[data-inventory-id="{inventory_id}"]')
+        expect(row).to_be_visible()
+        expect(row).to_have_attribute("data-quest-id", str(quest_id))
+        expect(row).to_have_attribute("data-quest-status", str(status))
+        for index, value in enumerate((inventory_id, quest_id, status)):
+            expect(row.get_by_role("cell").nth(index)).to_have_text(str(value))
+        if quest_id == 0:
+            expect(row.locator(".quest-name")).to_have_text("尚未發現")
+        if name:
+            expect(row.locator(".quest-name")).to_have_text(name)
+        if map_name:
+            map_label = row.locator(".quest-map")
+            expect(map_label).to_have_text(map_name)
+            expect(map_label).to_be_visible()
+    gauge = page.locator("#session-quest-map-progress")
+    if current_map:
+        map_id, name, target = current_map
+        expect(gauge).to_be_visible()
+        expect(gauge).to_have_attribute("data-map-id", str(map_id))
+        expect(page.locator("#session-quest-map-name")).to_have_text(name)
+        expect(page.locator("#session-quest-map-count")).to_have_text(f"{min(summary['clear-count'], target)} / {target}")
+    else:
+        expect(gauge).to_be_hidden()
+    assert outbound == [(url, len(sent)) for url, sent, _ in sockets], "Quest read sent a Ruby socket command"
+    assert quest_database_snapshot(database, username) == (expected, unchanged), "Quest read changed original game records"
+    return expected
+
+
 def expect_bootstrap_cleared(page):
     bootstrap = page.locator("#session-bootstrap")
     expect(bootstrap).to_have_attribute("data-state", "idle")
     expect(bootstrap).to_be_hidden()
     for field in bootstrap.locator("dd").all():
         expect(field).to_be_empty()
+    expect_quest_cleared(page)
 
 
 def sign_out(page, live_sockets):
@@ -219,6 +328,8 @@ def check_session(browser, origin, options, password, wrong_password, no_avatar_
             assert branch == "avatar", "Expected the primary account to have a character"
         expected_values = initial_data(page, branch, fixture)
         verify_exchange(sockets[offset:], challenge=True, result=2, player_id=player_id)
+        if options.quest_database:
+            first_quest = verify_quest_inventory(page, options.quest_database, options.username, sockets)
         sign_out(page, live_sockets[offset:])
 
         offset = len(sockets)
@@ -226,6 +337,10 @@ def check_session(browser, origin, options, password, wrong_password, no_avatar_
         assert signed_in_player(page) == player_id, "Re-login returned a different player"
         assert initial_data(page, branch, fixture) == expected_values, "Re-login returned different initial data"
         verify_exchange(sockets[offset:], challenge=True, result=2, player_id=player_id)
+        if options.quest_database:
+            assert (
+                verify_quest_inventory(page, options.quest_database, options.username, sockets) == first_quest
+            ), "Re-login returned different original quest data"
         ensure_no_password(requests, sockets, [password, wrong_password])
         save_session(page, options.screenshot)
         sign_out(page, live_sockets[offset:])
@@ -237,6 +352,9 @@ def check_session(browser, origin, options, password, wrong_password, no_avatar_
             assert registration_id != player_id, "Both branches used the same player"
             starter_values = initial_data(page, "registration", fixture)
             verify_exchange(sockets[offset:], challenge=True, result=2, player_id=registration_id)
+            expect_quest_cleared(page)
+            if options.quest_database:
+                assert verify_quest_inventory(page, options.quest_database, options.no_avatar_username, sockets) is None
             ensure_no_password(requests, sockets, [password, wrong_password, no_avatar_password])
             save_session(page, options.no_avatar_screenshot)
             sign_out(page, live_sockets[offset:])
@@ -249,6 +367,8 @@ def check_session(browser, origin, options, password, wrong_password, no_avatar_
     print("Chromium matched the original unknown-user and wrong-password responses.")
     print("Original Ruby SRP and Lobby, Data, and GlobalChat passed on login and re-login; all four sockets closed on sign-out.")
     print("Initial Data service replies were displayed and cleared on sign-out.")
+    if options.quest_database:
+        print("Quest inventory and progress matched the original database. Reading them sent no Ruby command and changed no observed game records.")
     print("The password field cleared, and inspected traffic stayed on the native origin.")
 
 
@@ -266,6 +386,7 @@ def main():
     parser.add_argument("--no-avatar-password-file", type=Path, help="Read the second account password from a private file")
     parser.add_argument("--no-avatar-screenshot", type=Path, help="Save the verified no-character view")
     parser.add_argument("--expected-initial-data", type=Path, help="JSON file with expected avatar and registration fields")
+    parser.add_argument("--quest-database", type=Path, help="Compare quest data with this isolated Traditional Chinese Ruby SQLite database, opened read-only")
     options = parser.parse_args()
     if not (options.password_file or options.password_stdin or sys.stdin.isatty()):
         parser.error("use --password-file or --password-stdin without an interactive terminal")

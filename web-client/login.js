@@ -21,6 +21,19 @@ const ui = {
   registrationFields: ['parts', 'cards'].map(field => document.querySelector(`#session-starter-${field}`)),
 };
 
+const questUi = {
+  section: document.querySelector('#session-quest'),
+  load: document.querySelector('#session-quest-load'),
+  status: document.querySelector('#session-quest-status'),
+  progress: document.querySelector('#session-quest-progress'),
+  mapProgress: document.querySelector('#session-quest-map-progress'),
+  mapName: document.querySelector('#session-quest-map-name'),
+  mapCount: document.querySelector('#session-quest-map-count'),
+  inventory: document.querySelector('#session-quest-inventory'),
+  rows: document.querySelector('#session-quest-rows'),
+  fields: ['count', 'capacity', 'flag', 'clear-count'].map(field => document.querySelector(`#session-quest-${field}`)),
+};
+
 const errors = {
   credentials: ['登入被拒絕', '請確認帳號與密碼，再重新登入。'],
   network: ['連線失敗', '請確認認證、大廳、資料與全域聊天服務可用，再重新登入。'],
@@ -29,8 +42,18 @@ const errors = {
   cancelled: ['登入已取消', '你可以重新登入。'],
 };
 
+const questStatuses = {
+  idle: '可查看登入時取得的任務清單與進度。',
+  loading: '正在讀取任務資料…',
+  empty: '登入時的任務清單沒有項目。',
+  success: '已讀取登入時的任務資料。',
+  failed: '無法讀取任務資料，請重試。',
+};
+const MAX_CATALOG_ID = 0x7fffffff;
+
 let pending = null;
 let active = null;
+let questRequest = null;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
   field.addEventListener('input', () => field.setCustomValidity(''));
@@ -64,6 +87,86 @@ function displayBootstrap(initialData) {
   ui.registrationFields.forEach((field, index) => { field.textContent = registrationValues[index] ?? ''; });
 }
 
+function showQuestStatus(state, kind) {
+  questUi.status.dataset.state = state;
+  questUi.status.textContent = questStatuses[state];
+  if (kind) questUi.status.dataset.errorKind = kind;
+  else delete questUi.status.dataset.errorKind;
+  questUi.load.disabled = state === 'loading';
+}
+
+function clearQuestResults() {
+  questUi.progress.hidden = true;
+  questUi.mapProgress.hidden = true;
+  delete questUi.mapProgress.dataset.mapId;
+  questUi.mapName.textContent = '';
+  questUi.mapCount.textContent = '';
+  questUi.inventory.hidden = true;
+  questUi.rows.replaceChildren();
+  for (const field of questUi.fields) field.textContent = '';
+}
+
+function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows }) {
+  const values = [rows.length, capacity, questFlag, questClearNum];
+  questUi.fields.forEach((field, index) => { field.textContent = String(values[index]); });
+
+  for (const { inventoryId, questId, status } of rows) {
+    const row = questUi.rows.insertRow();
+    row.dataset.inventoryId = String(inventoryId);
+    row.dataset.questId = String(questId);
+    row.dataset.questStatus = String(status);
+    for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
+
+    const name = document.createElement('span');
+    name.className = 'quest-name';
+    name.textContent = questId === 0 ? '尚未發現' : '未取得名稱';
+    const map = document.createElement('span');
+    map.className = 'quest-map';
+    map.hidden = true;
+    row.insertCell().append(name, map);
+  }
+
+  questUi.progress.hidden = false;
+  questUi.inventory.hidden = rows.length === 0;
+  showQuestStatus(rows.length ? 'success' : 'empty');
+}
+
+async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
+  const ids = new Set(rows.map(({ questId }) => questId).filter(id => id > 0 && id <= MAX_CATALOG_ID));
+  const mapId = questFlag + 1;
+  const params = new URLSearchParams();
+  if (Number.isInteger(mapId) && mapId > 0 && mapId <= MAX_CATALOG_ID) params.set('map', String(mapId));
+  for (const id of ids) params.append('id', String(id));
+  if (!params.size) return;
+
+  const timeout = AbortSignal.timeout(3500);
+  const response = await fetch(`/api/quest-catalog?${params}`, { signal: AbortSignal.any([signal, timeout]) });
+  if (!response.ok) return;
+  const { quests, map } = await response.json();
+  if (signal.aborted) return;
+
+  if (map?.id === mapId && Number.isSafeInteger(map.clearTarget) && map.clearTarget > 0) {
+    const completed = Math.min(questClearNum, map.clearTarget);
+    questUi.mapName.textContent = typeof map.name === 'string' && map.name ? map.name : `地圖 ${mapId}`;
+    questUi.mapCount.textContent = `${completed} / ${map.clearTarget}`;
+    questUi.mapProgress.dataset.mapId = String(mapId);
+    questUi.mapProgress.hidden = false;
+  }
+
+  if (!Array.isArray(quests)) return;
+  const catalog = new Map(quests.filter(quest => ids.has(quest?.id)).map(quest => [quest.id, quest]));
+  for (const row of questUi.rows.rows) {
+    const quest = catalog.get(Number(row.dataset.questId));
+    if (!quest) continue;
+    if (typeof quest.name === 'string' && quest.name) row.querySelector('.quest-name').textContent = quest.name;
+    if (typeof quest.map === 'string' && quest.map) {
+      const map = row.querySelector('.quest-map');
+      map.textContent = quest.map;
+      map.hidden = false;
+    }
+  }
+}
+
 function show(state, label, detail = '', kind) {
   const signedIn = state === 'signed-in';
   ui.status.dataset.state = state;
@@ -75,7 +178,12 @@ function show(state, label, detail = '', kind) {
   ui.fields.disabled = state === 'working' || signedIn;
   ui.result.hidden = !signedIn;
   ui.signOut.hidden = !signedIn;
+  questUi.section.hidden = !signedIn || !active?.initialData?.avatar;
   if (!signedIn) {
+    questRequest?.abort();
+    questRequest = null;
+    clearQuestResults();
+    showQuestStatus('idle');
     ui.id.textContent = '—';
     displayBootstrap(null);
     for (const field of [ui.lobby, ui.data, ui.chat]) {
@@ -146,6 +254,32 @@ ui.form.addEventListener('submit', async (event) => {
     if (pending === controller) showFailure(error);
   } finally {
     if (pending === controller) pending = null;
+  }
+});
+
+questUi.load.addEventListener('click', async () => {
+  const session = active;
+  if (!session?.initialData?.avatar || questUi.load.disabled) return;
+
+  questRequest?.abort();
+  const controller = new AbortController();
+  questRequest = controller;
+  clearQuestResults();
+  showQuestStatus('loading');
+  try {
+    const snapshot = await session.readQuestInventory({ signal: controller.signal });
+    if (questRequest !== controller) return;
+    if (!snapshot) throw new SessionError('protocol');
+    displayQuestSnapshot(snapshot);
+    await enrichQuestSnapshot(snapshot, controller.signal).catch(() => {});
+  } catch (error) {
+    if (questRequest === controller) {
+      clearQuestResults();
+      const kind = error instanceof SessionError && Object.hasOwn(errors, error.kind) ? error.kind : 'protocol';
+      showQuestStatus('failed', kind);
+    }
+  } finally {
+    if (questRequest === controller) questRequest = null;
   }
 });
 
