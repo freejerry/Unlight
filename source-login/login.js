@@ -1,20 +1,38 @@
-import { SessionError, startSession } from '/session.js';
+import { registerAccount, SessionError, startSession } from '/session.js';
+import { playTitleAlert } from './bgm.js';
 
 const form = document.querySelector('#login');
 const fields = document.querySelector('#login-fields');
+const title = document.querySelector('#login-title');
+const submit = document.querySelector('#login-submit');
+const accountMode = document.querySelector('#account-mode');
 const username = document.querySelector('#username');
 const password = document.querySelector('#password');
+const confirmation = document.querySelector('#confirm-password');
+const email = document.querySelector('#email');
 const status = document.querySelector('#login-status');
+const loginAlert = document.querySelector('#login-alert');
+const loginAlertMessage = document.querySelector('#login-alert-message');
 
 const failureMessages = {
-  credentials: '登入失敗。請確認帳號和密碼。',
+  credentials: '認證失敗',
   network: '無法連線至遊戲服務。請稍後再試。',
   timeout: '遊戲服務未及時回覆。請再試一次。',
   protocol: '無法驗證遊戲服務的回覆。請再試一次。',
   cancelled: '登入已取消。',
 };
 
+const registrationFailures = {
+  ...failureMessages,
+  cancelled: '建立帳號已取消。',
+  'account-register-invalid': '請確認帳號和密碼的格式。',
+  'account-name-taken': '此帳號名稱已有人使用。',
+  'account-register-rejected': '遊戲服務未接受這次建立帳號。',
+  'account-register-uncertain': '尚未確認帳號是否已建立。請先嘗試登入。',
+};
+
 let currentAttempt = null;
+let alertReturnFocus = null;
 
 function showStatus(state, message = '', kind) {
   status.dataset.state = state;
@@ -23,10 +41,26 @@ function showStatus(state, message = '', kind) {
   else delete status.dataset.errorKind;
 }
 
-function authenticate(signal) {
-  const secret = password.value;
+function clearPasswords() {
   password.value = '';
-  return startSession(username.value, secret, { signal });
+  confirmation.value = '';
+  confirmation.setCustomValidity('');
+}
+
+function setMode(mode) {
+  const registering = mode === 'register';
+  form.dataset.mode = mode;
+  title.textContent = registering ? 'Register' : 'Login';
+  submit.textContent = title.textContent;
+  accountMode.textContent = registering ? 'Login Form' : 'Create New Account';
+  password.autocomplete = registering ? 'new-password' : 'current-password';
+  for (const field of [email, confirmation]) {
+    field.closest('label').hidden = !registering;
+    field.disabled = !registering;
+    field.required = registering;
+  }
+  clearPasswords();
+  if (!registering) email.value = '';
 }
 
 function closeSession(attempt) {
@@ -35,20 +69,59 @@ function closeSession(attempt) {
   return attempt.closing;
 }
 
+accountMode.addEventListener('click', () => {
+  if (currentAttempt || loginAlert.open) return;
+  const restoreFocus = document.activeElement === accountMode;
+  setMode(form.dataset.mode === 'register' ? 'login' : 'register');
+  showStatus('idle');
+  if (restoreFocus) username.focus({ preventScroll: true });
+});
+
+loginAlert.addEventListener('close', () => {
+  if (loginAlert.open) return;
+  alertReturnFocus?.focus({ preventScroll: true });
+  alertReturnFocus = null;
+});
+
+for (const field of [password, confirmation]) {
+  field.addEventListener('input', () => confirmation.setCustomValidity(''));
+}
+
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  if (currentAttempt || !form.reportValidity()) return;
+  if (currentAttempt || loginAlert.open || !form.reportValidity()) return;
+
+  const registering = form.dataset.mode === 'register';
+  const accountName = username.value;
+  const secret = password.value;
+  if (registering && confirmation.value !== secret) {
+    confirmation.setCustomValidity('兩次輸入的密碼不一致。');
+    confirmation.reportValidity();
+    return;
+  }
 
   const attempt = { controller: new AbortController(), session: null, closing: null };
   currentAttempt = attempt;
   const restoreFocus = form.contains(document.activeElement);
   let target = password;
+  let loginFailure;
+  clearPasswords();
   fields.disabled = true;
-  showStatus('working', '正在登入…');
+  accountMode.disabled = true;
+  showStatus('working', registering ? '正在建立帳號…' : '正在登入…');
   if (restoreFocus) status.focus({ preventScroll: true });
 
   try {
-    const session = await authenticate(attempt.controller.signal);
+    const options = { signal: attempt.controller.signal };
+    if (registering) {
+      await registerAccount(accountName, secret, options);
+      if (currentAttempt !== attempt) return;
+      setMode('login');
+      showStatus('success', '帳號建立成功。請輸入密碼登入。');
+      return;
+    }
+
+    const session = await startSession(accountName, secret, options);
     attempt.session = session;
     if (currentAttempt !== attempt) return;
     if (!Number.isSafeInteger(session?.playerId) || session.playerId < 1 || !session.initialData
@@ -62,14 +135,26 @@ form.addEventListener('submit', async event => {
     showStatus('success', '登入成功。');
   } catch (error) {
     if (currentAttempt !== attempt) return;
-    const kind = error instanceof SessionError && Object.hasOwn(failureMessages, error.kind) ? error.kind : 'network';
-    showStatus('error', failureMessages[kind], kind);
+    const messages = registering ? registrationFailures : failureMessages;
+    const kind = error instanceof SessionError && Object.hasOwn(messages, error.kind) ? error.kind : 'network';
+    if (kind === 'account-name-taken') target = username;
+    if (registering) showStatus('error', messages[kind], kind);
+    else loginFailure = kind;
   } finally {
     await closeSession(attempt).catch(() => {});
     if (currentAttempt === attempt) {
       currentAttempt = null;
       fields.disabled = false;
-      if (restoreFocus && document.activeElement === status) target.focus({ preventScroll: true });
+      accountMode.disabled = false;
+      if (loginFailure) {
+        showStatus('error', '', loginFailure);
+        loginAlertMessage.textContent = failureMessages[loginFailure];
+        alertReturnFocus = target;
+        loginAlert.showModal();
+        playTitleAlert();
+      } else if (restoreFocus && document.activeElement === status) {
+        target.focus({ preventScroll: true });
+      }
     }
   }
 });
@@ -81,8 +166,13 @@ window.addEventListener('pagehide', () => {
     attempt.controller.abort();
     void closeSession(attempt).catch(() => {});
   }
-  password.value = '';
+  alertReturnFocus = null;
+  if (loginAlert.open) loginAlert.close();
+  loginAlertMessage.textContent = '';
+  clearPasswords();
+  email.value = '';
   fields.disabled = false;
+  accountMode.disabled = false;
   showStatus('idle');
 });
 

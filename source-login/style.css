@@ -8,13 +8,19 @@
   color-scheme: dark;
   color: #eef3fb;
   background: #141a24;
+  --viewport-height: 100vh;
+  --stage-top: max(0px, calc((var(--viewport-height) - 680px) / 2));
   --interface-font: "Noto Sans TC", "Noto Sans CJK TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   font-family: var(--interface-font);
 }
 
+@supports (height: 100dvh) {
+  :root { --viewport-height: 100dvh; }
+}
+
 *, *::before { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { min-inline-size: 780px; margin: 0; }
+body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top); }
 
 #stage {
   position: relative;
@@ -37,7 +43,7 @@ body { min-inline-size: 780px; margin: 0; }
 
 #stage-background-status {
   position: absolute;
-  inset: auto 16px 12px 16px;
+  inset: 12px auto auto 15px;
   margin: 0;
   font-size: .8125rem;
 }
@@ -53,6 +59,8 @@ body { min-inline-size: 780px; margin: 0; }
   inline-size: 220px;
   min-block-size: 215px;
 }
+
+#login[data-mode="register"] { min-block-size: 300px; }
 
 .LoginPanel { font-family: "Bradley Gratis", Georgia, serif; }
 
@@ -70,19 +78,18 @@ body { min-inline-size: 780px; margin: 0; }
 .stage-panel-title {
   min-block-size: 38px;
   margin: 0;
-  padding: 6px 14px 8px;
+  padding: 7px 12px 8px;
   color: #171e2a;
-  font-size: 1rem;
-  line-height: 1.3;
+  font: 700 10px/1.3 Verdana, Arial, sans-serif;
 }
 
-.LoginPanel .stage-panel-title { font-size: 9px; font-weight: 400; letter-spacing: 2px; }
+#login-title { font-size: 9px; letter-spacing: 2px; }
 
-.login-body { padding: 10px 14px; }
+.login-body { padding: 17px 14px 6px; }
 
 #login-fields {
   display: grid;
-  gap: 9px;
+  gap: 8px;
   min-inline-size: 0;
   margin: 0;
   padding: 0;
@@ -101,11 +108,13 @@ body { min-inline-size: 780px; margin: 0; }
   text-align: center;
 }
 
+.LoginLabel[for="confirm-password"] { font-family: var(--interface-font); font-size: 15px; }
+
 #login input {
   inline-size: 100%;
   min-inline-size: 0;
-  min-block-size: 32px;
-  padding: 4px 7px;
+  min-block-size: 24px;
+  padding: 2px 7px;
   border: 1px solid #a0acc0;
   border-radius: 4px;
   background: #f7f8fb;
@@ -115,25 +124,40 @@ body { min-inline-size: 780px; margin: 0; }
   text-align: left;
 }
 
-#login-submit {
+#login-submit, #login-alert-ok {
   justify-self: center;
   inline-size: 80px;
-  min-block-size: 34px;
-  margin-block-start: 2px;
-  padding: 4px 10px;
+  min-block-size: 24px;
+  padding: 2px 6px;
   border: 1px solid #b9c8dd;
   border-radius: 4px;
   background: #deebf7;
   color: #1e3049;
-  font: inherit;
-  font-size: 1rem;
+  font: 700 12px/1.3 Palatino, "Palatino Linotype", Georgia, serif;
   letter-spacing: 1px;
   cursor: pointer;
 }
 
-#login-submit:hover:not(:disabled) { background: #fff; }
+#account-mode {
+  justify-self: center;
+  inline-size: 170px;
+  min-block-size: 28px;
+  margin-block-start: 4px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #f5f6fa;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+#login-submit:hover:not(:disabled), #login-alert-ok:hover { background: #fff; }
+#account-mode:hover:not(:disabled) { background: #314561; }
 #login-fields:disabled { opacity: .66; }
-#login-fields:disabled #login-submit { cursor: default; }
+#login-fields:disabled button { cursor: default; }
 
 #login-status, #login noscript p {
   margin: 6px 0 0;
@@ -144,28 +168,25 @@ body { min-inline-size: 780px; margin: 0; }
   overflow-wrap: anywhere;
 }
 
-#login-status:empty { min-block-size: 1.45em; }
+#login-status:empty { margin: 0; }
 #login-status[data-state="success"] { color: #a8efe0; }
 #login-status[data-state="error"] { color: #ffd1ca; }
 
-#login :focus-visible, #news-content:focus-visible, .attribution a:focus-visible {
+#login :focus-visible, #login-alert-ok:focus-visible, #news-content:focus-visible, .attribution a:focus-visible {
   outline: 2px solid #ffdf9c;
   outline-offset: 2px;
 }
 
 #news {
-  inset-inline-end: 60px;
-  inset-block-end: 30px;
+  inset-inline-start: 15px;
+  inset-block-start: 480px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  inline-size: 270px;
-  block-size: 250px;
+  inline-size: 220px;
+  block-size: 200px;
 }
 
-#news-title {
-  font: 10px/1.3 "Bradley Gratis", Georgia, serif;
-  letter-spacing: 4px;
-}
+#news-title { letter-spacing: 4px; }
 
 .news-body {
   display: flex;
@@ -191,6 +212,52 @@ body { min-inline-size: 780px; margin: 0; }
 #news-content :is(p, ol, ul) { margin-block: 0 .45rem; }
 #news-content :is(ol, ul) { padding-inline-start: 1.2em; }
 #news-content li + li { margin-block-start: .48rem; }
+
+#login-alert {
+  inset: auto;
+  inset-block-start: calc(var(--stage-top) + 340px);
+  inset-inline-start: max(390px, 50%);
+  inline-size: 174px;
+  min-block-size: 100px;
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+#login-alert::backdrop { background: transparent; }
+#login-alert-title { font-size: 12px; }
+
+.login-alert-body {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 5px 12px 8px;
+  font-size: .8125rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+#login-alert-message { margin: 0; overflow-wrap: anywhere; }
+
+#stage:has(#login-alert[open])::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  background: rgb(221 221 221 / 50%);
+  backdrop-filter: blur(3px);
+  animation: login-scrim-in 100ms ease-out both;
+}
+
+@keyframes login-scrim-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #stage:has(#login-alert[open])::after { animation: none; }
+}
 
 [data-entry="loading"] > .stage-panel,
 [data-entry="loading"] + .attribution { visibility: hidden; }

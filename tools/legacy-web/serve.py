@@ -54,6 +54,11 @@ SOURCE_LOGIN_SWFS = {
     "data/image/title/loading.swf": "759d3d3472b6af37946400ee31e997be92706f80e14f11bcb92f7d4aefbe3d37",
     "data/image/ageha.swf": "6057434e0237674ba226dd7b98ee1c9be65eb684ae9a5bf0186a0e28469e0320",
 }
+SOURCE_LOGIN_BGM_SHA256 = "82924cf090817ea98e5c6b524f46a90e6dbe3cb79ee6413ab1010aebcd085f89"
+SOURCE_LOGIN_SOUND_EFFECTS = {
+    "public/sound/se/ulse01.mp3": "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
+    "public/sound/se/ulse02.mp3": "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
+}
 # Historical cwming.ttf pin from tools/legacy-build/build.sh.
 TCN_FONT_SHA256 = "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e"
 TCN_FONT_URL = "/tcn-device-font.ttf"
@@ -449,13 +454,23 @@ def create_app(
         if source_login_wasm is not None:
             if panel is None:
                 raise ValueError("--source-login-wasm requires the pinned panel in the original --assets mirror")
+            bgm = f"public/{NATIVE_ASSETS['audio']}"
+            if pinned_native_asset(assets, bgm, SOURCE_LOGIN_BGM_SHA256) is None:
+                raise ValueError(f"--source-login-wasm requires the pinned {bgm} in the original --assets mirror")
+            for filename, digest in SOURCE_LOGIN_SOUND_EFFECTS.items():
+                path = pinned_native_asset(assets, filename, digest)
+                if path is None:
+                    raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
+                app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
             for filename, digest in SOURCE_LOGIN_SWFS.items():
                 path = pinned_native_asset(assets, filename, digest)
                 if path is None:
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/source-login/assets/{Path(filename).name}", serve_file(path))
             app.router.add_get("/source-login/", serve_file(SOURCE_LOGIN_ROOT / "index.html"))
-            for filename in ("style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js"):
+            for filename in (
+                "style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
+            ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))
             app.router.add_get("/source-login/fonts/bradley-gratis.ttf", serve_file(

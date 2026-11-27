@@ -7,6 +7,7 @@
     <title>Unlight Login</title>
     <link rel="stylesheet" href="/source-login/style.css" />
     <script type="module" src="/source-login/stage.js"></script>
+    <script type="module" src="/source-login/bgm.js"></script>
     <script type="module" src="/source-login/login.js"></script>
     <script type="module" src="/source-login/news.js"></script>
   </head>
@@ -14,7 +15,7 @@
     <main id="stage" aria-labelledby="login-title">
       <canvas id="stage-background" width="780" height="680" aria-hidden="true"></canvas>
       <p id="stage-background-status" role="status" hidden></p>
-      <form id="login" class="stage-panel LoginPanel" method="post" aria-labelledby="login-title">
+      <form id="login" class="stage-panel LoginPanel" method="post" aria-labelledby="login-title" data-mode="login">
         <h1 id="login-title" class="stage-panel-title" lang="en">Login</h1>
         <div class="login-body">
           <fieldset id="login-fields" disabled>
@@ -23,11 +24,20 @@
               <span>Name:</span>
               <input id="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" required />
             </label>
+            <label for="email" class="LoginLabel" lang="en" hidden>
+              <span>Email:</span>
+              <input id="email" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="64" pattern="[A-Za-z0-9_.@\-]{1,64}" disabled />
+            </label>
             <label for="password" class="LoginLabel" lang="en">
               <span>Pass:</span>
               <input id="password" type="password" autocomplete="current-password" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" required />
             </label>
+            <label for="confirm-password" class="LoginLabel" hidden>
+              <span>確認</span>
+              <input id="confirm-password" type="password" autocomplete="new-password" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" disabled />
+            </label>
             <button id="login-submit" type="submit" lang="en">Login</button>
+            <button id="account-mode" type="button" aria-controls="email confirm-password" lang="en">Create New Account</button>
           </fieldset>
           <p id="login-status" role="status" aria-atomic="true" tabindex="-1" data-state="idle"></p>
           <noscript><p>請啟用 JavaScript 以登入。</p></noscript>
@@ -40,6 +50,15 @@
           <div id="news-content" role="region" aria-labelledby="news-title" tabindex="0" hidden></div>
         </div>
       </section>
+      <dialog id="login-alert" class="stage-panel" role="alertdialog" aria-labelledby="login-alert-title" aria-describedby="login-alert-message">
+        <h2 id="login-alert-title" class="stage-panel-title" lang="en">Error</h2>
+        <div class="login-alert-body">
+          <p id="login-alert-message"></p>
+          <form method="dialog">
+            <button id="login-alert-ok" type="submit" autofocus lang="en">OK</button>
+          </form>
+        </div>
+      </dialog>
     </main>
     <footer class="attribution">
       Unlight 原作 CPA ·

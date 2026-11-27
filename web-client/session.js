@@ -1,4 +1,4 @@
-import { createAuthExchange } from './srp.js';
+import { createAuthExchange, createRegistrationVerifier } from './srp.js';
 import { applySessionKey, createFrameParser, encodeCommand, readReply, signedByte } from './wire.js';
 import {
   AVATAR_COMMAND, LOBBY_AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readLobbyAvatar, readVersions,
@@ -38,6 +38,9 @@ import {
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
+const AUTH_REGISTER_REQUEST = 5;
+const AUTH_REGISTER_REPLY = 0;
+const SERVER_SB = 0;
 const LOBBY_PORT = 12002;
 const DATA_PORT = 12003;
 const QUEST_PORT = 12005;
@@ -112,6 +115,10 @@ const messages = {
   protocol: '遊戲服務回傳的登入資料無法驗證。',
   timeout: '遊戲服務未及時回覆，請再試一次。',
   cancelled: '已取消連線。',
+  'account-register-invalid': '請確認帳號與密碼的格式。',
+  'account-name-taken': '這個帳號已有人使用。',
+  'account-register-rejected': '遊戲服務未接受註冊。',
+  'account-register-uncertain': '尚未確認帳號是否已建立。請先用剛才的帳密登入確認。',
   busy: '正在讀取任務資料。',
   'avatar-name-invalid': '此角色名稱無法使用。',
   'avatar-name-taken': '此角色名稱已有人使用。',
@@ -232,7 +239,7 @@ class SessionSocket {
     }
   }
 
-  async ask(command, fields, replies, { signal, skip, allowOther, nextKey, onReply } = {}) {
+  async ask(command, fields, replies, { signal, skip, allowOther, nextKey, onSend, onReply } = {}) {
     signal?.throwIfAborted();
     this.assertOpen();
     if (this.#waiting) throw new SessionError('protocol');
@@ -242,6 +249,7 @@ class SessionSocket {
     });
     try {
       this.send(command, fields);
+      onSend?.();
       // The first service request is plain. Each socket owns its key thereafter.
       if (nextKey) this.#key = nextKey.slice();
       return await bounded(response, signal);
@@ -2447,6 +2455,46 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     closed,
     close: () => stop('closed'),
   };
+}
+
+export async function registerAccount(username, password, { signal } = {}) {
+  if (signal?.aborted) throw new SessionError('cancelled');
+  if (typeof username !== 'string' || typeof password !== 'string'
+      || !LOGIN_FIELD.test(username) || !LOGIN_FIELD.test(password)) {
+    throw new SessionError('account-register-invalid');
+  }
+
+  const registration = new AbortController();
+  const cancel = () => registration.abort(new SessionError('cancelled'));
+  signal?.addEventListener('abort', cancel, { once: true });
+  let auth;
+  let dispatched = false;
+  let result;
+  try {
+    const verifierPromise = createRegistrationVerifier(username, password);
+    password = '';
+    const { salt, verifier } = await bounded(verifierPromise, registration.signal);
+    registration.signal.throwIfAborted();
+    auth = new SessionSocket(AUTH_PORT);
+    await auth.open(registration.signal);
+    // Original CS5 has no email field. Ruby supplies the platform email on its side.
+    const reply = await auth.ask(AUTH_REGISTER_REQUEST, [username, salt, verifier, SERVER_SB], [AUTH_REGISTER_REPLY], {
+      signal: registration.signal,
+      onSend: () => { dispatched = true; },
+    });
+    result = reply.int();
+    reply.done();
+    if (result < 0 || result > 7) throw new SessionError('protocol');
+  } catch (error) {
+    if (dispatched) throw new SessionError('account-register-uncertain');
+    throw error instanceof SessionError ? error : new SessionError('protocol');
+  } finally {
+    signal?.removeEventListener('abort', cancel);
+    await auth?.close();
+  }
+
+  if (result === 1) throw new SessionError('account-name-taken', result);
+  if (result !== 0) throw new SessionError('account-register-rejected', result);
 }
 
 export async function startSession(username, password, { signal } = {}) {

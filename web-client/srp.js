@@ -54,6 +54,11 @@ async function sha1(crypto, bytes) {
   return new Uint8Array(await crypto.subtle.digest('SHA-1', bytes));
 }
 
+async function passwordExponent(crypto, salt, credentialsHash) {
+  const passwordHash = await sha1(crypto, fromHex(salt + toHex(credentialsHash)));
+  return BigInt(`0x${toHex(passwordHash)}`);
+}
+
 function sameProof(expected, certificate) {
   if (!isHex(certificate, DIGEST_LENGTH * 2, DIGEST_LENGTH * 2)) return false;
   const actual = fromHex(certificate);
@@ -64,11 +69,32 @@ function sameProof(expected, certificate) {
   return difference === 0;
 }
 
-export function createAuthExchange() {
+function requireCrypto() {
   const crypto = globalThis.crypto;
   if (!crypto?.subtle || typeof crypto.getRandomValues !== 'function') {
     throw new Error('這個連線環境無法使用瀏覽器加密功能。');
   }
+  return crypto;
+}
+
+export async function createRegistrationVerifier(user, password) {
+  const crypto = requireCrypto();
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(DIGEST_LENGTH)));
+  const credentials = text.encode(`${user}:${password}`);
+  password = '';
+  let credentialsHash;
+  try {
+    credentialsHash = await sha1(crypto, credentials);
+    const exponent = await passwordExponent(crypto, salt, credentialsHash);
+    return { salt, verifier: modPow(G, exponent).toString(16) };
+  } finally {
+    credentials.fill(0);
+    credentialsHash?.fill(0);
+  }
+}
+
+export function createAuthExchange() {
+  const crypto = requireCrypto();
   let secret = privateExponent(crypto);
   const publicKey = modPow(G, secret).toString(16);
 
@@ -104,8 +130,7 @@ export function createAuthExchange() {
         ]);
       const multiplier = BigInt(`0x${toHex(multiplierHash)}`);
       const scramble = BigInt(`0x${toHex(scrambleHash)}`);
-      const passwordHash = await sha1(crypto, fromHex(salt + toHex(credentialsHash)));
-      const passwordNumber = BigInt(`0x${toHex(passwordHash)}`);
+      const passwordNumber = await passwordExponent(crypto, salt, credentialsHash);
       const difference = serverPublic - multiplier * modPow(G, passwordNumber);
       const base = ((difference % N) + N) % N;
       if (base === 0n || scramble === 0n) throw new Error('伺服器登入驗證資料無效。');
