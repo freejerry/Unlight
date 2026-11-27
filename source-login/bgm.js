@@ -5,7 +5,7 @@ const sceneTracks = {
   tutorial: "/public/sound/bgm/bgm011.mp3",
   lobby: "/public/sound/bgm/ulbgm02.mp3",
 };
-const music = titleAudio(theme);
+const titleMusic = titleAudio(theme);
 const clickSound = titleAudio("/public/sound/se/ulse01.mp3");
 const alertBytes = fetch("/public/sound/se/ulse02.mp3", { redirect: "error" })
   .then(response => {
@@ -15,12 +15,11 @@ const alertBytes = fetch("/public/sound/se/ulse02.mp3", { redirect: "error" })
     reportAudioError(error);
     return null;
   });
-music.hidden = true;
-music.loop = true;
-stage.append(music);
-
+let music = titleMusic;
 let active = true;
-let musicOutput;
+let musicContext;
+const musicOutputs = new WeakMap();
+let titleFade;
 let warmingMusic = false;
 let musicRequest = 0;
 let alertPlayback;
@@ -32,6 +31,73 @@ function titleAudio(path) {
   audio.volume = defaultVolume;
   audio.src = path;
   return audio;
+}
+
+function mountMusic(audio, scene) {
+  audio.hidden = true;
+  audio.loop = true;
+  audio.dataset.bgmScene = scene;
+  audio.addEventListener("playing", () => confirmMusicPlaying(audio));
+  audio.addEventListener("seeked", () => confirmMusicPlaying(audio));
+  stage.prepend(audio);
+}
+
+function connectMusic(audio, volume) {
+  const gain = musicContext.createGain();
+  gain.gain.value = volume;
+  const source = musicContext.createMediaElementSource(audio);
+  gain.connect(musicContext.destination);
+  source.connect(gain);
+  musicOutputs.set(audio, { source, gain });
+  audio.volume = 1;
+}
+
+function setMusicVolume(audio, volume) {
+  const output = musicOutputs.get(audio);
+  if (output) output.gain.gain.value = volume;
+  else audio.volume = volume;
+}
+
+function discardSceneMusic(audio) {
+  audio.pause();
+  const output = musicOutputs.get(audio);
+  output?.source.disconnect();
+  output?.gain.disconnect();
+  musicOutputs.delete(audio);
+  audio.remove();
+}
+
+function clearTitleFade() {
+  clearInterval(titleFade?.timer);
+  titleFade = undefined;
+}
+
+export function fadeTitleMusic() {
+  if (!active || music !== titleMusic || titleFade) return;
+  const departure = {};
+  titleFade = departure;
+  if (!titleMusic.paused) {
+    // TitleCtrl.stopBGM delegates to BaseSound.fade(0, 2), which ticks ten times.
+    const volume = musicOutputs.get(titleMusic)?.gain.gain.value ?? titleMusic.volume;
+    let step = 0;
+    departure.timer = setInterval(() => {
+      step += 1;
+      setMusicVolume(titleMusic, volume * (10 - step) / 10);
+      if (step === 10) {
+        clearInterval(departure.timer);
+        titleMusic.pause();
+        if (music === titleMusic) delete stage.dataset.musicState;
+      }
+    }, 200);
+  } else {
+    delete stage.dataset.musicState;
+  }
+  return () => {
+    if (titleFade !== departure || music !== titleMusic) return;
+    clearTitleFade();
+    setMusicVolume(titleMusic, defaultVolume);
+    playSceneMusic();
+  };
 }
 
 function reportAudioError(error) {
@@ -52,19 +118,19 @@ function sceneEntered() {
   return stage.dataset.screen !== "title" || stage.dataset.entry === "entering" || stage.dataset.entry === "ready";
 }
 
-function confirmMusicPlaying() {
-  if (!active || !sceneEntered() || music.paused || music.seeking || music.readyState < music.HAVE_FUTURE_DATA) return;
-  if (musicOutput) {
-    if (musicOutput.context.state !== "running") return;
-    musicOutput.gain.gain.value = defaultVolume;
-  }
+function confirmMusicPlaying(audio = music) {
+  if (!active || audio !== music || !sceneEntered() || audio.paused || audio.seeking
+      || audio.readyState < audio.HAVE_FUTURE_DATA) return;
+  if (musicOutputs.has(audio) && musicContext.state !== "running") return;
+  if (audio !== titleMusic || !titleFade) setMusicVolume(audio, defaultVolume);
   stage.dataset.musicState = "playing";
 }
 
 function requestMusic() {
   const request = ++musicRequest;
   const entered = sceneEntered();
-  playAudio(music, confirmMusicPlaying, error => {
+  const audio = music;
+  playAudio(audio, () => confirmMusicPlaying(audio), error => {
     if (!active || request !== musicRequest) return;
     if (entered && error.name === "NotAllowedError") stage.dataset.musicState = "blocked";
     reportAudioError(error);
@@ -73,11 +139,35 @@ function requestMusic() {
 
 function playSceneMusic() {
   if (!active || !sceneEntered()) return;
+  const scene = stage.dataset.soundscape ?? "title";
+  if (scene === "title" && music === titleMusic && titleFade) return;
   entryObserver.disconnect();
   const wasWarming = warmingMusic;
   warmingMusic = false;
-  const path = sceneTracks[stage.dataset.soundscape] ?? theme;
-  if (music.getAttribute("src") !== path) {
+  const path = sceneTracks[scene] ?? theme;
+  if (scene === "title" && music !== titleMusic) {
+    musicRequest += 1;
+    discardSceneMusic(music);
+    music = titleMusic;
+    clearTitleFade();
+    setMusicVolume(titleMusic, defaultVolume);
+    titleMusic.currentTime = 0;
+    delete stage.dataset.musicState;
+  } else if (scene !== "title" && music === titleMusic) {
+    // Registration uses the title MP3 on its own channel, starting at frame zero.
+    musicRequest += 1;
+    if (!titleFade) titleMusic.pause();
+    music = titleAudio(path);
+    if (musicContext) {
+      try {
+        connectMusic(music, defaultVolume);
+      } catch (error) {
+        reportAudioError(error);
+      }
+    }
+    mountMusic(music, scene);
+    delete stage.dataset.musicState;
+  } else if (music.getAttribute("src") !== path) {
     musicRequest += 1;
     music.pause();
     music.src = path;
@@ -85,27 +175,23 @@ function playSceneMusic() {
   } else if (wasWarming) {
     music.currentTime = 0;
   }
+  music.dataset.bgmScene = scene;
   resumeMusicOutput();
   if ((music.paused || wasWarming) && !music.error) requestMusic();
 }
 
 function warmMusic() {
   if (music.error || typeof AudioContext !== "function") return;
-  if (!musicOutput) {
+  if (!musicContext) {
     // Attenuate in the audio graph so an early gesture stays silent on iOS too.
-    let context;
     try {
-      context = new AudioContext();
-      const gain = context.createGain();
-      gain.gain.value = 0;
-      gain.connect(context.destination);
-      void context.resume().catch(reportAudioError);
-      context.createMediaElementSource(music).connect(gain);
-      music.volume = 1;
-      musicOutput = { context, gain };
-      context.addEventListener("statechange", confirmMusicPlaying);
+      musicContext = new AudioContext();
+      connectMusic(music, 0);
+      resumeMusicOutput();
+      musicContext.addEventListener("statechange", () => confirmMusicPlaying());
     } catch (error) {
-      void context?.close().catch(reportAudioError);
+      void musicContext?.close().catch(reportAudioError);
+      musicContext = undefined;
       reportAudioError(error);
       return;
     }
@@ -117,7 +203,7 @@ function warmMusic() {
 }
 
 function resumeMusicOutput() {
-  const context = musicOutput?.context;
+  const context = musicContext;
   if (!context || context.state === "running") return;
   try {
     void context.resume().catch(reportAudioError);
@@ -173,8 +259,6 @@ function playOnGesture(event) {
 for (const event of ["pointerdown", "pointerup", "touchend", "keydown", "click"]) {
   window.addEventListener(event, playOnGesture, { capture: true, passive: true });
 }
-music.addEventListener("playing", confirmMusicPlaying);
-music.addEventListener("seeked", confirmMusicPlaying);
 stage.addEventListener("game-screen-change", playSceneMusic);
 document.getElementById("login-submit").addEventListener("click", event => {
   if (!active || !event.isTrusted) return;
@@ -192,9 +276,12 @@ window.addEventListener("pagehide", () => {
   active = false;
   musicRequest += 1;
   warmingMusic = false;
+  clearTitleFade();
   delete stage.dataset.musicState;
-  if (musicOutput) musicOutput.gain.gain.value = 0;
   entryObserver.disconnect();
+  setMusicVolume(titleMusic, 0);
+  titleMusic.pause();
+  setMusicVolume(music, 0);
   music.pause();
   clickSound.pause();
   const playback = alertPlayback;
@@ -208,4 +295,5 @@ window.addEventListener("pageshow", event => {
   }
 });
 
+mountMusic(titleMusic, "title");
 watchEntry();

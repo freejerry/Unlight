@@ -1,6 +1,7 @@
 """Check the fixed title, original audio and a rejected login on an isolated server."""
 
 import argparse
+from base64 import b64encode
 from hashlib import sha256
 from secrets import token_hex
 from time import monotonic
@@ -22,6 +23,8 @@ STRICT_AUTOPLAY = [
     "--autoplay-policy=document-user-activation-required",
     "--disable-features=PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies",
 ]
+PANEL_ART = "/source-login/assets/panel_gene.png"
+PANEL_SHA256 = "81038be00fa27a1143ac651a789d0a665d51a7be326f322685c7f6cddb85ee3b"
 OBSERVE_MUSIC = """(() => {
   window.musicAttempts = [];
   window.musicSeeks = [];
@@ -174,6 +177,34 @@ def check_music_activation(browser, origin, gesture):
         page.close()
 
 
+def check_panel_alpha(page, panel):
+    box = panel.bounding_box()
+    bottom = int(box["height"])
+    # The authored 42px sides and 60px/32px cap and foot stay fixed as the body grows.
+    samples = [(0, 0, (255, 255, 255, 0)), (1, 1, (0, 0, 0, 195)), (3, 3, (230, 230, 230, 255)),
+               (4, 31, (107, 124, 152, 255)), (1, bottom - 1, (0, 0, 0, 44)),
+               (3, bottom - 4, (243, 243, 243, 255))]
+    front = page.screenshot(clip=box, scale="css")
+    previous = panel.evaluate("node => { const value = node.style.visibility; node.style.visibility = 'hidden'; return value; }")
+    try:
+        behind = page.screenshot(clip=box, scale="css")
+    finally:
+        panel.evaluate("(node, value) => { node.style.visibility = value; }", previous)
+    front_pixels, behind_pixels = page.evaluate("""async ({shots, points}) => Promise.all(shots.map(async encoded => {
+      const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+      const image = await createImageBitmap(new Blob([bytes], {type: 'image/png'}));
+      const pixels = new OffscreenCanvas(image.width, image.height).getContext('2d');
+      pixels.drawImage(image, 0, 0);
+      image.close();
+      return points.map(([x, y]) => Array.from(pixels.getImageData(x, y, 1, 1).data).slice(0, 3));
+    }))""", {"shots": [b64encode(image).decode("ascii") for image in (front, behind)],
+               "points": [(x, y) for x, y, _ in samples]})
+    for (x, y, rgba), actual, base in zip(samples, front_pixels, behind_pixels):
+        expected = [round((source * rgba[3] + background * (255 - rgba[3])) / 255)
+                    for source, background in zip(rgba[:3], base)]
+        assert all(abs(value - reference) <= 1 for value, reference in zip(actual, expected)), (x, y, actual, expected)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=4389)
@@ -216,6 +247,9 @@ def main():
         assert stage.evaluate("node => [node.offsetWidth, node.offsetHeight]") == [780, 680]
         assert page.evaluate("getComputedStyle(document.documentElement).backgroundColor") == "rgb(8, 8, 8)"
         expect(page.locator("#stage-background")).to_have_attribute("data-title-state", "ready")
+        skin = page.request.get(origin + PANEL_ART)
+        assert skin.ok and sha256(skin.body()).hexdigest() == PANEL_SHA256
+        check_panel_alpha(page, page.locator("#login"))
 
         news = page.locator("#news")
         expect(news).to_have_attribute("data-state", "ready")
@@ -241,6 +275,7 @@ def main():
         assert toggle.bounding_box()["y"] >= submit_box["y"] + submit_box["height"]
         toggle.click()
         expect(page.locator("#login-title")).to_have_text("Register")
+        check_panel_alpha(page, page.locator("#login"))
         expect(page.locator("#confirm-password")).to_be_visible()
         expect(page.locator("#email")).to_be_visible()
         page.get_by_role("button", name="Login Form", exact=True).click()
@@ -287,6 +322,10 @@ def main():
         expect(password).to_be_focused()
         assert not sockets and page.evaluate("window.nativeValidationEvents") == 0
 
+        title_time = page.locator("#stage > audio[data-bgm-scene='title']").evaluate("""audio => {
+          window.rejectedLoginTitle = audio;
+          return audio.currentTime;
+        }""")
         password.fill("testonly")
         submit.click()
         expect(dialog).to_be_visible()
@@ -300,6 +339,12 @@ def main():
             && scrim.backdropFilter === 'blur(3px)';
         }""")
         assert page.locator("#username").evaluate("input => { input.focus(); return document.activeElement !== input; }")
+        page.wait_for_function("""time => {
+          const title = window.rejectedLoginTitle;
+          return title === document.querySelector("#stage > audio[data-bgm-scene='title']") && !title.paused
+            && title.currentTime > time && title.volume === 0.5;
+        }""", arg=title_time)
+        check_panel_alpha(page, page.locator("#login-alert"))
         page.wait_for_function(
             """path => window.titleAudio.some(audio => audio.src.endsWith(path) && audio.currentTime > 0)
               && window.titleEffects.some(({ source, time }) =>

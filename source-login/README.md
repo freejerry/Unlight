@@ -4,7 +4,7 @@
 
 登入面板採用原版 `Login`、`Name:`、`Pass:` 字樣與同行欄位。登入按鈕下方的 `Create New Account` 會切換至原版帳號註冊。左下 News 位於原始的 (15, 480)，大小為 220 × 200。News 讀取 `/public/news.xml`，預設是本目錄的三筆繁中測試公告，內容可以捲動。使用 `--news /path/to/news.xml` 可覆寫。
 
-原始標題 MP3 在背景入場時嘗試以 50% 音量循環播放。瀏覽器若阻擋有聲自動播放，標題頁會顯示「啟用音樂」，第一次有效的滑鼠、鍵盤或觸控操作便可啟播。登入與註冊共用原版按鈕音 `ulse01.mp3`，錯誤視窗開啟使用 `ulse02.mp3`。啟用減少動態效果時，舞台直接顯示入場完成狀態。
+原始標題 MP3 在背景入場時嘗試以 50% 音量循環播放。Auth 憑證驗證成功後，每 200 ms 減少起始音量的十分之一，共淡出兩秒。新手開場以獨立聲道從頭播放同一首曲，大廳使用 `ulbgm02.mp3`。瀏覽器若阻擋有聲自動播放，標題頁會顯示「啟用音樂」，第一次有效的滑鼠、鍵盤或觸控操作便可啟播。登入與註冊共用原版按鈕音 `ulse01.mp3`，錯誤視窗開啟使用 `ulse02.mp3`。啟用減少動態效果時，舞台直接顯示入場完成狀態。[原版淡出定時器](../app/client/src/sound/BaseSound.as#L268)
 
 ## 啟動
 
@@ -57,6 +57,7 @@ python3 tools/legacy-web/check_source_lobby.py --port 4389 \
 | 舞台 | 固定為 780 × 680，視窗較高時垂直置中，較矮時保留可捲動高度。兩個回放入口的舞台外底色依原版 HTML 設定為 `#080808`。 |
 | 背景、Logo、蝴蝶與過場 | 使用原始 SWF 的 JPEG、向量與時間軸。入場與追蹤讀取原版 [TitleView](../app/client/src/view/TitleView.as) 和 [Ageha](../app/client/src/view/image/title/Ageha.as) 的設定。 |
 | 登入框與標題 | [LoginPanel](../app/client/src/view/image/title/LoginPanel.as) 定位 (500, 20)，英文字樣與同行欄位依來源。面板標題使用與原版 Flex 標題欄相近的裝置字型，Name／Pass 使用歷史字型原檔。Login 與 OK 共用原版樣式的灰色按鈕，登入按鈕以面板置中。 |
+| 面板九宮格 | 沿用 `panel_gene.png` 的 X42／78、Y60／64 切線和透明邊角。整數裝置像素比使用原圖 CSS，分數比例使用共用 Canvas2D 切片幾何。已比對 Login、Register、News 和 Alert 在 DPR 1、1.25、2 的像素。 |
 | News | [NewsPanel](../app/client/src/view/image/title/NewsPanel.as) 定位 (15, 480)，220 × 200。驗證同源三則 XML 公告，以及內容可捲閱。 |
 | 註冊與返回 | 表單底部的 Create New Account 依未修補的原版回放校正字形與位置，點擊後切換至 Register。原始 Auth 指令建立帳號，完成後回登入表單，重新輸入密碼即可登入。 |
 | 登入失敗 | [TitleCtrl](../app/client/src/controller/TitleCtrl.as) 使用 Error 警示。780 × 680 舞台以 Flex 的 50% 淺色遮罩和 3px 模糊覆蓋。空白帳號或密碼由同一視窗處理，確認後焦點回到缺漏欄位。 |

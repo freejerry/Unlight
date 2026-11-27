@@ -33,8 +33,8 @@
 | 工作項目 | 目前可確認的範圍 | 下一個驗收點 |
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
-| [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **部分** WebGL 2／Wasm 標題、原版玫瑰、裝備圖集、部分面板及場景音訊。 | 用實際 Login／Register／News 面板核對原始九宮格和透明邊角。另比對原版登入 BGM 的 2 秒淡出與角色開場曲銜接。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **部分**大廳 14 個入口圖示與公告。原版子場景依各自的資料與素材接入。 | 從選項設定開始，以 BGM／SE 刻度、保存、返回及同一登入為第一條可操作驗收。 |
+| [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **部分**大廳 14 個入口圖示與公告。已實跑原版設定頁、修改及返回。 | 接入原版設定頁並驗證音量、偏好保存及同一登入。[原版設定畫面與待驗項目](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **部分**固定舞台任務庫存與共用 Ruby 協定。歷史首戰證據依入口分開記錄。 | 同次登入進真實任務地圖並返回，再逐次接上探索和首戰。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -45,3 +45,9 @@
 
 - **Flash 原版實跑**。繁中相容 SWF 連到隔離 Ruby。出現「登錄完畢」時，資料庫已有新帳號，登入狀態仍為 0。按 OK 後連線進入原版開場，登入狀態轉為 1。Esc 的行為由 Adobe Flex 3.6 `AlertForm.keyDownHandler` 的關閉事件、`Alerter.closeOffHandler` 與 `TitleCtrl.registToLoginHandler` 核對。 [原版成功畫面](/workspace/shared/unlight-web-port/flash-parity/registration/03-original-registration-success.png) · [原版開場](/workspace/shared/unlight-web-port/flash-parity/registration/06-original-registration-onboarding.png) · [原版接續登入](../../app/client/src/controller/TitleCtrl.as#L425)
 - **新版實跑**。在兩個隔離角色上驗證滑鼠 OK 與鍵盤 Esc、同一帳號憑證驗證、接續到新手開場及再登入。另驗證同名拒絕、帳號已建但離頁放棄登入，以及既有的大廳回歸。完成視窗的字重、文字顏色、按鈕焦點框及背後模糊取樣有可見差異，列入共用面板驗收。 [完成視窗並排比對](/workspace/shared/unlight-web-port/flash-parity/registration/registration-dialog-comparison.png) · [新版開場](/workspace/shared/unlight-web-port/flash-parity/registration/13-native-automatic-onboarding.png) · [新版測例](../../tools/legacy-web/check_source_lobby.py)
+
+### 標題面板底圖與登入音樂交接
+
+- Login、Register、News 與 Alert 使用 `panel_gene.png` 的四條原始切線，半透明及透明像素按原圖與舞台合成。DPR 1、1.25、2 各比對正常置中及半像素偏移，共 24 組。Login、Register 與 News 的底圖與切片基準一致。Alert 在整數 DPR 最多 4 個像素差 1 個 RGB 色階。測例涵蓋實際頁面的登入／註冊狀態和原版 Ruby 拒絕彈窗。[實際標題](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/21-native-title-transparent-780.png) · [分數比例註冊](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/24-native-register-dpr125.png) · [24 組像素比對](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/panel-raster-metrics.json)
+- 真實 Auth 通過後，標題音樂觀測到從 0.50 到 0 的十一個音量狀態，對應十次 200 ms 衰減。新手開場在另一聲道從頭播原本的 `ulbgm01.mp3`，接續原版教學與大廳曲。Auth 拒絕時，標題聲道維持 0.50 並繼續播放。嚴格與允許自動播放的 Chromium 驗收均通過。[原版音量衰減](../../app/client/src/sound/BaseSound.as#L268) · [新版登入驗收](../../tools/legacy-web/check_source_lobby.py)
+- 原版設定頁已用隔離帳號進入，實際拖曳 BGM、切換工具提示及按 Back 返回。畫面、來源和下一階段的偏好驗收都記在設定頁交接。[設定頁交接](flash-parity/options-reference.md) · [原版設定畫面](/workspace/shared/unlight-web-port/flash-parity/title-panel-audio/08-flash-option-settled.png)

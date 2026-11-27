@@ -1,5 +1,5 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
-import { playTitleAlert } from './bgm.js';
+import { fadeTitleMusic, playTitleAlert } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
 import { startLoginTransition } from './stage.js';
@@ -167,6 +167,7 @@ function returnToTitle(session, reason, focus = true) {
   if (activeSession !== session) return;
   activeSession = null;
   currentAttempt?.transition?.cancel();
+  currentAttempt?.restoreTitleMusic?.();
   changeScreen('title');
   showStatus('idle');
   if (reason && reason !== 'closed') {
@@ -266,6 +267,7 @@ form.addEventListener('submit', async event => {
       ...options,
       onAuthenticated() {
         if (currentAttempt === attempt && !attempt.transition) {
+          attempt.restoreTitleMusic = fadeTitleMusic();
           attempt.transition = startLoginTransition(options);
         }
       },
@@ -310,6 +312,7 @@ form.addEventListener('submit', async event => {
       alertKind = 'registration-error';
     }
     attempt.transition?.cancel();
+    attempt.restoreTitleMusic?.();
     failure = { kind, message, alertKind };
   } finally {
     forgetSecret();

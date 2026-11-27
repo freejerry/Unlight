@@ -59,12 +59,12 @@ def screen(stage, name):
     assert stage.evaluate("stage => [stage.offsetWidth, stage.offsetHeight]") == [780, 680]
 
 
-def music(page, filename):
-    page.wait_for_function("""filename => {
-      const audio = document.querySelector('#stage > audio');
+def music(page, scene, filename):
+    page.wait_for_function("""({scene, filename}) => {
+      const audio = document.querySelector(`#stage > audio[data-bgm-scene='${scene}']`);
       return audio?.currentSrc.endsWith('/sound/bgm/' + filename) && audio.loop
         && !audio.paused && audio.currentTime > 0.2;
-    }""", arg=filename, timeout=TIMEOUT)
+    }""", arg={"scene": scene, "filename": filename}, timeout=TIMEOUT)
 
 
 def active_session_traffic(sockets, live, start, player_id):
@@ -463,6 +463,12 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
         wait_logout(page, database, player_id)
 
     if verify_login_rose:
+        music(page, "title", "ulbgm01.mp3")
+        page.locator("#stage > audio[data-bgm-scene='title']").evaluate("""audio => {
+          window.outgoingTitleMusic = audio;
+          window.titleFadeVolumes = [audio.volume];
+          audio.addEventListener('volumechange', () => window.titleFadeVolumes.push(audio.volume));
+        }""")
         page.emulate_media(reduced_motion="no-preference")
     first = len(sockets)
     if verify_login_rose:
@@ -485,7 +491,14 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     expect(onboarding).to_have_attribute("data-step", "intro")
     expect(page.locator("#login")).to_be_hidden()
     active_session_traffic(sockets, live, first, player_id)
-    music(page, "ulbgm01.mp3")
+    music(page, "onboarding", "ulbgm01.mp3")
+    if verify_login_rose:
+        assert page.locator("#stage > audio[data-bgm-scene='onboarding']").evaluate(
+            "audio => audio !== window.outgoingTitleMusic && audio.volume === 0.5"
+        )
+        page.wait_for_function("window.outgoingTitleMusic.paused && window.outgoingTitleMusic.volume === 0", timeout=TIMEOUT)
+        levels = list(dict.fromkeys(round(level, 2) for level in page.evaluate("window.titleFadeVolumes")))
+        assert levels == [round(step / 20, 2) for step in range(10, -1, -1)], levels
     capture(stage, directory, "03-first-login-guidance.png")
 
     page.locator("#onboarding-start").click()
@@ -521,7 +534,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     assert profile[1] == avatar_name
     verify_starter(database, profile[0], selected_parts)
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
-    music(page, "bgm011.mp3")
+    music(page, "tutorial", "bgm011.mp3")
     capture(stage, directory, "07-avatar-created-guidance.png")
 
     tutorial_next = page.locator("#onboarding-tutorial-next")
@@ -540,7 +553,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     ]
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
-    music(page, "ulbgm02.mp3")
+    music(page, "lobby", "ulbgm02.mp3")
     hover_start = len(requests)
     check_lobby_hover(page, stage, directory)
     hover_requests = {urlsplit(request.url).path for request in requests[hover_start:]}
@@ -548,7 +561,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     reload_title()
     username.click()
-    music(page, "ulbgm01.mp3")
+    music(page, "title", "ulbgm01.mp3")
     capture(stage, directory, "12-return-to-title.png")
 
     stage.evaluate("""stage => {
@@ -567,7 +580,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     assert avatar(database, player_id) == [profile]
     verify_starter(database, profile[0], selected_parts)
     assert check_avatar_canvas(page, stage, equipped_parts(database, profile[0]), responses) == first_portrait
-    music(page, "ulbgm02.mp3")
+    music(page, "lobby", "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
     reload_title()
 

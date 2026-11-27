@@ -108,7 +108,19 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   border: solid transparent;
   border-width: 60px 42px 32px;
   border-image: url("/source-login/assets/panel_gene.png") 60 42 32 42 fill stretch;
-  background: linear-gradient(#ececf0 31px, #212e44 31px);
+  image-rendering: pixelated;
+}
+
+.stage-panel:has(> .stage-panel-skin)::before { content: none; }
+
+.stage-panel-skin {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
 .stage-panel-title {

@@ -526,7 +526,7 @@ def create_app(
 
             app.router.add_get("/source-login/avatar-levels.json", avatar_level_curve)
             for filename in (
-                "style.css", "login.js", "stage.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
+                "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css",
                 "lobby-avatar.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
