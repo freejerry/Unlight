@@ -43,6 +43,7 @@ const ui = {
 const rows = new Map();
 const panelImage = new Image();
 const panelGuides = { left: 42, top: 60, right: 78, bottom: 64 };
+const panelCanvases = ui.panelPreviews.querySelectorAll('canvas');
 const renderedPanels = new WeakMap();
 let webglPanelRenderer;
 let running = false;
@@ -222,8 +223,8 @@ function startAsset(media, path, status, readyEvent, onSuccess) {
   media.src = address;
 }
 
-function drawPanelSamples(canvases, ratio, renderer) {
-  for (const canvas of canvases) {
+function drawPanelSamples(ratio, renderer) {
+  for (const canvas of panelCanvases) {
     const { width, height } = canvas.getBoundingClientRect();
     const previous = renderedPanels.get(canvas);
     if (previous?.width === width && previous.height === height && previous.ratio === ratio
@@ -250,7 +251,6 @@ function handlePanelContextLoss() {
 
 function renderPanelPreviews() {
   const ratio = window.devicePixelRatio || 1;
-  const canvases = ui.panelPreviews.querySelectorAll('canvas');
   try {
     if (panelImage.naturalWidth !== 120 || panelImage.naturalHeight !== 96) {
       throw new Error('Unexpected original panel dimensions');
@@ -266,11 +266,11 @@ function renderPanelPreviews() {
 
     const renderer = webglPanelRenderer;
     try {
-      drawPanelSamples(canvases, ratio, renderer);
+      drawPanelSamples(ratio, renderer);
     } catch (error) {
       if (!renderer) throw error;
       releaseWebGLPanelRenderer();
-      drawPanelSamples(canvases, ratio, null);
+      drawPanelSamples(ratio, null);
     }
 
     const activeRenderer = webglPanelRenderer ? 'webgl2' : 'canvas2d';
@@ -282,7 +282,7 @@ function renderPanelPreviews() {
   } catch {
     ui.panelPreviews.hidden = true;
     delete ui.panelPreviews.dataset.renderer;
-    for (const canvas of canvases) {
+    for (const canvas of panelCanvases) {
       renderedPanels.delete(canvas);
       delete canvas.dataset.rendered;
     }
@@ -314,7 +314,8 @@ async function loadAssets() {
     });
     startAsset(panelImage, config.panel ?? null, ui.panelStatus, 'load', () => {
       renderPanelPreviews();
-      new ResizeObserver(redrawLoadedPanels).observe(ui.panelPreviews);
+      const observer = new ResizeObserver(redrawLoadedPanels);
+      for (const canvas of panelCanvases) observer.observe(canvas);
       watchPanelDensity();
     });
   } catch {

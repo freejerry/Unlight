@@ -50,6 +50,13 @@ python3 tools/legacy-web/check_relay.py 4330
 python3 tools/legacy-web/check_browser.py --port 4330 --chromium /path/to/chromium
 ```
 
+驗收面板或公告修正時，可把本次建置的相容 SWF 交給啟動檢查。此命令比對瀏覽器入口提供的完整 SWF，遇到指向舊產物的入口會列出兩份 SHA-256 並以失敗結束。[九宮格畫面比對](../../docs/playtest/README.md#畫面驗收項目)
+
+```bash
+python3 tools/legacy-web/check_boot.py 4330 \
+  --expected-swf "$unlight_build/dist/Unlight-local-runtime.swf"
+```
+
 軟體 GL 測例可加上 `--software` 使用 ANGLE SwiftShader。標題啟動後會量測約一秒的瀏覽器 `requestAnimationFrame`，輸出回呼次數與間隔的中位數、p95 和最大值。[標題動畫](../../app/client/src/view/TitleView.as) · [戰鬥階段](../../app/client/src/view/image/game/PhaseImage.as) · [擲骰音效觸發](../../app/client/src/view/image/game/DiceObject.as)
 
 加上 `--frame-report` 可另取樣約四秒的 Chromium 合成畫面。同一份 JSON 記錄 SWF SHA-256、宣告幀率、瀏覽器回呼和合成畫面變化。程式將畫面縮到最多 320 × 280，並略過連續相同的影像。變化間隔優先使用 Chromium 回報的畫面交換時間，必要時改用接收時間。縮圖和擷取可能略過細微或短暫的畫面更新，因此數值適用於該次取樣環境的觀察。[實測紀錄](../../docs/playtest/README.md#標題動畫取樣)

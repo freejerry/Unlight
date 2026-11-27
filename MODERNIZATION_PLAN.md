@@ -12,7 +12,7 @@
 
 原生驗收頁可讀取登入回覆中的任務清單和區域進度，並用原始資料表補上繁中名稱及門檻。新角色與先前完成原版首場 PvE 的角色分別核對到魔女山谷 0/3 與 1/3。兩種快照均已用原版 SQLite 驗證。[任務快照驗收](docs/playtest/README.md#原生瀏覽器任務快照)
 
-原生九宮格已接上 WebGL 2，沿用原版面板圖並與 Canvas 2D 共用切片幾何。Chromium 已驗證窄欄、DPR 變動、像素取樣及圖形環境中斷後的 Canvas 2D 接手。[WebGL 2 面板驗收](docs/playtest/README.md#原生-webgl-2-九宮格)
+原生九宮格已接上 WebGL 2，沿用原版面板圖並與 Canvas 2D 共用切片幾何。Chromium 已驗證窄欄、DPR 變動、像素取樣及圖形環境中斷後的 Canvas 2D 接手。個別面板會隨訊息展開而重繪，並有實際輸入欄、標題與消息內文的排版測例。[WebGL 2 面板驗收](docs/playtest/README.md#原生-webgl-2-九宮格) · [內容排版驗收](docs/playtest/README.md#原生面板內容排版)
 
 原生對局紀錄頁已驗收固定種子 `2026` 的 68 筆原版 Ruby 事件。Chromium 逐筆核對順序、回合、抽牌數、HP 及勝負，並驗證時間軸的播放、暫停和定位。[回放驗收](docs/playtest/README.md#原生對局紀錄回放)
 

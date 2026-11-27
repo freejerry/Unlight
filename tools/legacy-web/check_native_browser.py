@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import os
 import struct
+from base64 import b64encode
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
@@ -294,6 +295,187 @@ def check_panel(page, origin, path, requests, dpr, *, renderer=None, css_width=2
     return results["webgl"]
 
 
+def panel_content_geometry(preview, dpr, expanded):
+    preview.page.wait_for_function("""() => {
+        const canvas = document.querySelector('canvas[data-panel-content]');
+        const box = canvas.getBoundingClientRect();
+        return canvas.dataset.rendered === 'true' && box.width > 0 && box.height > 0
+            && canvas.width === Math.round(box.width * devicePixelRatio)
+            && canvas.height === Math.round(box.height * devicePixelRatio);
+    }""", timeout=TIMEOUT)
+    geometry = preview.evaluate("""(panel, expanded) => {
+        const canvas = panel.querySelector('canvas[data-panel-content]');
+        const bounds = panel.getBoundingClientRect();
+        const canvasBounds = canvas.getBoundingClientRect();
+        const local = box => [box.left - bounds.left, box.top - bounds.top,
+            box.right - bounds.left, box.bottom - bounds.top];
+        const textRects = element => {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            return Array.from(range.getClientRects(), local);
+        };
+
+        // The center of the original panel changes from gray to blue at source row 31.
+        const context = canvas.getContext('2d');
+        const center = context.getImageData(Math.floor(canvas.width / 2), 0, 1, canvas.height).data;
+        let seam = -1;
+        for (let row = 1; row < canvas.height; row++) {
+            const offset = row * 4;
+            const [r, g, b] = center.subarray(offset, offset + 3);
+            const before = center.subarray(offset - 4, offset - 1);
+            if (Math.min(...before) > 140 && Math.max(...before) - Math.min(...before) <= 4
+                && r < 80 && b > g + 8 && b > r + 15) {
+                seam = row;
+                break;
+            }
+        }
+        const field = panel.querySelector('#panel-preview-input');
+        const label = textRects(field.labels[0]);
+        const title = textRects(panel.querySelector('#panel-content-preview-title'));
+        const summary = textRects(panel.querySelector('summary'));
+        const message = expanded ? textRects(panel.querySelector('#panel-preview-message')) : [];
+        const grid = panel.closest('#panel-previews').getBoundingClientRect();
+        return {
+            size: [bounds.width, bounds.height],
+            canvas: local(canvasBounds),
+            backing: [canvas.width, canvas.height],
+            grid: [grid.width, grid.height],
+            seam,
+            title,
+            body: [label, [local(field.getBoundingClientRect())], summary, ...(expanded ? [message] : [])],
+        };
+    }""", expanded)
+    width, height = geometry["size"]
+    assert 0 < width <= 220 and height >= 92, geometry
+    assert geometry["canvas"] == [0, 0, width, height], geometry
+    assert geometry["backing"] == [int(width * dpr + 0.5), int(height * dpr + 0.5)], geometry
+    assert abs(geometry["seam"] - 31 * dpr) <= 1, geometry
+
+    title, body = geometry["title"], geometry["body"]
+    assert all(group for group in (title, *body)), geometry
+    for group in (title, *body):
+        for left, top, right, bottom in group:
+            assert 0 <= left < right <= width and 0 <= top < bottom <= height, geometry
+    seam = geometry["seam"] / dpr
+    assert max(box[3] for box in title) <= seam, geometry
+    assert min(box[1] for box in body[0]) >= seam, geometry
+    for first, second in zip(body, body[1:]):
+        assert max(box[3] for box in first) <= min(box[1] for box in second), geometry
+    return geometry
+
+
+def check_painted_panel_text(preview, seam):
+    # Compare Chromium's actual painted text with the same layout made transparent one layer at a time.
+    visible = preview.screenshot(animations="disabled", caret="hide")
+    layers = []
+    for name in ("panel-content-preview-title", "panel-preview-message"):
+        text = preview.locator(f"#{name}")
+        before = text.evaluate("""node => {
+            const originals = ['color', 'text-shadow'].map(key =>
+                [key, node.style.getPropertyValue(key), node.style.getPropertyPriority(key)]);
+            node.style.setProperty('color', 'transparent', 'important');
+            node.style.setProperty('text-shadow', 'none', 'important');
+            return originals;
+        }""")
+        try:
+            layers.append(preview.screenshot(animations="disabled", caret="hide"))
+        finally:
+            text.evaluate("(node, original) => original.forEach(([key, value, priority]) => node.style.setProperty(key, value, priority))", before)
+    boundaries = preview.page.evaluate("""async (pngs) => {
+        async function pixels(encoded) {
+            const bytes = Uint8Array.from(atob(encoded), letter => letter.charCodeAt(0));
+            const bitmap = await createImageBitmap(new Blob([bytes], {type: 'image/png'}));
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const context = canvas.getContext('2d');
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            return context.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        const [visible, ...layers] = await Promise.all(pngs.map(pixels));
+        return layers.map(hidden => {
+            if (visible.width !== hidden.width || visible.height !== hidden.height) {
+                throw new Error('Changing text opacity changed the screenshot size');
+            }
+            let first = visible.height;
+            let last = -1;
+            for (let i = 0; i < visible.data.length; i += 4) {
+                if ([0, 1, 2].some(channel => Math.abs(visible.data[i + channel] - hidden.data[i + channel]) > 8)) {
+                    const row = Math.floor(i / (visible.width * 4));
+                    first = Math.min(first, row);
+                    last = Math.max(last, row);
+                }
+            }
+            return [first, last];
+        });
+    }""", [b64encode(image).decode("ascii") for image in (visible, *layers)])
+    title, message = boundaries
+    assert title[0] <= title[1] < seam, boundaries
+    assert seam <= message[0] <= message[1], boundaries
+    return visible
+
+
+def lose_panel_context(page):
+    assert page.evaluate("""() => {
+        const gl = [...panelContextMonitor.contexts].find(context => !context.isContextLost());
+        const loss = gl?.getExtension('WEBGL_lose_context');
+        if (!loss) return false;
+        loss.loseContext();
+        return true;
+    }"""), "SwiftShader did not expose WEBGL_lose_context"
+    expect(page.locator("#panel-previews")).to_have_attribute("data-renderer", "canvas2d")
+
+
+def check_panel_content(page, dpr, *, desktop=False, screenshot=None, lose_on_expand=False):
+    preview = page.get_by_role("region", name="內容排版")
+    expect(preview.get_by_role("heading", name="內容排版")).to_be_visible()
+    expect(preview.locator("canvas[data-panel-content]")).to_have_attribute("aria-hidden", "true")
+    field = preview.get_by_label("輸入文字", exact=True)
+    details = preview.locator("#panel-preview-details")
+    summary = details.locator("summary")
+    message = preview.locator("#panel-preview-message")
+    expect(summary).to_have_text("測試更新訊息")
+    expect(details).to_have_js_property("open", False)
+    expect(message).to_be_hidden()
+    page.evaluate("() => document.fonts.ready.then(() => true)")
+    closed = panel_content_geometry(preview, dpr, False)
+    field.fill("臺灣 Café Élan")
+    expect(field).to_have_value("臺灣 Café Élan")
+
+    summary.click()
+    expect(details).to_have_js_property("open", True)
+    expect(message).to_be_visible()
+    expect(message).to_contain_text("臺灣")
+    expect(message).to_contain_text("Café Élan")
+    expanded = panel_content_geometry(preview, dpr, True)
+    assert expanded["size"][1] > closed["size"][1], (closed, expanded)
+    assert expanded["backing"][1] > closed["backing"][1], (closed, expanded)
+    if desktop:
+        assert expanded["size"][1] < 300 and expanded["grid"] == closed["grid"], (closed, expanded)
+    image = check_painted_panel_text(preview, expanded["seam"])
+    if screenshot:
+        screenshot.parent.mkdir(parents=True, exist_ok=True)
+        screenshot.write_bytes(image)
+    if lose_on_expand:
+        lose_panel_context(page)
+        expect(details).to_have_js_property("open", True)
+        expect(field).to_have_value("臺灣 Café Élan")
+        fallback = panel_content_geometry(preview, dpr, True)
+        assert fallback["size"] == expanded["size"] and fallback["backing"] == expanded["backing"]
+        check_painted_panel_text(preview, fallback["seam"])
+
+    summary.click()
+    expect(details).to_have_js_property("open", False)
+    expect(message).to_be_hidden()
+    expect(field).to_have_value("臺灣 Café Élan")
+    collapsed = panel_content_geometry(preview, dpr, False)
+    assert collapsed["size"] == closed["size"] and collapsed["backing"] == closed["backing"]
+    assert page.evaluate("document.documentElement.scrollWidth === innerWidth"), "Panel text overflowed the viewport"
+    print(f"Panel title and content rendered in separate regions at DPR {dpr}; opening and closing updated its backing size.")
+
+
 def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None, *, software_webgl=False):
     page = browser.new_page(viewport={"width": 1240, "height": 960}, device_scale_factor=1)
     try:
@@ -313,6 +495,8 @@ def check_complete(browser, origin, legacy, screenshot, panel_screenshot=None, *
         if software_webgl:
             assert "swiftshader" in webgl["renderer"].lower(), webgl["renderer"]
             print(f"Read actual WebGL2 framebuffer pixels from {webgl['renderer']}.")
+        if assets["panel"]:
+            check_panel_content(page, 1, desktop=True)
         check_native_requests(page, origin, traffic)
         if screenshot:
             if assets["audio"]:
@@ -335,7 +519,7 @@ def resize_panel_grid(page, width):
     style = "" if width == 220 else f"{width}px"
     page.locator("#panel-previews").evaluate("(grid, width) => { grid.style.maxWidth = width; }", style)
     page.wait_for_function("""(expectedWidth) => {
-        const canvases = document.querySelectorAll('#panel-previews canvas');
+        const canvases = document.querySelectorAll('#panel-previews canvas[data-panel-height]');
         return canvases.length === 3 && Array.from(canvases).every(canvas => {
             const width = canvas.getBoundingClientRect().width;
             return canvas.dataset.rendered === 'true' && canvas.width === Math.round(width * devicePixelRatio)
@@ -344,8 +528,9 @@ def resize_panel_grid(page, width):
     }""", arg=width, timeout=TIMEOUT)
 
 
-def check_high_density(browser, origin, *, software_webgl=False):
-    page = browser.new_page(viewport={"width": 390, "height": 960}, device_scale_factor=2)
+def check_high_density(browser, origin, *, software_webgl=False, content_screenshot=None):
+    viewport = {"width": 320, "height": 844}
+    page = browser.new_page(viewport=viewport, device_scale_factor=2)
     try:
         observe_panel_contexts(page)
         page.add_init_script("""(() => {
@@ -369,7 +554,7 @@ def check_high_density(browser, origin, *, software_webgl=False):
         try:
             for dpr in (1, 1.25, 2):
                 device.send("Emulation.setDeviceMetricsOverride", {
-                    "width": 390, "height": 960, "deviceScaleFactor": dpr, "mobile": False,
+                    **viewport, "deviceScaleFactor": dpr, "mobile": False,
                 })
                 # Chromium's DPR emulation changes the media match without reliably emitting its event.
                 page.evaluate("""() => {
@@ -379,14 +564,8 @@ def check_high_density(browser, origin, *, software_webgl=False):
                 resize_panel_grid(page, 220)
                 check_panel(page, origin, assets["panel"], traffic[0], dpr, renderer=renderer)
             print("Resolution-change notifications resize panel backing pixels at the same CSS viewport.")
+            check_panel_content(page, 2, screenshot=content_screenshot, lose_on_expand=software_webgl)
             if software_webgl:
-                assert page.evaluate("""() => {
-                    const gl = [...panelContextMonitor.contexts].find(context => !context.isContextLost());
-                    const loss = gl?.getExtension('WEBGL_lose_context');
-                    if (!loss) return false;
-                    loss.loseContext();
-                    return true;
-                }"""), "SwiftShader did not expose WEBGL_lose_context"
                 check_panel(page, origin, assets["panel"], traffic[0], 2, renderer="canvas2d")
                 resize_panel_grid(page, 78)
                 check_panel(page, origin, assets["panel"], traffic[0], 2, renderer="canvas2d", css_width=78)
@@ -400,16 +579,18 @@ def check_high_density(browser, origin, *, software_webgl=False):
 
 
 def check_canvas_fallback(browser, origin):
-    page = browser.new_page(viewport={"width": 1240, "height": 960})
-    try:
-        observe_panel_contexts(page, force_unavailable=True)
-        traffic = observe(page)
-        assets = load_diagnostics(page, origin)
-        check_panel(page, origin, assets["panel"], traffic[0], 1, renderer="canvas2d")
-        assert page.evaluate("panelContextMonitor.attempts > 0 && panelContextMonitor.contexts.size === 0")
-        check_native_requests(page, origin, traffic)
-    finally:
-        page.close()
+    for width, dpr in ((1240, 1), (320, 2)):
+        page = browser.new_page(viewport={"width": width, "height": 844}, device_scale_factor=dpr)
+        try:
+            observe_panel_contexts(page, force_unavailable=True)
+            traffic = observe(page)
+            assets = load_diagnostics(page, origin)
+            check_panel(page, origin, assets["panel"], traffic[0], dpr, renderer="canvas2d")
+            check_panel_content(page, dpr, desktop=width == 1240)
+            assert page.evaluate("panelContextMonitor.attempts > 0 && panelContextMonitor.contexts.size === 0")
+            check_native_requests(page, origin, traffic)
+        finally:
+            page.close()
     print("Without WebGL2, the original panel samples render in Canvas2D.")
 
 
@@ -456,6 +637,7 @@ def main():
     parser.add_argument("--no-assets-port", type=int, help="Also check a native server running without --assets")
     parser.add_argument("--screenshot", type=Path, help="Save the successful native diagnostics view")
     parser.add_argument("--panel-screenshot", type=Path, help="Save the verified original panel samples")
+    parser.add_argument("--panel-content-screenshot", type=Path, help="Save the verified expanded panel at 320 px")
     parser.add_argument("--software-webgl", action="store_true", help="Require WebGL2 via ANGLE SwiftShader and exercise context loss")
     options = parser.parse_args()
     origin = f"http://127.0.0.1:{options.port}"
@@ -471,8 +653,11 @@ def main():
             assets = check_complete(browser, origin, legacy, options.screenshot, options.panel_screenshot,
                                     software_webgl=options.software_webgl)
             if assets["panel"]:
-                check_high_density(browser, origin, software_webgl=options.software_webgl)
+                check_high_density(browser, origin, software_webgl=options.software_webgl,
+                                   content_screenshot=options.panel_content_screenshot)
                 check_canvas_fallback(browser, origin)
+            elif options.panel_content_screenshot:
+                raise AssertionError("--panel-content-screenshot requires the archived panel asset")
             check_retry(browser, origin)
             if options.no_assets_port:
                 no_assets_origin = f"http://127.0.0.1:{options.no_assets_port}"

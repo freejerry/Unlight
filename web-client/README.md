@@ -50,6 +50,8 @@ python3 tools/legacy-web/check_native_browser.py --port 4334 --legacy-port 4330
 
 加入 `--software-webgl` 可用 Chromium 的 ANGLE SwiftShader 驗收 WebGL 2。腳本會核對實際繪圖緩衝、可見畫布、DPR 變換、窄欄與 Canvas 2D 接手後的像素。
 
+「面板九宮格」中的內容預覽會隨更新訊息展開而改變高度。驗收程式比對標題區、輸入欄、消息內文與各自畫布的尺寸。用 `--panel-content-screenshot /tmp/unlight-native-panel-content.png` 可存下窄視窗的展開畫面。[內容排版截圖](../docs/playtest/native/13-native-panel-content.png)
+
 登入驗收程式會提示輸入隔離測試帳號密碼。它會依序驗證未知帳號、錯誤密碼、成功登入、初始資料、登出和再次登入，並比對原版的回應命令。
 
 ```bash

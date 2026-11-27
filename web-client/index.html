@@ -72,6 +72,21 @@
           <p id="panel-status" data-state="loading" role="status">讀取設定中…</p>
           <div id="panel-previews" class="panel-previews" hidden>
             <figure>
+              <figcaption>依內容調整高度</figcaption>
+              <section id="panel-content-preview" class="panel-content-sample" aria-labelledby="panel-content-preview-title">
+                <canvas data-panel-content aria-hidden="true"></canvas>
+                <h4 id="panel-content-preview-title" class="panel-sample-title">內容排版</h4>
+                <div class="panel-sample-body">
+                  <label for="panel-preview-input">輸入文字</label>
+                  <input id="panel-preview-input" type="text" autocomplete="off" />
+                  <details id="panel-preview-details">
+                    <summary>測試更新訊息</summary>
+                    <p id="panel-preview-message" class="panel-sample-message">臺灣玩家的更新訊息在窄欄中也能完整換行。包含繁體中文與重音字元 Café Élan。</p>
+                  </details>
+                </div>
+              </section>
+            </figure>
+            <figure>
               <figcaption>高度 96 px</figcaption>
               <canvas data-panel-width="220" data-panel-height="96" aria-hidden="true"></canvas>
             </figure>

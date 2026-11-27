@@ -2,7 +2,9 @@
 """Read-only verification of the legacy client's loopback HTTP prerequisites."""
 
 import argparse
+from hashlib import sha256
 import http.client
+from pathlib import Path
 import sys
 from xml.etree import ElementTree
 
@@ -48,13 +50,26 @@ def check_config(port):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("port", type=int, help="The loopback HTTP port serving the original client")
+    parser.add_argument("--expected-swf", type=Path, help="Compare the served SWF with this local build by SHA-256")
     arguments = parser.parse_args()
     port = arguments.port
 
-    swf_header = get(port, "/Unlight.swf", 8)
+    if arguments.expected_swf is None:
+        swf_header = get(port, "/Unlight.swf", 8)
+    else:
+        expected_digest = sha256(arguments.expected_swf.read_bytes()).hexdigest()
+        swf = get(port, "/Unlight.swf")
+        received_digest = sha256(swf).hexdigest()
+        if received_digest != expected_digest:
+            raise ValueError(
+                f"/Unlight.swf SHA-256 mismatch (expected {expected_digest}, received {received_digest})"
+            )
+        swf_header = swf[:8]
     if len(swf_header) != 8 or swf_header[:3] not in {b"FWS", b"CWS", b"ZWS"}:
         raise ValueError("/Unlight.swf did not return a Flash movie header")
     print(f"Original client path serves a Flash movie, SWF version {swf_header[3]}")
+    if arguments.expected_swf is not None:
+        print(f"Served SWF SHA-256 matches the local build ({received_digest})")
     check_config(port)
     ElementTree.fromstring(get(port, "/public/news.xml?42"))
     if not get(port, "/public/sound/bgm/ulbgm01.mp3", 8):
