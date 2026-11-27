@@ -1,0 +1,325 @@
+{
+  "anchors": {
+    "arm_f_L": [
+      -22.25,
+      -195.75
+    ],
+    "arm_f_R": [
+      21.8,
+      -194.05
+    ],
+    "arm_u_L": [
+      -15,
+      -234
+    ],
+    "arm_u_R": [
+      16,
+      -233
+    ],
+    "chest": [
+      -3,
+      -211
+    ],
+    "foot_L": [
+      -17.1,
+      -12.3
+    ],
+    "foot_R": [
+      24.2,
+      -10.7
+    ],
+    "hand_L": [
+      -30.2,
+      -158
+    ],
+    "hand_R": [
+      26.15,
+      -154.2
+    ],
+    "head": [
+      -1,
+      -257
+    ],
+    "middle": [
+      -8,
+      -197
+    ],
+    "shin_L": [
+      -19.05,
+      -83.25
+    ],
+    "shin_R": [
+      13.1,
+      -85.2
+    ],
+    "thigh_L": [
+      -18,
+      -154
+    ],
+    "thigh_R": [
+      8,
+      -152
+    ]
+  },
+  "parts": {
+    "base_a000_p27": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p31": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p33": {
+      "height": 115,
+      "src": "./avatar-rendered/parts/base_a000_p33.png",
+      "width": 35,
+      "x": -26,
+      "y": -7
+    },
+    "base_a000_p44": {
+      "height": 149,
+      "src": "./avatar-rendered/parts/base_a000_p44.png",
+      "width": 37,
+      "x": -21,
+      "y": 10
+    },
+    "base_a000_p48": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p51": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p53": {
+      "height": 71,
+      "src": "./avatar-rendered/parts/base_a000_p53.png",
+      "width": 60,
+      "x": -26,
+      "y": -14
+    },
+    "base_a000_p55": {
+      "height": 174,
+      "src": "./avatar-rendered/parts/base_a000_p55.png",
+      "width": 45,
+      "x": -16,
+      "y": -12
+    },
+    "base_a000_p59": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p62": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p67": {
+      "height": 74,
+      "src": "./avatar-rendered/parts/base_a000_p67.png",
+      "width": 51,
+      "x": -23,
+      "y": -51
+    },
+    "base_a000_p81": {
+      "height": 118,
+      "src": "./avatar-rendered/parts/base_a000_p81.png",
+      "width": 33,
+      "x": -21,
+      "y": -88
+    },
+    "base_a000_p85": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p87": {
+      "height": 0,
+      "src": null,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    },
+    "base_a000_p97": {
+      "height": 71,
+      "src": "./avatar-rendered/parts/base_a000_p97.png",
+      "width": 65,
+      "x": -32,
+      "y": -59
+    },
+    "blouse_a000a_p33": {
+      "height": 93,
+      "src": "./avatar-rendered/parts/blouse_a000a_p33.png",
+      "width": 38,
+      "x": -27,
+      "y": -10
+    },
+    "blouse_a000a_p67": {
+      "height": 90,
+      "src": "./avatar-rendered/parts/blouse_a000a_p67.png",
+      "width": 53,
+      "x": -25,
+      "y": -52
+    },
+    "blouse_a000a_p87": {
+      "height": 95,
+      "src": "./avatar-rendered/parts/blouse_a000a_p87.png",
+      "width": 32,
+      "x": -11,
+      "y": -11
+    },
+    "blouse_a000b_p33": {
+      "height": 93,
+      "src": "./avatar-rendered/parts/blouse_a000b_p33.png",
+      "width": 38,
+      "x": -27,
+      "y": -10
+    },
+    "blouse_a000b_p67": {
+      "height": 90,
+      "src": "./avatar-rendered/parts/blouse_a000b_p67.png",
+      "width": 53,
+      "x": -25,
+      "y": -52
+    },
+    "blouse_a000b_p87": {
+      "height": 95,
+      "src": "./avatar-rendered/parts/blouse_a000b_p87.png",
+      "width": 32,
+      "x": -11,
+      "y": -11
+    },
+    "eye_a000b_p102": {
+      "height": 27,
+      "src": "./avatar-rendered/parts/eye_a000b_p102.png",
+      "width": 46,
+      "x": -32,
+      "y": -30
+    },
+    "eye_a002d_p102": {
+      "height": 26,
+      "src": "./avatar-rendered/parts/eye_a002d_p102.png",
+      "width": 46,
+      "x": -31,
+      "y": -30
+    },
+    "hair_a000a_p108": {
+      "height": 94,
+      "src": "./avatar-rendered/parts/hair_a000a_p108.png",
+      "width": 88,
+      "x": -42,
+      "y": -74
+    },
+    "hair_a000a_p18": {
+      "height": 80,
+      "src": "./avatar-rendered/parts/hair_a000a_p18.png",
+      "width": 74,
+      "x": -37,
+      "y": -59
+    },
+    "hair_d000a_p108": {
+      "height": 150,
+      "src": "./avatar-rendered/parts/hair_d000a_p108.png",
+      "width": 98,
+      "x": -43,
+      "y": -74
+    },
+    "hair_d000a_p18": {
+      "height": 90,
+      "src": "./avatar-rendered/parts/hair_d000a_p18.png",
+      "width": 81,
+      "x": -38,
+      "y": -13
+    },
+    "hair_d000a_p94": {
+      "height": 95,
+      "src": "./avatar-rendered/parts/hair_d000a_p94.png",
+      "width": 28,
+      "x": -40,
+      "y": -44
+    },
+    "mouth_a000a_p101": {
+      "height": 13,
+      "src": "./avatar-rendered/parts/mouth_a000a_p101.png",
+      "width": 30,
+      "x": -23,
+      "y": -2
+    },
+    "mouth_b000a_p101": {
+      "height": 14,
+      "src": "./avatar-rendered/parts/mouth_b000a_p101.png",
+      "width": 28,
+      "x": -23,
+      "y": -3
+    },
+    "ribbon_a000a_p112": {
+      "height": 40,
+      "src": "./avatar-rendered/parts/ribbon_a000a_p112.png",
+      "width": 78,
+      "x": -52,
+      "y": -86
+    },
+    "shoes_a000a_p48": {
+      "height": 39,
+      "src": "./avatar-rendered/parts/shoes_a000a_p48.png",
+      "width": 37,
+      "x": -22,
+      "y": 55
+    },
+    "shoes_a000a_p51": {
+      "height": 39,
+      "src": "./avatar-rendered/parts/shoes_a000a_p51.png",
+      "width": 37,
+      "x": -24,
+      "y": -16
+    },
+    "shoes_a000a_p59": {
+      "height": 40,
+      "src": "./avatar-rendered/parts/shoes_a000a_p59.png",
+      "width": 44,
+      "x": -20,
+      "y": 60
+    },
+    "shoes_a000a_p62": {
+      "height": 40,
+      "src": "./avatar-rendered/parts/shoes_a000a_p62.png",
+      "width": 44,
+      "x": -31,
+      "y": -16
+    },
+    "skirt_a000a_p69": {
+      "height": 113,
+      "src": "./avatar-rendered/parts/skirt_a000a_p69.png",
+      "width": 131,
+      "x": -60,
+      "y": 1
+    },
+    "skirt_a000c_p69": {
+      "height": 113,
+      "src": "./avatar-rendered/parts/skirt_a000c_p69.png",
+      "width": 131,
+      "x": -60,
+      "y": 1
+    }
+  }
+}

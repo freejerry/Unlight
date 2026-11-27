@@ -40,20 +40,38 @@ ul { padding: 0; list-style: none; }
 .avatar-status > div { position: absolute; }
 
 /* EntranceBG's bitmap is placed at (0, 160) in the 760-wide authored scene. */
-.lobby-backdrop { top: 160px; width: 760px; height: 496px; background: #202a36; }
+.lobby-backdrop {
+  top: 160px;
+  width: 760px;
+  height: 496px;
+  background: #202a36 url("./lobby-art/background.png") no-repeat;
+}
 .avatar-layer, .entrance-layer { inset: 0; }
 
-.art-slot, .lower-slot {
-  display: grid;
-  place-items: center;
-  color: #cfdae9;
-  background: #324356;
-  border: 1px dashed #849bb5;
+.art-label, .avatar-status dt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Portrait boxes reserve the visible areas seen in the lobby reference capture. */
 .standing-character { left: 0; top: 202px; width: 248px; height: 420px; }
+.standing-character::before {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 295px;
+  height: 458px;
+  background: url("./lobby-art/favorite.png") no-repeat;
+  content: "";
+}
 .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
+#lobby-avatar { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
+
+.entrance-art { position: absolute; top: 0; left: 0; display: block; }
 
 .top-entries {
   inset: 32px auto auto 0;
@@ -63,27 +81,11 @@ ul { padding: 0; list-style: none; }
   grid-template-columns: 208px 216px repeat(3, 112px);
 }
 
-.top-entries li, .play-entries li, .utility-entries li, .side-entries li {
-  display: grid;
-  place-items: center;
-  background: #27384b;
-  border: 1px solid #8196b1;
-}
-
-.top-entries li {
-  align-items: end;
-  padding-block-end: 10px;
-  font-weight: 600;
-}
-
 /* Named SWF placement origins, in the center coordinate system of each tile. */
 .play-entries li {
   width: 156px;
   height: 156px;
   translate: -50% -50%;
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: 600;
 }
 .duel { left: 272px; top: 240px; }
 .quest { left: 464px; top: 240px; }
@@ -101,26 +103,53 @@ ul { padding: 0; list-style: none; }
   display: grid;
   grid-auto-rows: 38px;
   gap: 10px;
-  font-size: 12px;
 }
 
+.side-entries img { position: absolute; left: -1px; display: block; }
+.record-art { top: 0; }
+.friend-art { top: 43px; }
+.item-art { top: 96px; }
+
 .ranking { left: 0; top: 445px; width: 258px; height: 211px; }
+.ranking::before {
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 256px;
+  height: 216px;
+  background: url("./lobby-art/ranking.png") no-repeat;
+  content: "";
+}
 .chat { left: 262px; top: 567px; width: 247px; height: 89px; }
 
 /* AvatarView's status sits at the lower edge; AP has its separate (705, 646) origin. */
-.avatar-status { top: 660px; width: 760px; height: 20px; background: #263243; }
+.avatar-status { top: 660px; width: 760px; height: 20px; isolation: isolate; }
+.avatar-status::before {
+  position: absolute;
+  z-index: -1;
+  inset: -4px 0 0;
+  background: #263243 url("./lobby-art/status.png") no-repeat;
+  content: "";
+}
 .avatar-status > div {
   top: 0;
   min-height: 20px;
-  padding-inline: 4px;
+  padding-inline: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-inline-end: 1px solid #8196b1;
+  justify-content: flex-end;
   font-size: 12px;
 }
-.avatar-status dt { color: #ccd8e6; }
 .avatar-status .name { left: 0; width: 185px; }
 .avatar-status .gem { left: 185px; width: 195px; }
 .avatar-status .exp { left: 380px; width: 218px; }
-.avatar-status .ap { left: 705px; top: -14px; width: 55px; height: 34px; background: #31455b; }
+.avatar-status .ap {
+  left: 705px;
+  top: -14px;
+  width: 55px;
+  height: 34px;
+  justify-content: flex-start;
+  padding-inline: 0;
+  background: url("./lobby-art/ap.png") no-repeat;
+}
+.avatar-status .ap dd { width: 44px; text-align: center; font-weight: 700; text-shadow: 0 1px 3px #000; }

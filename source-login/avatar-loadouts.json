@@ -1,0 +1,804 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": {
+    "spdx": "CC-BY-ND-4.0",
+    "originalPath": "LICENSE",
+    "sha256": "6e4efcb1952c7976d3fae93b802c591384c4f50949225a802adf41bc266fa3e6",
+    "bytes": 18436
+  },
+  "rig": {
+    "path": "data/image/avatar_rig.swf",
+    "sha256": "f3389907f117f5755711f8049a4523ee4c6b9007c613ead14e2af4ee37475bc4",
+    "bytes": 694
+  },
+  "anchorNames": [
+    "head",
+    "middle",
+    "chest",
+    "arm_u_L",
+    "arm_f_L",
+    "hand_L",
+    "thigh_L",
+    "shin_L",
+    "foot_L",
+    "arm_u_R",
+    "arm_f_R",
+    "hand_R",
+    "thigh_R",
+    "shin_R",
+    "foot_R"
+  ],
+  "depthAnchors": [
+    null,
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "middle",
+    "middle",
+    "chest",
+    "chest",
+    "chest",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "chest",
+    "chest",
+    "chest",
+    "hand_L",
+    "hand_L",
+    "hand_L",
+    "hand_L",
+    "hand_L",
+    "hand_L",
+    "hand_L",
+    "arm_f_L",
+    "arm_f_L",
+    "arm_u_L",
+    "hand_L",
+    "arm_u_L",
+    "arm_u_L",
+    "head",
+    "head",
+    "head",
+    "chest",
+    "middle",
+    "foot_L",
+    "middle",
+    "thigh_L",
+    "middle",
+    "middle",
+    "middle",
+    "shin_L",
+    "shin_L",
+    "shin_L",
+    "foot_L",
+    "foot_L",
+    "middle",
+    "middle",
+    "thigh_R",
+    "middle",
+    "middle",
+    "middle",
+    "shin_R",
+    "shin_R",
+    "shin_R",
+    "foot_R",
+    "foot_R",
+    "middle",
+    "middle",
+    "middle",
+    "chest",
+    "chest",
+    "middle",
+    "middle",
+    "middle",
+    "chest",
+    "chest",
+    "chest",
+    "chest",
+    "chest",
+    "chest",
+    "hand_R",
+    "hand_R",
+    "hand_R",
+    "hand_R",
+    "hand_R",
+    "hand_R",
+    "hand_R",
+    "arm_f_R",
+    "arm_f_R",
+    "arm_u_R",
+    "arm_u_R",
+    "arm_u_R",
+    "arm_u_R",
+    "chest",
+    "chest",
+    "chest",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "chest",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L",
+    "foot_L"
+  ],
+  "loadouts": [
+    {
+      "id": "starter",
+      "partIds": [
+        1,
+        5,
+        24,
+        27,
+        42,
+        43
+      ],
+      "layerCount": 23
+    },
+    {
+      "id": "equipped",
+      "partIds": [
+        2,
+        17,
+        26,
+        37,
+        69,
+        71,
+        44,
+        48
+      ],
+      "layerCount": 29
+    }
+  ],
+  "parts": {
+    "1": {
+      "type": 0,
+      "name": "素體(普通)",
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 27,
+          "anchor": "hand_L",
+          "path": "public/image/avatar_parts/base_a000_p27.swf"
+        },
+        {
+          "depth": 31,
+          "anchor": "arm_f_L",
+          "path": "public/image/avatar_parts/base_a000_p31.swf"
+        },
+        {
+          "depth": 33,
+          "anchor": "arm_u_L",
+          "path": "public/image/avatar_parts/base_a000_p33.swf"
+        },
+        {
+          "depth": 44,
+          "anchor": "thigh_L",
+          "path": "public/image/avatar_parts/base_a000_p44.swf"
+        },
+        {
+          "depth": 48,
+          "anchor": "shin_L",
+          "path": "public/image/avatar_parts/base_a000_p48.swf"
+        },
+        {
+          "depth": 51,
+          "anchor": "foot_L",
+          "path": "public/image/avatar_parts/base_a000_p51.swf"
+        },
+        {
+          "depth": 53,
+          "anchor": "middle",
+          "path": "public/image/avatar_parts/base_a000_p53.swf"
+        },
+        {
+          "depth": 55,
+          "anchor": "thigh_R",
+          "path": "public/image/avatar_parts/base_a000_p55.swf"
+        },
+        {
+          "depth": 59,
+          "anchor": "shin_R",
+          "path": "public/image/avatar_parts/base_a000_p59.swf"
+        },
+        {
+          "depth": 62,
+          "anchor": "foot_R",
+          "path": "public/image/avatar_parts/base_a000_p62.swf"
+        },
+        {
+          "depth": 67,
+          "anchor": "chest",
+          "path": "public/image/avatar_parts/base_a000_p67.swf"
+        },
+        {
+          "depth": 81,
+          "anchor": "hand_R",
+          "path": "public/image/avatar_parts/base_a000_p81.swf"
+        },
+        {
+          "depth": 85,
+          "anchor": "arm_f_R",
+          "path": "public/image/avatar_parts/base_a000_p85.swf"
+        },
+        {
+          "depth": 87,
+          "anchor": "arm_u_R",
+          "path": "public/image/avatar_parts/base_a000_p87.swf"
+        },
+        {
+          "depth": 97,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/base_a000_p97.swf"
+        }
+      ]
+    },
+    "2": {
+      "type": 0,
+      "name": "素體(黑)",
+      "color": [
+        0.9,
+        0.9,
+        0.9,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 27,
+          "anchor": "hand_L",
+          "path": "public/image/avatar_parts/base_a000_p27.swf"
+        },
+        {
+          "depth": 31,
+          "anchor": "arm_f_L",
+          "path": "public/image/avatar_parts/base_a000_p31.swf"
+        },
+        {
+          "depth": 33,
+          "anchor": "arm_u_L",
+          "path": "public/image/avatar_parts/base_a000_p33.swf"
+        },
+        {
+          "depth": 44,
+          "anchor": "thigh_L",
+          "path": "public/image/avatar_parts/base_a000_p44.swf"
+        },
+        {
+          "depth": 48,
+          "anchor": "shin_L",
+          "path": "public/image/avatar_parts/base_a000_p48.swf"
+        },
+        {
+          "depth": 51,
+          "anchor": "foot_L",
+          "path": "public/image/avatar_parts/base_a000_p51.swf"
+        },
+        {
+          "depth": 53,
+          "anchor": "middle",
+          "path": "public/image/avatar_parts/base_a000_p53.swf"
+        },
+        {
+          "depth": 55,
+          "anchor": "thigh_R",
+          "path": "public/image/avatar_parts/base_a000_p55.swf"
+        },
+        {
+          "depth": 59,
+          "anchor": "shin_R",
+          "path": "public/image/avatar_parts/base_a000_p59.swf"
+        },
+        {
+          "depth": 62,
+          "anchor": "foot_R",
+          "path": "public/image/avatar_parts/base_a000_p62.swf"
+        },
+        {
+          "depth": 67,
+          "anchor": "chest",
+          "path": "public/image/avatar_parts/base_a000_p67.swf"
+        },
+        {
+          "depth": 81,
+          "anchor": "hand_R",
+          "path": "public/image/avatar_parts/base_a000_p81.swf"
+        },
+        {
+          "depth": 85,
+          "anchor": "arm_f_R",
+          "path": "public/image/avatar_parts/base_a000_p85.swf"
+        },
+        {
+          "depth": 87,
+          "anchor": "arm_u_R",
+          "path": "public/image/avatar_parts/base_a000_p87.swf"
+        },
+        {
+          "depth": 97,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/base_a000_p97.swf"
+        }
+      ]
+    },
+    "5": {
+      "type": 1,
+      "name": "黃 1",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 102,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/eye_a000b_p102.swf"
+        }
+      ]
+    },
+    "17": {
+      "type": 1,
+      "name": "藍 2",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 102,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/eye_a002d_p102.swf"
+        }
+      ]
+    },
+    "24": {
+      "type": 2,
+      "name": "嘴0",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 101,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/mouth_a000a_p101.swf"
+        }
+      ]
+    },
+    "26": {
+      "type": 2,
+      "name": "嘴2",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 101,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/mouth_b000a_p101.swf"
+        }
+      ]
+    },
+    "27": {
+      "type": 3,
+      "name": "短髮(金)",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 108,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/hair_a000a_p108.swf"
+        },
+        {
+          "depth": 18,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/hair_a000a_p18.swf"
+        }
+      ]
+    },
+    "37": {
+      "type": 3,
+      "name": "長卷髮(金)",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 108,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/hair_d000a_p108.swf"
+        },
+        {
+          "depth": 94,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/hair_d000a_p94.swf"
+        },
+        {
+          "depth": 18,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/hair_d000a_p18.swf"
+        }
+      ]
+    },
+    "42": {
+      "type": 10,
+      "name": "娃娃的襯衫",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 33,
+          "anchor": "arm_u_L",
+          "path": "public/image/avatar_parts/blouse_a000a_p33.swf"
+        },
+        {
+          "depth": 67,
+          "anchor": "chest",
+          "path": "public/image/avatar_parts/blouse_a000a_p67.swf"
+        },
+        {
+          "depth": 87,
+          "anchor": "arm_u_R",
+          "path": "public/image/avatar_parts/blouse_a000a_p87.swf"
+        }
+      ]
+    },
+    "43": {
+      "type": 11,
+      "name": "娃娃的裙子",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 69,
+          "anchor": "middle",
+          "path": "public/image/avatar_parts/skirt_a000a_p69.swf"
+        }
+      ]
+    },
+    "44": {
+      "type": 13,
+      "name": "娃娃的鞋子",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 48,
+          "anchor": "shin_L",
+          "path": "public/image/avatar_parts/shoes_a000a_p48.swf"
+        },
+        {
+          "depth": 51,
+          "anchor": "foot_L",
+          "path": "public/image/avatar_parts/shoes_a000a_p51.swf"
+        },
+        {
+          "depth": 59,
+          "anchor": "shin_R",
+          "path": "public/image/avatar_parts/shoes_a000a_p59.swf"
+        },
+        {
+          "depth": 62,
+          "anchor": "foot_R",
+          "path": "public/image/avatar_parts/shoes_a000a_p62.swf"
+        }
+      ]
+    },
+    "48": {
+      "type": 20,
+      "name": "髮帶",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 112,
+          "anchor": "head",
+          "path": "public/image/avatar_parts/ribbon_a000a_p112.swf"
+        }
+      ]
+    },
+    "69": {
+      "type": 10,
+      "name": "娃娃的襯衫(黑)",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 33,
+          "anchor": "arm_u_L",
+          "path": "public/image/avatar_parts/blouse_a000b_p33.swf"
+        },
+        {
+          "depth": 67,
+          "anchor": "chest",
+          "path": "public/image/avatar_parts/blouse_a000b_p67.swf"
+        },
+        {
+          "depth": 87,
+          "anchor": "arm_u_R",
+          "path": "public/image/avatar_parts/blouse_a000b_p87.swf"
+        }
+      ]
+    },
+    "71": {
+      "type": 11,
+      "name": "娃娃的裙子(黑)",
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "layers": [
+        {
+          "depth": 69,
+          "anchor": "middle",
+          "path": "public/image/avatar_parts/skirt_a000c_p69.swf"
+        }
+      ]
+    }
+  },
+  "assets": {
+    "data/image/avatar_rig.swf": {
+      "sha256": "f3389907f117f5755711f8049a4523ee4c6b9007c613ead14e2af4ee37475bc4",
+      "bytes": 694
+    },
+    "public/image/avatar_parts/base_a000_p27.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p31.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p33.swf": {
+      "sha256": "febc784f10b75809769f1a4cc9e6ef5b912b3877e7096014de86b729cafa0771",
+      "bytes": 3562
+    },
+    "public/image/avatar_parts/base_a000_p44.swf": {
+      "sha256": "8b8abd24d0ab1eabc14ca82f9c215be0a3fb3df573f2db2e871e52ee5d77feee",
+      "bytes": 3872
+    },
+    "public/image/avatar_parts/base_a000_p48.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p51.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p53.swf": {
+      "sha256": "149f1069d30d553e28ca499e60b335edd5a0833b822b002b57ea4ae59082f6b2",
+      "bytes": 3177
+    },
+    "public/image/avatar_parts/base_a000_p55.swf": {
+      "sha256": "e1ad4abd9a4d99f2675bcc7ef66b98fe0a56a626ef8df882b94aaa5124f60a54",
+      "bytes": 4858
+    },
+    "public/image/avatar_parts/base_a000_p59.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p62.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p67.swf": {
+      "sha256": "05ff2edce5d18c1d06a5c5ba3b28e8adf2d891a8ea6923f84efca2715854f088",
+      "bytes": 2624
+    },
+    "public/image/avatar_parts/base_a000_p81.swf": {
+      "sha256": "8385fc2184d84dc7f4ac6e0e5be447120d5e0eb8fd221bd4f5fc6f002cc02a36",
+      "bytes": 3772
+    },
+    "public/image/avatar_parts/base_a000_p85.swf": {
+      "sha256": "3306ddeeef4cc2df69e68eadfefa6d06671e6c75836be80a60945752c5ec1c3c",
+      "bytes": 36
+    },
+    "public/image/avatar_parts/base_a000_p87.swf": {
+      "sha256": "b5c1e3c05b17670e489065a783f27fa3d2d9ce5a7401bfdcc2d11b269908d8be",
+      "bytes": 35
+    },
+    "public/image/avatar_parts/base_a000_p97.swf": {
+      "sha256": "da804e189be385744cb1faecc73b5db3bb22467185e02e24a6b06942873c79f6",
+      "bytes": 2537
+    },
+    "public/image/avatar_parts/blouse_a000a_p33.swf": {
+      "sha256": "7c13143c5083fe0aaa142a7e905aee51e6f7df5fff461e9d87be9852ec61e7e4",
+      "bytes": 2748
+    },
+    "public/image/avatar_parts/blouse_a000a_p67.swf": {
+      "sha256": "b366aeb9e7686fc1c9d017fb42702552483abc5f095e863ad5aa4dcf3955b01d",
+      "bytes": 4668
+    },
+    "public/image/avatar_parts/blouse_a000a_p87.swf": {
+      "sha256": "862be7b2db615fadb494f48a354b4c96bea09f8e17119eb145c78ac7a3a9a506",
+      "bytes": 2843
+    },
+    "public/image/avatar_parts/blouse_a000b_p33.swf": {
+      "sha256": "0776f153c5f10bb414596d1616e1d5041eed0d2ad736a4cd2d413aa18a29a7ba",
+      "bytes": 2796
+    },
+    "public/image/avatar_parts/blouse_a000b_p67.swf": {
+      "sha256": "5693c8dd890134bb2ea6a460b1db6e995beffa499b7b65e4968ea3ad2715046b",
+      "bytes": 4357
+    },
+    "public/image/avatar_parts/blouse_a000b_p87.swf": {
+      "sha256": "48ebd9ca1c177c374bf5a5d491a21d65ac3d65c8cae34471267edfd8f0adde4e",
+      "bytes": 2709
+    },
+    "public/image/avatar_parts/eye_a000b_p102.swf": {
+      "sha256": "3aa6874d0c9ba6df4dad546d9e509e87461812578b59b7322acbd79e19116bed",
+      "bytes": 2198
+    },
+    "public/image/avatar_parts/eye_a002d_p102.swf": {
+      "sha256": "da4495a8ed86b5beca4e904d42b21554212028cc7d86c0b958920584b694e8ac",
+      "bytes": 2169
+    },
+    "public/image/avatar_parts/hair_a000a_p108.swf": {
+      "sha256": "053c7af71f4096a4e11cbce7662b7525444b9c299302738bce4e4f528990215e",
+      "bytes": 1884
+    },
+    "public/image/avatar_parts/hair_a000a_p18.swf": {
+      "sha256": "e4a9542e279310e74697e05d0b6045b9b29f0e9afd25a87749647f49396ad60c",
+      "bytes": 1083
+    },
+    "public/image/avatar_parts/hair_d000a_p108.swf": {
+      "sha256": "c5f80f6dcf3cc569bbf47e186fdbcc52238a373ea6d02aeb3438501dff676387",
+      "bytes": 2765
+    },
+    "public/image/avatar_parts/hair_d000a_p18.swf": {
+      "sha256": "f006ad4b38648384654a0b12506ceff85d9ed04af992a20b662b3c9311c2aa24",
+      "bytes": 1648
+    },
+    "public/image/avatar_parts/hair_d000a_p94.swf": {
+      "sha256": "b597ee35d4347f99042a7f41bd6de2a5deb2b2ad029dbd4aac8d42fb11bd4b1c",
+      "bytes": 842
+    },
+    "public/image/avatar_parts/mouth_a000a_p101.swf": {
+      "sha256": "577771df9de9a3d25f0999d6ba39fbba36a669ce1ee7cba31b403a51e6d196ed",
+      "bytes": 159
+    },
+    "public/image/avatar_parts/mouth_b000a_p101.swf": {
+      "sha256": "89915b14c96bd0ed2d13e5f15855a4f4429227382bf160279c87c850053f7c0a",
+      "bytes": 199
+    },
+    "public/image/avatar_parts/ribbon_a000a_p112.swf": {
+      "sha256": "1bc066d03756aece11227eb9c84ba38eaedf4514d9f9e49d0fdb359329f982d9",
+      "bytes": 2122
+    },
+    "public/image/avatar_parts/shoes_a000a_p48.swf": {
+      "sha256": "4e11d875c53bed3a7dd0b868d18a6d95183340fbeba0794ed15589e9b7216b87",
+      "bytes": 1937
+    },
+    "public/image/avatar_parts/shoes_a000a_p51.swf": {
+      "sha256": "01dc6027d00ff244cb8f8aa557fbd2c00ab33a1b2bb1c6f0fd8d4e5b38f92ceb",
+      "bytes": 661
+    },
+    "public/image/avatar_parts/shoes_a000a_p59.swf": {
+      "sha256": "5aba257cfac9199a01d6d6fc337d088f6871ddeef448bd758914df4b086e6698",
+      "bytes": 2178
+    },
+    "public/image/avatar_parts/shoes_a000a_p62.swf": {
+      "sha256": "63656a18748e853fbfa770660f1c05dd1337c1b93a09dde87a3461b060faa0c8",
+      "bytes": 717
+    },
+    "public/image/avatar_parts/skirt_a000a_p69.swf": {
+      "sha256": "ec36caca2ed551106e67847518a00c42bc7441ca4364509ae205588dc518fe23",
+      "bytes": 8271
+    },
+    "public/image/avatar_parts/skirt_a000c_p69.swf": {
+      "sha256": "39b95fb5f57e73d245225e24a548f1204dc57e130718f6e9c982d92b483cffbc",
+      "bytes": 7922
+    }
+  },
+  "coverage": {
+    "catalogPath": "app/server/data/csv/ja/AvatarParts.csv",
+    "catalogSha256": "173518d3d7e1dcb75130ef1f1808d282bb5c4252c46d8bca2c7c5c3133eaa084",
+    "partDefinitions": 824,
+    "namedSwfReferences": 1383,
+    "presentNamedSwfs": 1364,
+    "completePartDefinitions": 783,
+    "emptyImageDefinitions": 0,
+    "missingSwfPaths": [
+      "public/image/avatar_parts/dummy_p33.swf",
+      "public/image/avatar_parts/dummy_p59.swf",
+      "public/image/avatar_parts/dummy_p64.swf",
+      "public/image/avatar_parts/dummy_p69.swf",
+      "public/image/avatar_parts/dummy_p87.swf",
+      "public/image/avatar_parts/eye_b000a_p102.swf",
+      "public/image/avatar_parts/eye_b000b_p102.swf",
+      "public/image/avatar_parts/eye_b000c_p102.swf",
+      "public/image/avatar_parts/eye_b000d_p102.swf",
+      "public/image/avatar_parts/eye_b000e_p102.swf",
+      "public/image/avatar_parts/fairy_x003c_p3.swf",
+      "public/image/avatar_parts/hair_a000e_p108.swf",
+      "public/image/avatar_parts/hair_a000e_p18.swf",
+      "public/image/avatar_parts/hair_b000e_p108.swf",
+      "public/image/avatar_parts/hair_b000e_p18.swf",
+      "public/image/avatar_parts/hair_d000e_p108.swf",
+      "public/image/avatar_parts/hair_d000e_p18.swf",
+      "public/image/avatar_parts/hair_d000e_p94.swf",
+      "public/image/avatar_parts/hair_z001a_p18.swf"
+    ]
+  }
+}

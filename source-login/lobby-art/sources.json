@@ -1,0 +1,88 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "layers": {
+    "background.png": {
+      "source": "data/image/lobby/entrance_bg.swf",
+      "sourceSha256": "04b573b540a394e2e2377fffed42809a7826fb936900b6badf30dbc6d2c67827",
+      "x": 0,
+      "y": 160,
+      "width": 760,
+      "height": 496,
+      "sha256": "97740558dd05b31b65c5ba68344fe77a07ca335440a001ccabc724656566958d"
+    },
+    "entrances.png": {
+      "source": "data/image/lobby/entrance_ch.swf",
+      "sourceSha256": "c55eb915e4faf6dee079b6f9c7a20503b06fa4fa4fa3052196c119d5fde3ddd9",
+      "x": 0,
+      "y": 0,
+      "width": 760,
+      "height": 680,
+      "sha256": "128df888115e58837e8cedc6bae80c7b1ded8fea90fc9e2aaede84521b2cc082"
+    },
+    "favorite.png": {
+      "source": "public/image/standchara/standchara01.swf",
+      "sourceSha256": "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d",
+      "x": 0,
+      "y": 206,
+      "width": 295,
+      "height": 458,
+      "sha256": "411fc397385abc84e4b0e16bb349c931a1781e540293d69fc07d92e3f2980e00"
+    },
+    "ranking.png": {
+      "source": "data/image/ranking/entrance_rank.swf",
+      "sourceSha256": "4fd9cec2feef5acf139a022ef5f7bb968c026aa53d4ef02a370bad5067d9e28e",
+      "x": 0,
+      "y": 440,
+      "width": 256,
+      "height": 216,
+      "sha256": "ebd86ce8aef8e2c5a7559ab1709c9d4dbf2584f66eb2f408f42f5ebd88d66f34"
+    },
+    "status.png": {
+      "source": "data/image/common/gene.swf",
+      "sourceSha256": "36f72e7de76860b18414b8331bdfed6432a3c83a1205a7d33dbf90fbc41dc3f0",
+      "x": 0,
+      "y": 656,
+      "width": 760,
+      "height": 24,
+      "sha256": "dee944c2a56dec812b4ea2765442b8eee2d1e165d5ef013313f906a09c7cb36d"
+    },
+    "ap.png": {
+      "source": "data/image/avatar/social_ap.swf",
+      "sourceSha256": "13bd98f25761a79ade8c68b4ccc69547f5ae6715ef639971790c6d71af887639",
+      "x": 705,
+      "y": 646,
+      "width": 44,
+      "height": 34,
+      "sha256": "78d5083a4ba562770a5dd1700483d6d84be009e51eacd34f9849101bd3632b98"
+    },
+    "record.png": {
+      "source": "data/image/achievement/btn_achi.swf",
+      "sourceSha256": "64e954edfd92ad3e5631bab5ff0c56015e2a7204c8d1eff4628c5bcc2880e9fb",
+      "x": 712,
+      "y": 480,
+      "width": 48,
+      "height": 32,
+      "sha256": "d03bfafc7a70e378b8c6c56ef636a6de8a8e9bee4624bd1f326534995fccb8ca"
+    },
+    "friend.png": {
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "x": 712,
+      "y": 523,
+      "width": 48,
+      "height": 37,
+      "sha256": "70ab9b01e9e34b6b8c8b09d248260ac4e71bf4fb55a64759930fb7e12df63851"
+    },
+    "item.png": {
+      "source": "data/image/quest/btn_item.swf",
+      "sourceSha256": "21403377679ed4ccbb957a425a723e1a1b52a83d1e90a68ce2f40cd87e996561",
+      "x": 712,
+      "y": 576,
+      "width": 48,
+      "height": 32,
+      "sha256": "63c5233bf1107094f8e0ab992245547207c7a192bc4c7c8c86f3a1555d40892c"
+    }
+  }
+}

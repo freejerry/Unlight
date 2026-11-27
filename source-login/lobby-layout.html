@@ -4,21 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Unlight 大廳版面</title>
+    <link rel="icon" href="data:," />
     <link rel="stylesheet" href="lobby-layout.css" />
+    <script type="module" src="./lobby-preview.js"></script>
   </head>
   <body>
     <main class="lobby-stage" aria-label="Unlight 大廳靜態版面">
       <!-- LobbyView.as: PRIO_BG, PRIO_CHARA, PRIO_AVATAR, PRIO_ENTRANCE. -->
-      <div class="lobby-backdrop" aria-hidden="true"></div>
-      <div class="art-slot standing-character">角色立繪</div>
+      <div class="lobby-backdrop" data-source="entrance_bg.swf" aria-hidden="true"></div>
+      <div class="art-slot standing-character" role="img" aria-label="艾伯李斯特立繪" data-source="standchara01.swf"></div>
       <div class="avatar-layer">
-        <div class="art-slot avatar">虛擬人物</div>
+        <div class="art-slot avatar" aria-hidden="true"></div>
+        <canvas id="lobby-avatar" width="290" height="450" aria-label="虛擬人物"></canvas>
         <ul class="side-entries" aria-label="角色入口">
-          <li>紀錄</li>
-          <li>好友</li>
-          <li>道具</li>
+          <li><span class="art-label">紀錄</span><img class="record-art" src="./lobby-art/record.png" width="48" height="32" alt="" /></li>
+          <li><span class="art-label">好友</span><img class="friend-art" src="./lobby-art/friend.png" width="48" height="37" alt="" /></li>
+          <li><span class="art-label">道具</span><img class="item-art" src="./lobby-art/item.png" width="48" height="32" alt="" /></li>
         </ul>
-        <dl class="avatar-status" aria-label="角色狀態">
+        <dl class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
           <div class="name"><dt>Name</dt><dd>Lv.1 玩家</dd></div>
           <div class="gem"><dt>Gem</dt><dd>100</dd></div>
           <div class="exp"><dt>Exp</dt><dd>0/10</dd></div>
@@ -26,27 +29,28 @@
         </dl>
       </div>
       <div class="entrance-layer">
+        <img class="entrance-art" src="./lobby-art/entrances.png" width="760" height="680" alt="" />
         <!-- EntranceSet.as binds these instance names from the TCN entrance SWF. -->
         <ul class="top-entries" aria-label="館舍入口">
-          <li data-symbol="btn_i">商店</li>
-          <li data-symbol="btn_j">暗房</li>
-          <li data-symbol="btn_g">牌組</li>
-          <li data-symbol="btn_e">道具</li>
-          <li data-symbol="btn_c">圖書館</li>
+          <li data-symbol="btn_i"><span class="art-label">商店</span></li>
+          <li data-symbol="btn_j"><span class="art-label">暗房</span></li>
+          <li data-symbol="btn_g"><span class="art-label">牌組</span></li>
+          <li data-symbol="btn_e"><span class="art-label">道具</span></li>
+          <li data-symbol="btn_c"><span class="art-label">圖書館</span></li>
         </ul>
         <ul class="play-entries" aria-label="遊戲入口">
-          <li class="duel" data-symbol="btn_f">對戰</li>
-          <li class="quest" data-symbol="btn_b">任務</li>
-          <li class="raid" data-symbol="btn_k">襲擊</li>
+          <li class="duel" data-symbol="btn_f"><span class="art-label">對戰</span></li>
+          <li class="quest" data-symbol="btn_b"><span class="art-label">任務</span></li>
+          <li class="raid" data-symbol="btn_k"><span class="art-label">襲擊</span></li>
         </ul>
         <ul class="utility-entries" aria-label="輔助入口">
-          <li class="options" data-symbol="btn_h">設定</li>
-          <li class="tutorial" data-symbol="btn_d">教學</li>
-          <li class="serial" data-symbol="btn_serial">序號</li>
+          <li class="options" data-symbol="btn_h"><span class="art-label">設定</span></li>
+          <li class="tutorial" data-symbol="btn_d"><span class="art-label">教學</span></li>
+          <li class="serial" data-symbol="btn_serial"><span class="art-label">序號</span></li>
         </ul>
-        <div class="lower-slot ranking">排行榜</div>
+        <div class="lower-slot ranking" role="img" aria-label="排行榜外框" data-source="entrance_rank.swf"></div>
       </div>
-      <div class="lower-slot chat">聊天區</div>
+      <div class="lower-slot chat" aria-hidden="true"></div>
     </main>
   </body>
 </html>
