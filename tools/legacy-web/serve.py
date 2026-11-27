@@ -199,26 +199,32 @@ def create_app(
         return app
 
     index_path = ROOT / "index.html"
-    if tcn_device_font is None:
-        app.router.add_get("/", serve_file(index_path))
-    else:
+    head_tags = []
+    if news is not None:
+        head_tags.append('<meta name="unlight-title-news" content="1">')
+    if tcn_device_font is not None:
         try:
             font_bytes = tcn_device_font.read_bytes()
         except OSError as error:
             raise ValueError(f"--tcn-device-font must point to a readable cwming.ttf: {error}") from error
         if sha256(font_bytes).hexdigest() != TCN_FONT_SHA256:
             raise ValueError("--tcn-device-font must match the pinned historical cwming.ttf SHA-256")
-        font_tag = f'<meta name="unlight-tcn-device-font" content="{TCN_FONT_URL}">'
-        index = index_path.read_text(encoding="utf-8").replace("</head>", f"  {font_tag}\n</head>", 1)
-
-        async def font_index(_request):
-            return web.Response(text=index, content_type="text/html")
+        head_tags.append(f'<meta name="unlight-tcn-device-font" content="{TCN_FONT_URL}">')
 
         async def device_font(_request):
             return web.Response(body=font_bytes, content_type="font/ttf")
 
-        app.router.add_get("/", font_index)
         app.router.add_get(TCN_FONT_URL, device_font)
+    if head_tags:
+        tags = "".join(f"  {tag}\n" for tag in head_tags)
+        index = index_path.read_text(encoding="utf-8").replace("</head>", tags + "</head>", 1)
+
+        async def classic_index(_request):
+            return web.Response(text=index, content_type="text/html")
+
+        app.router.add_get("/", classic_index)
+    else:
+        app.router.add_get("/", serve_file(index_path))
     for filename in ("player.css", "player.js"):
         app.router.add_get(f"/{filename}", serve_file(ROOT / filename))
     app.router.add_get("/Unlight.swf", serve_file(client))

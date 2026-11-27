@@ -30,7 +30,7 @@ Git 提交版本、三套字型及 `as3crypto.swc` 均會驗證。自行提供 F
 | 相對於 `legacy_work` | 內容 |
 | --- | --- |
 | `dist/Unlight.swf` | 依照 Open Unlight 歷史繁中配方編譯的主程式 |
-| `dist/Unlight-local-runtime.swf` | 供 Ruffle 使用的相容版。瀏覽器橋接不可用時略過主控台日誌，任務列表指定既有內嵌繁中字型 |
+| `dist/Unlight-local-runtime.swf` | 供 Ruffle 使用的相容版。套用既有面板圖的九宮格縮放和任務名稱字型，支援標題頁的公告設定 |
 | `assets/public/` | 靜態伺服用的既有圖像與音效素材 |
 | `app/client/src/model/utils/ConstData.as` | 由 SQLite 產生的繁中遊戲常數 |
 | `app/client/src/FontLoader.as` | 原版字型嵌入宣告 |

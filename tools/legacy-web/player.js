@@ -5,6 +5,7 @@ const start = document.querySelector("#start");
 const status = document.querySelector("#status");
 const serverPorts = [12001, 12002, 12003, 12004, 12005, 12020];
 const tcnDeviceFont = document.querySelector('meta[name="unlight-tcn-device-font"]')?.content;
+const showTitleNews = document.querySelector('meta[name="unlight-title-news"]')?.content === "1";
 // The historical font's internal full name is the name Ruffle registers.
 const tcnFamilies = ["cwTeX 明體", "Noto Sans"];
 
@@ -33,6 +34,9 @@ start.addEventListener("click", async () => {
       allowScriptAccess: false,
       openUrlMode: "deny",
       upgradeToHttps: false,
+      ...(showTitleNews ? {
+        parameters: { showTitleNews: "1", titleNewsDeviceFont: tcnDeviceFont ? "1" : "0" },
+      } : {}),
       ...(tcnDeviceFont ? {
         fontSources: [tcnDeviceFont],
         defaultFonts: {

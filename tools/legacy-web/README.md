@@ -20,9 +20,9 @@ python3 tools/legacy-web/serve.py \
 
 在執行該指令的機器上開啟 `http://127.0.0.1:4330/`。原 Flash 設定保留舊協定埠，瀏覽器透過同一個 HTTP 服務的 WebSocket 接到實際 Ruby TCP 埠。其他配置可指定 `--server-offset`。相容 SWF 的 `ExternalInterface` 檢查會略過舊 debug 主控台寫入。選用 `wgpu-webgl` 以支援原版需要的離屏 `BitmapData.draw`。
 
-有既有的繁中公告檔時，可加上 `--news /path/to/news.xml`，讓原版登入後的「最新消息」讀取該檔。服務會原樣提供 XML，預設沿用版本庫內的歷史日文範例。[原版公告讀取程式](../../app/client/lib/News.as)
+有既有的繁中公告檔時，可加上 `--news /path/to/news.xml`，讓登入後的「最新消息」讀取該檔。重編後的相容版會在瀏覽器的標題頁消息欄顯示同一份公告。服務會原樣提供 XML，預設沿用版本庫內的歷史日文範例。[原版公告讀取程式](../../app/client/lib/News.as)
 
-若要檢查原版裝置字型的缺字，可在同一指令加上 `--tcn-device-font "$unlight_build/app/client/data/cwming.ttf"`。這會使用建置時取得並驗證過的歷史明體，供 Ruffle 繪製裝置文字。這項設定會影響裝置文字的字面尺寸。需保持原版比對條件的測例可沿用預設設定。[字型來源與版本](../legacy-build/README.md#來源版本)
+可在同一指令加上 `--tcn-device-font "$unlight_build/app/client/data/cwming.ttf"`。Ruffle 會用建置時取得並驗證過的歷史明體繪製裝置文字，標題頁消息也會使用此字型。測試公告已驗證繁中、重音字元及長文捲動。這項設定會影響裝置文字的字面尺寸。[字型來源與版本](../legacy-build/README.md#來源版本) · [公告驗收截圖](../../docs/playtest/README.md#畫面驗收項目)
 
 若這個 Codex 環境提供擁有者專用的 HTTP 預覽，可將前端埠加入預覽，再以 `--preview-origin` 傳入回傳的 HTTPS 網址。HTTP 層會監聽所有介面。Ruby 仍使用回環位址，WebSocket 只接受指定來源及同埠的回環來源。歷史驗收工作區只有 SSH 入口，沒有成功建立 Mac 到雲端的轉送。
 

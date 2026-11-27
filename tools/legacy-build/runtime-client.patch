@@ -12,3 +12,137 @@
              _name.height = _NAME_HEIGHT;
 +            _name.setStyle("fontFamily", "minchoB");
              _name.setStyle("color","#AAAAAA");
+--- data/css/UL.css
++++ data/css/UL.css
+@@ -38,7 +38,7 @@
+ cornerRadius: 2;
+ borderColor: #f4f4f4;
+ borderAlpha: 0.9;
+-borderSkin: Embed("../image/panel_gene.png",scaleGridLeft="42", scaleGridRight="78", scaleGridTop="60", scaleGridBottom="64");
++borderSkin: ClassReference("view.image.PanelScaleNineSkin");
+ paddingTop: 40;
+ paddingLeft: 10;
+ paddingRight: 10;
+--- /dev/null
++++ src/view/image/PanelScaleNineSkin.as
+@@ -0,0 +1,80 @@
++package view.image
++{
++    import flash.display.Bitmap;
++    import flash.display.BitmapData;
++    import flash.geom.Matrix;
++    import flash.geom.Point;
++    import flash.geom.Rectangle;
++    import mx.skins.ProgrammaticSkin;
++
++    public final class PanelScaleNineSkin extends ProgrammaticSkin
++    {
++        [Embed(source="../../../data/image/panel_gene.png")]
++        private static const SkinImage:Class;
++
++        // Use the original Flex scale-9 guides explicitly for runtimes that
++        // stretch the entire embedded image instead of applying scale9Grid.
++        private static const SOURCE_X:Array = [0, 42, 78, 120];
++        private static const SOURCE_Y:Array = [0, 60, 64, 96];
++        private static const slices:Array = sliceImage();
++
++        override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void
++        {
++            graphics.clear();
++            if (unscaledWidth <= 0 || unscaledHeight <= 0)
++                return;
++
++            var x:Array = destinationEdges(unscaledWidth, SOURCE_X);
++            var y:Array = destinationEdges(unscaledHeight, SOURCE_Y);
++            for (var row:int = 0; row < 3; row++)
++            {
++                for (var column:int = 0; column < 3; column++)
++                {
++                    var width:Number = x[column + 1] - x[column];
++                    var height:Number = y[row + 1] - y[row];
++                    if (width <= 0 || height <= 0)
++                        continue;
++
++                    var slice:BitmapData = slices[row * 3 + column];
++                    var transform:Matrix = new Matrix(width / slice.width, 0, 0, height / slice.height,
++                                                     x[column], y[row]);
++                    graphics.beginBitmapFill(slice, transform, false, true);
++                    graphics.drawRect(x[column], y[row], width, height);
++                    graphics.endFill();
++                }
++            }
++        }
++
++        private static function destinationEdges(size:Number, source:Array):Array
++        {
++            var leading:Number = source[1];
++            var trailing:Number = source[3] - source[2];
++            if (size >= leading + trailing)
++                return [0, leading, size - trailing, size];
++
++            // Short panels have no room for the center cell.
++            var split:Number = Math.min(size, Math.round(size * leading / (leading + trailing)));
++            return [0, split, split, size];
++        }
++
++        private static function sliceImage():Array
++        {
++            var image:Bitmap = new SkinImage();
++            var slices:Array = [];
++            var origin:Point = new Point();
++            for (var row:int = 0; row < 3; row++)
++            {
++                for (var column:int = 0; column < 3; column++)
++                {
++                    var width:int = SOURCE_X[column + 1] - SOURCE_X[column];
++                    var height:int = SOURCE_Y[row + 1] - SOURCE_Y[row];
++                    var rect:Rectangle = new Rectangle(SOURCE_X[column], SOURCE_Y[row], width, height);
++                    var slice:BitmapData = new BitmapData(width, height, true, 0);
++                    slice.copyPixels(image.bitmapData, rect, origin);
++                    slices.push(slice);
++                }
++            }
++            return slices;
++        }
++    }
++}
+--- src/view/image/title/NewsPanel.as
++++ src/view/image/title/NewsPanel.as
+@@ -80,9 +80,35 @@
+             _newsText.editable = false;
+             _newsText.styleName = "NewsTextArea";
++            var parameters:Object = Unlight.INS.parameters;
++            if (parameters != null && parameters.showTitleNews === "1")
++            {
++                CONFIG::LOCALE_TCN
++                {
++                    _newsText.setStyle("fontFamily", parameters.titleNewsDeviceFont === "1" ? "_sans" : "mincho");
++                }
++                addEventListener(Event.ADDED_TO_STAGE, bindNews);
++                addEventListener(Event.REMOVED_FROM_STAGE, unbindNews);
++            }
+             addChild(_newsText)
+             _ctrl.setNewsPanel(this);
+         }
+-
++
++
++        private function bindNews(event:Event):void
++        {
++            News.instance.addEventListener(News.NEWS_CHANGE, syncNews, false, 0, true);
++            syncNews(event);
++        }
++
++        private function unbindNews(event:Event):void
++        {
++            News.instance.removeEventListener(News.NEWS_CHANGE, syncNews);
++        }
++
++        private function syncNews(event:Event):void
++        {
++            updateNews(News.newsText);
++        }
+-
++
+         public function updateNews(text:String):void
+         {
