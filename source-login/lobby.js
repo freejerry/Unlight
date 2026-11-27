@@ -22,7 +22,7 @@ const layout = `
       <ul class="play-entries" aria-label="遊戲入口">
         <li class="duel" data-symbol="btn_f"><span class="sr-only">對戰</span></li>
         <li class="quest" data-symbol="btn_b">
-          <button id="lobby-quest-load" class="source-lobby-quest-entry" type="button" aria-label="任務" aria-haspopup="dialog" aria-controls="lobby-quest"></button>
+          <button id="lobby-quest-load" class="source-lobby-quest-entry" type="button" aria-label="任務"></button>
         </li>
         <li class="raid" data-symbol="btn_k"><span class="sr-only">襲擊</span></li>
       </ul>
@@ -36,19 +36,6 @@ const layout = `
       <div class="lower-slot ranking" role="img" aria-label="排行榜外框" data-source="entrance_rank.swf"></div>
     </div>
     <div class="lower-slot chat" aria-hidden="true"></div>
-    <dialog id="lobby-quest" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-quest-title" data-state="idle">
-      <header class="source-lobby-dialog-heading">
-        <h2 id="lobby-quest-title" class="stage-panel-title">任務清單</h2>
-        <form method="dialog">
-          <button id="lobby-quest-close" class="source-lobby-button" type="submit" autofocus>關閉</button>
-        </form>
-      </header>
-      <div class="source-lobby-body source-lobby-quest-body">
-        <p id="lobby-quest-status" role="status" aria-atomic="true"></p>
-        <button id="lobby-quest-retry" class="source-lobby-button" type="button" hidden>重新讀取</button>
-        <ol id="lobby-quest-rows" class="source-lobby-scroll source-lobby-quest-rows" aria-labelledby="lobby-quest-title" role="list" tabindex="0" hidden></ol>
-      </div>
-    </dialog>
     <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
@@ -63,7 +50,6 @@ const layout = `
     </dialog>
   </section>`;
 
-const questStates = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '受贈'];
 const newsSeen = new Set();
 async function loadNews(view, signal) {
   const panel = view.querySelector('#lobby-news');
@@ -99,90 +85,7 @@ async function loadNews(view, signal) {
   return false;
 }
 
-function bindDialog(entry, dialog, signal, didOpen) {
-  entry.addEventListener('click', () => {
-    if (signal.aborted || dialog.open || dialog.parentElement.querySelector('dialog[open]')) return;
-    dialog.showModal();
-    didOpen();
-  }, { signal });
-  dialog.addEventListener('close', () => entry.focus({ preventScroll: true }), { signal });
-}
-
-function createQuestRow({ inventoryId, questId, status }) {
-  const row = document.createElement('li');
-  row.dataset.inventoryId = String(inventoryId);
-  row.dataset.questId = String(questId);
-  row.dataset.questStatus = String(status);
-  const label = document.createElement('strong');
-  label.textContent = questId > 0 ? `任務 ${questId}` : '待確認任務';
-  const state = document.createElement('span');
-  state.textContent = questStates[status] ?? `狀態 ${status}`;
-  row.append(label, state);
-  return row;
-}
-
-async function resolveQuestNames(rows, signal) {
-  const ids = [...new Set(rows.map(row => Number(row.dataset.questId)).filter(id => id > 0))];
-  if (!ids.length) return;
-  try {
-    const params = new URLSearchParams();
-    for (const id of ids) params.append('id', String(id));
-    const response = await fetch(`/api/quest-catalog?${params}`, {
-      redirect: 'error',
-      signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
-    });
-    if (!response.ok) return;
-    const { quests } = await response.json();
-    if (signal.aborted || !Array.isArray(quests)) return;
-    const names = new Map(quests.map(quest => [quest?.id, quest?.name]));
-    for (const row of rows) {
-      const name = names.get(Number(row.dataset.questId));
-      if (row.isConnected && typeof name === 'string' && name.trim()) row.firstElementChild.textContent = name;
-    }
-  } catch {
-    // The confirmed inventory remains visible with its original quest IDs.
-  }
-}
-
-function bindQuestInventory(view, session, signal) {
-  const panel = view.querySelector('#lobby-quest');
-  const entry = view.querySelector('#lobby-quest-load');
-  const retry = panel.querySelector('#lobby-quest-retry');
-  const status = panel.querySelector('#lobby-quest-status');
-  const list = panel.querySelector('#lobby-quest-rows');
-  const read = async () => {
-    if (panel.dataset.state === 'loading') return;
-    panel.dataset.state = 'loading';
-    status.textContent = '正在讀取任務資料…';
-    if (document.activeElement === retry) {
-      panel.querySelector('#lobby-quest-close').focus({ preventScroll: true });
-    }
-    retry.hidden = true;
-    list.hidden = true;
-    try {
-      const snapshot = await session.readQuestInventory({ signal });
-      if (signal.aborted) return;
-      if (!Array.isArray(snapshot?.rows)) throw new Error('Quest inventory unavailable.');
-      const rows = snapshot.rows.map(createQuestRow);
-      list.replaceChildren(...rows);
-      list.hidden = rows.length === 0;
-      panel.dataset.state = rows.length ? 'ready' : 'empty';
-      status.textContent = Number.isSafeInteger(snapshot.capacity)
-        ? `持有 ${rows.length}／${snapshot.capacity} 筆任務`
-        : `持有 ${rows.length} 筆任務`;
-      void resolveQuestNames(rows, signal);
-    } catch {
-      if (signal.aborted) return;
-      panel.dataset.state = 'error';
-      status.textContent = '暫時無法讀取任務資料。';
-      retry.hidden = false;
-    }
-  };
-  bindDialog(entry, panel, signal, read);
-  retry.addEventListener('click', read, { signal });
-}
-
-export function mountLobby(host, { session, fadeIn, onOptions }) {
+export function mountLobby(host, { session, fadeIn, onOptions, onQuest }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -199,7 +102,9 @@ export function mountLobby(host, { session, fadeIn, onOptions }) {
       onOptions();
     }, { signal });
   }
-  bindQuestInventory(view, session, signal);
+  const quest = view.querySelector('#lobby-quest-load');
+  quest.disabled = typeof onQuest !== 'function';
+  if (!quest.disabled) quest.addEventListener('click', onQuest, { signal });
   news.addEventListener('close', () => title.focus({ preventScroll: true }), { signal });
 
   host.append(view);

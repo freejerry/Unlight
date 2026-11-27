@@ -5,6 +5,7 @@ const theme = "/public/sound/bgm/ulbgm01.mp3";
 const sceneTracks = {
   tutorial: "/public/sound/bgm/bgm011.mp3",
   lobby: "/public/sound/bgm/ulbgm02.mp3",
+  quest: "/public/sound/bgm/ulbgm03.mp3",
 };
 const titleMusic = createAudio(theme, audioVolume("bgm"));
 const clickSound = createAudio("/public/sound/se/ulse01.mp3", audioVolume("se"));
@@ -153,6 +154,12 @@ function playSceneMusic() {
   entryObserver.disconnect();
   const wasWarming = warmingMusic;
   warmingMusic = false;
+  if (scene === "silent") {
+    musicRequest += 1;
+    music.pause();
+    delete stage.dataset.musicState;
+    return;
+  }
   const path = sceneTracks[scene] ?? theme;
   if (scene === "title" && music !== titleMusic) {
     musicRequest += 1;

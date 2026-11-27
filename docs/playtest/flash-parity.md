@@ -9,7 +9,7 @@
 | Flash 舞台 | Flex 編譯的繁中版 780 × 680、24 FPS。原版編譯 SWF SHA-256 `2a375905f3effc06476cd99f578f48d3040a2e9eecbbc6cfd33ce5d5f34ddc44`。Ruffle 本機服務相容版 SHA-256 `263647832e0132f07a17f1d547913dab8c45a26ffff2b9ceace6fd428c8103b9`。每份畫面證據註明使用的版本。[來源及編譯](../../tools/legacy-build/README.md) |
 | 原始素材 | 固定的 Unlight-Images 版本 `0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e`。依 SWF 的圖層、時間軸和事件使用來源圖像。保留來源路徑和雜湊，便於重跑資產擷取。[大廳素材清單](../../source-login/lobby-art/sources.json) |
 | Ruby | 參考 `ee38622` 的隔離運行副本。兩版使用同源的繁中資料和獨立測試帳號，戰鬥重跑時記下牌組與亂數輸入。在 SQLite 核對操作結果。[建立測試服務](../../tools/legacy-server/README.md) |
-| 新版起始基線 | `cc2ef53`，已實跑標題、驗證後的玫瑰、角色建立、簡要新手指引及大廳。任務目前開啟唯讀清單。每列標註的完成狀態只涵蓋該列列出的行為。[固定舞台啟動](../../source-login/README.md) |
+| 新版起始基線 | `cc2ef53`，已實跑標題、驗證後的玫瑰、角色建立、簡要新手指引及大廳。後續里程碑記錄設定、角色刷新與普通任務地圖。每列標註的完成狀態只涵蓋列出的行為。[固定舞台啟動](../../source-login/README.md) |
 
 ## 驗收方式
 
@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **部分**固定舞台任務庫存與共用 Ruby 協定。歷史首戰證據依入口分開記錄。 | 同次登入進真實任務地圖並返回，再逐次接上探索和首戰。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**第一張普通地圖的進入、已發現／搜尋中清單、Back 及認證等待中取消。**部分**原版地圖與共用 Ruby 協定。 | 接入 MAP 選區、地標的搜尋預覽及原版場景音樂淡出，接續探索和首戰。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -61,3 +61,8 @@
 
 - 原版與新版都在開啟設定時用已登入的 Lobby 執行 Ruby 恢復檢查，從 `4/5` 回復至 `5/5`。新版暫緩真 `SC17` 時可進入設定且保持 `4/5`，放行後同時更新數字和心形。驗收保留原四條連線、BGM 播放和原裝備。約 328 ms 返回大廳未再送請求，約 2115 ms 返回時只再送一次無參數 `CS17`。[階段畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/ap-refresh-comparison.png) · [封包與時序](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/qa-native-refresh-evidence.json)
 - 原版有一次設定進出時心形滿值但數字暫留 `4/5`，回大廳後為 `5/5`。新版取同一次已確認更新繪製數字和心形。原版 AP 滑入提示的繁中文字與畫面已留存，倒數及到期檢查仍待移植。[原版重跑及差異](flash-parity/options-reference.md#原版-ap-回復的顯示差異) · [重跑設定頁 AP 回復](flash-parity/qa.md#重跑設定頁-ap-回復)
+
+### 第一張普通任務地圖
+
+- 大廳任務入口已在 `/source-login/` 切入同次登入的 780×680 原版地圖。從原始 SWF 沿用底圖、滑入地標、清單容量幀、任務列圖示、牌組底板和 Back。使用原來的 `ulbgm03.mp3`、入口 `ulse02` 與 Back `ulse01`。列表顯示真實繁中資料、原版進度與實際選定牌組，卡位目前顯示真卡名。[素材與來源雜湊](../../source-login/quest-art/sources.json) · [原版空清單](/workspace/shared/unlight-web-port/flash-parity/quest-map/01-map1-empty-original.png)
+- 隔離 Ruby 實跑開圖、讀到已發現和搜尋中兩筆庫存、返回及認證延遲時取消。每次正常進入只保留一條 Quest，Back 發一次 `CS2` 並等該連線關閉。四條原本登入連線、AP、庫存與裝備均通過核對。MAP 選區、地標搜尋視窗、元素分層退場、切場兩秒音樂淡出、完整卡面和戰鬥仍待移植。[原版與新版並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [可重跑測例](flash-parity/qa.md#重跑任務地圖的庫存及返回)

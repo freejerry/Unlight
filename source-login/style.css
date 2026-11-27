@@ -67,7 +67,26 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 }
 
 #post-login { position: absolute; inset: 0; }
-#stage[data-option-transition] { background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000; }
+#stage:is([data-option-transition], [data-quest-transition], [data-screen="quest-pending"], [data-screen="quest-exiting"]) {
+  background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000;
+}
+
+#quest-pending-view { position: absolute; inset: 0; }
+#quest-pending-back {
+  position: absolute;
+  top: 0;
+  left: 712px;
+  width: 48px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: #18232f;
+  cursor: pointer;
+}
+#quest-pending-back img { position: absolute; inset: 0; }
+#quest-pending-back .quest-pending-back-over { visibility: hidden; }
+#quest-pending-back:is(:hover, :focus-visible, :active) .quest-pending-back-over { visibility: visible; }
+#quest-pending-back:disabled { cursor: default; }
 
 @media (prefers-reduced-motion: no-preference) {
   #stage[data-login-transition="revealing"] > #post-login {

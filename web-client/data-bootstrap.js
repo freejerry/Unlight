@@ -118,7 +118,10 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       // A quest schema mismatch leaves the independently validated avatar available.
     }
     const profile = { avatar, questData };
-    if (includeDeckCollection) profile.deckCollection = quests?.deckCollection() ?? null;
+    if (includeDeckCollection) {
+      profile.deckCollection = quests?.deckCollection() ?? null;
+      profile.selectedDeck = quests?.selectedDeck() ?? null;
+    }
     return profile;
   } finally {
     signal.removeEventListener('abort', cancel);

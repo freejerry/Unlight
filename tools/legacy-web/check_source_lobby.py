@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import re
 import sqlite3
 import struct
 from contextlib import closing
@@ -19,6 +20,7 @@ from check_native_session import command_ids, ensure_no_password, frames_for, ve
 
 ENTRY = "/source-login/"
 SESSION_PORTS = {"/socket/12001", "/socket/12002", "/socket/12003", "/socket/12020"}
+QUEST_PORT = "/socket/12005"
 STARTER_CHOICES = ((1, 5, 24, 27), (2, 17, 26, 37))
 STARTER_CARD = 21
 TIMEOUT = 16000
@@ -92,19 +94,68 @@ def account_registration_traffic(sockets, live, start, result):
     assert frames_for(sockets[start][2], 4, 1, exact=True) == [struct.pack("!Hi", 0, result)]
 
 
-def observe_lobby_refresh_codec(page, origin):
+def observe_session_codec(page, origin):
     # Keep the production encoding and original Ruby wire. Capture only the fixture's command shape.
     page.route(origin + "/wire.js", lambda route: route.fulfill(content_type="text/javascript", body="""
-      import { encodeCommand as encode } from './wire.js?refresh-qa-original';
-      export * from './wire.js?refresh-qa-original';
+      import { encodeCommand as encode, readReply as read } from './wire.js?qa-original';
+      export * from './wire.js?qa-original';
       export function encodeCommand(command, fields, key) {
         const frame = encode(command, fields, key);
         const isRefresh = command === 17 && fields?.length === 0;
         if (isRefresh) window.qaLastLobbyRefresh = performance.now();
         window.refreshQASends?.push(isRefresh ? [...encode(command, [])] : command);
+        window.qaQuestWire?.encoded.set(frame, command);
         return frame;
       }
+      export function readReply(body) {
+        const reply = read(body);
+        const replies = window.qaQuestWire?.receiving?.replies;
+        if (replies) {
+          const bytes = new DataView(body.buffer, body.byteOffset, body.byteLength);
+          const data = reply.command === 32 && body.byteLength >= 6 ? [bytes.getInt32(2)]
+            : reply.command === 6 && body.byteLength >= 19
+            ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
+          replies.push([reply.command, body.byteLength, ...data]);
+        }
+        return reply;
+      }
     """))
+
+
+def observe_quest_wire(page):
+    page.add_init_script(f"""(() => {{
+      const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false }};
+      window.WebSocket = class extends WebSocket {{
+        constructor(...args) {{
+          super(...args);
+          if (new URL(this.url).pathname !== {QUEST_PORT!r}) return;
+          const overlaps = wire.sockets.some(socket => !socket.close);
+          const trace = this.questTrace = {{ sent: [], replies: [], close: null, held: false, overlaps }};
+          wire.sockets.push(trace);
+          this.addEventListener('close', event => {{ trace.close = [event.code, event.wasClean]; }});
+        }}
+        send(frame) {{
+          this.questTrace?.sent.push([wire.encoded.get(frame), frame.byteLength]);
+          super.send(frame);
+        }}
+        set onmessage(handler) {{
+          let heldBytes = 0;
+          let heldSize = 0;
+          super.onmessage = this.questTrace ? event => {{
+            const trace = this.questTrace;
+            if (wire.hold && trace.sent.length === 2) {{
+              const chunk = new Uint8Array(event.data);
+              for (const byte of chunk.subarray(0, Math.max(0, 4 - heldBytes))) heldSize = heldSize * 256 + byte;
+              heldBytes += chunk.length;
+              trace.held = heldSize >= 2 && heldBytes >= heldSize + 5;
+              return;
+            }}
+            wire.receiving = trace;
+            try {{ handler.call(this, event); }} finally {{ wire.receiving = null; }}
+          }} : handler;
+        }}
+      }};
+    }})();""")
 
 
 def wait_refresh_cooldown(page):
@@ -125,6 +176,21 @@ def equipped_parts(database, avatar_id):
         SELECT avatar_part_id FROM part_inventories
         WHERE avatar_id = ? AND (used & 1) = 1 ORDER BY id
     """, avatar_id)]
+
+
+def quest_inventory(database, avatar_id):
+    return query(database, """
+        SELECT id, quest_id, status, find_at, progress, deck_index, hp0, hp1, hp2
+        FROM avatar_quest_inventories WHERE avatar_id = ? ORDER BY id
+    """, avatar_id)
+
+
+def quest_deck(database, avatar_id):
+    return query(database, """
+        SELECT i.id, i.chara_card_id, i.position, d.status
+        FROM chara_card_decks d JOIN card_inventories i ON i.chara_card_deck_id = d.id
+        WHERE d.avatar_id = ? AND d.name = 'Deck 1' ORDER BY i.position
+    """, avatar_id)
 
 
 def verify_starter(database, avatar_id, selected_parts):
@@ -261,7 +327,7 @@ def close_lobby_news(page, stage, directory):
     news_box = news.bounding_box()
     assert tuple(news_box[key] for key in ("x", "y", "width", "height")) == (246, 158, 378, 342), news_box
     expect(page.locator("#lobby-news-content li")).to_have_count(3)
-    expect(page.locator("#lobby-quest")).to_be_hidden()
+    expect(page.locator("#quest-map-view")).to_be_hidden()
     capture(stage, directory, "11a-lobby-news.png")
     check_button_hover(page, news_close)
     news_close.press("Escape")
@@ -269,24 +335,146 @@ def close_lobby_news(page, stage, directory):
     expect(page.locator("#lobby-title")).to_be_focused()
 
 
-def check_lobby_dialogs(page, stage, directory):
-    close_lobby_news(page, stage, directory)
-    quest = page.locator("#lobby-quest")
-    quest_open = page.locator("#lobby-quest-load")
-    quest_close = page.locator("#lobby-quest-close")
+def check_quest_scene(page, stage, directory, database, player_id, profile, sockets, live, *, cancel=False, animate=False):
+    core = [socket for socket in live if not socket.is_closed()]
+    assert len(core) == 4 and {urlsplit(socket.url).path for socket in core} == SESSION_PORTS
+    rows = quest_inventory(database, profile[0])
+    cards = quest_deck(database, profile[0])
+    parts = equipped_parts(database, profile[0])
+    launcher = page.locator("#lobby-quest-load")
+    quest = page.locator("#quest-map-view")
+    count = len(sockets)
+    quest_count = page.evaluate("window.qaQuestWire.sockets.length")
+    page.evaluate("hold => { window.qaQuestWire.hold = hold; }", cancel)
+    if animate:
+        page.emulate_media(reduced_motion="no-preference")
+        stage.evaluate("""stage => {
+          window.qaQuestFades = [];
+          new MutationObserver(() => {
+            const phase = stage.dataset.questTransition;
+            const view = stage.querySelector(phase === 'to-quest' ? '#lobby-view' : '#quest-map-view');
+            if (phase && view) {
+              window.qaQuestFades.push([phase, view.inert, ...view.getAnimations().map(a => a.effect.getTiming().duration)]);
+            }
+          }).observe(stage, {attributes: true, attributeFilter: ['data-quest-transition']});
+        }""")
+    launcher.press("Enter")
 
-    quest_open.press("Enter")
-    expect(quest).to_be_visible()
-    expect(quest).to_have_attribute("data-state", "empty")
-    quest_box = quest.bounding_box()
-    assert tuple(quest_box[key] for key in ("x", "y", "width", "height")) == (164, 170, 452, 340), quest_box
-    expect(page.locator("#lobby-quest-status")).to_have_text("持有 0／4 筆任務")
-    expect(quest_close).to_be_focused()
-    capture(stage, directory, "11b-lobby-quest.png")
-    check_button_hover(page, quest_close)
-    quest_close.click()
+    if cancel:
+        screen(stage, "quest-pending")
+        page.wait_for_function("index => window.qaQuestWire.sockets[index]?.held === true", arg=quest_count, timeout=TIMEOUT)
+        expect(quest).to_be_hidden()
+        back = page.locator("#quest-pending-back")
+        expect(back).to_be_focused()
+        back.press("Enter")
+    else:
+        screen(stage, "quest-map")
+        expect(quest).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+        expect(quest).to_have_attribute("data-map-id", "1")
+        expect(page.locator("#quest-map-progress")).to_have_text("0/3")
+        expect(page.locator("#quest-map-capacity")).to_have_text(f"{len(rows)}/4")
+        expect(page.locator("#quest-map-world").get_by_role("img", name="魔女山谷")).to_be_visible()
+        deck = page.locator("#quest-map-deck")
+        expect(deck).to_contain_text("Deck 1")
+        expect(deck).to_have_attribute("data-deck-index", "1")
+        expect(deck.locator("li[data-card-id]")).to_have_count(len(cards))
+        for inventory_id, card_id, position, _ in cards:
+            slot = deck.locator(f'li[data-position="{position}"]')
+            expect(slot).to_have_attribute("data-inventory-id", str(inventory_id))
+            expect(slot).to_have_attribute("data-card-id", str(card_id))
+        expect(page.locator("#quest-map-energy")).to_have_text(f"{profile[5]}/{profile[6]}")
+        portrait = page.locator("#quest-map-avatar")
+        expect(portrait).to_have_attribute("data-avatar-state", "ready", timeout=TIMEOUT)
+        expect(portrait).to_have_attribute("data-avatar-parts", ",".join(map(str, parts)))
+        inventory = page.locator("#quest-map-inventory > li[data-inventory-id]")
+        expect(inventory).to_have_count(len(rows))
+        for inventory_id, quest_id, status, *_ in rows:
+            row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"]')
+            expect(row).to_have_attribute("data-quest-id", str(0 if status == 4 else quest_id))
+            expect(row).to_have_attribute("data-quest-status", str(status))
+            if status == 4:
+                expect(row.get_by_role("timer")).to_have_text(re.compile(r"^\[\d+d\d{2}h\d{2}m\]$"))
+            elif quest_id == 1:
+                expect(row.locator(".quest-map-row-name")).to_have_text("落日大蝙蝠")
+        back = page.locator("#quest-map-back")
+        expect(back).to_be_focused()
+        music(page, "quest", "ulbgm03.mp3")
+        assert len(live) == count + 1 and [socket for socket in live if not socket.is_closed()] == [*core, live[-1]]
+        page.wait_for_function("""() => [...document.querySelectorAll('#quest-map-view img')]
+          .filter(image => image.getClientRects().length && image.getAttribute('src'))
+          .every(image => image.complete && image.naturalWidth > 0)""", timeout=TIMEOUT)
+        capture(stage, directory, "11b-quest-map.png")
+        back.press("Enter")
+
+    screen(stage, "lobby")
     expect(quest).to_be_hidden()
-    expect(quest_open).to_be_focused()
+    expect(launcher).to_be_focused()
+    page.evaluate("() => { window.qaQuestWire.hold = false; }")
+    traces = page.evaluate("window.qaQuestWire.sockets.map(({sent, replies, close, held, overlaps}) => "
+                           "({sent, replies, close, held, overlaps}))")
+    assert len(traces) == quest_count + 1 and not traces[-1]["overlaps"], traces
+    trace = traces[-1]
+    assert len(live) == len(sockets) == count + 1 and live[-1].is_closed()
+    assert [socket for socket in live if not socket.is_closed()] == core
+    quest_url, sent, received = sockets[-1]
+    assert urlsplit(quest_url).path == QUEST_PORT
+    assert trace["close"] == [1000, True], trace
+    outgoing = frames_for(sent, 2, 3 if cancel else 4, exact=True)
+    assert outgoing[0] == struct.pack("!HI", 0, player_id)
+    assert 15 <= len(outgoing[1]) <= 18 and all(len(frame) == 2 for frame in outgoing[2:])
+    assert [size for _, size in trace["sent"]] == [9, len(outgoing[1]) + 3, *([5] * (len(outgoing) - 2))], trace
+    if cancel:
+        assert trace["held"] and [command for command, _ in trace["sent"]] == [0, 1, 2], trace
+        assert [reply[0] for reply in trace["replies"]] == [0], trace
+        frames_for(received, 4, 2)
+    else:
+        assert not trace["held"] and [command for command, _ in trace["sent"]] == [0, 1, 3, 2], trace
+        discovered = [(inventory_id, quest_id, 0, status) for inventory_id, quest_id, status, *_ in rows if status != 4]
+        incoming = trace["replies"]
+        expected = [0, 1, 32, *([6] * len(discovered)), 3]
+        assert [reply[0] for reply in incoming[:len(expected)]] == expected, incoming
+        assert incoming[2][1:] == [6, query(database, "SELECT COUNT(*) FROM action_cards")[0][0]]
+        assert sorted(tuple(reply[2:]) for reply in incoming[3:3 + len(discovered)]) == sorted(discovered)
+        assert incoming[len(expected) - 1] == [3, 2]
+        assert [len(frame) for frame in frames_for(received, 4, len(expected))] == [
+            reply[1] for reply in incoming[:len(expected)]
+        ]
+    music(page, "lobby", "ulbgm02.mp3")
+    if animate:
+        fades = page.evaluate("window.qaQuestFades")
+        assert [(phase, inert) for phase, inert, _ in fades] == [("to-quest", True), ("to-lobby", True)], fades
+        assert all(isclose(duration, 800 / 1.7, abs_tol=0.01) for _, _, duration in fades), fades
+        page.emulate_media(reduced_motion="reduce")
+    assert avatar(database, player_id) == [profile] and equipped_parts(database, profile[0]) == parts
+    assert quest_inventory(database, profile[0]) == rows and quest_deck(database, profile[0]) == cards
+
+
+def check_owned_quest_inventory(page, origin, database, name, password, directory):
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    rows = quest_inventory(database, profile[0])
+    assert flags == 0 and sorted(row[2] for row in rows) == [0, 4], "Use a signed-out discovered and pending fixture"
+    _, sockets, errors = observe(page)
+    live = []
+    page.on("websocket", lambda socket: live.append(socket))
+    observe_session_codec(page, origin)
+    observe_quest_wire(page)
+    assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
+    stage = page.locator("#stage")
+    expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
+    page.locator("#username").fill(name)
+    page.locator("#password").fill(password)
+    page.locator("#login-submit").click()
+    screen(stage, "lobby")
+    close_lobby_news(page, stage, None)
+    active_session_traffic(sockets, live, 0, player_id)
+    (profile,) = avatar(database, player_id)
+    check_quest_scene(page, stage, None, database, player_id, profile, sockets, live, cancel=True)
+    check_quest_scene(page, stage, directory, database, player_id, profile, sockets, live)
+    assert quest_inventory(database, profile[0]) == rows
+    assert not errors, errors
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
 
 
 def check_button_hover(page, button):
@@ -521,8 +709,8 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     page.on("request", lambda request: requests.append(request))
     page.on("response", lambda response: responses.append(response))
     page.on("websocket", lambda socket: live.append(socket))
-    if verify_login_rose:
-        observe_lobby_refresh_codec(page, origin)
+    observe_session_codec(page, origin)
+    observe_quest_wire(page)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     screen(stage, "title")
@@ -669,34 +857,39 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     screen(stage, "lobby")
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
-    check_lobby_dialogs(page, stage, directory)
+    close_lobby_news(page, stage, directory)
+    assert not quest_inventory(database, profile[0])
+    check_quest_scene(page, stage, directory, database, player_id, profile, sockets, live, animate=verify_login_rose)
     parts = equipped_parts(database, profile[0])
     first_portrait = check_avatar_canvas(page, stage, parts, responses)
     assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
         "lobby-option-open", "lobby-quest-load",
     ]
-    assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
+    assert len(sockets) == first + 5 and all(not socket.is_closed() for socket in live[first:first + 4])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
     music(page, "lobby", "ulbgm02.mp3")
     hover_start = len(requests)
     check_lobby_hover(page, stage, directory)
     hover_requests = {urlsplit(request.url).path for request in requests[hover_start:]}
     assert hover_requests <= {"/public/sound/bgm/ulbgm02.mp3"}, sorted(hover_requests)
-    assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
+    assert len(sockets) == first + 5 and all(not socket.is_closed() for socket in live[first:first + 4])
 
-    def verify_options(*, edit):
+    def verify_options(*, edit, session_start):
         wait_refresh_cooldown(page)
-        active = len(sockets) - 4
-        sent_before = [len(sent) for _, sent, _ in sockets[active:]]
+        socket_count = len(sockets)
+        # Reload can dispose the observer before the old document reports its closures.
+        active = range(session_start, session_start + 4)
+        sent_before = [len(sockets[index][1]) for index in active]
         request_start = len(requests)
         page.evaluate("() => { window.refreshQASends = []; }")
         check_options_scene(page, stage, profile, parts, first_portrait, directory, edit=edit)
         assert avatar(database, player_id) == [profile] and equipped_parts(database, profile[0]) == parts
         check_lobby(page, player_id, profile)
         assert check_avatar_canvas(page, stage, parts, responses) == first_portrait
-        assert len(sockets) == len(live) == active + 4 and all(not socket.is_closed() for socket in live[active:])
+        assert len(sockets) == len(live) == socket_count and all(not live[index].is_closed() for index in active)
         refresh_packets = []
-        for start, (url, sent, _) in zip(sent_before, sockets[active:]):
+        for start, index in zip(sent_before, active):
+            url, sent, _ = sockets[index]
             if urlsplit(url).path == "/socket/12002":
                 refresh_packets = sent[start:]
             else:
@@ -710,7 +903,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
             capture(stage, directory, "11h-lobby-returned-from-options.png")
 
     if verify_login_rose:
-        verify_options(edit=True)
+        verify_options(edit=True, session_start=first)
     reload_title()
     username.click()
     music(page, "title", "ulbgm01.mp3")
@@ -735,7 +928,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     music(page, "lobby", "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
     if verify_login_rose:
-        verify_options(edit=False)
+        verify_options(edit=False, session_start=second)
     reload_title()
 
     checked_passwords = [password]
@@ -791,7 +984,7 @@ def check_ap_recovery(page, origin, database, name, password, directory):
     assert flags == 0 and before[5:7] == (4, 5), "Use a signed-out --playtest-first-quest fixture"
     sockets = []
     page.on("websocket", lambda socket: sockets.append(socket))
-    observe_lobby_refresh_codec(page, origin)
+    observe_session_codec(page, origin)
 
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
@@ -854,11 +1047,16 @@ def main():
                         help="SQLite database of the disposable Ruby stage")
     parser.add_argument("--screens", type=Path, help="Save verified 780×680 screenshots in this directory")
     parser.add_argument("--chromium", default="/usr/bin/chromium")
-    parser.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
+    fixture = parser.add_mutually_exclusive_group()
+    fixture.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
+    fixture.add_argument("--quest-user", help="Only check Quest entry and cancel for a disposable discovered/pending fixture")
     parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
+    parser.add_argument("--quest-password-file", type=Path, help="Private password file for --quest-user")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
         parser.error("--refresh-user and --refresh-password-file must be supplied together")
+    if (args.quest_user is None) != (args.quest_password_file is None):
+        parser.error("--quest-user and --quest-password-file must be supplied together")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -866,14 +1064,19 @@ def main():
         ])
         portraits = []
         try:
-            if args.refresh_user is not None:
+            if args.refresh_user is not None or args.quest_user is not None:
                 if args.screens is not None:
                     args.screens.mkdir(parents=True, exist_ok=True)
                 page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
                                         reduced_motion="reduce")
-                check_ap_recovery(page, origin, args.database, args.refresh_user,
-                                  args.refresh_password_file.read_text().rstrip("\r\n"), args.screens)
-                print("Original Ruby AP recovered from 4/5 to 5/5 on the existing Lobby connection.")
+                if args.quest_user is None:
+                    check_ap_recovery(page, origin, args.database, args.refresh_user,
+                                      args.refresh_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Original Ruby AP recovered from 4/5 to 5/5 on the existing Lobby connection.")
+                else:
+                    check_owned_quest_inventory(page, origin, args.database, args.quest_user,
+                                                args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
                 return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):
                 directory = args.screens / f"avatar-{number}" if args.screens is not None else None
@@ -889,7 +1092,7 @@ def main():
         finally:
             browser.close()
     assert len(set(portraits)) == len(STARTER_CHOICES), "Distinct equipped IDs rendered the same avatar"
-    print("Real account creation, equipped lobby art, AP and free-duel stars, entrance hover, and direct relogin passed.")
+    print("Real account creation, equipped lobby art, AP and free-duel stars, entrance hover, Quest map, and direct relogin passed.")
 
 
 if __name__ == "__main__":

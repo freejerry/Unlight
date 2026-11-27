@@ -6,7 +6,7 @@
 
 | 項目 | 整合分支 `cc2ef53` | 暫停分支及診斷證據 |
 | --- | --- | --- |
-| `/source-login/` | 已有原版來源登入、建角、同次登入 Data 交接、教學摘要及已驗收大廳。任務按鈕仍開啟大廳內庫存對話框，讀初次角色快照及同源文字。無獨立任務舞台、Quest 連線、搜尋或戰鬥控制。 | `8595426` 曾做獨立唯讀舞台、保留一條 Quest 連線、回大廳原版 CS2、一批地圖查詢與地圖音樂。`b04db83` 只加中繼關閉修正。兩個提交都不在整合分支。 |
+| `/source-login/` | 大廳「任務」切換到真正的固定舞台與 Quest 連線。第一張普通地圖接入原素材、持有清單、可用牌組、角色及 Back。 | 其餘地圖頁、選圖視窗、探索、道具、完整卡面、選牌組及戰鬥待接入。歷史暫停分支 `8595426`、`b04db83` 僅供原生運輸參考。 |
 | `/web-client/` 診斷實作（原生根入口） | 共享 `web-client/session.js`／`quest-data.js` 已可讀原版 Quest、搜尋、開始、地形、真實 Ruby AI 對戰、結算和返回清單。一般唯讀與搜尋/開始用短 Quest 連線。第一格後留住原版 socket。`startQuestSearch()` 目前固定使用 `questFlag+1` 的 1–35 普通地圖以及計時選項 1。 | 多段實際 Chromium、Ruby 和 SQLite 驗收留在 `docs/playtest/README.md`。此處的結果證明傳輸與遊戲行為可複用。固定舞台版面須另驗收。 |
 | 原版 Ruffle | 原版對照可使用既有隔離 Ruby 與 Flash 載入流程。 | 地圖、首關戰鬥、兩個結果確認及通關進度已有瀏覽器截圖和隔離資料核對。 |
 | Rust 倒數示範與 68 事件回放 | 各自獨立驗證工具，可維持現有用途。 | 具有倒數或播放 UI。首關的 Ruby 持有紀錄、AP、地形和對局仍由 Quest 服務管理。 |
@@ -54,7 +54,7 @@
 - 原版到最後可達位置後解鎖牌組、清理損傷、移除庫存、保存勝負日誌並處理原版獎勵與區域通關旗標。SC22 + 匹配持有 ID 的 SC24 才是終局。戰鬥輸／和對任務都記敗 1。當前區域普通勝利加通關數，足額且打贏 boss 才前進旗標並把下一區通關數歸零，舊區獎勵不可當前區進度。原版 SC26/28 是普通地圖，SC30/31 是事件類型與各自原始計數。原版故事有 `story_no` 的獲勝分支在 SC24 後可發 SC134，寶箱顯示期間暫停完成面板。原版圖像來源 `quest_result.swf`，戰鬥結果 OK、任務結算 OK、寶箱／故事返回是不同層。戰鬥結果返回 Quest 地圖本身不等於登出。
 - 匹配成交的 Hi-Lo 額外獎勵由 SC41 bonus=true 觸發，是同一個 Ruby reward 狀態。候選 SC122、起始骰 SC123、猜高低 SC124、結果骰 SC125、最終獎勵 SC126，可伴隨 SC38 實際持有卡。原版 CS36/37/38/39 分別高、低、取消、重試。現有 web-client 有守衛，會把 bonus=true 標為仍待處理，不會用普通返回跳過。若後續要做，須從真 `Reward`／event handlers 開始驗證。本地不可抽骰或重送。
 - 已證明的失敗按官方封包處置。搜尋有 AP1／已達上限30／地圖未知31／旗標不足32。開始另有牌組不存在16／任務不存在40（原版可能先 SC22）／狀態不符41／牌組鎖42。移動有錯誤路徑43、無角色牌15。某些 handler 無回覆（正在打鬥、找不到 avatar／row 的分支），保持未確認，透過可靠更新或使用者決策恢復。發送寫入後漏回不能以再次同樣 CS5/13/16 或卡片控制求證。UI 可在有確定前置錯誤時復原重試，必要時保留已證實欄位並停止進一步寫入。
-- 原版主動放棄 CS14 會清理並回敗，歸檔 result4。CS15 是獨立刪除，不是返回。關掉 Quest 後一般 Lobby/Auth 仍活著。若正在冒險，Data 再登入會執行 `quest_all_out`，清除進行／已解決／失敗列，解鎖牌組並記成 result5。所以同登入回 Lobby 的正常 CS2、放棄與重新登入要分開。中繼短路會造成 Chromium code1000 但 `wasClean=false`，過往 25 次 EOF 有 3 次，暫停分支修後 Chromium 雙向各 25 次均乾淨。整合分支目前仍舊中繼。唯獨重做其生命週期修正並成對重測，保持原版 Quest peer 關閉證明和同源路由限制。
+- 原版主動放棄 CS14 會清理並回敗，歸檔 result4。CS15 是獨立刪除。關掉 Quest 後一般 Lobby/Auth 仍活著。若正在冒險，Data 再登入會執行 `quest_all_out`，清除進行／已解決／失敗列，解鎖牌組並記成 result5。同登入回 Lobby 的正常 CS2、放棄與重新登入各有對應測例。較早的中繼曾在 25 次 EOF 中出現 3 次 `1000` 但 `wasClean=false`。第一張固定舞台地圖現已驗關閉順序與原 Quest peer 正常退出。
 
 來源：[Ruby 戰鬥結算](../../../app/server/src/controller/quest_controller.rb#L554) · [Ruby quest_delete](../../../app/server/src/model/avatar.rb#L3034) · [quest_all_clear](../../../app/server/src/model/avatar.rb#L3295) · [Data 登入的清理](../../../app/server/src/controller/data_controller.rb#L223) · [Quest 原版視窗](../../../app/client/src/view/QuestView.as#L582) · [Reward handlers](../../../app/server/src/controller/duel_controller.rb#L88) · [獎勵回覆](../../../app/server/src/controller/duel_controller.rb#L1588) · [原生終局守衛](../../../web-client/session.js#L1395) · [目前中繼](../../../tools/legacy-web/serve.py#L404)
 
@@ -72,13 +72,22 @@
 
 ## 優先整合與驗收
 
+### 第一張普通地圖的原版對照
+
+- 未加相容補丁的繁中 `Unlight.swf` 連隔離 Ruby `ee38622`。空庫存角色從大廳實際進入魔女山谷，畫面是 `0/3`、`0/4`、Deck 1 及 AP `5/5`。保留原大廳連線，按 Back 後原 Quest 連線關閉。另一位角色有一筆已發現和一筆搜尋中真實庫存，原版顯示 `2/4`、AP `3/5`、NEW 圖示和搜尋倒數。該原版擷取的任務名稱及角色外觀存在缺失。[原版空清單](/workspace/shared/unlight-web-port/flash-parity/quest-map/01-map1-empty-original.png) · [原版兩筆庫存](/workspace/shared/unlight-web-port/flash-parity/quest-map/05-map1-found-and-pending-original.png) · [原版返回](/workspace/shared/unlight-web-port/flash-parity/quest-map/04-map1-back-lobby-original.png)
+- Quest 認證後，真正的原版封包先出 `SC32`，只向有已發現項目的角色重播該筆 `SC6`。搜尋中項目由原登入 Data 快照維持，普通入場流程未見 `SC14`。魔女山谷飾帶的滑入處為 `(266.5,314.5)` 起約 141×38，底圖上的城堡裝飾位於上方；點飾帶開「開始搜索」視窗，左下 MAP 開選圖。Back 前關閉視窗，試玩期間未提交搜尋或扣減 AP。[原版封包及 SQLite 查核](/workspace/shared/unlight-web-port/flash-parity/quest-map/wire.json) · [飾帶滑入](/workspace/shared/unlight-web-port/flash-parity/quest-map/06-map1-landmark-label-hover-original.png) · [選圖](/workspace/shared/unlight-web-port/flash-parity/quest-map/03-map-picker-original.png) · [搜尋預覽](/workspace/shared/unlight-web-port/flash-parity/quest-map/07-map1-search-preview-original.png)
+
+### 固定舞台的交付與後續驗收
+
 固定舞台第一個驗收案例由大廳 `btn_b` 進真正的普通任務地圖。新角色應看到魔女山谷 `0/3`、空庫存 `0/4`、實際 Deck 1、角色與 AP。既有角色另驗已發現和搜尋中列共存，依持有 ID 把 Quest 登入重播與角色快照對位。Back 使用 `(712,0)` 的原圖，播放 `ulse01.mp3`，退場後送一次 `Quest CS2` 並等該連線關閉。回大廳驗既有四條連線和任務入口焦點。[原版進入](../../../app/client/src/view/QuestView.as#L288) · [原版退出](../../../app/client/src/view/QuestView.as#L466) · [Ruby 登入重播](../../../app/server/src/controller/quest_controller.rb#L515)
 
 第一區 `map01_ch.swf` 原底圖是 `(0,32)` 的 760×444 JPEG，主地標及 Up／Over 位於 `(239,214)`。`quest_base.swf` 提供上下框與導航，`questlist_ch.swf` 在 `(464,36)` 依容量選固定幀，任務列從 `(464,44)` 起每排 16 px。兩個畫面的 AP 共享原封包狀態。任務角色為 `(525,230)`，大廳的右側三個入口在任務模式隱藏。[地圖來源](../../../app/client/src/view/image/quest/WorldMapImage.as#L381) · [清單初始化](../../../app/client/src/view/scene/quest/QuestList.as#L184) · [共用角色模式](../../../app/client/src/view/scene/common/AvatarView.as#L221)
 
-1. 在 `cc2ef53` 的同一固定舞台增加唯讀普通任務場景。沿用既有 `SessionSocket`、`confirmChannel`、`readQuestInventoryPushes`、資料快照和 catalog。負責單一 Quest 的開啟、登入重播 fence、保留、Back CS2/peer close 和登入受控的取消。明確驗收四條既存連線繼續、Quest 重入沒有重疊、新角色及既有角色狀態不同、pending 被保留、獲授權區域與原版 36 地圖邊界。保持現有大廳、登入和共用 Workbench 入口。若需新增 catalog 回覆，維持既有單筆/缺值相容。用協定行為增量處理中繼 EOF bug。暫停分支的場景有參考價值，但它的 scene lock 會封鎖一般 Quest 方法，合併它也不會產生可玩完整流程。
+1. 第一張地圖沿用 `SessionSocket`、原版 Quest 登入重播、同源任務目錄及同次登入角色資料。原始地圖、透明地標、容量幀、列狀態與牌組底板均按原始座標與來源雜湊封裝。第一張圖的前三區可渲染，實跑涵蓋魔女山谷。進到尚未移植的地圖頁會保留共用框架、清單及 Back。登入等待中提供 Back 取消，正常返回等 Quest 確認關閉後回大廳。完整卡面、MAP 視窗、探索及選牌組仍待接入。當前牌組使用原版 `current_deck` 和實際卡位。新版切場仍直接切換 BGM，原版大廳和任務離開時各有兩秒淡出。[來源清單](../../../source-login/quest-art/sources.json) · [場景渲染](../../../source-login/quest-map.js) · [Quest 連線](../../../web-client/session.js) · [原版任務聲道淡出](../../../app/client/src/controller/QuestCtrl.as)
 2. 在已保留的**一條** Quest 上把原版三分鐘魔女山谷搜尋、pending、已發現和真 AP 接入固定舞台，再串同一張手牌可判定的 CS13 + 首格 CS16。把認證與 read/write 區分可重用，短 socket 診斷仍可維持。入口和遞進共用租期，不能為同一個在進行冒險再開第二條。實測時間要包含真 180 秒或分開標明 Ruby 原模型的可控 fixture 係數，故障測例只留真回覆不把未知成功算進。之後接實際對戰 phase、局結果和 Quest 結算，保留 SC24 ↔ inventory 準確關聯。其他搜尋索引、舊區和額外分支按各自證據擴展。
 3. 回歸優先順序。首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。不要在測試的記錄內寫帳密或會話憑證。
 4. 故障不可續進的最小檢查為延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。所有資料核對在隔離原版 Ruby 的 SQLite 只讀查詢。已通過的早期原版、共享傳輸和暫停測例分別標示，待這一分支重跑後才認定固定舞台行為完成。
 
-留存證據：[原版 Ruffle 首場 PvE 與持久化](../README.md#L21) · [原版倒數](../README.md#L77) · [共用 AP／開始](../README.md#L179) · [第一回合手牌等早期原生測例](../README.md#L239) · [換角及雙戰鬥](../README.md#L313) · [同次登入結算](../README.md#L337) · [新建單卡，真 180 秒](../README.md#L349) · [雙卡續遊](../README.md#L357) · [目前固定舞台驗收仍是大廳視窗](../../../tools/legacy-web/check_source_lobby.py#L236)
+第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
+
+留存證據：[原版 Ruffle 首場 PvE 與持久化](../README.md#L21) · [原版倒數](../README.md#L77) · [共用 AP／開始](../README.md#L179) · [第一回合手牌等早期原生測例](../README.md#L239) · [換角及雙戰鬥](../README.md#L313) · [同次登入結算](../README.md#L337) · [新建單卡，真 180 秒](../README.md#L349) · [雙卡續遊](../README.md#L357) · [固定舞台地圖驗收](../../../tools/legacy-web/check_source_lobby.py#L321)

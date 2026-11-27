@@ -131,7 +131,11 @@ const questFields = [
   { key: 'questFlag', width: 4 },
   { key: 'questClearNum', width: 4 },
 ];
-const fields = [...questFields, 2 * 4, { key: 'freeDuelCount', width: 1 }]; // friend_max, part_max, free_duel_count.
+const fields = [
+  ...questFields,
+  2 * 4, { key: 'freeDuelCount', width: 1 }, // friend_max, part_max, free_duel_count.
+  3 * 4, { key: 'currentDeck', width: 1 }, // Original exp, gem and Quest find power, then current_deck.
+];
 
 function integerList(csv, signed = false) {
   if (csv === '') return [];
@@ -193,37 +197,52 @@ function readyQuestDecks(values) {
   return names.flatMap((name, index) => deckChoices.has(index) ? [{ index, name }] : []);
 }
 
-function ownedDeckCollection(values) {
+function readOwnedCardLists(values) {
   const lists = readDeckLists(values);
   if (!lists || values.cardInventoryIds === undefined) return null;
-  const { names, statuses, ids, indices, positions } = lists;
   const inventoryIds = integerList(values.cardInventoryIds);
-  if (inventoryIds.length !== ids.length || new Set(inventoryIds).size !== ids.length
+  if (inventoryIds.length !== lists.ids.length || new Set(inventoryIds).size !== lists.ids.length
     || inventoryIds.some((id) => id <= 0 || id > MAX_INT32)
-    || ids.some((id) => id <= 0 || id > MAX_INT32) || statuses[1] > MAX_INT32) {
+    || lists.ids.some((id) => id <= 0 || id > MAX_INT32)) {
     return null;
   }
+  return { ...lists, inventoryIds };
+}
 
-  const binder = [];
+function ownedDeckCards({ ids, indices, positions, inventoryIds }, index) {
   const cards = [];
   const deckPositions = new Set();
   for (let i = 0; i < ids.length; i += 1) {
-    const inventoryId = inventoryIds[i];
-    const cardId = ids[i];
-    if (indices[i] === 0) {
-      binder.push(Object.freeze({ inventoryId, cardId }));
-    } else if (indices[i] === 1) {
-      const position = positions[i];
-      if (position < 0 || position > MAX_INT32 || deckPositions.has(position)) return null;
-      deckPositions.add(position);
-      cards.push(Object.freeze({ inventoryId, cardId, position }));
-    }
+    if (indices[i] !== index) continue;
+    const position = positions[i];
+    if (position < 0 || position > MAX_INT32 || deckPositions.has(position)) return null;
+    deckPositions.add(position);
+    cards.push(Object.freeze({ inventoryId: inventoryIds[i], cardId: ids[i], position }));
   }
   cards.sort((left, right) => left.position - right.position);
+  return Object.freeze(cards);
+}
+
+function ownedDeckCollection(values) {
+  const lists = readOwnedCardLists(values);
+  if (!lists || lists.statuses[1] > MAX_INT32) return null;
+  const cards = ownedDeckCards(lists, 1);
+  if (!cards) return null;
+  const binder = lists.inventoryIds.flatMap((inventoryId, i) => lists.indices[i] === 0
+    ? [Object.freeze({ inventoryId, cardId: lists.ids[i] })] : []);
   return Object.freeze({
     binder: Object.freeze(binder),
-    deck: Object.freeze({ index: 1, name: names[1], status: statuses[1], cards: Object.freeze(cards) }),
+    deck: Object.freeze({ index: 1, name: lists.names[1], status: lists.statuses[1], cards }),
   });
+}
+
+function selectedDeck(values) {
+  const index = values.currentDeck;
+  if (!Number.isInteger(index) || index < 1) return null;
+  const lists = readOwnedCardLists(values);
+  if (!lists || index >= lists.names.length) return null;
+  const cards = ownedDeckCards(lists, index);
+  return cards ? Object.freeze({ index, name: lists.names[index], cards }) : null;
 }
 
 export function readQuestMapReply(reply, region) {
@@ -255,8 +274,12 @@ function readQuestGetReply(reply) {
   return { row: questInventoryRow(inventoryId, questId, status), timer, power };
 }
 
-export function readQuestInventoryReply(reply) {
-  return readQuestGetReply(reply).row;
+export function readQuestInventoryReply(reply, { loginReplay = false } = {}) {
+  const { row, timer, power } = readQuestGetReply(reply);
+  if (loginReplay && (timer !== 0 || power !== 100 || row.status === PENDING_STATUS)) {
+    throw new Error('Invalid Quest login replay.');
+  }
+  return row;
 }
 
 export function readQuestSearchReply(reply) {
@@ -752,6 +775,13 @@ export function createQuestDataReader() {
       if (fieldIndex < questFields.length) return null;
       try {
         return ownedDeckCollection(values);
+      } catch {
+        return null;
+      }
+    },
+    selectedDeck() {
+      try {
+        return selectedDeck(values);
       } catch {
         return null;
       }

@@ -8,7 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 from xml.etree import ElementTree
 
-from aiohttp import WSMsgType, web
+from aiohttp import WSCloseCode, WSMsgType, web
 from yarl import URL
 
 import source_stage_art
@@ -61,8 +61,9 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
     "public/sound/se/ulse01.mp3": "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
     "public/sound/se/ulse02.mp3": "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
 }
-SOURCE_LOBBY_TRACKS = {
+SOURCE_SCENE_TRACKS = {
     "public/sound/bgm/ulbgm02.mp3": "7ed9b16414f8691f080cc592830f0d120b372bb3aa77f183106a8c7fe6bbfbfd",
+    "public/sound/bgm/ulbgm03.mp3": "ebb719112de8cc37999a487ebe13f69c5dd84f77fbc96a7adfc64df453d34ab8",
     "public/sound/bgm/bgm011.mp3": "95971edab9cab6e762ac8d59b207fc82696fcf510c544ad7a6db787ceae31789",
 }
 SOURCE_SCENE_ART = {
@@ -222,6 +223,8 @@ def native_quest_catalog():
                     "mapId": map_id,
                     "caption": row["caption"] or "",
                     "ap": int(row["ap"]),
+                    "difficulty": int(row["difficulty"]), "rarity": int(row["rarity"]),
+                    "kind": int(row["kind"]),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
                     "firstLand": first_land,
                     "positions": positions,
@@ -418,27 +421,36 @@ def create_app(
         except (OSError, TimeoutError) as error:
             raise web.HTTPServiceUnavailable() from error
 
-        async def forward():
-            try:
-                while data := await reader.read(65536):
-                    await socket.send_bytes(data)
-            finally:
-                await socket.close()
+        async def forward_to_browser():
+            while data := await reader.read(65536):
+                await socket.send_bytes(data)
 
-        receiver = None
-        try:
-            await socket.prepare(request)
-            receiver = asyncio.create_task(forward())
+        async def forward_to_upstream():
             async for message in socket:
                 if message.type != WSMsgType.BINARY:
                     break
                 writer.write(message.data)
                 await writer.drain()
+
+        try:
+            await socket.prepare(request)
+            pipes = (asyncio.create_task(forward_to_browser()), asyncio.create_task(forward_to_upstream()))
+            close_code = WSCloseCode.OK
+            try:
+                await asyncio.wait(pipes, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                for pipe in pipes:
+                    pipe.cancel()
+                for pipe in pipes:
+                    try:
+                        await pipe
+                    except asyncio.CancelledError:
+                        pass
+                    except OSError:
+                        close_code = WSCloseCode.INTERNAL_ERROR
+            # Stop both forwarding tasks before completing the WebSocket close handshake.
+            await socket.close(code=close_code)
         finally:
-            if receiver is not None:
-                receiver.cancel()
-                with suppress(asyncio.CancelledError, OSError):
-                    await receiver
             writer.close()
             with suppress(OSError):
                 await writer.wait_closed()
@@ -499,7 +511,7 @@ def create_app(
                 if path is None:
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
-            for filename, digest in SOURCE_LOBBY_TRACKS.items():
+            for filename, digest in SOURCE_SCENE_TRACKS.items():
                 if path := pinned_native_asset(assets, filename, digest):
                     app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
             for target, (filename, digest, decode, content_type) in SOURCE_SCENE_ART.items():
@@ -528,6 +540,7 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
+                "quest-map.js", "quest-map.css",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
@@ -544,6 +557,11 @@ def create_app(
             for name in ("background.jpg", "back.png", "back-over.png"):
                 filename = f"option-art/{name}"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            quest_art = SOURCE_LOGIN_ROOT / "quest-art"
+            app.router.add_get("/source-login/quest-art/sources.json", serve_file(quest_art / "sources.json"))
+            for image in sorted(quest_art.glob("*")):
+                if image.suffix in (".png", ".jpg"):
+                    app.router.add_get(f"/source-login/quest-art/{image.name}", serve_file(image))
             for sheet in sorted((SOURCE_LOGIN_ROOT / "avatar-wardrobe").glob("sheet-*.png")):
                 app.router.add_get(f"/source-login/avatar-wardrobe/{sheet.name}", serve_file(sheet))
             app.router.add_get("/source-login/assets/panel_gene.png", serve_file(panel))

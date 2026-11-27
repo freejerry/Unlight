@@ -39,18 +39,18 @@
 
 | 大廳源按鈕 | 原版事件、目的地與返回 | 目標驗收／固定舞台狀態 |
 | --- | --- | --- |
-| `btn_b` 任務 | `EntranceSet.as:59` → `LobbyView.as:542–570,987–1016`，普通 QUEST_NORMAL、STATE_QUEST，起真正獨立 QuestView 並以 BACK 回同一登入。 `_isRaidView` 特殊分支走 Raid 與 Lobby click，正常任務分支的 Lobby click 呼叫在原碼被註解。普通地圖場景曲取 `ulbgm03.mp3`。 | 目前固定舞台按鈕只展示快取清單，待驗真正地圖與第五連線生命週期。已知 Ruffle 有真實地圖與 Back，`docs/playtest/desktop/07-quest-map.jpg` 及 `docs/playtest/README.md:35`。 |
+| `btn_b` 任務 | `EntranceSet.as:59` → `LobbyView.as:542–570,987–1016`，普通 QUEST_NORMAL、STATE_QUEST，起獨立 QuestView 並以 Back 回同一登入。`_isRaidView` 特殊分支走 Raid。普通入口播放 `ulse02`，地圖曲取 `ulbgm03.mp3`。 | 固定舞台已接入第一張普通地圖、真實持有清單及第五條連線。返回時發 `Quest CS2`，等待原連線關閉再回大廳。[任務驗收](quest-pve.md) |
 | `btn_f` 對戰／`btn_g` 牌組 | `gameButtonClickHandler` → STATE_GAME → `GameView`（停大廳曲），`editButtonClickHandler` → STATE_EDIT → `DeckEditView`（此處停曲被註解）。一般返回重掛 LobbyView。來源 `LobbyView.as:483–499,752–812`。 | 固定舞台有原始入口素材與懸停，尚未接場景。工作版已驗 Deck 1／Binder 的部分真寫入，這不能代表固定舞台的完整原版牌組與對戰。 |
 | `btn_h` 設定／`btn_d` 教學 | `LobbyView.as:501–517,817–845,883–911` 通常播放 Lobby click，再開 OptionView 或 TutorialView，兩者 Back 回原 Lobby。OptionView 讀取 BGM／SE／CV 滑桿及提示開關，預設50，使用本機 `SharedObject`。來源 `OptionView.as:86–103,148–198,207–254`、`Option.as:27–38,66–119,150–173`、`image/option/BG.as:20`。 | 固定舞台已實跑設定操作、音量即時更新、重新開頁保留與同登入 Back。教學入口已顯示原始圖樣與懸停，主題、音畫狀態與 CS9 仍待接入。[設定驗收](options-reference.md) |
 | `btn_i` 商店／`btn_e` 道具／`btn_j` 暗房／`btn_c` 圖書館／`btn_k` Raid | `EntranceSet.as:59–86` 對映與旗標，`LobbyView.as:423–432,519–539,574–582,649–685` 切各自狀態，個別分支返回時把 STATE 設回 Lobby，登出則走離場。 | 已掛原始素材與可讀名稱的入口保持真實可用性。各路徑的檢視、權限、回到同會話、付款／活動副作用另外安排各自的實際隔離驗收。 |
 | 序號、排名、右側圖示 | `EntranceSet.as:83–86` 正式 TCN 綁 `btn_serial`，`Entrance.as:385–409,764–772` 打開原版序號表單，Rank 是嵌在 Entrance 落幕的讀取區。右側各圖示打開各自原版功能。 | 序號及社交不要拿真資料試寫。先核對入口、可視範圍、原版動畫、真資料格式和關閉，後續單獨驗成功寫入與拒絕。 |
 
-大廳 BGM 是 `LobbyCtrl.as:303–326` 與 `LobbyBGM.as:12–16` 的 `ulbgm02.mp3`。普通大廳入口的 `SE.playLobbyClick()` 與常規返回 `SE.playClick()` 是不同事件。《任務》普通分支已註解前者，需按實際呼叫確認而非把所有入口配同一效果。
+大廳 BGM 是 `LobbyCtrl.as:303–326` 與 `LobbyBGM.as:12–16` 的 `ulbgm02.mp3`。普通任務入口用 `LobbyView.as:567` 的 `SE.playLobbyClick()`，回大廳的 Back 用 `QuestView.as:387` 的 `SE.playClick()`。
 
 ## 證據與下一個小驗收
 
 - 原版視覺基準 `docs/playtest/desktop/01-title.jpg` 至 `07-quest-map.jpg`。逐場景 780 × 680 的 Ruffle 基準 `docs/playtest/browser/02-browser-lobby.png`、`03-browser-quest.png`、`12-browser-latest-news.png`、`29-browser-panel-current.png`。原版與相容補丁差異用同份素材與已核對 SWF 來源分開呈現。歷史發布繁中公告缺來源，實測用已標記的繁中 XML。
-- 固定舞台已有 `tools/legacy-web/check_source_login.py` 和 `check_source_lobby.py`，涵蓋嚴格自動播放、真實拒絕和 Auth 玫瑰、建立角色、同登入資料切換、真裝備及兩種外觀、原版入口懸停、公告與重新登入。腳本現有的任務對話框驗收只證明快取資料，應在實際 QuestView 接通後另加生命周期測例。
+- 固定舞台 `check_source_login.py` 和 `check_source_lobby.py` 涵蓋嚴格自動播放、真實拒絕和 Auth 玫瑰、建立角色、同登入資料切換、真裝備及兩種外觀、原版入口懸停、公告與重新登入。任務測例走實際地圖入口與 Back，並核對 Quest 和四條原登入連線。[可重跑環境](qa.md)
 - 下一個可獨立交付的原流程是大廳任務入口 → 既有登入中的獨立任務地圖 → BACK。只使用已驗的原版服務與原版地圖資料。玩家按任務才開 Quest 通道，通過認證後以原始旗標顯示魔女山谷 0/3、容量與真實牌組。Back 只用原版 Quest CS2 關閉第五連線，確認四條既有連線和 DB 都保持。再測 Quest 單獨拒絕／斷線、晚回覆和原版曲切換，搜尋及出戰可留給下一個可獨立驗收的功能。相關原碼 `QuestView.as:229–239,288–295,318–348,385–391,502–518`、`QuestClearGauge.as:154–161,189–208`、`QuestServer.as:126–140`。另一條較小且獨立的本機功能是原版 OptionView 的進入、音效設定與返回。
 ### 共用與開發類別
 

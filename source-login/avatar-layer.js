@@ -1,15 +1,18 @@
 import { renderLobbyAvatar } from './lobby-avatar.js';
 import { getPreferences, subscribePreferences } from './preferences.js';
 
-function avatarMarkup(idPrefix) {
-  return `
-  <div class="art-slot avatar" aria-hidden="true"></div>
-  <canvas id="${idPrefix}-avatar" class="avatar-portrait" width="290" height="450" aria-label="虛擬人物"></canvas>
+const sideEntries = `
   <ul class="side-entries" aria-label="角色入口">
     <li data-symbol="record"><span class="sr-only">紀錄</span><img class="record-art" src="/source-login/lobby-art/record.png" width="48" height="32" alt="" /></li>
     <li data-symbol="friend"><span class="sr-only">好友</span><img class="friend-art" src="/source-login/lobby-art/friend.png" width="48" height="37" alt="" /></li>
     <li data-symbol="item"><span class="sr-only">道具</span><img class="item-art" src="/source-login/lobby-art/item.png" width="48" height="32" alt="" /></li>
-  </ul>
+  </ul>`;
+
+function avatarMarkup(idPrefix) {
+  return `
+  <div class="art-slot avatar" aria-hidden="true"></div>
+  <canvas id="${idPrefix}-avatar" class="avatar-portrait" width="290" height="450" aria-label="虛擬人物"></canvas>
+  ${idPrefix === 'quest-map' ? '' : sideEntries}
   <dl id="${idPrefix}-profile" class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
     <div class="name">
       <dt class="sr-only">Name</dt>
@@ -196,11 +199,12 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
   if (!avatar || !Number.isSafeInteger(session.playerId) || session.playerId < 1) {
     throw new Error('A verified player and avatar are required.');
   }
-  if (idPrefix !== 'lobby' && idPrefix !== 'options') {
+  if (idPrefix !== 'lobby' && idPrefix !== 'options' && idPrefix !== 'quest-map') {
     throw new Error('Unknown avatar layer.');
   }
   if (signal.aborted) return Promise.resolve();
 
+  layer.dataset.avatarMode = idPrefix;
   layer.innerHTML = avatarMarkup(idPrefix);
   const avatarName = layer.querySelector(`#${idPrefix}-avatar-name`);
   const freeDuel = layer.querySelector('.free-duel');
@@ -241,7 +245,7 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
   const portrait = layer.querySelector('.avatar-portrait');
   return renderLobbyAvatar(portrait, avatar.equippedPartIds, {
     signal,
-    fadeOnly: idPrefix === 'options',
+    fadeOnly: idPrefix !== 'lobby',
   }).then(() => {
     return Promise.allSettled(portrait.getAnimations().map(animation => animation.finished));
   }).catch(() => {

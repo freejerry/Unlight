@@ -1,0 +1,222 @@
+.source-quest-map {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  width: 780px;
+  height: 680px;
+  overflow: hidden;
+  background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000;
+  color: #f7f0e4;
+  font: 12px/1.3 Verdana, var(--interface-font);
+}
+
+.quest-map-world,
+.quest-map-world img,
+.quest-map-landmark-hit,
+.quest-map-frame,
+.quest-map-select-art,
+.quest-map-deck-back-art,
+.quest-map-deck-next-art,
+.quest-map-item-art,
+#quest-map-progress,
+.quest-map-list,
+.quest-map-list-art,
+#quest-map-inventory,
+#quest-map-capacity,
+.quest-map-pages > *,
+#quest-map-deck,
+.quest-map-deck-case,
+#quest-map-deck-name,
+#quest-map-deck-cards > li,
+#quest-map-status,
+#quest-map-back {
+  position: absolute;
+}
+
+.quest-map-world { inset: 0 auto 0 0; z-index: 0; width: 760px; }
+.quest-map-landscape { top: 32px; left: 0; }
+.quest-map-frame { inset: 0 auto auto 0; z-index: 1; pointer-events: none; }
+.quest-map-select-art { top: 416px; left: 0; z-index: 1; }
+.quest-map-deck-back-art { top: 632px; left: 8px; z-index: 1; }
+.quest-map-deck-next-art { top: 632px; left: 40px; z-index: 1; }
+.quest-map-item-art { top: 576px; left: 712px; z-index: 6; }
+.quest-map-landmark-base { z-index: 1; }
+:is(.quest-map-landmark-up, .quest-map-landmark-over) { z-index: 2; }
+.quest-map-badge { left: 227px; top: 230px; z-index: 3; }
+.quest-map-world img { pointer-events: none; }
+.quest-map-landmark-hit { display: block; z-index: 4; }
+.quest-map-landmark-over { visibility: hidden; }
+.quest-map-landmark:has(.quest-map-landmark-hit:is(:hover, :focus-visible)) .quest-map-landmark-up { visibility: hidden; }
+.quest-map-landmark:has(.quest-map-landmark-hit:is(:hover, :focus-visible)) .quest-map-landmark-over { visibility: visible; }
+
+#quest-map-progress { z-index: 5; pointer-events: none; }
+
+#quest-map-progress progress,
+#quest-map-progress::before {
+  display: block;
+  position: absolute;
+  top: 5px;
+  left: -26px;
+  width: 64px;
+  height: 6px;
+}
+
+/* QuestGauge draws an 80% black track with a 1px stroke centered on its edges. */
+#quest-map-progress::before {
+  background: rgb(0 0 0 / 80%);
+  box-shadow: 0 0 0 1px rgb(221 0 0 / 50%), inset 0 0 0 1px rgb(221 0 0 / 50%);
+  content: "";
+}
+
+#quest-map-progress progress {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: transparent;
+}
+
+#quest-map-progress progress::-webkit-progress-bar { background: transparent; }
+#quest-map-progress progress::-webkit-progress-value { background: #f00; }
+#quest-map-progress progress::-moz-progress-bar { background: #f00; }
+
+#quest-map-progress > span {
+  position: absolute;
+  top: 9px;
+  left: -20px;
+  width: 60px;
+  color: #ff1010;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+  font: 24px/30px "Bradley Gratis", Georgia, serif;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.source-quest-map > .avatar-layer { z-index: 3; }
+.quest-map-list { top: 36px; left: 464px; width: 296px; height: 216px; z-index: 4; }
+.quest-map-list-art { inset: 0 auto auto 0; pointer-events: none; }
+
+#quest-map-inventory {
+  top: 8px;
+  width: 296px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 10px/16px Verdana, var(--interface-font);
+  color: #e5e2df;
+}
+
+#quest-map-inventory > li {
+  position: relative;
+  height: 16px;
+}
+
+#quest-map-inventory > li:is(:hover, :focus-visible) {
+  background: url("./quest-art/quest-row-selected.png") 24px top no-repeat;
+}
+
+#quest-map-inventory > li > :not(.sr-only) {
+  position: absolute;
+  white-space: nowrap;
+}
+
+.quest-map-row-state { top: 0; left: 5px; width: 16px; height: 16px; }
+.quest-map-row-kind { top: 0; left: 24px; width: 16px; height: 16px; }
+.quest-map-row-rarity-art { top: 0; left: 224px; width: 16px; height: 16px; }
+.quest-map-row-ap-art { top: 0; left: 256px; width: 16px; height: 16px; }
+.quest-map-row-level { left: 38px; width: 34px; font-size: 8px; }
+.quest-map-row-name { left: 72px; width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.quest-map-row-rarity { left: 235px; width: 20px; text-align: center; }
+.quest-map-row-ap { left: 270px; width: 26px; }
+.quest-map-row-timer { left: 100px; width: 100px; text-align: right; font-variant-numeric: tabular-nums; }
+
+#quest-map-inventory .quest-map-row-tooltip {
+  display: none;
+  top: 100%;
+  right: 0;
+  z-index: 1;
+  width: max-content;
+  max-width: 264px;
+  padding: 3px 5px;
+  border: 1px solid #878785;
+  background: #282725;
+  color: #f7f0e4;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+#quest-map-inventory li:is(:hover, :focus-visible) .quest-map-row-tooltip { display: block; }
+
+#quest-map-capacity {
+  top: 174px;
+  left: 246px;
+  width: 50px;
+  color: #fff;
+  line-height: 16px;
+  text-align: center;
+}
+
+#quest-map-capacity.quest-map-capacity-full { color: #ff5050; }
+.quest-map-pages > * { top: 176px; }
+#quest-map-list-page { left: 96px; width: 60px; text-align: center; }
+.quest-map-pages > button { width: 16px; height: 16px; padding: 0; border: 0; cursor: pointer; }
+.quest-map-page-prev { left: 24px; background: url("./quest-art/quest-list-page-back.png") no-repeat; }
+.quest-map-page-next { left: 216px; background: url("./quest-art/quest-list-page-next.png") no-repeat; }
+
+#quest-map-deck { inset: 0; z-index: 5; pointer-events: none; }
+.quest-map-deck-case { top: 475px; left: 25px; }
+#quest-map-deck-name {
+  top: 635px;
+  left: 65px;
+  width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ff3636;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  font-size: 10px;
+}
+
+#quest-map-deck-cards { margin: 0; padding: 0; list-style: none; }
+#quest-map-deck-cards > li {
+  width: 84px;
+  padding: 4px 2px;
+  color: #111;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+#quest-map-status {
+  z-index: 6;
+  top: 5px;
+  left: 16px;
+  width: 680px;
+  margin: 0;
+  color: #fff4d7;
+  line-height: 22px;
+}
+
+#quest-map-back {
+  z-index: 6;
+  top: 0;
+  left: 712px;
+  width: 48px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+#quest-map-back img { position: absolute; inset: 0; }
+.quest-map-back-over { visibility: hidden; }
+#quest-map-back:is(:hover, :focus-visible, :active) .quest-map-back-over { visibility: visible; }
+#quest-map-back:disabled { cursor: default; }
+
+.source-quest-map :is(button, [tabindex]):focus-visible {
+  outline: 2px solid #ffdf9c;
+  outline-offset: -2px;
+}

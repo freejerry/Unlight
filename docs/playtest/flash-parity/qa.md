@@ -1,6 +1,6 @@
 # 驗收基線與證據 · `cc2ef535b6d3416f3c5796d9ccbbf2e802e90151`
 
-正式 native gateway 的 `/source-login/` 是固定舞台遊戲，啟動時需要解碼 Wasm。`/` 是原生診斷與試玩入口，`/replay/` 播放已提交的 Ruby 事件。原版 Ruffle gateway 在另一 HTTP 埠提供 `/`。登入、註冊、建角、新手指引、大廳與設定在 `/source-login/` 同一 URL 切換。大廳有 14 個可懸停的原版美術位置，其中 5 個播放動畫。OPTION 開啟全場景設定，Back 回同一登入的大廳。任務按鈕開啟 Data 快照的持有任務對話框，原版地圖及戰鬥待接入。公告自動開啟，關閉後回到大廳標題。[Gateway 註冊](../../../tools/legacy-web/serve.py#L464) · [固定舞台切換](../../../source-login/login.js) · [設定驗收](options-reference.md)
+正式 native gateway 的 `/source-login/` 是固定舞台遊戲，啟動時需要解碼 Wasm。`/` 是原生診斷與試玩入口，`/replay/` 播放已提交的 Ruby 事件。原版 Ruffle gateway 在另一 HTTP 埠提供 `/`。登入、註冊、建角、新手指引、大廳、設定與第一張普通任務地圖在 `/source-login/` 同一 URL 切換。大廳有 14 個可懸停的原版美術位置，其中 5 個播放動畫。任務進入獨立舞台與 Quest 連線，Back 回同一登入的大廳。公告自動開啟，關閉後回到大廳標題。[固定舞台切換](../../../source-login/login.js) · [設定驗收](options-reference.md) · [任務驗收](quest-pve.md)
 
 | 範圍 | 有效證據與判讀 | 原件 |
 | --- | --- | --- |
@@ -61,6 +61,33 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
   --database "$proof_dir/native-ruby/app/server/data/game_dev2.db" \
   --refresh-user apqa --refresh-password-file "$proof_dir/apqa-password" \
   --screens "$proof_dir/native-ap-recovery"
+```
+
+### 重跑任務地圖的庫存及返回
+
+一般 `check_source_lobby.py` 包含新角色進入魔女山谷與 Back。要驗已發現、搜尋中兩筆真庫存，以及暫緩真的 Quest 認證後取消，建立另一個隔離副本並以 `--playtest-user questqa --playtest-first-quest` 準備角色。以下程式先驗證登出及原始單筆庫存，使用相同 Ruby 模型增加搜尋中項目。[原版任務模型](../../../app/server/src/model/avatar.rb#L2798)
+
+```bash
+repo="$PWD"
+server_dir="$proof_dir/native-ruby/app/server"
+(
+  cd "$server_dir"
+  UNLIGHT_LEGACY_STAGE="$server_dir" ruby - "$repo/tools/legacy-server/isolated_server" questqa <<'RUBY'
+$SERVER_NAME = 'quest-scene-qa'
+require ARGV.fetch(0)
+include Unlight
+player = Player.first(name: ARGV.fetch(1))
+abort 'Expected a signed-out fixture' unless player && (player.state & 3) == 0
+avatar = Avatar.first(player_id: player.id)
+rows = avatar&.avatar_quest_inventories&.map { |row| [row.quest_id, row.status] }
+abort 'Expected the first-quest fixture' unless avatar&.energy == 4 && rows == [[1, QS_NEW]]
+abort 'Could not create pending search' unless avatar.get_quest(1, 10) == 0
+RUBY
+)
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database "$server_dir/data/game_dev2.db" \
+  --quest-user questqa --quest-password-file "$proof_dir/questqa-password" \
+  --screens "$proof_dir/native-quest-map"
 ```
 
 ## 待驗收

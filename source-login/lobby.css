@@ -37,8 +37,8 @@
 }
 
 .avatar-layer, .source-lobby .entrance-layer { inset: 0; }
-.source-options .avatar-layer { pointer-events: none; }
-.source-options .avatar-layer :is(.avatar-status, .side-entries > li) { pointer-events: auto; }
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) { pointer-events: none; }
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) :is(.avatar-status, .side-entries > li) { pointer-events: auto; }
 .source-lobby .entrance-layer { pointer-events: none; }
 .source-lobby .entrance-layer :is([data-symbol], button) { pointer-events: auto; }
 
@@ -61,8 +61,8 @@
 
 .avatar-layer .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
 .avatar-layer .avatar-portrait { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
-/* OptionView uses AvatarView's Match anchor (785 - 260). */
-.source-options .avatar-portrait { left: 525px; }
+/* AvatarView uses (785 - 260) for both Match and Quest modes. */
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) .avatar-portrait { left: 525px; }
 
 .source-lobby .entrance-art { position: absolute; top: 0; left: 0; display: block; }
 .source-lobby .top-entries {
@@ -315,16 +315,13 @@
   overflow-wrap: anywhere;
 }
 
-.source-lobby-quest-body, .source-lobby-news-body {
+.source-lobby-news-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.source-lobby-quest-body p, .source-lobby-news-body p { margin: 0; }
-#lobby-quest-status:empty { display: none; }
-#lobby-quest-retry { align-self: start; }
-#lobby-quest[data-state="error"] #lobby-quest-status,
+.source-lobby-news-body p { margin: 0; }
 #lobby-news[data-state="error"] #lobby-news-status { color: #ffd1ca; }
 
 .source-lobby-scroll {
@@ -334,16 +331,6 @@
   scrollbar-gutter: stable;
 }
 
-.source-lobby-quest-rows { margin: 0; padding: 0; list-style: none; }
-.source-lobby-quest-rows li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 6px;
-  padding: 4px 0;
-  border-block-end: 1px solid #ffffff18;
-}
-.source-lobby-quest-rows li span { color: #d2dce9; }
 .source-lobby-news-content :is(p, ol, ul) { margin-block: 0 .5rem; }
 .source-lobby-news-content :is(ol, ul) { padding-inline-start: 1.2em; }
 .source-lobby-news-content li + li { margin-block-start: .55rem; }

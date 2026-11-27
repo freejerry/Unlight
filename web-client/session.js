@@ -76,6 +76,7 @@ const QUEST_NEW = 0;
 const QUEST_UNSOLVED = 1;
 const QUEST_IN_PROGRESS = 2;
 const QUEST_PENDING = 4;
+const QUEST_ACTION_CARD_COUNT_REPLY = 32;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const QUEST_LAND_SLOTS = 15;
 const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
@@ -301,12 +302,12 @@ class SessionSocket {
   }
 
   async releaseQuest(signal) {
-    signal.throwIfAborted();
+    signal?.throwIfAborted();
     this.send(2, []);
     this.#reason = 'closed';
     try {
       await bounded(this.closed, signal, CLOSE_TIMEOUT);
-      signal.throwIfAborted();
+      signal?.throwIfAborted();
       if (!this.#cleanPeerClose) throw new SessionError('network');
     } catch (error) {
       this.#closeTransport();
@@ -456,7 +457,11 @@ function observeInitialData(socket, signal) {
 async function confirmChannel(channel, playerId, sessionKey, signal) {
   const { socket } = channel;
   await socket.open(signal);
-  const negotiation = await socket.ask(0, [playerId], [0, 2], { signal, nextKey: sessionKey });
+  const negotiation = await socket.ask(0, [playerId], [0, 2], {
+    signal,
+    nextKey: sessionKey,
+    onSend() { channel.negotiationSent = true; },
+  });
   if (negotiation.command !== 0) throw new SessionError('protocol');
   const sign = negotiation.string(4);
   if (!/^\d{1,4}$/.test(sign) || negotiation.string(10) !== 'are you ok') {
@@ -692,13 +697,26 @@ async function finishQuestObservation(socket, signal, unsubscribe) {
   pong.done();
 }
 
-async function readQuestInventoryPushes(socket, confirm, signal) {
+async function readQuestInventoryPushes(socket, confirm, signal, { sceneChannel } = {}) {
   const rows = [];
+  let sawCardCount = false;
   let invalid = false;
-  const unsubscribe = socket.observe([QUEST_INVENTORY_REPLY], (reply) => {
+  const commands = sceneChannel ? [QUEST_ACTION_CARD_COUNT_REPLY, QUEST_INVENTORY_REPLY] : [QUEST_INVENTORY_REPLY];
+  const unsubscribe = socket.observe(commands, (reply) => {
     if (invalid) return;
     try {
-      const row = readQuestInventoryReply(reply);
+      if (sceneChannel) {
+        if (!sceneChannel.verified) throw new SessionError('protocol');
+        if (reply.command === QUEST_ACTION_CARD_COUNT_REPLY) {
+          const count = reply.int();
+          reply.done();
+          if (sawCardCount || count < 0) throw new SessionError('protocol');
+          sawCardCount = true;
+          return;
+        }
+        if (!sawCardCount) throw new SessionError('protocol');
+      }
+      const row = readQuestInventoryReply(reply, { loginReplay: Boolean(sceneChannel) });
       if (row.status === QUEST_PENDING) return;
       if (rows.length === MAX_QUEST_ROWS) throw new SessionError('protocol');
       rows.push(row);
@@ -710,11 +728,30 @@ async function readQuestInventoryPushes(socket, confirm, signal) {
     await confirm();
     // Ruby finishes the inventory resend in its login callback before handling KeepAlive.
     await finishQuestObservation(socket, signal, unsubscribe);
-    if (invalid) throw new SessionError('protocol');
+    if (invalid || (sceneChannel && !sawCardCount)) throw new SessionError('protocol');
     return rows;
   } finally {
     unsubscribe();
   }
+}
+
+function mergeQuestSceneRows(cachedRows, liveRows) {
+  const unmatched = new Map(liveRows.map((row) => [row.inventoryId, row]));
+  if (unmatched.size !== liveRows.length) throw new SessionError('protocol');
+  const rows = [];
+  for (const cached of cachedRows) {
+    const live = unmatched.get(cached.inventoryId);
+    if (live) {
+      rows.push(cached.status === live.status && cached.questId === live.questId ? { ...cached, ...live } : live);
+      unmatched.delete(cached.inventoryId);
+    } else if (cached.status === QUEST_PENDING) {
+      // The original Quest login deliberately omits pending searches; Data supplies their timers.
+      rows.push(cached);
+    }
+  }
+  rows.push(...unmatched.values());
+  if (rows.length > MAX_QUEST_ROWS) throw new SessionError('protocol');
+  return rows;
 }
 
 async function readQuestDiscovery(socket, confirm, signal, inventoryId) {
@@ -1874,6 +1911,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let closing;
   let questRequest;
   let questReturn;
+  let questScene;
   let searchUncertain = false;
   let questStartUncertain = false;
   let adventure = null;
@@ -1922,6 +1960,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       const returning = questReturn;
       const profileOperation = profileRequest;
       const retained = adventure;
+      const scene = questScene;
       if (retained) retained.state = 'closed';
       for (const operation of [request, returning, profileOperation]) {
         operation?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
@@ -1930,6 +1969,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (request) await request.task.catch(() => {});
         if (returning) await returning.task.catch(() => {});
         if (profileOperation) await profileOperation.task.catch(() => {});
+        if (scene) await closeQuestScene(scene).catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
           retained.nonCombatObserver?.stop();
@@ -1944,6 +1984,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function assertQuestAvailable() {
     if (questRequest || questReturn || profileRequest) throw new SessionError('busy');
+    if (questScene) throw new SessionError(questScene.state === 'return-uncertain' ? 'quest-return-uncertain' : 'busy');
     if (adventure) {
       if (adventure.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
       throw new SessionError(adventure.state === 'uncertain' ? 'quest-land-uncertain' : 'quest-adventure-active');
@@ -1951,7 +1992,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   function editableDeck() {
-    if (!initialData?.avatar || !questData || adventure || questRequest || questReturn || profileRequest
+    if (!initialData?.avatar || !questData || questScene || adventure || questRequest || questReturn || profileRequest
         || searchUncertain || questStartUncertain || questData.rows.some((row) => row.status === QUEST_IN_PROGRESS)) return null;
     const deck = initialData.deckCollection?.deck;
     if (deck?.index !== 1 || deck.status !== 0 || deck.cards.length >= CHARACTER_DECK_SIZE
@@ -2019,6 +2060,37 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     }
   }
 
+  function closeQuestScene(scene) {
+    scene.closeTask ??= (async () => {
+      if (scene.state === 'return-uncertain') throw new SessionError('quest-return-uncertain');
+      scene.state = 'closing';
+      const { socket, negotiationSent } = scene.channel;
+      try {
+        // Ruby's unbind also deletes the player registration after negotiation alone.
+        if (negotiationSent) await socket.releaseQuest();
+        else await socket.close();
+      } catch {
+        scene.state = 'return-uncertain';
+        await socket.close();
+        throw new SessionError('quest-return-uncertain');
+      }
+      if (questScene === scene) questScene = undefined;
+    })();
+    return scene.closeTask;
+  }
+
+  function maintainQuestScene() {
+    const scene = questScene;
+    if (scene?.state !== 'open' || scene.heartbeat) return;
+    const { socket } = scene.channel;
+    scene.heartbeat = socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch((error) => {
+      if (scene.state !== 'open') return;
+      scene.state = 'return-uncertain';
+      scene.failure = error.kind === 'timeout' ? 'expired' : 'network';
+      return socket.close();
+    }).finally(() => { scene.heartbeat = null; });
+  }
+
   function maintainAdventure() {
     const current = adventure;
     if (!current?.connected || questRequest || current.heartbeat || current.battle?.busy
@@ -2081,6 +2153,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   }
 
   const timer = setInterval(async () => {
+    maintainQuestScene();
     maintainAdventure();
     try {
       const replies = await Promise.all([
@@ -2294,6 +2367,47 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (!initialData.avatar) return null;
       if (!questData) throw new SessionError('protocol');
       return { ...questData, rows: questData.rows.map((row) => ({ ...row })) };
+    },
+    async openQuestScene({ signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (!initialData.avatar || !questData) throw new SessionError('protocol');
+
+      let scene;
+      try {
+        return await readFromQuest(async (socket, confirm, questSignal, channel) => {
+          scene = { channel, state: 'opening' };
+          questScene = scene;
+          channel.retained = true;
+          return readQuestInventoryPushes(socket, confirm, questSignal, { sceneChannel: channel });
+        }, signal, (liveRows) => {
+          const { socket } = scene.channel;
+          socket.assertOpen();
+          const rows = mergeQuestSceneRows(questData.rows, liveRows);
+          questData.rows = rows;
+          scene.state = 'open';
+          const staleDeck = ['pending-verification', 'uncertain'].includes(deckEditState);
+          const decks = staleDeck ? [] : initialData.avatar.questDecks;
+          const snapshot = Object.freeze({
+            ...questData,
+            rows: Object.freeze(rows.map((row) => Object.freeze({ ...row }))),
+            questDecks: Object.freeze(decks.map((deck) => Object.freeze({ ...deck }))),
+            selectedDeck: staleDeck ? null : initialData.selectedDeck,
+          });
+          return {
+            snapshot,
+            close: () => closeQuestScene(scene),
+            closed: socket.closed.then((reason) => {
+              if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');
+              scene.state = 'return-uncertain';
+              return scene.failure ?? reason;
+            }),
+          };
+        });
+      } catch (error) {
+        if (scene) await closeQuestScene(scene);
+        throw error;
+      }
     },
     async readQuestMaps({ signal } = {}) {
       return readFromQuest(readQuestMapList, signal);

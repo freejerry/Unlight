@@ -1,8 +1,9 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
-import { fadeTitleMusic, playTitleAlert } from './bgm.js';
+import { fadeTitleMusic, playBackClick, playLobbyClick, playTitleAlert } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
 import { mountOptions } from './options.js';
+import { mountQuestMap } from './quest-map.js';
 import { startLoginTransition } from './stage.js';
 
 const stage = document.querySelector('#stage');
@@ -50,6 +51,7 @@ let alertReturnFocus = null;
 let activeSession = null;
 let cleanupScreen;
 let optionExit;
+let questRoute;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const lobbyFadeMs = 800 / 1.7;
 const sineOut = CSS.supports('animation-timing-function', 'linear(0, .7071, 1)')
@@ -164,6 +166,7 @@ function changeScreen(screen, soundscape = screen) {
   optionExit?.cancel();
   optionExit = undefined;
   delete stage.dataset.optionTransition;
+  delete stage.dataset.questTransition;
   cleanupScreen?.();
   cleanupScreen = undefined;
   postLogin.replaceChildren();
@@ -176,6 +179,9 @@ function changeScreen(screen, soundscape = screen) {
 function returnToTitle(session, reason, focus = true) {
   if (activeSession !== session) return;
   activeSession = null;
+  questRoute?.controller.abort();
+  questRoute?.animation?.cancel();
+  questRoute = undefined;
   currentAttempt?.transition?.cancel();
   currentAttempt?.restoreTitleMusic?.();
   changeScreen('title');
@@ -193,22 +199,25 @@ function requestLogout(session) {
   void session.close().catch(() => returnToTitle(session, 'network'));
 }
 
-function showLobby(session, returningFromOptions = false) {
+function showLobby(session, returnFocus) {
   if (activeSession !== session || !session.initialData?.avatar) return;
   changeScreen('lobby');
-  const fadeIn = returningFromOptions && !reducedMotion.matches
+  const fadeIn = returnFocus && !reducedMotion.matches
     ? view => view.animate([{ opacity: 0 }, { opacity: 1 }], { duration: lobbyFadeMs, easing: sineOut })
     : undefined;
-  cleanupScreen = mountLobby(postLogin, { session, fadeIn, onOptions: () => switchOptions(session, true) });
-  if (returningFromOptions) {
-    postLogin.querySelector('#lobby-option-open').focus({ preventScroll: true });
-  }
+  cleanupScreen = mountLobby(postLogin, {
+    session,
+    fadeIn,
+    onOptions: () => switchOptions(session, true),
+    onQuest: () => openQuest(session),
+  });
+  if (returnFocus) postLogin.querySelector(returnFocus).focus({ preventScroll: true });
 }
 
 async function switchOptions(session, opening) {
   const current = opening ? 'lobby' : 'options';
   const view = postLogin.firstElementChild;
-  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit) return;
+  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit || questRoute) return;
   if (opening) session.refreshLobbyAvatar?.();
 
   if (!reducedMotion.matches) {
@@ -229,7 +238,102 @@ async function switchOptions(session, opening) {
     changeScreen('options', 'lobby');
     cleanupScreen = mountOptions(postLogin, { session, onBack: () => switchOptions(session, false) });
   } else {
-    showLobby(session, true);
+    showLobby(session, '#lobby-option-open');
+  }
+}
+
+async function fadeQuestRoute(route, transition) {
+  const view = postLogin.firstElementChild;
+  if (!view) return;
+  view.inert = true;
+  stage.dataset.questTransition = transition;
+  if (reducedMotion.matches) return;
+  route.animation = view.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: lobbyFadeMs, easing: sineOut, fill: 'forwards',
+  });
+  await route.animation.finished.catch(() => {});
+  route.animation = undefined;
+}
+
+function mountQuestWait(route) {
+  const view = document.createElement('section');
+  view.id = 'quest-pending-view';
+  view.innerHTML = `
+    <p class="sr-only" role="status">正在連線至任務。</p>
+    <button id="quest-pending-back" type="button" aria-label="返回大廳">
+      <img src="/source-login/option-art/back.png" width="48" height="32" alt="">
+      <img class="quest-pending-back-over" src="/source-login/option-art/back-over.png" width="48" height="32" alt="">
+    </button>`;
+  const back = view.querySelector('button');
+  back.addEventListener('click', () => {
+    back.disabled = true;
+    playBackClick();
+    route.controller.abort();
+  }, { once: true });
+  view.addEventListener('keydown', event => {
+    if (event.key === 'Escape') back.click();
+  });
+  postLogin.append(view);
+  back.focus({ preventScroll: true });
+  return () => view.remove();
+}
+
+function returnFromQuest(route, message = '') {
+  if (questRoute !== route) return;
+  questRoute = undefined;
+  route.controller.abort();
+  showLobby(route.session, '#lobby-quest-load');
+  if (message) openAlert('quest-error', 'Error', message, postLogin.querySelector('#lobby-quest-load'));
+}
+
+async function leaveQuest(route) {
+  if (questRoute !== route || route.leaving) return;
+  route.leaving = true;
+  await fadeQuestRoute(route, 'to-lobby');
+  if (questRoute !== route) return;
+  changeScreen('quest-exiting', 'silent');
+  try {
+    await route.scene.close();
+    returnFromQuest(route);
+  } catch {
+    returnFromQuest(route, '無法確認任務連線已關閉。請重新整理並登入後再試。');
+  }
+}
+
+async function openQuest(session) {
+  if (activeSession !== session || stage.dataset.screen !== 'lobby' || questRoute || optionExit) return;
+  const route = { session, controller: new AbortController() };
+  const { signal } = route.controller;
+  questRoute = route;
+  session.refreshLobbyAvatar?.();
+  playLobbyClick();
+  changeSoundscape('silent');
+  await fadeQuestRoute(route, 'to-quest');
+  if (questRoute !== route) return;
+  changeScreen('quest-pending', 'quest');
+  cleanupScreen = mountQuestWait(route);
+  try {
+    route.scene = await session.openQuestScene({ signal });
+    if (questRoute !== route || signal.aborted) {
+      await route.scene.close();
+      returnFromQuest(route);
+      return;
+    }
+    changeScreen('quest-map', 'quest');
+    cleanupScreen = mountQuestMap(postLogin, { session, snapshot: route.scene.snapshot, onBack: () => leaveQuest(route) });
+    void route.scene.closed.then(() => {
+      if (!route.leaving) returnFromQuest(route, '任務連線已中斷。請重新整理並登入後再試。');
+    });
+  } catch (error) {
+    try {
+      await route.scene?.close();
+    } catch (closeError) {
+      error = closeError;
+    }
+    const message = error?.kind === 'quest-return-uncertain'
+      ? '無法確認任務連線已關閉。請重新整理並登入後再試。'
+      : signal.aborted ? '' : '任務連線未完成。請再試一次。';
+    returnFromQuest(route, message);
   }
 }
 
