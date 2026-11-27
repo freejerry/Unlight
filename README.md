@@ -6,6 +6,8 @@ Unlight Browser Card Game
 
 ## 開發交接
 
+接續原生 Web 移植時，請先讀[原生 Web 規格、任務票與雲端交接](docs/native-web-plan.md)。
+
 原版繁中 Flash 的重建、Ruby 測試基準及瀏覽器相容執行方式請參考以下文件。
 
 - [原版客戶端建置與資料來源](tools/legacy-build/README.md)
