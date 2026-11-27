@@ -31,8 +31,12 @@ const questUi = {
   mapProgress: document.querySelector('#session-quest-map-progress'),
   mapName: document.querySelector('#session-quest-map-name'),
   mapCount: document.querySelector('#session-quest-map-count'),
+  mapCaption: document.querySelector('#session-quest-map-caption'),
   inventory: document.querySelector('#session-quest-inventory'),
   rows: document.querySelector('#session-quest-rows'),
+  details: document.querySelector('#session-quest-details'),
+  detailList: document.querySelector('#session-quest-detail-list'),
+  detailTemplate: document.querySelector('#session-quest-detail-template'),
   fields: ['count', 'capacity', 'flag', 'clear-count'].map(field => document.querySelector(`#session-quest-${field}`)),
 };
 
@@ -106,14 +110,23 @@ function showQuestStatus(state, kind) {
   questUi.load.disabled = state === 'loading';
 }
 
+function setOriginalText(element, text) {
+  const hasText = typeof text === 'string' && Boolean(text.trim());
+  element.hidden = !hasText;
+  element.textContent = hasText ? text : '';
+}
+
 function clearQuestResults() {
   questUi.progress.hidden = true;
   questUi.mapProgress.hidden = true;
   delete questUi.mapProgress.dataset.mapId;
   questUi.mapName.textContent = '';
   questUi.mapCount.textContent = '';
+  setOriginalText(questUi.mapCaption, '');
   questUi.inventory.hidden = true;
   questUi.rows.replaceChildren();
+  questUi.details.hidden = true;
+  questUi.detailList.replaceChildren();
   for (const field of questUi.fields) field.textContent = '';
 }
 
@@ -142,7 +155,39 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows }) {
   showQuestStatus(rows.length ? 'success' : 'empty');
 }
 
-async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
+function showQuestDetails(quests) {
+  for (const quest of quests) {
+    const detail = questUi.detailTemplate.content.firstElementChild.cloneNode(true);
+    const caption = detail.querySelector('.quest-caption');
+    const lands = detail.querySelector('.quest-lands');
+    setOriginalText(caption, quest.caption);
+
+    for (const land of Array.isArray(quest.lands) ? quest.lands : []) {
+      if (!Number.isSafeInteger(land?.id) || land.id <= 0) continue;
+      const name = document.createElement('strong');
+      name.className = 'quest-land-name';
+      setOriginalText(name, land.name);
+      const description = document.createElement('p');
+      description.className = 'quest-land-caption quest-original-text';
+      setOriginalText(description, land.caption);
+      if (name.hidden && description.hidden) continue;
+      const item = document.createElement('li');
+      item.dataset.landId = String(land.id);
+      item.append(name, description);
+      lands.append(item);
+    }
+
+    lands.hidden = !lands.childElementCount;
+    if (caption.hidden && lands.hidden) continue;
+    detail.dataset.questId = String(quest.id);
+    detail.querySelector('summary').textContent = typeof quest.name === 'string' && quest.name.trim()
+      ? quest.name : `任務 ${quest.id}`;
+    questUi.detailList.append(detail);
+  }
+  questUi.details.hidden = !questUi.detailList.childElementCount;
+}
+
+async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal, session) {
   const ids = new Set(rows.map(({ questId }) => questId).filter(id => id > 0 && id <= MAX_CATALOG_ID));
   const mapId = questFlag + 1;
   const params = new URLSearchParams();
@@ -154,7 +199,7 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
   const response = await fetch(`/api/quest-catalog?${params}`, { signal: AbortSignal.any([signal, timeout]) });
   if (!response.ok) return;
   const { quests, map } = await response.json();
-  if (signal.aborted) return;
+  if (signal.aborted || active !== session || !session.initialData) return;
 
   if (map?.id === mapId && Number.isSafeInteger(map.clearTarget) && map.clearTarget > 0) {
     const completed = Math.min(questClearNum, map.clearTarget);
@@ -163,6 +208,7 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
     questUi.mapProgress.dataset.mapId = String(mapId);
     questUi.mapProgress.hidden = false;
   }
+  if (map?.id === mapId) setOriginalText(questUi.mapCaption, map.caption);
 
   if (!Array.isArray(quests)) return;
   const catalog = new Map(quests.filter(quest => ids.has(quest?.id)).map(quest => [quest.id, quest]));
@@ -176,6 +222,7 @@ async function enrichQuestSnapshot({ rows, questFlag, questClearNum }, signal) {
       map.hidden = false;
     }
   }
+  showQuestDetails(catalog.values());
 }
 
 function showNewsState(state, message = '') {
@@ -335,10 +382,10 @@ questUi.load.addEventListener('click', async () => {
   showQuestStatus('loading');
   try {
     const snapshot = await session.readQuestInventory({ signal: controller.signal });
-    if (questRequest !== controller) return;
+    if (questRequest !== controller || active !== session || !session.initialData) return;
     if (!snapshot) throw new SessionError('protocol');
     displayQuestSnapshot(snapshot);
-    await enrichQuestSnapshot(snapshot, controller.signal).catch(() => {});
+    await enrichQuestSnapshot(snapshot, controller.signal, session).catch(() => {});
   } catch (error) {
     if (questRequest === controller) {
       clearQuestResults();

@@ -139,6 +139,18 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-inventory th { color: var(--muted); font-size: .84rem; }
 .quest-inventory td { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .quest-map { display: block; color: var(--muted); font-size: .83rem; }
+.quest-original-text { color: #2d444f; font-size: .92rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quest-map-caption { margin-top: .35rem; }
+.quest-details { margin-top: .8rem; }
+.quest-details h4 { margin: 0 0 .4rem; font-size: .96rem; }
+.quest-detail-list, .quest-lands { display: grid; gap: .45rem; }
+.quest-detail { min-width: 0; padding: .48rem .65rem; border: 1px solid var(--line); border-radius: .45rem; background: #f5f8f9; }
+.quest-detail summary { min-height: 1.9rem; padding: .18rem 0; font-size: .93rem; font-weight: 640; cursor: pointer; overflow-wrap: anywhere; }
+.quest-detail summary:focus-visible { outline: 2px solid #007f69; outline-offset: 2px; }
+.quest-caption { margin-top: .32rem; }
+.quest-lands { margin: .45rem 0 .15rem; padding-inline-start: 1.2rem; }
+.quest-land-name { color: #2d444f; font-size: .88rem; overflow-wrap: anywhere; }
+.quest-land-caption { margin-top: .15rem; }
 
 .session-news { max-width: 44rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid var(--line); }
 .session-news summary { width: fit-content; min-height: 2rem; padding: .22rem 0; font-size: 1rem; font-weight: 680; cursor: pointer; }

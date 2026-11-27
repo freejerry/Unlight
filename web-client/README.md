@@ -30,7 +30,7 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 要驗收登入後的「最新消息」，在上述啟動指令加上 `--news /path/to/news.xml`，登入後展開該區塊。可用 `--news app/client/public/news.xml.orig` 查看庫內保存的日文範例。瀏覽器讀取 UTF-8 XML 的 `<XML><news>` 內容，保留來源文字和段落、粗體、清單等基本格式。省略 `--news` 時，首次展開後會隱藏此區塊。[原版讀取方式](../app/client/lib/News.as#L130) · [公告驗收](../docs/playtest/README.md#原生瀏覽器登入)
 
-有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。繁中名稱及通關門檻取自版本庫的原版 CSV。按鈕讀取已收到的快照，再查詢同源名稱資料。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208)
+有角色的帳號可按「讀取任務資料」，查看登入完成時的清單、任務狀態、清單上限和普通區域通關數。進度下方會顯示目前區域的說明。展開「關卡說明」下的任務可讀取原始繁中敘述及地形名稱和描述。頁面讀取已收到的快照和同源的 CSV 資料，供唯讀核對。原版 Data 登入仍會執行既有的任務清理，驗收時使用隔離帳號。[原版登入流程](../app/server/src/controller/data_controller.rb#L208) · [任務快照驗收](../docs/playtest/README.md#原生瀏覽器任務快照)
 
 面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線、登入及任務快照。
 
@@ -39,7 +39,7 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 - **連線。** KeepAlive 與登入共用請求封包編碼。依原版的 KeepAlive 命令向認證、大廳、資料、戰鬥、任務和全域聊天服務送出二進位訊息，逐位元組比對 Ruby 回應。單項失敗時可重試。[共用編碼](wire.js#L15) · [原版命令範例](../app/client/src/net/command/AuthCommand.as#L93) · [ActionScript 封包格式](../app/client/src/net/ULSocket.as#L85) · [Ruby 封包格式](../app/server/src/protocol/ulserver.rb#L107)
 - **登入。** 瀏覽器以原版 SRP 協定計算認證證明，驗證伺服器憑證後，使用原版工作階段金鑰完成大廳、資料和全域聊天的交握。密碼在瀏覽器記憶體內處理。此入口供回環介面的隔離驗收使用。[原版認證流程](../app/client/src/net/server/AuthServer.as) · [原版大廳交握](../app/client/src/net/server/LobbyServer.as)
 - **登入初始資料。** 收到原版 Data 服務的 15 個版本欄位後，唯讀解析角色摘要，或彙整未創角帳號收到的起始選項數量。登出或連線中斷時清空摘要。[原版客戶端 Data 流程](../app/client/src/net/server/DataServer.as) · [原生解析程式](data-bootstrap.js)
-- **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得地圖，並以該地圖門檻為顯示上限。找不到名稱時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
+- **任務快照。** 沿用同一份 Data 角色回覆讀取庫存、旗標與通關數。區域進度依原版規則，使用旗標加一取得普通地圖 1 至 35 的資料，並以該地圖門檻為顯示上限。地形依原始欄位順序顯示，每個地形 ID 列一次。缺少說明時仍可查看原始欄位。[任務解析](quest-data.js) · [原版區域進度](../app/client/src/view/scene/quest/QuestClearGauge.as#L189)
 - **資源。** 從既有素材目錄讀取商店 PNG `item_id020.png` 和標題 MP3 `ulbgm01.mp3`，比對新入口與原版入口交付的位元組，再由 Chromium 解碼圖片並用使用者手勢確認音訊開始播放。[原版標題音樂的載入位置](../app/client/src/sound/bgm/TitleBGM.as)
 - **九宮格。** WebGL 2 和 Canvas 2D 共用 120 × 96 的原版面板圖、原始切片座標與幾何計算。預覽共用一個 WebGL 2 繪圖環境，將結果放到原有的可見畫布。WebGL 2 無法繪製或圖形環境中斷時，Canvas 2D 會接手重繪。面板會按可用寬度和裝置像素比更新。[原版切片設定](../app/client/data/css/UL.css.cn#L35) · [繪圖驗收](../docs/playtest/README.md#原生-webgl-2-九宮格)
 - **對局紀錄。** 固定種子 `2026` 的 68 個事件作為日後對照的 Ruby 輸出，包含順序、回合、HP、卡牌、擲骰和勝負。[對局比對方式](../tools/legacy-server/README.md#對局基準)

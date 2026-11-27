@@ -29,6 +29,9 @@ REPLAY_BASELINE = ROOT.parent / "legacy-server/fixtures/trace-2026.json"
 QUEST_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 TCN_NORMAL_MAP_COUNT = 35  # QUEST_CAP in app/client/lib/Const.as
+QUEST_LAND_FIELDS = tuple(
+    f"quest_land_id_{column}_{row}" for column in range(5) for row in range(3)
+)  # Same slot order as Quest#land_set.
 NATIVE_ASSETS = {
     "image": "image/rm_shop/item_id020.png",
     "audio": "sound/bgm/ulbgm01.mp3",
@@ -72,17 +75,33 @@ def native_panel_skin(assets):
 def native_quest_catalog():
     with (QUEST_CSV / "ja/QuestMaps.csv").open(encoding="utf-8-sig", newline="") as source:
         maps = {
-            int(row["id"]): {"id": int(row["id"]), "name": row["name_tcn"] or row["name"],
-                             "clearTarget": int(row["difficulty"])}
+            int(row["id"]): {
+                "id": int(row["id"]), "name": row["name_tcn"] or row["name"],
+                "clearTarget": int(row["difficulty"]), "caption": row["caption_tcn"] or "",
+            }
             for row in DictReader(source)
         }
+    lands = {}
+    with suppress(OSError):
+        with (QUEST_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
+            lands = {
+                int(row["id"]): {
+                    "id": int(row["id"]), "name": row["name_tcn"] or "", "caption": row["caption_tcn"] or "",
+                }
+                for row in DictReader(source)
+            }
     quests = {}
     with (QUEST_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
             if row["name"]:
                 quest_id = int(row["id"])
                 area = maps.get(int(row["quest_map_id"]), {})
-                quests[quest_id] = {"id": quest_id, "name": row["name"], "map": area.get("name", "")}
+                land_ids = dict.fromkeys(int(row[field] or 0) for field in QUEST_LAND_FIELDS)
+                quests[quest_id] = {
+                    "id": quest_id, "name": row["name"], "map": area.get("name", ""),
+                    "caption": row["caption"] or "",
+                    "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
+                }
     return quests, {key: area for key, area in maps.items() if 1 <= key <= TCN_NORMAL_MAP_COUNT}
 
 

@@ -134,6 +134,10 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 以 390 CSS 像素寬、裝置像素比 2 的 Chromium 視窗再次登入，仍可完整讀取任務列與 0/3 進度，頁面寬度維持在視窗內。[窄視窗截圖](native/08-native-quest-mobile.png)
 
+另用 Chromium 登入隔離 Ruby，以鍵盤展開「落日大蝙蝠」，逐字核對魔女山谷說明、任務敘述與「寬廣高原1」的名稱及描述。任務文字取自 `tcn/Quests.csv` 的 `name` 和 `caption`，地圖與地形使用原始資料表的 `name_tcn` 和 `caption_tcn`。桌面和 320 CSS 像素、DPR 2 的畫面都能讀到完整文字。重新讀取及展開時，未觀察到新增的 Ruby 訊息或 SQLite 資料變更。登出或大廳斷線後，延遲的文字回覆不會留在頁面。[原始任務](../../app/server/data/csv/tcn/Quests.csv) · [原始地圖](../../app/server/data/csv/ja/QuestMaps.csv) · [原始地形](../../app/server/data/csv/ja/QuestLands.csv) · [桌面實測](native/26-native-quest-details.png) · [320 像素實測](native/27-native-quest-details-mobile.png)
+
+此頁提供唯讀資料核對。原版首場 PvE 的地形缺字修正有獨立的前後畫面，完整遊玩流程可在原版相容入口驗收。[地形修正前](browser/30-browser-land-font-before.png) · [地形修正後](browser/31-browser-land-font-after.png) · [原版首場 PvE](#首場-pve-結算)
+
 ## 原生對局紀錄回放
 
 用原版 Ruby 重跑固定種子 `2026`，輸出的 68 筆事件與保存的基準逐位元組相同。原生對局紀錄頁由同源讀取該基準。Chromium 用鍵盤逐筆核對回合、階段、HP、各次抽牌數及原始事件 JSON。tick 0 有四筆紀錄，依輸出順序完整保留。第四回合在模擬時間 92.1 秒結算，玩家勝利，雙方 HP 為 5／0。[原版 Ruby 紀錄](../../tools/legacy-server/fixtures/trace-2026.json) · [抽牌截圖](native/11-native-replay-event.png) · [結算截圖](native/12-native-replay-finished.png)
