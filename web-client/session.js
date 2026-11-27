@@ -732,7 +732,9 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     opponent: questRoster(encounter.opponentCardIds, encounter.opponentDamage),
   };
   const changedHp = new Set();
-  const rosterFetch = new AbortController();
+  const catalogRequests = new AbortController();
+  const stockEventCards = new Map();
+  const loadingEventCards = new Set();
   let duelFinish = null;
   let questFinish = null;
   let questDeleted = false;
@@ -750,7 +752,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
 
   async function loadStartingHp() {
     const ids = new Set(roster.player.cards.map((card) => card.cardId));
-    const signal = AbortSignal.any([rosterFetch.signal, AbortSignal.timeout(3500)]);
+    const signal = AbortSignal.any([catalogRequests.signal, AbortSignal.timeout(3500)]);
     const params = new URLSearchParams({ ids: [...ids].join(',') });
     const response = await fetch(`/api/quest-character-cards?${params}`, { signal });
     if (!response.ok) return;
@@ -768,6 +770,31 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
       if (card.alive === true && hp <= 0) continue;
       card.hp = hp;
       card.alive = hp > 0;
+    }
+  }
+
+  async function loadEventCards(refilled) {
+    const ids = new Set(refilled.map(({ id }) => id).filter((id) => !stockEventCards.has(id) && !loadingEventCards.has(id)));
+    if (ids.size === 0) return;
+    const signal = AbortSignal.any([catalogRequests.signal, AbortSignal.timeout(3500)]);
+    const params = new URLSearchParams();
+    for (const id of ids) {
+      params.append('id', String(id));
+      loadingEventCards.add(id);
+    }
+    try {
+      const response = await fetch(`/api/action-card-catalog?${params}`, { signal });
+      if (!response.ok) return;
+      const { cards } = await response.json();
+      if (signal.aborted || !Array.isArray(cards) || cards.length > ids.size) return;
+      const verified = new Map();
+      for (const { id, eventNo, stockEventFiller } of cards) {
+        if (!ids.has(id) || verified.has(id)) return;
+        verified.set(id, eventNo === 0 && stockEventFiller === true);
+      }
+      for (const id of ids) stockEventCards.set(id, verified.get(id) === true);
+    } finally {
+      for (const id of ids) loadingEventCards.delete(id);
     }
   }
 
@@ -810,6 +837,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
         // Original SC44 then SC45 append to the same hand, after any survivors.
         hand ??= [];
         hand.push(...ready.action.cards, ...ready.event.cards.map((card) => ({ ...card, event: true })));
+        void loadEventCards(ready.event.cards).catch(() => {});
         moveTable = [];
         startDistance = result?.distance ?? startDistance;
         result = null;
@@ -833,7 +861,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     const source = adding ? hand : table;
     const destination = adding ? table : hand;
     const index = source.findIndex((card) => card.id === id);
-    if (index < 0 || index > 127 || source[index].event
+    if (index < 0 || index > 127 || (source[index].event && stockEventCards.get(id) !== true)
         || source.some((card, position) => card.id === id && position !== index)
         || destination.some((card) => card.id === id)) {
       throw new SessionError('quest-card-unavailable');
@@ -844,6 +872,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
       ? (adding ? QUEST_BATTLE_CARD_ADD_REPLY : QUEST_BATTLE_CARD_REMOVE_REPLY)
       : (adding ? QUEST_MOVE_CARD_ADD_REPLY : QUEST_MOVE_CARD_REMOVE_REPLY);
     const card = { id, up: adding ? up : source[index].up };
+    if (source[index].event) card.event = true;
     // Original attack/defense handlers omit the passed index when calling the model.
     const stage = combat ? exchange.phase : phase;
     return { fields, reply, source, destination, index, echoIndex: combat ? 0 : index, card, stage };
@@ -1288,7 +1317,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
   });
   void loadStartingHp().catch(() => {});
   void socket.closed.then(() => {
-    rosterFetch.abort();
+    catalogRequests.abort();
     uncertain();
   });
 
@@ -1378,7 +1407,8 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
           ...characterChange, choices, canSelect: characterChange.requestedIndex === null && choices.length > 0,
         },
         actionHand: hand && hand.filter((card) => !card.event),
-        eventHand: hand && hand.filter((card) => card.event).map(({ id, up }) => ({ id, up })),
+        eventHand: hand && hand.filter((card) => card.event)
+          .map(({ id, up }) => ({ id, up, playable: stockEventCards.get(id) === true })),
         exchange: exchange && { ...exchange, settlement: settlementSnapshot() },
       });
     },
@@ -1393,7 +1423,7 @@ function observeQuestBattle(socket, { inventoryId, questId }, encounter, applySe
     commitBattle: (signal) => send('battle-commit', 'done', ['', ''], signal),
     async stop(reason) {
       phase = 'closed';
-      rosterFetch.abort();
+      catalogRequests.abort();
       if (exchange) exchange.phase = 'closed';
       clearTimeout(settlementTimer);
       unsubscribe();

@@ -326,7 +326,7 @@ def save_session(page, screenshot):
     if not screenshot:
         return
     screenshot.parent.mkdir(parents=True, exist_ok=True)
-    page.get_by_role("region", name="本機登入驗證").screenshot(
+    page.locator("#session-account").screenshot(
         path=screenshot,
         mask=[page.locator("#session-username"), page.locator("#session-password")],
     )
@@ -465,7 +465,7 @@ def check_startup_disconnect(browser, origin, options, password):
         if screenshot := options.startup_disconnect_screenshot:
             form.locator("#session-username").fill("")
             screenshot.parent.mkdir(parents=True, exist_ok=True)
-            page.get_by_role("region", name="本機登入驗證").screenshot(path=screenshot)
+            page.locator("#session-account").screenshot(path=screenshot)
 
         offset = len(live_sockets)
         page.evaluate("startupDisconnectProbe.holdData = false")

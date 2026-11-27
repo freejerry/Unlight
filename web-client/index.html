@@ -3,152 +3,85 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#112235" />
-    <meta name="description" content="用瀏覽器驗證 Unlight 原版六項服務的 KeepAlive 回覆、測試登入與原始素材。" />
-    <title>Unlight 連線診斷</title>
+    <meta name="theme-color" content="#183730" />
+    <meta name="description" content="在瀏覽器登入 Unlight、查看角色與任務資料，或檢查原版服務連線。" />
+    <title>Unlight 原生客戶端</title>
     <link rel="stylesheet" href="/style.css" />
     <script type="module" src="/client.js"></script>
     <script type="module" src="/login.js"></script>
   </head>
-  <body>
+  <body class="native-client">
     <header class="topbar">
       <div class="shell topbar-content">
         <span class="wordmark">Unlight</span>
-        <span class="topbar-label">連線診斷</span>
-        <a class="topbar-link" href="#session-title">登入驗證</a>
-        <a class="topbar-link" id="replay-link" href="/replay/">對局紀錄</a>
+        <nav class="native-nav" aria-label="主要導覽">
+          <a class="topbar-link" href="#session-title">帳號</a>
+          <a class="topbar-link" href="#page-title">連線診斷</a>
+          <a class="topbar-link" id="replay-link" href="/replay/">對局紀錄</a>
+        </nav>
       </div>
     </header>
 
-    <main id="diagnostics" class="shell" data-state="idle" aria-labelledby="page-title">
-      <div class="page-heading">
-        <div>
-          <h1 id="page-title">原版協定檢查</h1>
-          <p>以原版 KeepAlive 封包逐一驗證六個服務的二進位回覆。</p>
-        </div>
-        <div class="actions">
-          <button id="run-checks" type="button" class="button primary">開始檢查</button>
-          <button id="retry-failed" type="button" class="button secondary" hidden>重試失敗項目</button>
-        </div>
-      </div>
-
-      <section class="summary" aria-labelledby="overall-status">
-        <div class="summary-heading">
-          <h2 id="overall-status" aria-live="polite" aria-atomic="true">尚未檢查</h2>
-          <span id="progress-label">完成 0 / 6</span>
-        </div>
-        <progress id="progress" max="6" value="0" aria-label="已完成檢查的服務數"></progress>
-        <p id="overall-detail">檢查會送出 5 bytes 並核對 7 bytes 回覆。</p>
-      </section>
-
-      <section class="services" aria-labelledby="services-title">
-        <h2 class="sr-only" id="services-title">服務檢查結果</h2>
-        <div id="service-list" class="service-list"></div>
-      </section>
-
-      <section id="asset-checks" class="assets" data-state="loading" aria-labelledby="assets-title">
-        <h2 id="assets-title">原始素材</h2>
-        <div class="asset-list">
-          <div class="asset">
-            <div id="image-preview" class="image-preview" hidden>
-              <img id="asset-image" alt="Unlight 原版道具圖示" />
-            </div>
-            <div>
-              <h3>道具圖示</h3>
-              <p id="image-status" data-state="loading" role="status">讀取設定中…</p>
-            </div>
-          </div>
-          <div class="asset asset-sound">
-            <div>
-              <h3>背景音樂</h3>
-              <p id="audio-status" data-state="loading" role="status">讀取設定中…</p>
-            </div>
-            <audio id="asset-audio" preload="metadata" hidden></audio>
-            <button id="play-audio" type="button" class="button secondary" disabled hidden>播放</button>
-          </div>
-        </div>
-        <section id="panel-check" class="panel-check" aria-labelledby="panel-title">
-          <h3 id="panel-title">面板九宮格</h3>
-          <p id="panel-status" data-state="loading" role="status">讀取設定中…</p>
-          <div id="panel-previews" class="panel-previews" hidden>
-            <figure>
-              <figcaption>依內容調整高度</figcaption>
-              <section id="panel-content-preview" class="panel-content-sample" aria-labelledby="panel-content-preview-title">
-                <canvas data-panel-content aria-hidden="true"></canvas>
-                <h4 id="panel-content-preview-title" class="panel-sample-title">內容排版</h4>
-                <div class="panel-sample-body">
-                  <label for="panel-preview-input">輸入文字</label>
-                  <input id="panel-preview-input" type="text" autocomplete="off" />
-                  <details id="panel-preview-details">
-                    <summary>測試更新訊息</summary>
-                    <p id="panel-preview-message" class="panel-sample-message">臺灣玩家的更新訊息在窄欄中也能完整換行。包含繁體中文與重音字元 Café Élan。</p>
-                  </details>
-                </div>
-              </section>
-            </figure>
-            <figure>
-              <figcaption>高度 96 px</figcaption>
-              <canvas data-panel-width="220" data-panel-height="96" aria-hidden="true"></canvas>
-            </figure>
-            <figure>
-              <figcaption>高度 215 px</figcaption>
-              <canvas data-panel-width="220" data-panel-height="215" aria-hidden="true"></canvas>
-            </figure>
-            <figure>
-              <figcaption>高度 300 px</figcaption>
-              <canvas data-panel-width="220" data-panel-height="300" aria-hidden="true"></canvas>
-            </figure>
-          </div>
-        </section>
-      </section>
-
+    <main id="native-main" class="shell" aria-labelledby="session-title">
       <section class="session-panel" aria-labelledby="session-title">
-        <div class="session-heading">
-          <div>
-            <h2 id="session-title" tabindex="-1">本機登入驗證</h2>
-            <p id="session-description">用測試帳號登入，驗證原版連線與登入後的初始資料。</p>
+        <div id="session-account" class="native-surface">
+          <header class="session-heading native-surface-header">
+            <div>
+              <h1 id="session-title" tabindex="-1">登入</h1>
+              <p id="session-description">請使用測試帳號登入。</p>
+            </div>
+            <p id="session-status" class="session-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1">尚未登入</p>
+          </header>
+          <div class="native-surface-body">
+            <form id="session-form" method="post" autocomplete="off" aria-describedby="session-description session-detail">
+              <fieldset id="session-fields" class="session-fields" disabled>
+                <legend class="sr-only">測試帳號</legend>
+                <label for="session-username">帳號
+                  <input id="session-username" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
+                </label>
+                <label for="session-password">密碼
+                  <input id="session-password" type="password" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
+                </label>
+                <button type="submit" class="button primary">登入</button>
+              </fieldset>
+              <p id="session-format" class="session-format">帳號與密碼可用 1 至 16 個英文字母、數字、底線、句點或連字號。</p>
+            </form>
+            <p id="session-detail" class="session-detail" aria-live="polite"></p>
+
+            <div id="session-result" class="session-result" hidden>
+              <dl class="session-metadata">
+                <div><dt>玩家 ID</dt><dd id="session-player-id">—</dd></div>
+                <div><dt>大廳連線</dt><dd id="session-lobby">—</dd></div>
+                <div><dt>資料連線</dt><dd id="session-data">—</dd></div>
+                <div><dt>全域聊天</dt><dd id="session-chat">—</dd></div>
+              </dl>
+              <button id="session-signout" type="button" class="button secondary" hidden>登出</button>
+            </div>
+            <section id="session-bootstrap" class="session-bootstrap" data-state="idle" aria-labelledby="session-bootstrap-title" hidden>
+              <h3 id="session-bootstrap-title">登入初始資料</h3>
+              <dl id="session-avatar-data" class="session-metadata bootstrap-metadata" hidden>
+                <div><dt>角色</dt><dd id="session-avatar-name"></dd></div>
+                <div><dt>角色 ID</dt><dd id="session-avatar-id"></dd></div>
+                <div><dt>等級</dt><dd id="session-avatar-level"></dd></div>
+                <div><dt>Gem</dt><dd id="session-avatar-gems"></dd></div>
+                <div><dt>經驗值</dt><dd id="session-avatar-exp"></dd></div>
+                <div><dt>行動力</dt><dd id="session-avatar-energy"></dd></div>
+              </dl>
+              <dl id="session-registration-data" class="session-metadata bootstrap-metadata" hidden>
+                <div><dt>起始外觀部件</dt><dd id="session-starter-parts"></dd></div>
+                <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
+              </dl>
+            </section>
           </div>
-          <p id="session-status" class="session-status" data-state="idle" role="status" aria-atomic="true">尚未登入</p>
         </div>
-
-        <form id="session-form" method="post" autocomplete="off" aria-describedby="session-description session-detail">
-          <fieldset id="session-fields" class="session-fields" disabled>
-            <legend class="sr-only">測試帳號</legend>
-            <label for="session-username">帳號
-              <input id="session-username" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
-            </label>
-            <label for="session-password">密碼
-              <input id="session-password" type="password" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9_.\-]{1,16}" aria-describedby="session-format" required />
-            </label>
-            <button type="submit" class="button primary">驗證登入</button>
-          </fieldset>
-          <p id="session-format" class="session-format">帳號與密碼可用 1 至 16 個英文字母、數字、底線、句點或連字號。</p>
-        </form>
-
-        <div id="session-result" class="session-result" hidden>
-          <dl class="session-metadata">
-            <div><dt>玩家 ID</dt><dd id="session-player-id">—</dd></div>
-            <div><dt>大廳連線</dt><dd id="session-lobby">—</dd></div>
-            <div><dt>資料連線</dt><dd id="session-data">—</dd></div>
-            <div><dt>全域聊天</dt><dd id="session-chat">—</dd></div>
-          </dl>
-          <button id="session-signout" type="button" class="button secondary" hidden>登出</button>
-        </div>
-        <section id="session-bootstrap" class="session-bootstrap" data-state="idle" aria-labelledby="session-bootstrap-title" hidden>
-          <h3 id="session-bootstrap-title">登入初始資料</h3>
-          <dl id="session-avatar-data" class="session-metadata bootstrap-metadata" hidden>
-            <div><dt>角色</dt><dd id="session-avatar-name"></dd></div>
-            <div><dt>角色 ID</dt><dd id="session-avatar-id"></dd></div>
-            <div><dt>等級</dt><dd id="session-avatar-level"></dd></div>
-            <div><dt>Gem</dt><dd id="session-avatar-gems"></dd></div>
-            <div><dt>經驗值</dt><dd id="session-avatar-exp"></dd></div>
-            <div><dt>行動力</dt><dd id="session-avatar-energy"></dd></div>
-          </dl>
-          <dl id="session-registration-data" class="session-metadata bootstrap-metadata" hidden>
-            <div><dt>起始外觀部件</dt><dd id="session-starter-parts"></dd></div>
-            <div><dt>起始角色卡</dt><dd id="session-starter-cards"></dd></div>
-          </dl>
-        </section>
+        <details id="session-news" class="session-news native-surface" data-state="idle" hidden>
+          <summary id="session-news-summary" class="native-surface-header">最新消息</summary>
+          <div class="native-surface-body">
+            <p id="session-news-status" class="session-news-status" role="status" aria-atomic="true" hidden></p>
+            <div id="session-news-content" class="session-news-content" role="region" aria-labelledby="session-news-summary" tabindex="0" hidden></div>
+            <button id="session-news-retry" class="button secondary" type="button" hidden>重新讀取公告</button>
+          </div>
+        </details>
         <section id="session-quest" class="session-quest" aria-labelledby="session-quest-title" hidden>
           <div class="quest-heading">
             <div>
@@ -218,7 +151,7 @@
               </section>
               <section id="session-quest-battle" class="quest-first-turn" aria-labelledby="session-quest-battle-title" hidden>
                 <h5 id="session-quest-battle-title">回合操作</h5>
-                <p class="quest-status">可選取行動卡或空手送出移動與攻防。伺服器開放時可換角。事件卡出牌尚未接通。</p>
+                <p class="quest-status">可選取行動卡與支援的事件卡，也可空手送出。伺服器開放時可換角。</p>
                 <p id="session-quest-battle-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
                 <button id="session-quest-battle-ready" class="button primary" type="button" aria-controls="session-quest-battle-turn session-quest-battle-hand" disabled>開始第一回合</button>
                 <dl class="session-metadata quest-land-metadata" id="session-quest-battle-turn" hidden>
@@ -406,13 +339,89 @@
             </div>
           </section>
         </section>
-        <details id="session-news" class="session-news" data-state="idle" hidden>
-          <summary id="session-news-summary">最新消息</summary>
-          <p id="session-news-status" class="session-news-status" role="status" aria-atomic="true" hidden></p>
-          <div id="session-news-content" class="session-news-content" role="region" aria-labelledby="session-news-summary" tabindex="0" hidden></div>
-          <button id="session-news-retry" class="button secondary" type="button" hidden>重新讀取公告</button>
-        </details>
-        <p id="session-detail" class="session-detail" aria-live="polite"></p>
+      </section>
+
+      <section id="diagnostics" class="native-diagnostics" data-state="idle" aria-labelledby="page-title">
+        <div class="page-heading">
+          <div>
+            <h2 id="page-title" tabindex="-1">原版協定檢查</h2>
+            <p>以原版 KeepAlive 封包逐一驗證六個服務的二進位回覆。</p>
+          </div>
+          <div class="actions">
+            <button id="run-checks" type="button" class="button primary">開始檢查</button>
+            <button id="retry-failed" type="button" class="button secondary" hidden>重試失敗項目</button>
+          </div>
+        </div>
+
+        <section class="summary" aria-labelledby="overall-status">
+          <div class="summary-heading">
+            <h2 id="overall-status" aria-live="polite" aria-atomic="true">尚未檢查</h2>
+            <span id="progress-label">完成 0 / 6</span>
+          </div>
+          <progress id="progress" max="6" value="0" aria-label="已完成檢查的服務數"></progress>
+          <p id="overall-detail">檢查會送出 5 bytes 並核對 7 bytes 回覆。</p>
+        </section>
+
+        <section class="services" aria-labelledby="services-title">
+          <h2 class="sr-only" id="services-title">服務檢查結果</h2>
+          <div id="service-list" class="service-list"></div>
+        </section>
+
+        <section id="asset-checks" class="assets" data-state="loading" aria-labelledby="assets-title">
+          <h2 id="assets-title">原始素材</h2>
+          <div class="asset-list">
+            <div class="asset">
+              <div id="image-preview" class="image-preview" hidden>
+                <img id="asset-image" alt="Unlight 原版道具圖示" />
+              </div>
+              <div>
+                <h3>道具圖示</h3>
+                <p id="image-status" data-state="loading" role="status">讀取設定中…</p>
+              </div>
+            </div>
+            <div class="asset asset-sound">
+              <div>
+                <h3>背景音樂</h3>
+                <p id="audio-status" data-state="loading" role="status">讀取設定中…</p>
+              </div>
+              <audio id="asset-audio" preload="metadata" hidden></audio>
+              <button id="play-audio" type="button" class="button secondary" disabled hidden>播放</button>
+            </div>
+          </div>
+          <section id="panel-check" class="panel-check" aria-labelledby="panel-title">
+            <h3 id="panel-title">面板九宮格</h3>
+            <p id="panel-status" data-state="loading" role="status">讀取設定中…</p>
+            <div id="panel-previews" class="panel-previews" hidden>
+              <figure>
+                <figcaption>依內容調整高度</figcaption>
+                <section id="panel-content-preview" class="panel-content-sample" aria-labelledby="panel-content-preview-title">
+                  <canvas data-panel-content aria-hidden="true"></canvas>
+                  <h4 id="panel-content-preview-title" class="panel-sample-title">內容排版</h4>
+                  <div class="panel-sample-body">
+                    <label for="panel-preview-input">輸入文字</label>
+                    <input id="panel-preview-input" type="text" autocomplete="off" />
+                    <details id="panel-preview-details">
+                      <summary>測試更新訊息</summary>
+                      <p id="panel-preview-message" class="panel-sample-message">臺灣玩家的更新訊息在窄欄中也能完整換行。包含繁體中文與重音字元 Café Élan。</p>
+                    </details>
+                  </div>
+                </section>
+              </figure>
+              <figure>
+                <figcaption>高度 96 px</figcaption>
+                <canvas data-panel-width="220" data-panel-height="96" aria-hidden="true"></canvas>
+              </figure>
+              <figure>
+                <figcaption>高度 215 px</figcaption>
+                <canvas data-panel-width="220" data-panel-height="215" aria-hidden="true"></canvas>
+              </figure>
+              <figure>
+                <figcaption>高度 300 px</figcaption>
+                <canvas data-panel-width="220" data-panel-height="300" aria-hidden="true"></canvas>
+              </figure>
+            </div>
+          </section>
+        </section>
       </section>
 
       <template id="session-quest-detail-template">

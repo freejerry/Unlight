@@ -3,6 +3,7 @@ import { readNews } from './news.js';
 
 const ui = {
   title: document.querySelector('#session-title'),
+  description: document.querySelector('#session-description'),
   form: document.querySelector('#session-form'),
   fields: document.querySelector('#session-fields'),
   username: document.querySelector('#session-username'),
@@ -698,11 +699,12 @@ function showQuestCardMetadata(element) {
   }
 }
 
-function createQuestBattleCard({ id, up }, zone = '') {
+function createQuestBattleCard({ id, up, event = false }, zone = '') {
   const element = document.createElement('li');
   element.dataset.cardId = String(id);
   element.dataset.up = String(up);
   element.dataset.cardZone = zone;
+  element.dataset.cardKind = event ? 'event' : 'action';
   const label = document.createElement('span');
   label.className = 'quest-card-label';
   label.textContent = `#${id} · ${up ? '上半面' : '下半面'}`;
@@ -734,7 +736,8 @@ function createQuestBattleCard({ id, up }, zone = '') {
         : (adding ? 'addQuestMoveCard' : 'removeQuestMoveCard');
       const action = adding ? (session, options) => session[perform](id, select.value === 'true', options)
         : (session, options) => session[perform](id, options);
-      const destination = adding ? (combat ? questCombatUi.table : questBattleUi.moveCards) : questBattleUi.piles[0].cards;
+      const destination = adding ? (combat ? questCombatUi.table : questBattleUi.moveCards)
+        : questBattleUi.piles[event ? 1 : 0].cards;
       const focus = () => destination.querySelector(`[data-card-id="${id}"] button`);
       void runQuestBattleAction(button, adding ? 'adding-card' : 'returning-card',
         adding ? '正在等待伺服器確認選卡…' : '正在等待伺服器確認退回卡片…', action, { focusAfter: focus, combat });
@@ -797,7 +800,8 @@ function displayQuestBattleHand(ready, actionHand, eventHand, zone, turn) {
     const draw = index === 0 ? ready.action : ready.event;
     if (!draw) continue;
     const pile = questBattleUi.piles[index];
-    syncQuestCardList(pile.cards, cards ?? draw.cards, index === 0 ? zone : '');
+    const hand = cards ?? draw.cards;
+    syncQuestCardList(pile.cards, index === 0 ? hand : hand.map(card => ({ ...card, event: true })), zone);
     pile.refillCount.parentElement.hidden = !fresh;
     pile.opponentDrawCount.parentElement.hidden = !fresh;
     const refilled = new Set(fresh ? draw.cards.map(card => String(card.id)) : []);
@@ -817,13 +821,15 @@ function displayQuestBattleHand(ready, actionHand, eventHand, zone, turn) {
 
 function syncQuestCardList(list, cards, zone = '') {
   const remaining = [...list.children];
-  const matches = (node, card) => node.dataset.cardZone === zone && node.dataset.cardId === String(card.id)
-    && node.dataset.up === String(card.up);
+  const fromHand = zone === 'hand' || zone === 'combat-hand';
+  const interactionZone = card => fromHand && card.event && card.playable !== true ? '' : zone;
+  const matches = (node, card) => node.dataset.cardZone === interactionZone(card) && node.dataset.cardId === String(card.id)
+    && node.dataset.up === String(card.up) && node.dataset.cardKind === (card.event ? 'event' : 'action');
   if (remaining.length === cards.length && remaining.every((node, index) => matches(node, cards[index]))) return;
 
   const ordered = cards.map(card => {
     const index = remaining.findIndex(node => matches(node, card));
-    return index === -1 ? createQuestBattleCard(card, zone) : remaining.splice(index, 1)[0];
+    return index === -1 ? createQuestBattleCard(card, interactionZone(card)) : remaining.splice(index, 1)[0];
   });
   for (const node of remaining) node.remove();
   let cursor = list.firstElementChild;
@@ -1864,6 +1870,8 @@ async function loadNews() {
 
 function show(state, label, detail = '', kind) {
   const signedIn = state === 'signed-in';
+  ui.title.textContent = signedIn ? '帳號與角色' : '登入';
+  ui.description.hidden = signedIn;
   ui.status.dataset.state = state;
   if (kind) ui.status.dataset.errorKind = kind;
   else delete ui.status.dataset.errorKind;
@@ -1894,7 +1902,9 @@ function show(state, label, detail = '', kind) {
 function showFailure(error) {
   const kind = error instanceof SessionError && Object.hasOwn(errors, error.kind) ? error.kind : 'protocol';
   const [label, detail] = errors[kind];
+  const restoreFocus = document.activeElement === ui.status;
   show('failed', label, detail, kind);
+  if (restoreFocus) (ui.username.value ? ui.password : ui.username).focus();
 }
 
 function startExchange(signal) {
@@ -1907,6 +1917,8 @@ function startExchange(signal) {
 
 function handleDisconnect(connection, reason) {
   if (active !== connection) return;
+  const restoreFocus = [ui.result, ui.bootstrap, questUi.section, newsUi.details]
+    .some(section => section.contains(document.activeElement));
   active = null;
   clearField(ui.password);
   if (reason === 'expired') {
@@ -1914,6 +1926,7 @@ function handleDisconnect(connection, reason) {
   } else {
     show('failed', '連線已中斷', '請確認服務連線後重新登入。', 'network');
   }
+  if (restoreFocus) ui.username.focus();
 }
 
 ui.form.addEventListener('submit', async (event) => {
@@ -1922,7 +1935,9 @@ ui.form.addEventListener('submit', async (event) => {
 
   const controller = new AbortController();
   pending = controller;
+  const restoreFocus = ui.form.contains(document.activeElement);
   show('working', '正在驗證登入', '正在連線認證、大廳、資料與全域聊天。');
+  if (restoreFocus) ui.status.focus({ preventScroll: true });
 
   try {
     const session = await startExchange(controller.signal);
@@ -1946,7 +1961,9 @@ ui.form.addEventListener('submit', async (event) => {
       field.dataset.verified = 'true';
     }
     displayBootstrap(initialData);
+    const moveFocus = document.activeElement === ui.status;
     show('signed-in', '登入成功');
+    if (moveFocus) ui.title.focus();
     void session.closed.then((reason) => handleDisconnect(session, reason), () => handleDisconnect(session, 'network'));
   } catch (error) {
     if (pending === controller) showFailure(error);
@@ -2073,7 +2090,9 @@ ui.signOut.addEventListener('click', async () => {
   active = null;
   clearField(ui.username);
   clearField(ui.password);
+  const restoreFocus = document.activeElement === ui.signOut;
   show('working', '正在登出');
+  if (restoreFocus) ui.status.focus({ preventScroll: true });
 
   try {
     await session.close();
@@ -2082,7 +2101,10 @@ ui.signOut.addEventListener('click', async () => {
       ui.username.focus({ preventScroll: true });
     }
   } catch {
-    if (pending === controller) show('failed', '登出確認失敗', '連線結束時發生錯誤，請重新登入。', 'network');
+    if (pending === controller) {
+      show('failed', '登出確認失敗', '連線結束時發生錯誤，請重新登入。', 'network');
+      if (document.activeElement === ui.status) ui.username.focus();
+    }
   } finally {
     if (pending === controller) pending = null;
   }

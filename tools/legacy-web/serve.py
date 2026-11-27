@@ -126,17 +126,28 @@ def native_quest_catalog():
 
 
 def native_action_card_catalog():
-    # The draw packets use physical ActionCard IDs, including cards from EventDeck.
+    filler_ids = set()
+    with (SERVER_CSV / "ja/EventCards.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            if row["filler"] == "1":
+                # Ruby allocates physical IDs within each band across both entrants' event decks.
+                first_id = int(row["event_no"])
+                filler_ids.update(range(first_id, first_id + 2 * int(row["max_in_deck"])))
+
+    cards = {}
     with (SERVER_CSV / "tcn/ActionCards.csv").open(encoding="utf-8-sig", newline="") as source:
-        return {
-            int(row["id"]): {
-                "id": int(row["id"]),
+        for row in DictReader(source):
+            card_id = int(row["id"])
+            event_no = int(row["event_no"])
+            cards[card_id] = {
+                "id": card_id,
                 "upper": {"type": int(row["u_type"]), "value": int(row["u_value"])},
                 "lower": {"type": int(row["b_type"]), "value": int(row["b_value"])},
                 "caption": row["caption"],
+                "eventNo": event_no,
+                "stockEventFiller": card_id in filler_ids and event_no == 0,
             }
-            for row in DictReader(source)
-        }
+    return cards
 
 
 def native_quest_character_card_catalog():

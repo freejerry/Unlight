@@ -260,3 +260,96 @@ main { padding-block: 1.6rem 1.8rem; }
   .session-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
   .quest-inventory th, .quest-inventory td { padding-inline: .3rem; }
 }
+
+.native-client {
+  --native-canvas: #f5f2eb;
+  --native-tint: #faf8f3;
+  --native-edge: #d8d4c8;
+  --native-ink: #172c27;
+  --native-muted: #4d5d55;
+  --native-action: #205b49;
+  --native-gutter: clamp(.875rem, 3vw, 1.75rem);
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--native-canvas);
+  color: var(--native-ink);
+}
+
+.native-client .topbar { background: #183730; }
+.native-client .topbar-content { justify-content: space-between; flex-wrap: wrap; gap: 0 .8rem; min-height: 3.75rem; }
+.native-client .wordmark { font-size: 1.15rem; letter-spacing: .01em; }
+.native-nav { display: flex; flex-wrap: wrap; gap: 0 clamp(.35rem, 2vw, 1.25rem); min-width: 0; }
+.native-client .topbar-link { display: flex; align-items: center; min-height: 44px; margin: 0; padding: .4rem .2rem; color: #eef5ee; }
+.native-client #native-main { padding-block: clamp(1rem, 4vw, 2.8rem) 3rem; }
+.native-client .session-panel { margin: 0; padding: 0; border: 0; background: transparent; }
+
+.native-surface {
+  min-width: 0;
+  border: 1px solid var(--native-edge);
+  border-radius: .75rem;
+  background: #fff;
+}
+.native-surface-header { padding: 1rem var(--native-gutter); background: var(--native-tint); border-radius: .7rem .7rem 0 0; }
+.native-surface-body { min-width: 0; padding: 1rem var(--native-gutter); border-block-start: 1px solid var(--native-edge); }
+.native-client .session-heading { align-items: start; flex-wrap: wrap; padding-block: clamp(1rem, 3vw, 1.75rem); }
+.native-client #session-title { font-size: clamp(1.65rem, 4vw, 2.65rem); line-height: 1.18; overflow-wrap: anywhere; }
+.native-client #session-description { margin-top: .48rem; color: var(--native-muted); line-height: 1.55; }
+.native-client .session-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .32rem .56rem;
+  border-radius: .35rem;
+  line-height: 1.4;
+  white-space: normal;
+}
+.native-client .session-status::before { content: ""; flex: 0 0 .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
+.native-client .session-status:focus { outline: 2px solid var(--native-action); outline-offset: 3px; }
+
+.native-client #session-account .native-surface-body { padding-block: clamp(1rem, 3vw, 1.6rem); }
+.native-client .session-fields { max-width: 48rem; margin: 0; gap: .85rem; }
+.native-client .session-fields label { min-width: 0; color: var(--native-ink); }
+.native-client .session-fields input { min-height: 44px; min-width: 0; border-color: #8b9c93; background: #fff; }
+.native-client .session-fields input:disabled { background: #f3f3ee; }
+.native-client :is(#session-account, #session-news) .button { min-height: 44px; white-space: normal; }
+.native-client #session-form .primary { background: var(--native-action); }
+.native-client #session-form .primary:hover:not(:disabled) { background: #163e32; }
+.native-client .session-format { color: var(--native-muted); line-height: 1.55; }
+.native-client .session-detail { color: var(--native-muted); line-height: 1.55; }
+.native-client #session-account:has(#session-status[data-state="failed"]) .session-detail {
+  margin-top: .85rem;
+  padding: .65rem .75rem;
+  border-inline-start: 3px solid #a35041;
+  border-radius: .2rem;
+  background: #fff1eb;
+  color: #78372b;
+}
+
+.native-client .session-result { max-width: none; margin: 0; align-items: start; }
+.native-client #session-account .session-metadata { max-width: none; gap: .65rem; }
+.native-client #session-account .session-metadata > div { min-width: 0; border-color: var(--native-edge); background: var(--native-tint); }
+.native-client #session-account .session-result .session-metadata > div { padding: 0; border: 0; background: none; }
+.native-client #session-account .session-metadata dt { color: var(--native-muted); overflow-wrap: anywhere; }
+.native-client .session-bootstrap { margin-top: 1rem; padding-top: .85rem; border-block-start: 1px solid var(--native-edge); }
+
+.native-client .session-news { max-width: none; margin-top: .9rem; padding: 0; border-color: var(--native-edge); }
+.native-client .session-news summary { width: auto; min-height: 44px; padding: .7rem var(--native-gutter); border-radius: .7rem; font-size: 1.03rem; }
+.native-client .session-news[open] summary { border-radius: .7rem .7rem 0 0; }
+.native-client .session-news summary:focus-visible { outline-offset: -4px; }
+.native-client .session-news-content {
+  max-block-size: min(24rem, 50vh);
+  max-block-size: min(24rem, 50dvh);
+  margin: 0;
+  border-color: var(--native-edge);
+  background: var(--native-tint);
+  font-size: 1rem;
+  scrollbar-gutter: stable;
+}
+
+.native-diagnostics { margin-top: clamp(1.5rem, 4vw, 2.6rem); padding-top: 1.25rem; border-block-start: 1px solid var(--native-edge); }
+.native-diagnostics #page-title { font-size: clamp(1.25rem, 3vw, 1.8rem); line-height: 1.25; }
+
+@media (max-width: 35rem) {
+  .native-client .session-fields button { justify-self: stretch; }
+}
