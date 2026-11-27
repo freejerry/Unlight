@@ -144,6 +144,12 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 桌面及 320 CSS 像素、DPR 2 的頁面都能讀到完整清單。查詢前後的任務庫存、進度、行動力及獎勵資料一致。等待回覆時中斷 Quest 連線，原本的登入工作階段可繼續使用，同一按鈕可重試。另驗證登出會清除查詢，延遲抵達的回覆不會重新顯示清單。[桌面實測](native/28-native-quest-region.png) · [320 像素實測](native/29-native-quest-region-mobile.png) · [操作方式](../../web-client/README.md#啟動)
 
+### 任務服務清單
+
+Chromium 登入隔離 Ruby 後，按「讀取任務服務清單」才開啟 Quest 連線，依序送出 `0`、`1`、`3`、`2`。原版 Quest 登入先重送卡牌總數及任務紀錄，略過待定狀態 `4`。原生頁面讀取收到的 `6`，以同一連線的 KeepAlive `3` 作為重送結束的標記。實際取得的持有紀錄 ID `1`、任務 ID `1`、狀態 `0` 均與 SQLite 相符。原生解析會略過贈送者欄位，畫面只顯示三個數字欄位。[原版登入](../../app/server/src/controller/quest_controller.rb#L515) · [重送條件](../../app/server/src/model/avatar.rb#L2653) · [KeepAlive](../../app/server/src/protocol/ulserver.rb#L235)
+
+桌面和 320 CSS 像素、DPR 2 都顯示完整紀錄。延遲實際 KeepAlive 回覆時，頁面保持讀取中。Quest 連線中斷或逾時後仍可用同一登入重試，登出後延遲回覆不會重現紀錄。查詢前後的任務、行動力及獎勵資料一致。另以瀏覽器控制回覆驗證空清單、略過待定紀錄和贈送者欄位的處理。[桌面實測](native/30-native-quest-service-inventory.png) · [320 像素實測](native/31-native-quest-service-inventory-mobile.png) · [操作方式](../../web-client/README.md#啟動)
+
 ## 原生對局紀錄回放
 
 用原版 Ruby 重跑固定種子 `2026`，輸出的 68 筆事件與保存的基準逐位元組相同。原生對局紀錄頁由同源讀取該基準。Chromium 用鍵盤逐筆核對回合、階段、HP、各次抽牌數及原始事件 JSON。tick 0 有四筆紀錄，依輸出順序完整保留。第四回合在模擬時間 92.1 秒結算，玩家勝利，雙方 HP 為 5／0。[原版 Ruby 紀錄](../../tools/legacy-server/fixtures/trace-2026.json) · [抽牌截圖](native/11-native-replay-event.png) · [結算截圖](native/12-native-replay-finished.png)

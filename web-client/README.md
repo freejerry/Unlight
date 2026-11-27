@@ -34,6 +34,8 @@ python3 tools/legacy-web/serve.py --native --port 4334 --server-offset 1000 \
 
 同一區塊的「讀取區域地圖」會在按下後另開原版 Quest 連線，查詢固定的區域 0，按伺服器回覆順序列出地圖 ID。清單依原版資料的區域欄位分組，角色進度顯示在 Data 任務快照。Quest 連線在查詢結束後關閉，失敗時可再按同一按鈕重試。[原版地圖查詢](../app/server/src/controller/quest_controller.rb#L33) · [區域地圖驗收](../docs/playtest/README.md#區域地圖查詢)
 
+按「讀取任務服務清單」會暫時連上原版 Quest 服務，顯示登入時重送的持有紀錄 ID、任務 ID 和狀態代碼。搜尋中的紀錄及區域進度可用「讀取任務資料」查看。兩個 Quest 讀取按鈕一次處理一項請求，失敗後可重試。[原版清單重送](../app/server/src/model/avatar.rb#L2653) · [任務服務清單驗收](../docs/playtest/README.md#任務服務清單)
+
 面板使用與 `assets/public` 同層的 `assets/data/image/panel_gene.png`，程式在提供檔案前會核對固定版本的 SHA-256。這張圖可省略。省略 `--assets` 時仍可驗收連線、登入及任務快照。
 
 ## 與原版核對

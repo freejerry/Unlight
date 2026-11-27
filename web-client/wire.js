@@ -110,8 +110,13 @@ export function readFields(body, offset = 0) {
   return {
     uint: () => integer(false),
     int: () => integer(true),
+    byte() {
+      const value = view.getInt8(offset);
+      offset += 1;
+      return value;
+    },
     string: (limit, allowEmpty) => decoder.decode(stringBytes(limit, allowEmpty)),
-    discardString: (limit) => stringBytes(limit).fill(0),
+    discardString: (limit, allowEmpty) => stringBytes(limit, allowEmpty).fill(0),
     takeRest(limit) {
       const value = body.subarray(offset);
       if (value.length === 0 || value.length > limit) throw new Error('Invalid body length.');

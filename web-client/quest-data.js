@@ -1,9 +1,11 @@
 const MAX_ID_LIST_BYTES = 4096;
 const MAX_MAP_ID = 0x7fffffff;
+const MAX_SENDER_NAME_BYTES = 128;
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
 export const QUEST_MAP_REPLY = 14;
+export const QUEST_INVENTORY_REPLY = 6;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -43,6 +45,21 @@ export function readQuestMapReply(reply, region) {
   reply.done();
   if (ids.some((id) => id === 0 || id > MAX_MAP_ID)) throw new Error('Invalid quest map ID.');
   return ids;
+}
+
+export function readQuestInventoryReply(reply) {
+  if (reply.command !== QUEST_INVENTORY_REPLY) throw new Error('Unexpected quest inventory reply.');
+  const inventoryId = reply.int();
+  const questId = reply.int();
+  reply.int(); // Find time.
+  reply.int(); // Search power.
+  const status = reply.byte();
+  reply.discardString(MAX_SENDER_NAME_BYTES, true);
+  reply.done();
+  if (inventoryId <= 0 || questId < 0 || status < 0 || status > 6) {
+    throw new Error('Invalid quest inventory data.');
+  }
+  return { inventoryId, questId, status };
 }
 
 export function createQuestDataReader() {

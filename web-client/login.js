@@ -45,7 +45,30 @@ const mapsUi = {
   status: document.querySelector('#session-quest-maps-status'),
   result: document.querySelector('#session-quest-maps-result'),
   count: document.querySelector('#session-quest-maps-count'),
-  list: document.querySelector('#session-quest-maps-list'),
+  rows: document.querySelector('#session-quest-maps-list'),
+  labels: {
+    idle: '尚未讀取地圖清單。',
+    loading: '正在向任務服務查詢…',
+    success: '已讀取伺服器回傳的地圖清單。',
+    empty: '伺服器沒有回傳地圖。',
+    failed: '無法讀取區域地圖，請重試。',
+  },
+};
+
+const serviceInventoryUi = {
+  load: document.querySelector('#session-quest-service-load'),
+  status: document.querySelector('#session-quest-service-status'),
+  result: document.querySelector('#session-quest-service-result'),
+  count: document.querySelector('#session-quest-service-count'),
+  table: document.querySelector('#session-quest-service-table'),
+  rows: document.querySelector('#session-quest-service-rows'),
+  labels: {
+    idle: '尚未讀取任務服務清單。',
+    loading: '正在讀取任務服務清單…',
+    success: '已讀取任務服務清單。',
+    empty: '任務服務沒有重送紀錄。',
+    failed: '無法讀取任務服務清單，請重試。',
+  },
 };
 
 const newsUi = {
@@ -71,19 +94,12 @@ const questStatuses = {
   success: '已讀取登入時的任務資料。',
   failed: '無法讀取任務資料，請重試。',
 };
-const mapsStatuses = {
-  idle: '尚未讀取地圖清單。',
-  loading: '正在向任務服務查詢…',
-  success: '已讀取伺服器回傳的地圖清單。',
-  empty: '伺服器沒有回傳地圖。',
-  failed: '無法讀取區域地圖，請重試。',
-};
 const MAX_CATALOG_ID = 0x7fffffff;
 
 let pending = null;
 let active = null;
 let questRequest = null;
-let mapsRequest = null;
+let liveQuestRequest = null;
 let newsRequest = null;
 
 for (const [field, label] of [[ui.username, '帳號'], [ui.password, '密碼']]) {
@@ -126,19 +142,34 @@ function showQuestStatus(state, kind) {
   questUi.load.disabled = state === 'loading';
 }
 
-function showMapsStatus(state, kind) {
-  mapsUi.status.dataset.state = state;
-  mapsUi.status.textContent = mapsStatuses[state];
-  if (kind) mapsUi.status.dataset.errorKind = kind;
-  else delete mapsUi.status.dataset.errorKind;
-  mapsUi.load.disabled = state === 'loading';
+function showLiveQuestStatus(view, state, kind) {
+  view.status.dataset.state = state;
+  view.status.textContent = view.labels[state];
+  if (kind) view.status.dataset.errorKind = kind;
+  else delete view.status.dataset.errorKind;
 }
 
-function clearMapsResults() {
-  mapsUi.result.hidden = true;
-  mapsUi.count.textContent = '';
-  mapsUi.list.hidden = true;
-  mapsUi.list.replaceChildren();
+function clearLiveQuestResults(view) {
+  view.result.hidden = true;
+  view.count.textContent = '';
+  (view.table ?? view.rows).hidden = true;
+  view.rows.replaceChildren();
+}
+
+function updateLiveQuestButtons() {
+  const busy = liveQuestRequest !== null;
+  mapsUi.load.disabled = busy;
+  serviceInventoryUi.load.disabled = busy;
+}
+
+function clearLiveQuest() {
+  liveQuestRequest?.abort();
+  liveQuestRequest = null;
+  for (const view of [mapsUi, serviceInventoryUi]) {
+    clearLiveQuestResults(view);
+    showLiveQuestStatus(view, 'idle');
+  }
+  updateLiveQuestButtons();
 }
 
 function setOriginalText(element, text) {
@@ -161,20 +192,24 @@ function clearQuestResults() {
   for (const field of questUi.fields) field.textContent = '';
 }
 
+function appendQuestRow(tableBody, { inventoryId, questId, status }) {
+  const row = tableBody.insertRow();
+  row.dataset.inventoryId = String(inventoryId);
+  row.dataset.questId = String(questId);
+  row.dataset.questStatus = String(status);
+  for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
+  return row;
+}
+
 function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows }) {
   const values = [rows.length, capacity, questFlag, questClearNum];
   questUi.fields.forEach((field, index) => { field.textContent = String(values[index]); });
 
-  for (const { inventoryId, questId, status } of rows) {
-    const row = questUi.rows.insertRow();
-    row.dataset.inventoryId = String(inventoryId);
-    row.dataset.questId = String(questId);
-    row.dataset.questStatus = String(status);
-    for (const value of [inventoryId, questId, status]) row.insertCell().textContent = String(value);
-
+  for (const entry of rows) {
+    const row = appendQuestRow(questUi.rows, entry);
     const name = document.createElement('span');
     name.className = 'quest-name';
-    name.textContent = questId === 0 ? '尚未發現' : '未取得名稱';
+    name.textContent = entry.questId === 0 ? '尚未發現' : '未取得名稱';
     const map = document.createElement('span');
     map.className = 'quest-map';
     map.hidden = true;
@@ -325,10 +360,7 @@ function show(state, label, detail = '', kind) {
   newsUi.details.hidden = !signedIn;
   if (!signedIn) {
     clearNews();
-    mapsRequest?.abort();
-    mapsRequest = null;
-    clearMapsResults();
-    showMapsStatus('idle');
+    clearLiveQuest();
     questRequest?.abort();
     questRequest = null;
     clearQuestResults();
@@ -432,35 +464,57 @@ questUi.load.addEventListener('click', async () => {
   }
 });
 
-mapsUi.load.addEventListener('click', async () => {
+function appendMapEntries(list, ids) {
+  if (!ids.every(Number.isSafeInteger)) throw new SessionError('protocol');
+  for (const id of ids) {
+    const entry = document.createElement('li');
+    entry.dataset.mapId = String(id);
+    entry.textContent = String(id);
+    list.append(entry);
+  }
+}
+
+function appendServiceInventory(tableBody, rows) {
+  if (!rows.every(row => [row?.inventoryId, row?.questId, row?.status].every(Number.isSafeInteger))) {
+    throw new SessionError('protocol');
+  }
+  for (const row of rows) appendQuestRow(tableBody, row);
+}
+
+async function readLiveQuest(view, method, appendRows) {
   const session = active;
-  if (!session?.initialData?.avatar || mapsRequest) return;
+  if (!session?.initialData?.avatar || liveQuestRequest) return;
 
   const controller = new AbortController();
-  mapsRequest = controller;
-  const isCurrent = () => mapsRequest === controller && active === session && session.initialData;
-  clearMapsResults();
-  showMapsStatus('loading');
+  liveQuestRequest = controller;
+  const isCurrent = () => liveQuestRequest === controller && active === session && session.initialData;
+  updateLiveQuestButtons();
+  clearLiveQuestResults(view);
+  showLiveQuestStatus(view, 'loading');
   try {
-    const ids = await session.readQuestMaps({ signal: controller.signal });
+    const entries = await session[method]({ signal: controller.signal });
     if (!isCurrent()) return;
-    if (!Array.isArray(ids) || !ids.every(Number.isSafeInteger)) throw new SessionError('protocol');
-
-    for (const id of ids) {
-      const entry = document.createElement('li');
-      entry.dataset.mapId = String(id);
-      entry.textContent = String(id);
-      mapsUi.list.append(entry);
-    }
-    mapsUi.count.textContent = String(ids.length);
-    mapsUi.list.hidden = ids.length === 0;
-    mapsUi.result.hidden = false;
-    showMapsStatus(ids.length ? 'success' : 'empty');
+    if (!Array.isArray(entries)) throw new SessionError('protocol');
+    appendRows(view.rows, entries);
+    view.count.textContent = String(entries.length);
+    (view.table ?? view.rows).hidden = entries.length === 0;
+    view.result.hidden = false;
+    showLiveQuestStatus(view, entries.length ? 'success' : 'empty');
   } catch (error) {
-    if (isCurrent()) showMapsStatus('failed', error instanceof SessionError ? error.kind : 'protocol');
+    if (isCurrent()) showLiveQuestStatus(view, 'failed', error instanceof SessionError ? error.kind : 'protocol');
   } finally {
-    if (mapsRequest === controller) mapsRequest = null;
+    if (liveQuestRequest === controller) {
+      liveQuestRequest = null;
+      updateLiveQuestButtons();
+    }
   }
+}
+
+mapsUi.load.addEventListener('click', () => {
+  void readLiveQuest(mapsUi, 'readQuestMaps', appendMapEntries);
+});
+serviceInventoryUi.load.addEventListener('click', () => {
+  void readLiveQuest(serviceInventoryUi, 'readQuestServiceInventory', appendServiceInventory);
 });
 
 newsUi.details.addEventListener('toggle', () => {

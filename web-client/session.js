@@ -3,12 +3,16 @@ import { applySessionKey, createFrameParser, encodeCommand, readReply } from './
 import {
   AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
 } from './data-bootstrap.js';
-import { QUEST_MAP_REQUEST, QUEST_MAP_REPLY, readQuestMapReply } from './quest-data.js';
+import {
+  QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY, readQuestInventoryReply, readQuestMapReply,
+} from './quest-data.js';
 
 const AUTH_PORT = 12001;
 const DATA_PORT = 12003;
 const QUEST_PORT = 12005;
 const QUEST_REGION = 0;
+const QUEST_PENDING = 4;
+const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const CHANNELS = [
   { port: 12002, pong: 35 },
   { port: DATA_PORT, pong: 3 },
@@ -25,7 +29,7 @@ const messages = {
   protocol: '遊戲服務回傳的登入資料無法驗證。',
   timeout: '遊戲服務未及時回覆，請再試一次。',
   cancelled: '已取消連線。',
-  busy: '正在讀取任務區域。',
+  busy: '正在讀取任務資料。',
 };
 
 export class SessionError extends Error {
@@ -104,13 +108,13 @@ class SessionSocket {
     this.#onStartupFailure = null;
   }
 
-  async ask(command, fields, replies, { signal, skip, allowOther, nextKey } = {}) {
+  async ask(command, fields, replies, { signal, skip, allowOther, nextKey, onReply } = {}) {
     signal?.throwIfAborted();
     this.assertOpen();
     if (this.#waiting) throw new SessionError('protocol');
 
     const response = new Promise((resolve, reject) => {
-      this.#waiting = { replies, skip, allowOther, resolve, reject };
+      this.#waiting = { replies, skip, allowOther, onReply, resolve, reject };
     });
     try {
       const frame = encodeCommand(command, fields, this.#key);
@@ -167,6 +171,7 @@ class SessionSocket {
         const reply = readReply(body);
         const waiter = this.#waiting;
         if (waiter?.replies.includes(reply.command)) {
+          waiter.onReply?.();
           this.#waiting = null;
           waiter.resolve(reply);
         } else if (this.#observer?.commands.includes(reply.command)) {
@@ -289,16 +294,12 @@ async function closeSession(auth, channels) {
   await auth?.close();
 }
 
-async function queryQuestMaps(playerId, sessionKey, signal) {
+async function queryQuest(playerId, sessionKey, signal, read) {
   const socket = new SessionSocket(QUEST_PORT);
   const channel = { socket, port: QUEST_PORT, verified: false };
   try {
-    await confirmChannel(channel, playerId, sessionKey, signal);
-    // Quest login may also send the card count and the existing inventory.
-    const reply = await socket.ask(QUEST_MAP_REQUEST, [QUEST_REGION], [QUEST_MAP_REPLY], {
-      signal, allowOther: true,
-    });
-    return readQuestMapReply(reply, QUEST_REGION);
+    const confirm = () => confirmChannel(channel, playerId, sessionKey, signal);
+    return await read(socket, confirm, signal);
   } catch (error) {
     throw error instanceof SessionError ? error : new SessionError('protocol');
   } finally {
@@ -306,9 +307,44 @@ async function queryQuestMaps(playerId, sessionKey, signal) {
   }
 }
 
+async function readQuestMapList(socket, confirm, signal) {
+  await confirm();
+  const reply = await socket.ask(QUEST_MAP_REQUEST, [QUEST_REGION], [QUEST_MAP_REPLY], {
+    signal, allowOther: true,
+  });
+  return readQuestMapReply(reply, QUEST_REGION);
+}
+
+async function readQuestInventoryPushes(socket, confirm, signal) {
+  const rows = [];
+  let invalid = false;
+  const unsubscribe = socket.observe([QUEST_INVENTORY_REPLY], (reply) => {
+    if (invalid) return;
+    try {
+      const row = readQuestInventoryReply(reply);
+      if (row.status === QUEST_PENDING) return;
+      if (rows.length === MAX_QUEST_ROWS) throw new SessionError('protocol');
+      rows.push(row);
+    } catch {
+      invalid = true;
+    }
+  });
+  try {
+    await confirm();
+    // Ruby finishes the inventory resend in its login callback before handling KeepAlive.
+    // Stop collecting inside frame dispatch, even when later events share the Pong's chunk.
+    const pong = await socket.ask(3, [], [3], { signal, allowOther: true, onReply: unsubscribe });
+    pong.done();
+    if (invalid) throw new SessionError('protocol');
+    return rows;
+  } finally {
+    unsubscribe();
+  }
+}
+
 function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }) {
   let closing;
-  let questMapRequest;
+  let questRequest;
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -318,7 +354,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       initialData = null;
       questData = null;
       sessionKey.fill(0);
-      const request = questMapRequest;
+      const request = questRequest;
       request?.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
       closing = (async () => {
         if (request) await request.task.catch(() => {});
@@ -327,6 +363,30 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       })();
     }
     return closing;
+  }
+
+  async function readFromQuest(read, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (!initialData) throw new SessionError('network');
+    if (questRequest) throw new SessionError('busy');
+    auth.assertOpen();
+    for (const { socket } of channels) socket.assertOpen();
+
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new SessionError('cancelled'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
+    const task = queryQuest(playerId, sessionKey, controller.signal, read);
+    questRequest = { controller, task };
+    try {
+      const result = await task;
+      controller.signal.throwIfAborted();
+      return result;
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', cancel);
+      questRequest = null;
+    }
   }
 
   const timer = setInterval(async () => {
@@ -357,27 +417,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       return { ...questData, rows: questData.rows.map((row) => ({ ...row })) };
     },
     async readQuestMaps({ signal } = {}) {
-      if (signal?.aborted) throw new SessionError('cancelled');
-      if (!initialData) throw new SessionError('network');
-      if (questMapRequest) throw new SessionError('busy');
-      auth.assertOpen();
-      for (const { socket } of channels) socket.assertOpen();
-
-      const controller = new AbortController();
-      const cancel = () => controller.abort(new SessionError('cancelled'));
-      signal?.addEventListener('abort', cancel, { once: true });
-      const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
-      const task = queryQuestMaps(playerId, sessionKey, controller.signal);
-      questMapRequest = { controller, task };
-      try {
-        const ids = await task;
-        controller.signal.throwIfAborted();
-        return ids;
-      } finally {
-        clearTimeout(timeout);
-        signal?.removeEventListener('abort', cancel);
-        questMapRequest = null;
-      }
+      return readFromQuest(readQuestMapList, signal);
+    },
+    async readQuestServiceInventory({ signal } = {}) {
+      return readFromQuest(readQuestInventoryPushes, signal);
     },
     closed,
     close: () => stop('closed'),
