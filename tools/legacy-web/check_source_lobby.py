@@ -7,6 +7,7 @@ import struct
 from contextlib import closing
 from pathlib import Path
 from secrets import token_hex
+from time import monotonic
 from urllib.parse import urlsplit
 
 from playwright.sync_api import expect, sync_playwright
@@ -67,6 +68,14 @@ def active_session_traffic(sockets, live, start, player_id):
         frames_for(received, 4, 4 if urlsplit(url).path == "/socket/12003" else 2)
 
 
+def wait_logout(page, live, database, name, player_id):
+    deadline = monotonic() + 3
+    # Ruby can finish its unbind after Chromium observes the WebSocket closure.
+    while not all(socket.is_closed() for socket in live) or player(database, name) != [(player_id, 0)]:
+        assert monotonic() < deadline, "Original session did not close after logout"
+        page.wait_for_timeout(50)
+
+
 def verify_starter(database, avatar_id):
     decks = dict(query(database, "SELECT name, id FROM chara_card_decks WHERE avatar_id = ?", avatar_id))
     assert set(decks) == {"Binder", "Deck 1", "Deck 2", "Deck 3"}
@@ -90,6 +99,58 @@ def check_lobby(page, player_id, profile):
     expect(page.locator("#lobby-avatar-id")).to_be_hidden()
     expect(page.locator("#lobby-deck-name")).to_have_text("Deck 1")
     expect(page.locator("#lobby-energy")).to_have_text(re.compile(rf"{energy}\s*[/／]\s*{energy_max}"))
+    entries = page.locator("#lobby-entries")
+    quest_entry = entries.get_by_role("button", name="任務", exact=True)
+    news_entry = entries.get_by_role("button", name="最新消息", exact=True)
+    expect(quest_entry).to_be_visible()
+    expect(news_entry).to_be_visible()
+    shell = page.locator("#lobby-view").bounding_box()
+    quest = quest_entry.bounding_box()
+    news = news_entry.bounding_box()
+    logout = page.locator("#lobby-logout").bounding_box()
+    status = page.locator("#lobby-profile").bounding_box()
+    assert (quest["x"] + quest["width"] / 2 - shell["x"], quest["y"] + quest["height"] / 2 - shell["y"]) == (460, 245), quest
+    assert news["x"] + news["width"] <= logout["x"] and news["y"] - shell["y"] == 12, news
+    assert (status["x"] - shell["x"], status["y"] - shell["y"], status["width"], status["height"]) == (20, 596, 740, 64), status
+
+
+def check_lobby_dialogs(page, stage, directory):
+    news = page.locator("#lobby-news")
+    news_open = page.locator("#lobby-news-open")
+    news_close = page.locator("#lobby-news-close")
+    quest = page.locator("#lobby-quest")
+    quest_open = page.locator("#lobby-quest-load")
+    quest_close = page.locator("#lobby-quest-close")
+
+    expect(news).to_have_attribute("data-state", "ready")
+    expect(news).to_be_visible()
+    expect(news_close).to_be_focused()
+    news_box = news.bounding_box()
+    assert tuple(news_box[key] for key in ("x", "y", "width", "height")) == (246, 158, 378, 342), news_box
+    expect(page.locator("#lobby-news-content li")).to_have_count(3)
+    expect(quest).to_be_hidden()
+    capture(stage, directory, "11a-lobby-news.png")
+    news_close.press("Escape")
+    expect(news).to_be_hidden()
+    expect(news_open).to_be_focused()
+
+    quest_open.press("Enter")
+    expect(quest).to_be_visible()
+    expect(quest).to_have_attribute("data-state", "empty")
+    quest_box = quest.bounding_box()
+    assert tuple(quest_box[key] for key in ("x", "y", "width", "height")) == (164, 170, 452, 340), quest_box
+    expect(page.locator("#lobby-quest-status")).to_have_text("持有 0／4 筆任務")
+    expect(quest_close).to_be_focused()
+    capture(stage, directory, "11b-lobby-quest.png")
+    quest_close.click()
+    expect(quest).to_be_hidden()
+    expect(quest_open).to_be_focused()
+
+    news_open.click()
+    expect(news).to_be_visible()
+    news_close.click()
+    expect(news).to_be_hidden()
+    expect(news_open).to_be_focused()
 
 
 def check(page, origin, database, directory):
@@ -195,8 +256,7 @@ def check(page, origin, database, directory):
     screen(stage, "lobby")
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
-    page.locator("#lobby-quest-load").click()
-    expect(page.locator("#lobby-quest")).to_have_attribute("data-state", "empty")
+    check_lobby_dialogs(page, stage, directory)
     assert len(sockets) == first + 4 and all(not socket.is_closed() for socket in live[first:])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
     music(page, "ulbgm02.mp3")
@@ -204,8 +264,7 @@ def check(page, origin, database, directory):
     page.locator("#lobby-logout").click()
     screen(stage, "title")
     expect(secret).to_have_value("")
-    assert all(socket.is_closed() for socket in live)
-    assert player(database, name) == [(player_id, 0)]
+    wait_logout(page, live, database, name, player_id)
     music(page, "ulbgm01.mp3")
     capture(stage, directory, "12-return-to-title.png")
 
@@ -219,6 +278,8 @@ def check(page, origin, database, directory):
     screen(stage, "lobby")
     check_lobby(page, player_id, profile)
     expect(onboarding).to_be_hidden()
+    expect(page.locator("#lobby-news")).to_have_attribute("data-state", "ready")
+    expect(page.locator("#lobby-news")).to_be_hidden()
     assert "onboarding" not in page.evaluate("window.reloginScreens")
     active_session_traffic(sockets, live, second, player_id)
     assert avatar(database, player_id) == [profile]
@@ -227,8 +288,7 @@ def check(page, origin, database, directory):
     capture(stage, directory, "13-direct-lobby-after-login.png")
     page.locator("#lobby-logout").click()
     screen(stage, "title")
-    assert all(socket.is_closed() for socket in live)
-    assert player(database, name) == [(player_id, 0)]
+    wait_logout(page, live, database, name, player_id)
     assert page.url == origin + ENTRY and not errors, errors
     assert all(urlsplit(request.url).netloc == urlsplit(origin).netloc for request in requests)
     ensure_no_password(requests, sockets, [password])

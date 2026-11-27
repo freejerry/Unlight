@@ -3,6 +3,7 @@
 import argparse
 from hashlib import sha256
 from secrets import token_hex
+from time import monotonic
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -15,6 +16,162 @@ SOUND_SHA256 = {
     CLICK: "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
     ALERT: "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
 }
+ENTRY = "/source-login/"
+CHROMIUM_GRAPHICS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+STRICT_AUTOPLAY = [
+    "--autoplay-policy=document-user-activation-required",
+    "--disable-features=PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies",
+]
+OBSERVE_MUSIC = """(() => {
+  window.musicAttempts = [];
+  window.musicSeeks = [];
+  window.soundEffects = 0;
+  const start = AudioBufferSourceNode.prototype.start;
+  AudioBufferSourceNode.prototype.start = function (...args) {
+    window.soundEffects++;
+    return start.apply(this, args);
+  };
+  const gains = new WeakMap();
+  const connect = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function (destination, ...args) {
+    const result = connect.call(this, destination, ...args);
+    if (this instanceof MediaElementAudioSourceNode && destination instanceof GainNode) {
+      gains.set(this.mediaElement, destination);
+    }
+    return result;
+  };
+  window.musicGain = audio => gains.get(audio)?.gain.value ?? null;
+  window.musicVolume = audio => {
+    const output = gains.get(audio);
+    return audio?.muted || (output && output.context.state !== 'running')
+      ? 0 : (audio?.volume ?? 0) * (output?.gain.value ?? 1);
+  };
+  const currentTime = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime');
+  Object.defineProperty(HTMLMediaElement.prototype, 'currentTime', {
+    ...currentTime,
+    set(value) {
+      const result = currentTime.set.call(this, value);
+      window.musicSeeks.push({
+        value,
+        entry: document.querySelector('#stage')?.dataset.entry,
+        path: new URL(this.currentSrc || this.src).pathname,
+      });
+      return result;
+    },
+  });
+  const play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (...args) {
+    const attempt = {
+      path: new URL(this.currentSrc || this.src).pathname,
+      entry: document.querySelector('#stage')?.dataset.entry,
+      activated: navigator.userActivation.hasBeenActive,
+      volume: this.volume,
+      gain: window.musicGain(this),
+    };
+    window.musicAttempts.push(attempt);
+    const result = play.apply(this, args);
+    void result.then(() => { attempt.result = 'playing'; }, error => { attempt.result = error.name; });
+    return result;
+  };
+})()"""
+READ_MUSIC = """(() => {
+  const stage = document.querySelector('#stage');
+  const button = document.querySelector('#title-music-start');
+  const audio = stage?.querySelector('audio');
+  return {
+    entry: stage?.dataset.entry ?? null,
+    loadingFrame: stage?.querySelector('canvas')?.hasAttribute('data-loading-frame') ?? false,
+    state: stage?.dataset.musicState ?? null,
+    activated: navigator.userActivation.hasBeenActive,
+    buttonVisible: Boolean(button?.getClientRects().length),
+    time: audio?.currentTime ?? 0,
+    gain: window.musicGain(audio),
+    volume: window.musicVolume(audio),
+    audible: Boolean(audio && !audio.paused && window.musicVolume(audio) > 0),
+    attempts: window.musicAttempts,
+    seeks: window.musicSeeks,
+    soundEffects: window.soundEffects,
+  };
+})()"""
+
+
+def music_state(cdp):
+    # Playwright's usual Chromium evaluate marks scripts as user gestures. Observe
+    # without one so the browser's autoplay decision comes from real input only.
+    return cdp.send("Runtime.evaluate", {
+        "expression": READ_MUSIC, "returnByValue": True, "userGesture": False,
+    })["result"]["value"]
+
+
+def wait_music(page, cdp, condition):
+    deadline = monotonic() + 14
+    while True:
+        state = music_state(cdp)
+        if condition(state):
+            return state
+        assert monotonic() < deadline, state
+        page.wait_for_timeout(50)
+
+
+def check_music_activation(browser, origin, gesture):
+    page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1,
+                            has_touch=gesture in ("touch", "loading touch"),
+                            reduced_motion="no-preference" if gesture == "loading touch" else "reduce")
+    sockets, errors, delayed = [], [], []
+    page.on("websocket", lambda socket: sockets.append(socket.url))
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.add_init_script(OBSERVE_MUSIC)
+    cdp = page.context.new_cdp_session(page)
+    if gesture == "loading touch":
+        page.route(origin + "/source-login/assets/event_title.swf", lambda route: delayed.append(route))
+    try:
+        assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
+        if gesture == "loading touch":
+            wait_music(page, cdp, lambda state: state["entry"] == "loading" and state["loadingFrame"] and delayed)
+            assert not music_state(cdp)["activated"]
+            cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": 410, "y": 140}]})
+            assert not music_state(cdp)["activated"], "Touch start must not unlock autoplay in Chromium"
+            cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+            during_load = wait_music(page, cdp, lambda state: state["activated"] and state["gain"] == 0)
+            assert during_load["entry"] == "loading" and not during_load["audible"] and during_load["volume"] == 0
+            assert not during_load["buttonVisible"]
+            assert any(attempt["entry"] == "loading" and attempt["gain"] == 0 for attempt in during_load["attempts"])
+            delayed[0].continue_()
+        elif gesture != "autoplay":
+            blocked = wait_music(page, cdp, lambda state: state["entry"] == "ready" and state["state"] == "blocked")
+            assert blocked["buttonVisible"]
+            assert not blocked["activated"] and not blocked["audible"] and blocked["time"] == 0
+            assert any(attempt.get("result") == "NotAllowedError" and not attempt["activated"]
+                       for attempt in blocked["attempts"])
+            if gesture == "blank stage":
+                page.mouse.click(410, 140)
+            elif gesture == "field":
+                page.locator("#username").click()
+            elif gesture == "keyboard":
+                cdp.send("Runtime.evaluate", {"expression": "document.querySelector('#username').focus()",
+                                              "userGesture": False})
+                page.keyboard.press("a")
+            elif gesture == "touch":
+                page.touchscreen.tap(410, 140)
+            else:
+                page.locator("#title-music-start").click()
+
+        playing = wait_music(page, cdp, lambda state: (
+            state["entry"] == "ready" and state["state"] == "playing" and state["audible"] and state["time"] > 0.2
+        ))
+        assert not playing["buttonVisible"]
+        assert playing["volume"] == 0.5
+        assert playing["soundEffects"] == 0
+        assert playing["activated"] == (gesture != "autoplay")
+        assert playing["attempts"] and all(attempt["path"] == BGM for attempt in playing["attempts"])
+        assert any(attempt.get("result") == "playing" and attempt["entry"] in ("entering", "ready")
+                   and attempt["volume"] > 0 for attempt in playing["attempts"])
+        if gesture == "loading touch":
+            assert playing["gain"] == 0.5
+            assert {"value": 0, "entry": "entering", "path": BGM} in playing["seeks"]
+        assert not sockets and not errors, (sockets, errors)
+    finally:
+        page.close()
 
 
 def main():
@@ -28,10 +185,10 @@ def main():
 
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
-            "--autoplay-policy=user-gesture-required",
-            "--use-angle=swiftshader",
-            "--enable-unsafe-swiftshader",
+            *CHROMIUM_GRAPHICS, *STRICT_AUTOPLAY,
         ])
+        for gesture in ("blank stage", "field", "keyboard", "touch", "button", "loading touch"):
+            check_music_activation(browser, origin, gesture)
         page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1)
         page.emulate_media(reduced_motion="reduce")
         page.add_init_script("""(() => {
@@ -160,7 +317,14 @@ def main():
         assert len(sockets) == 1 and not errors, (sockets, errors)
         assert page.url == origin + "/source-login/"
         browser.close()
-    print("Fixed title, centered stage, account form, three News items, original audio and modal rejection passed.")
+        browser = tool.chromium.launch(executable_path=args.chromium, args=[
+            *CHROMIUM_GRAPHICS, "--autoplay-policy=no-user-gesture-required",
+        ])
+        try:
+            check_music_activation(browser, origin, "autoplay")
+        finally:
+            browser.close()
+    print("Original title audio autoplay, activation fallbacks, fixed stage, three News items and modal rejection passed.")
 
 
 if __name__ == "__main__":

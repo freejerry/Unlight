@@ -7,39 +7,52 @@ const layout = `
       <button id="lobby-logout" class="source-lobby-button" type="button">登出</button>
     </header>
     <p id="lobby-status" class="source-lobby-status" role="status" aria-atomic="true"></p>
-    <section id="lobby-profile" class="stage-panel source-lobby-panel" aria-labelledby="lobby-profile-title">
-      <h2 id="lobby-profile-title" class="stage-panel-title">帳號與角色</h2>
-      <div class="source-lobby-body">
-        <p id="lobby-avatar-name" class="source-lobby-avatar"></p>
-        <span id="lobby-player-id" hidden></span>
-        <span id="lobby-avatar-id" hidden></span>
-        <dl class="source-lobby-values">
-          <div><dt>等級</dt><dd id="lobby-level"></dd></div>
-          <div><dt>Gem</dt><dd id="lobby-gems"></dd></div>
-          <div><dt>經驗值</dt><dd id="lobby-exp"></dd></div>
-          <div><dt>行動力</dt><dd id="lobby-energy"></dd></div>
-          <div id="lobby-deck-row" hidden><dt>牌組</dt><dd id="lobby-deck-name"></dd></div>
-        </dl>
-      </div>
+    <nav id="lobby-entries" class="source-lobby-entries" aria-label="大廳入口">
+      <button id="lobby-quest-load" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-quest">任務</button>
+      <button id="lobby-news-open" class="source-lobby-button" type="button" aria-haspopup="dialog" aria-controls="lobby-news">最新消息</button>
+    </nav>
+    <section id="lobby-profile" aria-labelledby="lobby-profile-title">
+      <h2 id="lobby-profile-title" class="sr-only">角色狀態</h2>
+      <p id="lobby-avatar-name" class="source-lobby-avatar"></p>
+      <span id="lobby-player-id" hidden></span>
+      <span id="lobby-avatar-id" hidden></span>
+      <dl class="source-lobby-values">
+        <div><dt>等級</dt><dd id="lobby-level"></dd></div>
+        <div><dt>Gem</dt><dd id="lobby-gems"></dd></div>
+        <div><dt>經驗值</dt><dd id="lobby-exp"></dd></div>
+        <div><dt>行動力</dt><dd id="lobby-energy"></dd></div>
+        <div id="lobby-deck-row" hidden><dt>牌組</dt><dd id="lobby-deck-name"></dd></div>
+      </dl>
     </section>
-    <section id="lobby-quest" class="stage-panel source-lobby-panel" aria-labelledby="lobby-quest-title" data-state="idle">
-      <h2 id="lobby-quest-title" class="stage-panel-title">任務</h2>
+    <dialog id="lobby-quest" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-quest-title" data-state="idle">
+      <header class="source-lobby-dialog-heading">
+        <h2 id="lobby-quest-title" class="stage-panel-title">任務清單</h2>
+        <form method="dialog">
+          <button id="lobby-quest-close" class="source-lobby-button" type="submit" autofocus>關閉</button>
+        </form>
+      </header>
       <div class="source-lobby-body source-lobby-quest-body">
-        <button id="lobby-quest-load" class="source-lobby-button" type="button" aria-controls="lobby-quest-rows">讀取任務資料</button>
         <p id="lobby-quest-status" role="status" aria-atomic="true"></p>
-        <ol id="lobby-quest-rows" class="source-lobby-scroll source-lobby-quest-rows" aria-labelledby="lobby-quest-title" tabindex="0" hidden></ol>
+        <button id="lobby-quest-retry" class="source-lobby-button" type="button" hidden>重新讀取</button>
+        <ol id="lobby-quest-rows" class="source-lobby-scroll source-lobby-quest-rows" aria-labelledby="lobby-quest-title" role="list" tabindex="0" hidden></ol>
       </div>
-    </section>
-    <section id="lobby-news" class="stage-panel source-lobby-panel" data-state="loading">
-      <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
+    </dialog>
+    <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
+      <header class="source-lobby-dialog-heading">
+        <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
+        <form method="dialog">
+          <button id="lobby-news-close" class="source-lobby-button" type="submit" autofocus>關閉</button>
+        </form>
+      </header>
       <div class="source-lobby-body source-lobby-news-body">
         <p id="lobby-news-status" role="status" aria-atomic="true">正在讀取最新消息…</p>
         <div id="lobby-news-content" class="source-lobby-scroll source-lobby-news-content" role="region" aria-labelledby="lobby-news-title" tabindex="0" hidden></div>
       </div>
-    </section>
+    </dialog>
   </section>`;
 
 const questStates = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '受贈'];
+const newsSeen = new Set();
 
 function displayProfile(view, playerId, avatar) {
   const { id, name, level, gems, exp, energy, energyMax, questDecks } = avatar;
@@ -67,6 +80,8 @@ async function loadNews(view, signal) {
   const panel = view.querySelector('#lobby-news');
   const status = panel.querySelector('#lobby-news-status');
   const content = panel.querySelector('#lobby-news-content');
+  panel.dataset.state = 'loading';
+  status.textContent = '正在讀取最新消息…';
   try {
     const response = await fetch('/public/news.xml', {
       cache: 'no-store',
@@ -75,22 +90,35 @@ async function loadNews(view, signal) {
     });
     if (!response.ok && response.status !== 404) throw new Error('News request failed.');
     const news = response.ok ? readNews(await response.text()) : null;
-    if (signal.aborted) return;
+    if (signal.aborted) return false;
     if (news?.textContent.trim()) {
       content.replaceChildren(news);
       content.hidden = false;
       panel.dataset.state = 'ready';
       status.textContent = '最新消息已載入。';
       status.classList.add('sr-only');
+      return true;
     } else {
       panel.dataset.state = 'empty';
       status.textContent = '目前沒有最新消息。';
     }
   } catch {
-    if (signal.aborted) return;
+    if (signal.aborted) return false;
     panel.dataset.state = 'error';
     status.textContent = '暫時無法讀取最新消息。';
   }
+  return false;
+}
+
+function bindDialog(entry, dialog, signal, didOpen) {
+  const open = () => {
+    if (signal.aborted || dialog.open || dialog.parentElement.querySelector('dialog[open]')) return;
+    dialog.showModal();
+    didOpen();
+  };
+  entry.addEventListener('click', open, { signal });
+  dialog.addEventListener('close', () => entry.focus({ preventScroll: true }), { signal });
+  return open;
 }
 
 function createQuestRow({ inventoryId, questId, status }) {
@@ -131,14 +159,19 @@ async function resolveQuestNames(rows, signal) {
 
 function bindQuestInventory(view, session, signal) {
   const panel = view.querySelector('#lobby-quest');
-  const load = panel.querySelector('#lobby-quest-load');
+  const entry = view.querySelector('#lobby-quest-load');
+  const retry = panel.querySelector('#lobby-quest-retry');
   const status = panel.querySelector('#lobby-quest-status');
   const list = panel.querySelector('#lobby-quest-rows');
-  load.addEventListener('click', async () => {
-    const restoreFocus = document.activeElement === load;
-    load.disabled = true;
+  const read = async () => {
+    if (panel.dataset.state === 'loading') return;
     panel.dataset.state = 'loading';
     status.textContent = '正在讀取任務資料…';
+    if (document.activeElement === retry) {
+      panel.querySelector('#lobby-quest-close').focus({ preventScroll: true });
+    }
+    retry.hidden = true;
+    list.hidden = true;
     try {
       const snapshot = await session.readQuestInventory({ signal });
       if (signal.aborted) return;
@@ -155,13 +188,11 @@ function bindQuestInventory(view, session, signal) {
       if (signal.aborted) return;
       panel.dataset.state = 'error';
       status.textContent = '暫時無法讀取任務資料。';
-    } finally {
-      if (!signal.aborted) {
-        load.disabled = false;
-        if (restoreFocus && document.activeElement === document.body) load.focus({ preventScroll: true });
-      }
+      retry.hidden = false;
     }
-  }, { signal });
+  };
+  bindDialog(entry, panel, signal, read);
+  retry.addEventListener('click', read, { signal });
 }
 
 export function mountLobby(host, { session, onLogout }) {
@@ -175,10 +206,21 @@ export function mountLobby(host, { session, onLogout }) {
   const view = template.content.firstElementChild;
   const lifetime = new AbortController();
   const { signal } = lifetime;
+  const title = view.querySelector('#lobby-title');
+  const news = view.querySelector('#lobby-news');
   const logout = view.querySelector('#lobby-logout');
   const status = view.querySelector('#lobby-status');
   displayProfile(view, session.playerId, avatar);
   bindQuestInventory(view, session, signal);
+  const requestNews = async () => {
+    const available = await loadNews(view, signal);
+    if (available && news.open) newsSeen.add(session.playerId);
+    return available;
+  };
+  const openNews = bindDialog(view.querySelector('#lobby-news-open'), news, signal, () => {
+    if (news.dataset.state === 'ready') newsSeen.add(session.playerId);
+    if (news.dataset.state === 'error') void requestNews();
+  });
 
   logout.addEventListener('click', async () => {
     logout.disabled = true;
@@ -194,10 +236,14 @@ export function mountLobby(host, { session, onLogout }) {
   }, { signal });
 
   host.append(view);
-  void loadNews(view, signal);
+  title.focus({ preventScroll: true });
+  void requestNews().then(available => {
+    if (available && !newsSeen.has(session.playerId) && document.activeElement === title) openNews();
+  });
 
   return () => {
     lifetime.abort();
+    for (const dialog of view.querySelectorAll('dialog[open]')) dialog.close();
     view.remove();
   };
 }

@@ -20,7 +20,9 @@ music.loop = true;
 stage.append(music);
 
 let active = true;
-let musicWarmup;
+let musicOutput;
+let warmingMusic = false;
+let musicRequest = 0;
 let alertPlayback;
 const entryObserver = new MutationObserver(playSceneMusic);
 
@@ -38,46 +40,90 @@ function reportAudioError(error) {
   }
 }
 
-function playAudio(audio) {
-  void audio.play().catch(reportAudioError);
+function playAudio(audio, onPlaying, onError = reportAudioError) {
+  try {
+    void Promise.resolve(audio.play()).then(onPlaying).catch(onError);
+  } catch (error) {
+    onError(error);
+  }
 }
 
-function titleEntered() {
-  return stage.dataset.entry === "entering" || stage.dataset.entry === "ready";
+function sceneEntered() {
+  return stage.dataset.screen !== "title" || stage.dataset.entry === "entering" || stage.dataset.entry === "ready";
+}
+
+function confirmMusicPlaying() {
+  if (!active || !sceneEntered() || music.paused || music.seeking || music.readyState < music.HAVE_FUTURE_DATA) return;
+  if (musicOutput) {
+    if (musicOutput.context.state !== "running") return;
+    musicOutput.gain.gain.value = defaultVolume;
+  }
+  stage.dataset.musicState = "playing";
+}
+
+function requestMusic() {
+  const request = ++musicRequest;
+  const entered = sceneEntered();
+  playAudio(music, confirmMusicPlaying, error => {
+    if (!active || request !== musicRequest) return;
+    if (entered && error.name === "NotAllowedError") stage.dataset.musicState = "blocked";
+    reportAudioError(error);
+  });
 }
 
 function playSceneMusic() {
-  if (!active || (stage.dataset.screen === "title" && !titleEntered())) return;
+  if (!active || !sceneEntered()) return;
   entryObserver.disconnect();
-  if (musicWarmup) {
-    musicWarmup = undefined;
-    music.currentTime = 0;
-  }
+  const wasWarming = warmingMusic;
+  warmingMusic = false;
   const path = sceneTracks[stage.dataset.soundscape] ?? theme;
   if (music.getAttribute("src") !== path) {
+    musicRequest += 1;
     music.pause();
     music.src = path;
+    delete stage.dataset.musicState;
+  } else if (wasWarming) {
+    music.currentTime = 0;
   }
-  music.volume = defaultVolume;
-  if (music.paused && !music.error) playAudio(music);
+  resumeMusicOutput();
+  if ((music.paused || wasWarming) && !music.error) requestMusic();
 }
 
 function warmMusic() {
-  if (musicWarmup || music.error) return;
-
-  // Use an early trusted gesture to prepare the player silently.
-  music.volume = 0;
-  const attempt = music.play();
-  musicWarmup = attempt;
-  void attempt.then(() => {
-    if (musicWarmup === attempt) {
-      music.pause();
-      music.currentTime = 0;
+  if (music.error || typeof AudioContext !== "function") return;
+  if (!musicOutput) {
+    // Attenuate in the audio graph so an early gesture stays silent on iOS too.
+    let context;
+    try {
+      context = new AudioContext();
+      const gain = context.createGain();
+      gain.gain.value = 0;
+      gain.connect(context.destination);
+      void context.resume().catch(reportAudioError);
+      context.createMediaElementSource(music).connect(gain);
+      music.volume = 1;
+      musicOutput = { context, gain };
+      context.addEventListener("statechange", confirmMusicPlaying);
+    } catch (error) {
+      void context?.close().catch(reportAudioError);
+      reportAudioError(error);
+      return;
     }
-  }, error => {
-    if (musicWarmup === attempt) musicWarmup = undefined;
+  } else {
+    resumeMusicOutput();
+  }
+  warmingMusic = true;
+  if (music.paused) requestMusic();
+}
+
+function resumeMusicOutput() {
+  const context = musicOutput?.context;
+  if (!context || context.state === "running") return;
+  try {
+    void context.resume().catch(reportAudioError);
+  } catch (error) {
     reportAudioError(error);
-  });
+  }
 }
 
 function armTitleAlert() {
@@ -118,12 +164,17 @@ function watchEntry() {
 
 function playOnGesture(event) {
   if (!active || !event.isTrusted) return;
-  if (stage.dataset.screen !== "title" || titleEntered()) playSceneMusic();
-  else warmMusic();
+  if (event.type === "pointerdown" && event.pointerType !== "mouse") return;
+  if (event.type === "pointerup" && event.pointerType === "mouse") return;
+  if (sceneEntered()) playSceneMusic();
+  else if (navigator.userActivation?.isActive !== false) warmMusic();
 }
 
-window.addEventListener("pointerdown", playOnGesture, true);
-window.addEventListener("keydown", playOnGesture, true);
+for (const event of ["pointerdown", "pointerup", "touchend", "keydown", "click"]) {
+  window.addEventListener(event, playOnGesture, { capture: true, passive: true });
+}
+music.addEventListener("playing", confirmMusicPlaying);
+music.addEventListener("seeked", confirmMusicPlaying);
 stage.addEventListener("game-screen-change", playSceneMusic);
 document.getElementById("login-submit").addEventListener("click", event => {
   if (!active || !event.isTrusted) return;
@@ -139,7 +190,10 @@ document.getElementById("login-submit").addEventListener("click", event => {
 });
 window.addEventListener("pagehide", () => {
   active = false;
-  musicWarmup = undefined;
+  musicRequest += 1;
+  warmingMusic = false;
+  delete stage.dataset.musicState;
+  if (musicOutput) musicOutput.gain.gain.value = 0;
   entryObserver.disconnect();
   music.pause();
   clickSound.pause();

@@ -54,6 +54,22 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   display: none;
 }
 
+#title-music-start {
+  display: none;
+  position: absolute;
+  inset: auto 25px 14px auto;
+  padding: 5px 10px;
+  border: 1px solid #b5bfce;
+  border-radius: 3px;
+  background: #181c25;
+  color: #f7f8fa;
+  font: 12px var(--interface-font);
+  cursor: pointer;
+}
+
+#stage[data-screen="title"][data-music-state="blocked"] > #title-music-start { display: block; }
+#title-music-start:focus-visible { outline: 2px solid #f7f8fa; outline-offset: 2px; }
+
 .stage-panel {
   position: absolute;
   isolation: isolate;

@@ -25,7 +25,7 @@
   padding: 3px 11px;
   border: 1px solid #656565;
   border-radius: 3px;
-  background: linear-gradient(#d9dbe0, #818894 52%, #666e7b);
+  background: linear-gradient(#d9dbe0, #b0b9c5 52%, #8593a6);
   color: #121720;
   font: 600 13px var(--interface-font);
   cursor: pointer;
@@ -48,15 +48,91 @@
   font-size: 13px;
 }
 
-.source-lobby-panel {
+.source-lobby-entries {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.source-lobby-entries .source-lobby-button {
+  position: absolute;
+  min-inline-size: 136px;
+  min-block-size: 44px;
+  padding-inline: 18px;
+  border-color: #aeb9c9;
+  border-radius: 4px;
+  background: #e2e7ee;
+  color: #182331;
+  font-size: 15px;
+  pointer-events: auto;
+}
+
+.source-lobby-entries .source-lobby-button:hover { background: #f5f8fc; }
+
+#lobby-quest-load { inset: 223px auto auto 392px; }
+
+.source-lobby-entries #lobby-news-open {
+  inset: 12px 92px auto auto;
+  min-inline-size: 112px;
+  font-size: 13px;
+}
+
+.source-lobby-dialog {
+  inset: auto;
+  inset-block-start: calc(var(--stage-top) + 340px);
+  inset-inline-start: max(390px, 50%);
+  inline-size: 452px;
+  block-size: 340px;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.source-lobby-dialog[open] {
   display: grid;
   grid-template-rows: 38px minmax(0, 1fr);
 }
 
-.source-lobby-panel .stage-panel-title {
+.source-lobby-dialog::backdrop { background: transparent; }
+
+#lobby-news {
+  inset-block-start: calc(var(--stage-top) + 329px);
+  inset-inline-start: calc(max(390px, 50%) + 45px);
+  inline-size: 378px;
+  block-size: 342px;
+}
+
+.source-lobby:has(.source-lobby-dialog[open])::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  background: rgb(7 12 20 / 64%);
+}
+
+.source-lobby-dialog-heading { position: relative; }
+
+.source-lobby-dialog-heading .stage-panel-title {
   padding-block-start: 6px;
   font: 650 14px/1.35 var(--interface-font);
 }
+
+.source-lobby-dialog-heading form {
+  position: absolute;
+  inset: 2px 8px auto auto;
+}
+
+.source-lobby-dialog-heading .source-lobby-button {
+  border-color: #69778a;
+  background: #f6f8fa;
+}
+
+.source-lobby-dialog-heading .source-lobby-button:hover { background: #fff; }
 
 .source-lobby-body {
   min-block-size: 0;
@@ -67,28 +143,47 @@
   overflow-wrap: anywhere;
 }
 
-#lobby-profile { inset: 84px auto auto 20px; inline-size: 214px; block-size: 254px; }
-#lobby-quest { inset: 356px auto auto 20px; inline-size: 214px; block-size: 304px; }
-#lobby-news { inset: 158px auto auto 246px; inline-size: 378px; block-size: 342px; }
+#lobby-profile {
+  position: absolute;
+  inset: auto 20px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 176px) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-block-size: 64px;
+  padding: 8px 14px;
+  border: 1px solid #738294;
+  border-radius: 4px;
+  background: #142031;
+}
 
 .source-lobby-avatar {
-  margin: 0 0 6px;
+  margin: 0;
   color: #f8f9fb;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
-.source-lobby-values { margin: 0; }
-.source-lobby-values > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding-block: 3px;
-  border-block-end: 1px solid #ffffff18;
+.source-lobby-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
 }
-.source-lobby-values dt { color: #d2dce9; }
-.source-lobby-values dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+.source-lobby-values:has(#lobby-deck-row:not([hidden])) {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.source-lobby-values > div {
+  min-inline-size: 0;
+  padding-inline: 12px 6px;
+  border-inline-start: 1px solid #5b687b;
+  overflow-wrap: anywhere;
+}
+
+.source-lobby-values dt { color: #d2dce9; font-size: 12px; }
+.source-lobby-values dd { margin: 2px 0 0; font-size: 14px; font-variant-numeric: tabular-nums; }
 
 .source-lobby-quest-body, .source-lobby-news-body {
   display: flex;
@@ -98,6 +193,7 @@
 
 .source-lobby-quest-body p, .source-lobby-news-body p { margin: 0; }
 #lobby-quest-status:empty { display: none; }
+#lobby-quest-retry { align-self: start; }
 #lobby-quest[data-state="error"] #lobby-quest-status,
 #lobby-news[data-state="error"] #lobby-news-status { color: #ffd1ca; }
 
