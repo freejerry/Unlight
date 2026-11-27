@@ -144,6 +144,12 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 Chromium 使用隔離 Ruby 的真實 Data 回覆，取得任務 ID `0`、狀態 `4` 及 1149 秒。以瀏覽器受控時間驗證登入後延遲讀取、重讀、分頁隱藏後再顯示，以及 320 CSS 像素、DPR 2 的估計到期畫面。當估計到期時，畫面仍為任務 ID `0`、狀態 `4`。快照顯示期間未新增 Ruby 命令，SQLite 中的任務與截止時間維持一致。登出及 Data 連線中斷都會清除畫面。[桌面倒數](native/32-native-quest-countdown.png) · [320 像素預估到期](native/33-native-quest-countdown-elapsed-mobile.png)
 
+### 確認搜尋結果
+
+按「確認搜尋結果」才建立原版 Quest 連線。服務尚未重送該筆已發現的任務時，原生頁面沿用原版命令 `17`，送出持有紀錄 ID，並檢查對應的任務狀態回覆。Ruby 以原版的嚴格時間條件判斷到期，寫入時同時核對持有人、待定狀態、截止時間和任務 ID。伺服器確認後，頁面更新該筆紀錄並讀取既有的繁中關卡及地形說明。[原版指令](../../app/client/src/net/command/QuestCommand.as#L316) · [狀態回覆](../../app/server/src/protocol/command/questcommand.rb#L466) · [Ruby 到期檢查](../../app/server/src/model/avatar_quest_inventory.rb#L119)
+
+Chromium 以 320 CSS 像素、DPR 2 連到隔離 Ruby，先用受控瀏覽器時鐘讓按鈕在實際截止前約 4.2 秒出現。當時 Ruby 保留狀態 `4`，頁面顯示尚未確認。同一筆任務跨過真實截止後重試，原版回覆及 SQLite 都顯示狀態 `0`。畫面可讀到「落日大蝙蝠」與完整繁中說明，行動力、通關及獎勵資料維持一致。驗收也延遲真實回覆，確認重試可透過原版 Quest 登入補送取回結果，登出則會清除畫面並忽略延遲回覆。[尚未確認](native/34-native-quest-confirm-unconfirmed.png) · [確認後的繁中關卡資料](native/35-native-quest-confirm-discovered.png)
+
 ### 區域地圖查詢
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)

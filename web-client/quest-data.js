@@ -8,6 +8,8 @@ const text = new TextDecoder('utf-8', { fatal: true });
 export const QUEST_MAP_REQUEST = 6;
 export const QUEST_MAP_REPLY = 14;
 export const QUEST_INVENTORY_REPLY = 6;
+export const QUEST_DISCOVERY_REQUEST = 17;
+export const QUEST_DISCOVERY_REPLY = 17;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -50,6 +52,13 @@ export function readQuestMapReply(reply, region) {
   return ids;
 }
 
+function questInventoryRow(inventoryId, questId, status) {
+  if (inventoryId <= 0 || questId < 0 || status < 0 || status > 6) {
+    throw new Error('Invalid quest inventory data.');
+  }
+  return { inventoryId, questId, status };
+}
+
 export function readQuestInventoryReply(reply) {
   if (reply.command !== QUEST_INVENTORY_REPLY) throw new Error('Unexpected quest inventory reply.');
   const inventoryId = reply.int();
@@ -59,10 +68,16 @@ export function readQuestInventoryReply(reply) {
   const status = reply.byte();
   reply.discardString(MAX_SENDER_NAME_BYTES, true);
   reply.done();
-  if (inventoryId <= 0 || questId < 0 || status < 0 || status > 6) {
-    throw new Error('Invalid quest inventory data.');
-  }
-  return { inventoryId, questId, status };
+  return questInventoryRow(inventoryId, questId, status);
+}
+
+export function readQuestDiscoveryReply(reply) {
+  if (reply.command !== QUEST_DISCOVERY_REPLY) throw new Error('Unexpected quest discovery reply.');
+  const inventoryId = reply.int();
+  const status = reply.byte();
+  const questId = reply.int();
+  reply.done();
+  return questInventoryRow(inventoryId, questId, status);
 }
 
 export function createQuestDataReader() {

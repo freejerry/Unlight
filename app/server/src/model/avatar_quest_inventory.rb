@@ -118,12 +118,24 @@ module Unlight
 
     # 発見されたか？
     def quest_find?
-      ret = Time.now.utc > self.find_at
-      if ret
-        self.status = QS_NEW
-        self.save_changes
+      return false unless avatar_id && avatar_id > 0
+
+      owned = this.where(:avatar_id => avatar_id)
+      now = Time.now.utc
+      if status == QS_PENDING && find_at && now > find_at
+        owned.where(:status => QS_PENDING, :find_at => find_at, :quest_id => quest_id).
+          update(:status => QS_NEW, :updated_at => now)
       end
-      ret
+
+      # An inventory row may have changed while this instance was being held.
+      current = owned.first
+      return false unless current
+
+      _refresh_set_values(current)
+      changed_columns.clear
+      return false unless status && find_at
+
+      status != QS_PENDING && now > find_at
     end
 
     # 発見時間を分単位で進める（目標時間を縮める）

@@ -142,7 +142,7 @@ function showQuestStatus(state, kind) {
   questUi.status.textContent = questStatuses[state];
   if (kind) questUi.status.dataset.errorKind = kind;
   else delete questUi.status.dataset.errorKind;
-  questUi.load.disabled = state === 'loading';
+  updateLiveQuestButtons();
 }
 
 function showLiveQuestStatus(view, state, kind) {
@@ -163,10 +163,30 @@ function updateLiveQuestButtons() {
   const busy = liveQuestRequest !== null;
   mapsUi.load.disabled = busy;
   serviceInventoryUi.load.disabled = busy;
+  questUi.load.disabled = questUi.status.dataset.state === 'loading' || liveQuestRequest?.kind === 'discovery';
+  for (const { button } of questCountdowns) button.disabled = busy;
+}
+
+function beginLiveQuestRequest(kind) {
+  const session = active;
+  if (!session?.initialData?.avatar || liveQuestRequest) return null;
+  liveQuestRequest = { kind, session, controller: new AbortController() };
+  updateLiveQuestButtons();
+  return liveQuestRequest;
+}
+
+function isCurrentLiveQuestRequest(request) {
+  return liveQuestRequest === request && active === request.session && request.session.initialData;
+}
+
+function finishLiveQuestRequest(request) {
+  if (liveQuestRequest !== request) return;
+  liveQuestRequest = null;
+  updateLiveQuestButtons();
 }
 
 function clearLiveQuest() {
-  liveQuestRequest?.abort();
+  liveQuestRequest?.controller.abort();
   liveQuestRequest = null;
   for (const view of [mapsUi, serviceInventoryUi]) {
     clearLiveQuestResults(view);
@@ -220,17 +240,77 @@ function updateQuestCountdowns() {
 
   const now = performance.now();
   let nextUpdate = Infinity;
-  for (const { element, deadline } of questCountdowns) {
+  for (const { element, deadline, button } of questCountdowns) {
     const remaining = Math.max(0, deadline - now);
     const seconds = Math.ceil(remaining / 1000);
     if (element.dataset.remainingSeconds !== String(seconds)) {
       element.dataset.remainingSeconds = String(seconds);
       element.dataset.state = seconds > 0 ? 'counting' : 'elapsed';
       element.textContent = seconds > 0 ? `預估剩餘 ${formatQuestTime(seconds)}` : '預估已到期，待伺服器確認';
+      button.hidden = seconds > 0;
     }
     if (seconds > 0) nextUpdate = Math.min(nextUpdate, remaining - (seconds - 1) * 1000);
   }
   if (Number.isFinite(nextUpdate)) questCountdownTimer = setTimeout(updateQuestCountdowns, Math.ceil(nextUpdate));
+}
+
+function showQuestDiscoveryStatus(element, state, message, kind) {
+  element.dataset.state = state;
+  element.textContent = message;
+  if (kind) element.dataset.errorKind = kind;
+  else delete element.dataset.errorKind;
+}
+
+async function confirmQuestDiscovery(row, inventoryId, countdown, statusElement) {
+  if (!row.isConnected || countdown.element.dataset.state !== 'elapsed') return;
+  const request = beginLiveQuestRequest('discovery');
+  if (!request) return;
+  const { session, controller } = request;
+
+  showQuestDiscoveryStatus(statusElement, 'checking', '正在確認搜尋結果…');
+  try {
+    const result = await session.checkQuestDiscovery(inventoryId, { signal: controller.signal });
+    if (!isCurrentLiveQuestRequest(request) || !row.isConnected) return;
+    if (result === null) {
+      showQuestDiscoveryStatus(statusElement, 'unconfirmed', '伺服器尚未確認搜尋結果，請重試。');
+      return;
+    }
+    if (result?.inventoryId !== inventoryId || !Number.isSafeInteger(result.questId) || result.questId <= 0
+        || !Number.isSafeInteger(result.status) || result.status < 0 || result.status === QUEST_PENDING) {
+      throw new SessionError('protocol');
+    }
+
+    if (row.dataset.questId !== String(result.questId)) {
+      row.querySelector('.quest-name').textContent = '未取得名稱';
+      const map = row.querySelector('.quest-map');
+      map.textContent = '';
+      map.hidden = true;
+    }
+    row.dataset.questId = String(result.questId);
+    row.dataset.questStatus = String(result.status);
+    row.cells[1].textContent = String(result.questId);
+    row.cells[2].textContent = String(result.status);
+    questCountdowns.splice(questCountdowns.indexOf(countdown), 1);
+    countdown.element.remove();
+    countdown.button.remove();
+    showQuestDiscoveryStatus(statusElement, 'confirmed', '伺服器已確認搜尋結果。');
+
+    try {
+      const snapshot = await session.readQuestInventory({ signal: controller.signal });
+      if (snapshot && isCurrentLiveQuestRequest(request)) {
+        await enrichQuestSnapshot(snapshot, controller.signal, session);
+      }
+    } catch {
+      // Catalog metadata is optional once the server has confirmed the row.
+    }
+  } catch (error) {
+    if (isCurrentLiveQuestRequest(request) && row.isConnected) {
+      const kind = error instanceof SessionError ? error.kind : 'protocol';
+      showQuestDiscoveryStatus(statusElement, 'failed', '無法確認搜尋結果，請重試。', kind);
+    }
+  } finally {
+    finishLiveQuestRequest(request);
+  }
 }
 
 function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receivedAt }) {
@@ -253,10 +333,21 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
       element.className = 'quest-countdown';
       element.setAttribute('role', 'timer');
       element.setAttribute('aria-live', 'off');
-      description.append(element);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button secondary quest-discovery-check';
+      button.textContent = '確認搜尋結果';
+      button.hidden = true;
+      const statusElement = document.createElement('span');
+      statusElement.className = 'quest-discovery-status';
+      statusElement.setAttribute('role', 'status');
+      statusElement.dataset.state = 'idle';
+      description.append(element, button, statusElement);
       // Ruby truncates toward zero. A nonnegative value can be up to one second short.
       const deadline = entry.findSeconds < 0 ? 0 : receivedAt + (entry.findSeconds + 1) * 1000;
-      questCountdowns.push({ element, deadline });
+      const countdown = { element, deadline, button };
+      questCountdowns.push(countdown);
+      button.addEventListener('click', () => void confirmQuestDiscovery(row, entry.inventoryId, countdown, statusElement));
     }
   }
 
@@ -267,7 +358,9 @@ function displayQuestSnapshot({ capacity, questFlag, questClearNum, rows, receiv
 }
 
 function showQuestDetails(quests) {
+  const known = new Set([...questUi.detailList.children].map(detail => Number(detail.dataset.questId)));
   for (const quest of quests) {
+    if (known.has(quest.id)) continue;
     const detail = questUi.detailTemplate.content.firstElementChild.cloneNode(true);
     const caption = detail.querySelector('.quest-caption');
     const lands = detail.querySelector('.quest-lands');
@@ -527,18 +620,14 @@ function appendServiceInventory(tableBody, rows) {
 }
 
 async function readLiveQuest(view, method, appendRows) {
-  const session = active;
-  if (!session?.initialData?.avatar || liveQuestRequest) return;
+  const request = beginLiveQuestRequest('read');
+  if (!request) return;
 
-  const controller = new AbortController();
-  liveQuestRequest = controller;
-  const isCurrent = () => liveQuestRequest === controller && active === session && session.initialData;
-  updateLiveQuestButtons();
   clearLiveQuestResults(view);
   showLiveQuestStatus(view, 'loading');
   try {
-    const entries = await session[method]({ signal: controller.signal });
-    if (!isCurrent()) return;
+    const entries = await request.session[method]({ signal: request.controller.signal });
+    if (!isCurrentLiveQuestRequest(request)) return;
     if (!Array.isArray(entries)) throw new SessionError('protocol');
     appendRows(view.rows, entries);
     view.count.textContent = String(entries.length);
@@ -546,12 +635,11 @@ async function readLiveQuest(view, method, appendRows) {
     view.result.hidden = false;
     showLiveQuestStatus(view, entries.length ? 'success' : 'empty');
   } catch (error) {
-    if (isCurrent()) showLiveQuestStatus(view, 'failed', error instanceof SessionError ? error.kind : 'protocol');
-  } finally {
-    if (liveQuestRequest === controller) {
-      liveQuestRequest = null;
-      updateLiveQuestButtons();
+    if (isCurrentLiveQuestRequest(request)) {
+      showLiveQuestStatus(view, 'failed', error instanceof SessionError ? error.kind : 'protocol');
     }
+  } finally {
+    finishLiveQuestRequest(request);
   }
 }
 

@@ -4,13 +4,15 @@ import {
   AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readVersions,
 } from './data-bootstrap.js';
 import {
-  QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY, readQuestInventoryReply, readQuestMapReply,
+  QUEST_DISCOVERY_REQUEST, QUEST_DISCOVERY_REPLY, QUEST_INVENTORY_REPLY, QUEST_MAP_REQUEST, QUEST_MAP_REPLY,
+  readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
 const DATA_PORT = 12003;
 const QUEST_PORT = 12005;
 const QUEST_REGION = 0;
+const QUEST_NEW = 0;
 const QUEST_PENDING = 4;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const CHANNELS = [
@@ -108,6 +110,16 @@ class SessionSocket {
     this.#onStartupFailure = null;
   }
 
+  send(command, fields) {
+    this.assertOpen();
+    const frame = encodeCommand(command, fields, this.#key);
+    try {
+      this.#socket.send(frame);
+    } catch {
+      throw new SessionError('network');
+    }
+  }
+
   async ask(command, fields, replies, { signal, skip, allowOther, nextKey, onReply } = {}) {
     signal?.throwIfAborted();
     this.assertOpen();
@@ -117,12 +129,7 @@ class SessionSocket {
       this.#waiting = { replies, skip, allowOther, onReply, resolve, reject };
     });
     try {
-      const frame = encodeCommand(command, fields, this.#key);
-      try {
-        this.#socket.send(frame);
-      } catch {
-        throw new SessionError('network');
-      }
+      this.send(command, fields);
       // The first service request is plain. Each socket owns its key thereafter.
       if (nextKey) this.#key = nextKey.slice();
       return await bounded(response, signal);
@@ -321,6 +328,12 @@ async function readQuestMapList(socket, confirm, signal) {
   return readQuestMapReply(reply, QUEST_REGION);
 }
 
+async function finishQuestObservation(socket, signal, unsubscribe) {
+  // Stop collecting in frame dispatch, even when later events share the Pong's chunk.
+  const pong = await socket.ask(3, [], [3], { signal, allowOther: true, onReply: unsubscribe });
+  pong.done();
+}
+
 async function readQuestInventoryPushes(socket, confirm, signal) {
   const rows = [];
   let invalid = false;
@@ -338,11 +351,36 @@ async function readQuestInventoryPushes(socket, confirm, signal) {
   try {
     await confirm();
     // Ruby finishes the inventory resend in its login callback before handling KeepAlive.
-    // Stop collecting inside frame dispatch, even when later events share the Pong's chunk.
-    const pong = await socket.ask(3, [], [3], { signal, allowOther: true, onReply: unsubscribe });
-    pong.done();
+    await finishQuestObservation(socket, signal, unsubscribe);
     if (invalid) throw new SessionError('protocol');
     return rows;
+  } finally {
+    unsubscribe();
+  }
+}
+
+async function readQuestDiscovery(socket, confirm, signal, inventoryId) {
+  // Recover a committed discovery when its original reply did not reach this session.
+  const rows = await readQuestInventoryPushes(socket, confirm, signal);
+  const existing = rows.find((row) => row.inventoryId === inventoryId && row.questId > 0);
+  if (existing) return existing;
+
+  let discovered = null;
+  const unsubscribe = socket.observe([QUEST_DISCOVERY_REPLY], (reply) => {
+    try {
+      const row = readQuestDiscoveryReply(reply);
+      if (row.inventoryId === inventoryId && row.status === QUEST_NEW && row.questId > 0) {
+        discovered ??= row;
+      }
+    } catch {
+      // An invalid state notification cannot confirm this quest.
+    }
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(QUEST_DISCOVERY_REQUEST, [inventoryId]);
+    await finishQuestObservation(socket, signal, unsubscribe);
+    return discovered;
   } finally {
     unsubscribe();
   }
@@ -371,7 +409,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return closing;
   }
 
-  async function readFromQuest(read, signal) {
+  async function readFromQuest(read, signal, reconcile) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (!initialData) throw new SessionError('network');
     if (questRequest) throw new SessionError('busy');
@@ -387,7 +425,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     try {
       const result = await task;
       controller.signal.throwIfAborted();
-      return result;
+      return reconcile ? reconcile(result) : result;
     } finally {
       clearTimeout(timeout);
       signal?.removeEventListener('abort', cancel);
@@ -427,6 +465,27 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     },
     async readQuestServiceInventory({ signal } = {}) {
       return readFromQuest(readQuestInventoryPushes, signal);
+    },
+    async checkQuestDiscovery(inventoryId, { signal } = {}) {
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData) throw new SessionError('network');
+      if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff) {
+        throw new SessionError('protocol');
+      }
+      const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
+      if (index < 0) return null;
+      const row = questData.rows[index];
+      if (row.status !== QUEST_PENDING) return row.questId > 0 ? { ...row } : null;
+
+      return readFromQuest(
+        (socket, confirm, questSignal) => readQuestDiscovery(socket, confirm, questSignal, inventoryId),
+        signal,
+        (confirmed) => {
+          if (!confirmed) return null;
+          questData.rows[index] = confirmed;
+          return { ...confirmed };
+        },
+      );
     },
     closed,
     close: () => stop('closed'),

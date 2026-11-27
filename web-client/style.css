@@ -141,6 +141,10 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-map { display: block; color: var(--muted); font-size: .83rem; }
 .quest-countdown { display: block; margin-top: .2rem; color: var(--muted); font-size: .83rem; line-height: 1.4; }
 .quest-countdown[data-state="elapsed"] { color: #694828; }
+.quest-discovery-check { max-width: 100%; min-height: 2rem; margin-top: .32rem; padding: .2rem .38rem; font-size: .81rem; white-space: normal; }
+.quest-discovery-status { display: block; color: var(--muted); font-size: .83rem; line-height: 1.4; }
+.quest-discovery-status:not(:empty) { margin-top: .22rem; }
+.quest-discovery-status[data-state="failed"] { color: var(--failure); }
 .quest-original-text { color: #2d444f; font-size: .92rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .quest-map-caption { margin-top: .35rem; }
 .quest-details { margin-top: .8rem; }

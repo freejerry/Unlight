@@ -2955,7 +2955,7 @@ module Unlight
       inv = AvatarQuestInventory[quest_inv_id]
       # インベントリが存在してかつ自分が所持者の時
       if inv&&inv.avatar_id == self.id
-        if inv.quest_find?
+        if inv.quest_find? && inv.status == QS_NEW
           @event.quest_state_update_event(quest_inv_id, inv.status,inv.quest_id) if @event
         end
       end
