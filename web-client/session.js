@@ -10,6 +10,7 @@ import {
   QUEST_NEXT_LAND_REQUEST, QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
   QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY,
   QUEST_READY_REQUEST, QUEST_DIRECTION_REQUEST, QUEST_MOVE_COMMIT_REQUEST, QUEST_TURN_REPLY,
+  QUEST_MOVE_CARD_ADD_REQUEST, QUEST_MOVE_CARD_REMOVE_REQUEST, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
   QUEST_ACTION_REFILL_REPLY, QUEST_EVENT_REFILL_REPLY, QUEST_MOVE_PHASE_START_REPLY,
   QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_DIRECTION_REPLY, QUEST_ATTACK_PHASE_START_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
@@ -17,7 +18,7 @@ import {
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
   readQuestProgressReply, readQuestFinishReply,
   readQuestTurnReply, readQuestRefillReply, readQuestMovePhaseReply,
-  readQuestDirectionReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
+  readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -68,6 +69,8 @@ const messages = {
   'quest-battle-unavailable': '原版對局目前不接受這項操作。',
   'quest-battle-uncertain': '對局操作結果未確認，本次對局暫停操作。',
   'quest-direction-rejected': '遊戲服務未接受這個移動方向。',
+  'quest-card-unavailable': '目前無法移動這張卡。',
+  'quest-card-rejected': '遊戲服務未接受移動這張卡。',
 };
 
 export class SessionError extends Error {
@@ -647,6 +650,8 @@ function observeQuestBattle(socket) {
   let direction = null;
   let ready = null;
   let result = null;
+  let hand = null;
+  let moveTable = null;
   let readyParts = {};
   let readyStep = 0;
   let pending = null;
@@ -679,6 +684,9 @@ function observeQuestBattle(socket) {
         readQuestMovePhaseReply(reply);
         ready = readyParts;
         readyParts = null;
+        // The original action and event refills append to the same indexed hand.
+        hand = [...ready.action.cards, ...ready.event.cards.map((card) => ({ ...card, event: true }))];
+        moveTable = [];
         moveDeadline = performance.now() + QUEST_MOVE_WAIT + TIMEOUT;
         phase = 'move';
         pending.resolve(ready);
@@ -687,8 +695,42 @@ function observeQuestBattle(socket) {
     readyStep += 1;
   }
 
+  function prepareMoveCard(command, { id, up }) {
+    const adding = command === QUEST_MOVE_CARD_ADD_REQUEST;
+    const source = adding ? hand : moveTable;
+    const destination = adding ? moveTable : hand;
+    const index = source.findIndex((card) => card.id === id);
+    if (index < 0 || index > 127 || source[index].event
+        || source.some((card, position) => card.id === id && position !== index)
+        || destination.some((card) => card.id === id)) {
+      throw new SessionError('quest-card-unavailable');
+    }
+    const fields = [id, signedByte(index)];
+    if (adding) fields.push(signedByte(up ? 1 : 0));
+    const reply = adding ? QUEST_MOVE_CARD_ADD_REPLY : QUEST_MOVE_CARD_REMOVE_REPLY;
+    const card = { id, up: adding ? up : source[index].up };
+    return { fields, reply, source, destination, index, card };
+  }
+
+  function receiveMoveCard(reply) {
+    const update = readQuestMoveCardReply(reply);
+    const expected = pending?.moveCard;
+    if (!update.player || phase !== 'move' || expected?.reply !== reply.command || pending.answered) return;
+    if (update.index === -1) {
+      pending.answered = true;
+      pending.reject(new SessionError('quest-card-rejected'));
+      return;
+    }
+    if (update.index !== expected.index || update.id !== expected.card.id) return;
+
+    expected.source.splice(expected.index, 1);
+    expected.destination.push(expected.card);
+    pending.answered = true;
+    pending.resolve(expected.card);
+  }
+
   const unsubscribe = socket.observe([
-    ...QUEST_INITIAL_TURN_REPLIES, QUEST_DIRECTION_REPLY,
+    ...QUEST_INITIAL_TURN_REPLIES, QUEST_DIRECTION_REPLY, QUEST_MOVE_CARD_ADD_REPLY, QUEST_MOVE_CARD_REMOVE_REPLY,
     QUEST_MOVE_PHASE_FINISH_REPLY, QUEST_MOVE_RESULT_REPLY, QUEST_ATTACK_PHASE_START_REPLY, QUEST_ERROR_REPLY,
   ], (reply) => {
     if (phase === 'closed' || phase === 'uncertain' || phase === 'moved') return;
@@ -712,9 +754,17 @@ function observeQuestBattle(socket) {
           }
           break;
         }
+        case QUEST_MOVE_CARD_ADD_REPLY:
+        case QUEST_MOVE_CARD_REMOVE_REPLY:
+          receiveMoveCard(reply);
+          break;
         case QUEST_MOVE_PHASE_FINISH_REPLY:
           if (phase !== 'move' && phase !== 'committing') throw new SessionError('protocol');
           readQuestMovePhaseReply(reply);
+          if (pending?.moveCard && !pending.answered) {
+            uncertain();
+            break;
+          }
           phase = 'settling';
           settlementTimer = setTimeout(uncertain, TIMEOUT);
           if (pending?.kind === 'direction') pending.reject(new SessionError('quest-battle-unavailable'));
@@ -722,6 +772,7 @@ function observeQuestBattle(socket) {
         case QUEST_MOVE_RESULT_REPLY:
           if (phase !== 'settling') throw new SessionError('protocol');
           result = readQuestMoveResultReply(reply);
+          moveTable.length = 0;
           clearTimeout(settlementTimer);
           phase = 'moved';
           if (pending?.kind === 'commit') pending.resolve(result);
@@ -742,12 +793,12 @@ function observeQuestBattle(socket) {
   });
   void socket.closed.then(uncertain);
 
-  async function send(kind, command, fields, signal, selectedDirection) {
+  async function send(kind, command, fields, signal, details = {}) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (phase === 'uncertain') throw new SessionError('quest-battle-uncertain');
     if (pending) throw new SessionError('busy');
     if (phase !== (kind === 'ready' ? 'encounter' : 'move')) {
-      throw new SessionError('quest-battle-unavailable');
+      throw new SessionError(kind === 'card' ? 'quest-card-unavailable' : 'quest-battle-unavailable');
     }
     const moveRemaining = phase === 'move' ? moveDeadline - performance.now() : 0;
     if (phase === 'move' && moveRemaining <= 0) {
@@ -755,10 +806,11 @@ function observeQuestBattle(socket) {
       throw new SessionError('quest-battle-uncertain');
     }
 
+    const moveCard = kind === 'card' ? prepareMoveCard(command, details) : null;
     const controller = new AbortController();
     const cancel = () => controller.abort(new SessionError('cancelled'));
     signal?.addEventListener('abort', cancel, { once: true });
-    const action = { kind, direction: selectedDirection, controller, answered: false };
+    const action = { kind, direction: details.direction, moveCard, controller, answered: false };
     const notification = new Promise((resolve, reject) => {
       action.resolve = resolve;
       action.reject = reject;
@@ -767,7 +819,7 @@ function observeQuestBattle(socket) {
     action.task = (async () => {
       let sent = false;
       try {
-        socket.send(command, fields);
+        socket.send(command, moveCard?.fields ?? fields);
         sent = true;
         if (kind === 'ready') phase = 'preparing';
         else if (kind === 'commit') phase = 'committing';
@@ -776,7 +828,7 @@ function observeQuestBattle(socket) {
         return structuredClone(await bounded(notification, controller.signal, timeout));
       } catch (error) {
         if (sent && phase !== 'closed' && error.kind !== 'quest-direction-rejected'
-            && error.kind !== 'quest-battle-unavailable') {
+            && error.kind !== 'quest-card-rejected' && error.kind !== 'quest-battle-unavailable') {
           uncertain();
           throw new SessionError('quest-battle-uncertain');
         }
@@ -791,9 +843,13 @@ function observeQuestBattle(socket) {
 
   return {
     get busy() { return pending !== null; },
-    snapshot: () => ({ phase, direction, ready: structuredClone(ready), result: structuredClone(result) }),
+    snapshot: () => structuredClone({
+      phase, direction, ready, result, actionHand: hand && hand.filter((card) => !card.event), moveTable,
+    }),
     ready: (signal) => send('ready', QUEST_READY_REQUEST, [], signal),
-    choose: (chosen, signal) => send('direction', QUEST_DIRECTION_REQUEST, [signedByte(chosen)], signal, chosen),
+    choose: (chosen, signal) => send('direction', QUEST_DIRECTION_REQUEST, [signedByte(chosen)], signal, { direction: chosen }),
+    addCard: (id, up, signal) => send('card', QUEST_MOVE_CARD_ADD_REQUEST, null, signal, { id, up }),
+    removeCard: (id, signal) => send('card', QUEST_MOVE_CARD_REMOVE_REQUEST, null, signal, { id }),
     commit: (signal) => send('commit', QUEST_MOVE_COMMIT_REQUEST, ['', ''], signal),
     async stop(reason) {
       phase = 'closed';
@@ -1099,6 +1155,18 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     async chooseQuestMove(direction, { signal } = {}) {
       if (!Number.isInteger(direction) || direction < -1 || direction > 1) throw new SessionError('protocol');
       return activeBattle().choose(direction, signal);
+    },
+    async addQuestMoveCard(cardId, up, { signal } = {}) {
+      if (!Number.isInteger(cardId) || cardId <= 0 || cardId > 0x7fffffff || typeof up !== 'boolean') {
+        throw new SessionError('quest-card-unavailable');
+      }
+      return activeBattle().addCard(cardId, up, signal);
+    },
+    async removeQuestMoveCard(cardId, { signal } = {}) {
+      if (!Number.isInteger(cardId) || cardId <= 0 || cardId > 0x7fffffff) {
+        throw new SessionError('quest-card-unavailable');
+      }
+      return activeBattle().removeCard(cardId, signal);
     },
     async commitQuestMove({ signal } = {}) {
       return activeBattle().commit(signal);

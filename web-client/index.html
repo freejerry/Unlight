@@ -180,7 +180,7 @@
             <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
             <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
           </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形已接通至第一回合移動。選牌、攻防及後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
+          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形已接通至第一回合移動。攻防及後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>
@@ -218,7 +218,7 @@
               </section>
               <section id="session-quest-battle" class="quest-first-turn" aria-labelledby="session-quest-battle-title" hidden>
                 <h5 id="session-quest-battle-title">第一回合</h5>
-                <p class="quest-status">目前可送出不出牌的移動。選牌與攻防尚未接通。</p>
+                <p class="quest-status">可選取行動卡或空手送出移動。事件卡與攻防尚未接通。</p>
                 <p id="session-quest-battle-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
                 <button id="session-quest-battle-ready" class="button primary" type="button" aria-controls="session-quest-battle-turn session-quest-battle-hand" disabled>開始第一回合</button>
                 <dl class="session-metadata quest-land-metadata" id="session-quest-battle-turn" hidden>
@@ -226,7 +226,7 @@
                   <div><dt>階段</dt><dd id="session-quest-battle-phase"></dd></div>
                 </dl>
                 <section id="session-quest-battle-hand" class="quest-hand" aria-labelledby="session-quest-battle-hand-title" hidden>
-                  <h6 id="session-quest-battle-hand-title">本回合補牌</h6>
+                  <h6 id="session-quest-battle-hand-title">本回合手牌</h6>
                   <div class="quest-hand-piles">
                     <div id="session-quest-action-pile" hidden>
                       <p>我方行動卡</p>
@@ -250,6 +250,11 @@
                   </select>
                   <button id="session-quest-move-choose" class="button secondary" type="button" aria-controls="session-quest-move-confirmation" disabled>確認移動方向</button>
                   <p id="session-quest-move-confirmation" class="quest-status">伺服器確認方向 <strong id="session-quest-move-confirmed-direction">尚未選擇</strong></p>
+                  <section id="session-quest-move-table" class="quest-move-table" aria-labelledby="session-quest-move-table-title" hidden>
+                    <h6 id="session-quest-move-table-title">已選移動卡</h6>
+                    <p id="session-quest-move-cards-empty" class="quest-status">尚未選取移動卡。</p>
+                    <ol id="session-quest-move-cards" class="quest-hand-cards" aria-label="已選移動卡" role="list"></ol>
+                  </section>
                   <button id="session-quest-move-commit" class="button primary" type="button" aria-controls="session-quest-move-result" disabled>不出牌並送出移動</button>
                 </div>
                 <section id="session-quest-move-result" class="quest-move-result" aria-labelledby="session-quest-move-result-title" hidden>
@@ -258,7 +263,14 @@
                     <div><dt>開場距離</dt><dd id="session-quest-move-distance-before"></dd></div>
                     <div><dt>移動後距離</dt><dd id="session-quest-move-distance-after"></dd></div>
                     <div><dt>主動權</dt><dd id="session-quest-move-initiative"></dd></div>
+                    <div hidden><dt>我方移動點數</dt><dd id="session-quest-move-player-power"></dd></div>
+                    <div hidden><dt>對手移動點數</dt><dd id="session-quest-move-opponent-power"></dd></div>
                   </dl>
+                  <div id="session-quest-committed" hidden>
+                    <h6>本次結算的我方卡片</h6>
+                    <p id="session-quest-committed-empty" class="quest-status">未使用卡片。</p>
+                    <ol id="session-quest-committed-cards" class="quest-hand-cards" aria-label="本次結算的我方卡片" role="list"></ol>
+                  </div>
                 </section>
               </section>
             </div>

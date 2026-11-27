@@ -33,6 +33,8 @@ export const QUEST_ENCOUNTER_REPLY = 37;
 export const QUEST_DUEL_START_REPLY = 40;
 export const QUEST_READY_REQUEST = 22;
 export const QUEST_DIRECTION_REQUEST = 23;
+export const QUEST_MOVE_CARD_ADD_REQUEST = 24;
+export const QUEST_MOVE_CARD_REMOVE_REQUEST = 25;
 export const QUEST_MOVE_COMMIT_REQUEST = 26;
 export const QUEST_TURN_REPLY = 43;
 export const QUEST_ACTION_REFILL_REPLY = 44;
@@ -42,6 +44,8 @@ export const QUEST_MOVE_PHASE_FINISH_REPLY = 47;
 export const QUEST_MOVE_RESULT_REPLY = 48;
 export const QUEST_ATTACK_PHASE_START_REPLY = 51;
 export const QUEST_DIRECTION_REPLY = 60;
+export const QUEST_MOVE_CARD_ADD_REPLY = 61;
+export const QUEST_MOVE_CARD_REMOVE_REPLY = 62;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -305,6 +309,21 @@ export function readQuestDirectionReply(reply) {
   reply.done();
   if (direction < -1 || direction > 3) throw new Error('Invalid quest direction.');
   return { player, direction };
+}
+
+export function readQuestMoveCardReply(reply) {
+  if (reply.command !== QUEST_MOVE_CARD_ADD_REPLY && reply.command !== QUEST_MOVE_CARD_REMOVE_REPLY) {
+    throw new Error('Unexpected quest move card reply.');
+  }
+  const player = readDuelBoolean(reply);
+  const index = reply.byte();
+  const id = reply.int();
+  reply.done();
+  // Opponent notices hide the card ID. A failed move uses index -1 and ID 0.
+  if (index < -1 || (player && index >= 0 ? id <= 0 : id !== 0)) {
+    throw new Error('Invalid quest move card reply.');
+  }
+  return { player, index, id };
 }
 
 export function readQuestMoveResultReply(reply) {

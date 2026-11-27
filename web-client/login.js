@@ -87,11 +87,19 @@ const questBattleUi = {
   select: document.querySelector('#session-quest-move-direction'),
   choose: document.querySelector('#session-quest-move-choose'),
   direction: document.querySelector('#session-quest-move-confirmed-direction'),
+  moveTable: document.querySelector('#session-quest-move-table'),
+  moveCards: document.querySelector('#session-quest-move-cards'),
+  emptyMove: document.querySelector('#session-quest-move-cards-empty'),
   commit: document.querySelector('#session-quest-move-commit'),
   result: document.querySelector('#session-quest-move-result'),
   before: document.querySelector('#session-quest-move-distance-before'),
   after: document.querySelector('#session-quest-move-distance-after'),
   initiative: document.querySelector('#session-quest-move-initiative'),
+  playerPower: document.querySelector('#session-quest-move-player-power'),
+  opponentPower: document.querySelector('#session-quest-move-opponent-power'),
+  committed: document.querySelector('#session-quest-committed'),
+  committedCards: document.querySelector('#session-quest-committed-cards'),
+  emptyCommitted: document.querySelector('#session-quest-committed-empty'),
 };
 
 const mapsUi = {
@@ -169,7 +177,7 @@ const questLandRejected = {
 const questBattlePhases = {
   encounter: ['待就緒', '可向伺服器送出就緒。'],
   preparing: ['準備中', '等待伺服器開始第一回合與補牌。'],
-  move: ['移動階段', '可確認移動方向，也可直接不出牌並送出移動。'],
+  move: ['移動階段', '可選取行動卡、確認移動方向或空手送出。'],
   committing: ['已送出移動', '等待伺服器確認送出的移動。'],
   settling: ['移動結算', '伺服器已關閉移動階段，正在等待結算。'],
   moved: ['移動完成', '伺服器已結算第一回合移動。'],
@@ -179,6 +187,13 @@ const questBattlePhases = {
 const questMoveDirections = { '-1': '前進', 0: '原地待機', 1: '後退' };
 const questBattleDistances = { 1: '近距離', 2: '中距離', 3: '遠距離', 4: '距離不明' };
 const questCardTypes = { 0: '空白', 1: '劍', 2: '槍', 3: '防禦', 4: '移動', 5: '特殊', 6: '事件' };
+const questBattleRejections = {
+  'quest-direction-rejected': '伺服器未接受這個移動方向。',
+  'quest-card-rejected': '伺服器未接受這次卡片操作。',
+  'quest-card-unavailable': '目前無法操作這張卡片。',
+  'quest-battle-unavailable': '伺服器目前無法接受這項操作。',
+  busy: '伺服器目前無法接受這項操作。',
+};
 const MAX_CATALOG_ID = 0x7fffffff;
 const QUEST_PENDING = 4;
 const QUEST_IN_PROGRESS = 2;
@@ -186,6 +201,7 @@ const questCountdowns = [];
 const questDeckNames = new Map();
 const confirmedQuestStarts = new Set();
 const questFirstLands = new Map();
+const questCardCatalog = new Map();
 
 let pending = null;
 let active = null;
@@ -366,13 +382,18 @@ function updateQuestBattleButtons() {
   const selection = questBattleUi.select.value;
   questBattleUi.choose.disabled = questBattleUi.select.disabled || selection === '' || selection === questBattleUi.direction.dataset.direction;
   questBattleUi.commit.disabled = questBattleUi.select.disabled;
+  for (const control of questBattleUi.section.querySelectorAll('.quest-move-card-face, .quest-move-card-add, .quest-move-card-remove')) {
+    control.disabled = questBattleUi.select.disabled;
+  }
 }
 
 function clearQuestBattle() {
   clearTimeout(questBattleTimer);
   questBattleCatalogRequest?.abort();
   questBattleCatalogRequest = undefined;
-  for (const section of [questBattleUi.section, questBattleUi.turn, questBattleUi.hand, questBattleUi.move, questBattleUi.result]) {
+  questCardCatalog.clear();
+  for (const section of [questBattleUi.section, questBattleUi.turn, questBattleUi.hand, questBattleUi.move, questBattleUi.moveTable,
+    questBattleUi.result, questBattleUi.playerPower.parentElement, questBattleUi.opponentPower.parentElement, questBattleUi.committed]) {
     section.hidden = true;
   }
   questBattleUi.start.hidden = false;
@@ -384,7 +405,12 @@ function clearQuestBattle() {
   delete questBattleUi.result.dataset.playerInitiative;
   questBattleUi.direction.textContent = '尚未選擇';
   questBattleUi.select.value = '';
-  for (const field of [questBattleUi.turnNumber, questBattleUi.phase, questBattleUi.before, questBattleUi.after, questBattleUi.initiative]) {
+  questBattleUi.commit.hidden = false;
+  questBattleUi.commit.textContent = '不出牌並送出移動';
+  questBattleUi.moveCards.replaceChildren();
+  questBattleUi.committedCards.replaceChildren();
+  for (const field of [questBattleUi.turnNumber, questBattleUi.phase, questBattleUi.before, questBattleUi.after,
+    questBattleUi.initiative, questBattleUi.playerPower, questBattleUi.opponentPower]) {
     field.textContent = '';
   }
   for (const pile of questBattleUi.piles) {
@@ -400,8 +426,82 @@ function showQuestBattlePhase(phase) {
   questBattleUi.section.dataset.phase = phase;
   questBattleUi.phase.textContent = label;
   questBattleUi.start.hidden = phase !== 'encounter' && phase !== 'preparing';
+  if (phase === 'moved') questBattleUi.commit.hidden = true;
   if (phase === 'move') questBattleUi.move.hidden = false;
   showQuestActionStatus(questBattleUi.status, phase, message, phase === 'closed' ? 'network' : undefined);
+}
+
+function getQuestCardFace(id, up) {
+  const card = questCardCatalog.get(id);
+  const face = up ? card?.upper : card?.lower;
+  if (Number.isSafeInteger(face?.type) && Number.isSafeInteger(face?.value)) return face;
+  return null;
+}
+
+function describeQuestCardFace({ type, value }) {
+  return `${questCardTypes[type] ?? `類型 ${type}`} ${value}`;
+}
+
+function showQuestCardMetadata(element) {
+  const { cardId, up } = element.dataset;
+  const face = getQuestCardFace(cardId, up === 'true');
+  if (face && !element.querySelector('.quest-card-face')) {
+    element.dataset.cardType = String(face.type);
+    element.dataset.cardValue = String(face.value);
+    const detail = document.createElement('span');
+    detail.className = 'quest-card-face';
+    detail.textContent = ` · ${describeQuestCardFace(face)}`;
+    element.querySelector('.quest-card-label').append(detail);
+  }
+  const select = element.querySelector('.quest-move-card-face');
+  if (!select) return;
+  for (const [index, option] of [...select.options].entries()) {
+    const offered = getQuestCardFace(cardId, index === 0);
+    const orientation = index === 0 ? '上半面' : '下半面';
+    option.textContent = offered ? `${orientation} · ${describeQuestCardFace(offered)}` : orientation;
+  }
+}
+
+function createQuestBattleCard({ id, up }, zone = '') {
+  const element = document.createElement('li');
+  element.dataset.cardId = String(id);
+  element.dataset.up = String(up);
+  element.dataset.cardZone = zone;
+  const label = document.createElement('span');
+  label.className = 'quest-card-label';
+  label.textContent = `#${id} · ${up ? '上半面' : '下半面'}`;
+  element.append(label);
+
+  if (zone) {
+    element.className = 'quest-move-card-item';
+    const button = document.createElement('button');
+    const adding = zone === 'hand';
+    button.type = 'button';
+    button.disabled = true;
+    button.className = `button secondary ${adding ? 'quest-move-card-add' : 'quest-move-card-remove'}`;
+    button.textContent = adding ? '加入移動區' : '退回手牌';
+    button.setAttribute('aria-label', `${button.textContent}，卡片 ${id}`);
+    const select = adding ? document.createElement('select') : null;
+    if (select) {
+      select.className = 'quest-move-card-face';
+      select.disabled = true;
+      select.setAttribute('aria-label', `卡片 ${id} 的牌面`);
+      select.append(new Option('上半面', 'true'), new Option('下半面', 'false'));
+      select.value = String(up);
+      element.append(select);
+    }
+    element.append(button);
+    button.addEventListener('click', () => {
+      const action = adding ? (session, options) => session.addQuestMoveCard(id, select.value === 'true', options)
+        : (session, options) => session.removeQuestMoveCard(id, options);
+      const destination = adding ? questBattleUi.moveCards : questBattleUi.piles[0].cards;
+      const focus = () => destination.querySelector(`[data-card-id="${id}"] button`);
+      void runQuestBattleAction(button, adding ? 'adding-card' : 'returning-card',
+        adding ? '正在等待伺服器確認選卡…' : '正在等待伺服器確認退回卡片…', action, focus);
+    });
+  }
+  showQuestCardMetadata(element);
+  return element;
 }
 
 async function enrichQuestBattleHand(session, elements) {
@@ -416,18 +516,8 @@ async function enrichQuestBattleHand(session, elements) {
     if (!response.ok) return;
     const { cards } = await response.json();
     if (active !== session || signal.aborted || !Array.isArray(cards)) return;
-    const table = new Map(cards.filter(card => ids.has(String(card?.id))).map(card => [String(card.id), card]));
-    for (const element of elements) {
-      const card = table.get(element.dataset.cardId);
-      const face = element.dataset.up === 'true' ? card?.upper : card?.lower;
-      if (!element.isConnected || !Number.isSafeInteger(face?.type) || !Number.isSafeInteger(face?.value)) continue;
-      element.dataset.cardType = String(face.type);
-      element.dataset.cardValue = String(face.value);
-      const detail = document.createElement('span');
-      detail.className = 'quest-card-face';
-      detail.textContent = ` · ${questCardTypes[face.type] ?? `類型 ${face.type}`} ${face.value}`;
-      element.append(detail);
-    }
+    for (const card of cards) if (ids.has(String(card?.id))) questCardCatalog.set(String(card.id), card);
+    for (const element of questBattleUi.section.querySelectorAll('[data-card-id]')) showQuestCardMetadata(element);
   } catch {
     // The server's hand IDs and orientations remain available without the optional catalog.
   } finally {
@@ -442,11 +532,8 @@ function displayQuestBattleHand(session, { turn, action, event }) {
   for (const [index, draw] of [action, event].entries()) {
     if (!draw) continue;
     const pile = questBattleUi.piles[index];
-    for (const { id, up } of draw.cards) {
-      const element = document.createElement('li');
-      element.dataset.cardId = String(id);
-      element.dataset.up = String(up);
-      element.textContent = `#${id} · ${up ? '上半面' : '下半面'}`;
+    for (const card of draw.cards) {
+      const element = createQuestBattleCard(card);
       pile.cards.append(element);
       elements.push(element);
     }
@@ -457,7 +544,25 @@ function displayQuestBattleHand(session, { turn, action, event }) {
   void enrichQuestBattleHand(session, elements);
 }
 
-function displayQuestMoveResult({ distance, playerInitiative }) {
+function syncQuestMoveCards(list, cards, zone) {
+  const remaining = [...list.children];
+  const matches = (node, card) => node.dataset.cardZone === zone && node.dataset.cardId === String(card.id)
+    && node.dataset.up === String(card.up);
+  if (remaining.length === cards.length && remaining.every((node, index) => matches(node, cards[index]))) return;
+
+  const ordered = cards.map(card => {
+    const index = remaining.findIndex(node => matches(node, card));
+    return index === -1 ? createQuestBattleCard(card, zone) : remaining.splice(index, 1)[0];
+  });
+  for (const node of remaining) node.remove();
+  let cursor = list.firstElementChild;
+  for (const element of ordered) {
+    if (element !== cursor) list.insertBefore(element, cursor);
+    cursor = element.nextElementSibling;
+  }
+}
+
+function displayQuestMoveResult({ distance, playerInitiative, playerCards, playerPower, opponentPower }) {
   const before = questBattleUi.section.dataset.initialDistance;
   questBattleUi.before.textContent = `${questBattleDistances[before]}（${before}）`;
   questBattleUi.after.textContent = `${questBattleDistances[distance]}（${distance}）`;
@@ -465,6 +570,15 @@ function displayQuestMoveResult({ distance, playerInitiative }) {
   questBattleUi.result.dataset.distanceBefore = before;
   questBattleUi.result.dataset.distanceAfter = String(distance);
   questBattleUi.result.dataset.playerInitiative = String(playerInitiative);
+  for (const [field, value] of [[questBattleUi.playerPower, playerPower], [questBattleUi.opponentPower, opponentPower]]) {
+    field.parentElement.hidden = !Number.isSafeInteger(value);
+    field.textContent = Number.isSafeInteger(value) ? String(value) : '';
+  }
+  if (Array.isArray(playerCards)) {
+    questBattleUi.committedCards.replaceChildren(...playerCards.map(card => createQuestBattleCard(card)));
+    questBattleUi.committed.hidden = false;
+    questBattleUi.emptyCommitted.hidden = playerCards.length !== 0;
+  }
   questBattleUi.result.hidden = false;
 }
 
@@ -473,8 +587,15 @@ function syncQuestBattle(session, force = false) {
   if (active !== session || questBattleUi.section.hidden || questLandUi.status.dataset.state !== 'encounter') return;
   const snapshot = session.questBattle;
   if (!snapshot || !Object.hasOwn(questBattlePhases, snapshot.phase)) return;
-  const { phase, direction, ready, result } = snapshot;
+  const { phase, direction, ready, result, actionHand, moveTable } = snapshot;
   if (ready && questBattleUi.turn.hidden) displayQuestBattleHand(session, ready);
+  if (Array.isArray(actionHand)) syncQuestMoveCards(questBattleUi.piles[0].cards, actionHand, 'hand');
+  if (Array.isArray(moveTable)) {
+    syncQuestMoveCards(questBattleUi.moveCards, moveTable, 'table');
+    questBattleUi.moveTable.hidden = phase === 'moved';
+    questBattleUi.emptyMove.hidden = moveTable.length !== 0;
+    questBattleUi.commit.textContent = moveTable.length ? '送出移動' : '不出牌並送出移動';
+  }
   if (result && questBattleUi.result.hidden) displayQuestMoveResult(result);
 
   const confirmed = Object.hasOwn(questMoveDirections, direction) ? String(direction) : '';
@@ -491,7 +612,7 @@ function syncQuestBattle(session, force = false) {
   }
 }
 
-async function runQuestBattleAction(button, state, message, action) {
+async function runQuestBattleAction(button, state, message, action, focusAfter) {
   if (button.disabled) return;
   const restoreFocus = document.activeElement === button;
   const request = beginLiveQuestRequest('battle');
@@ -510,9 +631,8 @@ async function runQuestBattleAction(button, state, message, action) {
     syncQuestBattle(session, true);
     if (questBattleUi.section.dataset.phase === 'moved') return;
     const kind = error instanceof SessionError ? error.kind : 'quest-battle-uncertain';
-    if (['quest-direction-rejected', 'quest-battle-unavailable', 'busy'].includes(kind)) {
-      const message = kind === 'quest-direction-rejected' ? '伺服器未接受這個移動方向。' : '伺服器目前無法接受這項操作。';
-      showQuestActionStatus(questBattleUi.status, 'rejected', message, kind, error.code);
+    if (Object.hasOwn(questBattleRejections, kind)) {
+      showQuestActionStatus(questBattleUi.status, 'rejected', questBattleRejections[kind], kind, error.code);
     } else {
       showQuestActionStatus(questBattleUi.status, 'uncertain', questBattlePhases.uncertain[1], kind);
     }
@@ -520,6 +640,8 @@ async function runQuestBattleAction(button, state, message, action) {
     finishLiveQuestRequest(request);
     if (restoreFocus && active === session && (document.activeElement === document.body || document.activeElement === button)) {
       let target = button.disabled ? questBattleUi.status : button;
+      const counterpart = focusAfter?.();
+      if (counterpart && !counterpart.disabled) target = counterpart;
       if (button === questBattleUi.start && !questBattleUi.select.disabled) target = questBattleUi.select;
       if (button === questBattleUi.choose && button.disabled && !questBattleUi.commit.disabled) target = questBattleUi.commit;
       target.focus();
@@ -1307,9 +1429,10 @@ questBattleUi.choose.addEventListener('click', () => {
   void runQuestBattleAction(questBattleUi.choose, 'choosing', '正在等待伺服器確認移動方向…',
     (session, options) => session.chooseQuestMove(Number(direction), options));
 });
-questBattleUi.commit.addEventListener('click', () => void runQuestBattleAction(
-  questBattleUi.commit, 'committing', '正在送出不出牌的移動…', (session, options) => session.commitQuestMove(options),
-));
+questBattleUi.commit.addEventListener('click', () => {
+  const message = questBattleUi.moveCards.childElementCount ? '正在送出已選移動卡…' : '正在送出不出牌的移動…';
+  void runQuestBattleAction(questBattleUi.commit, 'committing', message, (session, options) => session.commitQuestMove(options));
+});
 
 document.addEventListener('visibilitychange', updateQuestCountdowns);
 
