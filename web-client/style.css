@@ -171,6 +171,14 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-land-option .quest-land-name { display: block; }
 .quest-land-record-name { margin-top: .45rem; color: #203b46; font-weight: 680; overflow-wrap: anywhere; }
 .quest-land-record .quest-status:is([data-state="failed"], [data-state="rejected"], [data-state="uncertain"], [data-state="lost"], [data-state="closed"]) { color: var(--failure); }
+.quest-land-status[data-state="empty"] {
+  margin-top: .45rem;
+  padding: .5rem .65rem;
+  border-inline-start: 3px solid var(--native-action);
+  background: var(--native-tint);
+  color: var(--native-ink);
+  line-height: 1.5;
+}
 .quest-land-record .quest-status:focus { outline: 2px solid #007f69; outline-offset: 2px; }
 .quest-land-record .quest-original-text { margin-top: .2rem; }
 .quest-land-metadata { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); margin-top: .5rem; }

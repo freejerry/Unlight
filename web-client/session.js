@@ -602,7 +602,8 @@ async function submitQuestStart(socket, confirm, signal, selected, deckIndex, ma
   }
 }
 
-async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter) {
+async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter,
+  { emptyTerrain = false } = {}) {
   let arrived = false;
   let encounter = null;
   let progress = null;
@@ -614,6 +615,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
     unsubscribe = socket.observe([
       QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY,
       QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY,
+      ...(emptyTerrain ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
     ], (reply) => {
       if (invalid) return;
       try {
@@ -624,7 +626,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             arrived = true;
             break;
           case QUEST_ENCOUNTER_REPLY:
-            if (!arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
+            if (emptyTerrain || !arrived || encounter || progress !== null || deleted) throw new SessionError('protocol');
             encounter = readQuestEncounterReply(reply);
             break;
           case QUEST_DUEL_START_REPLY: {
@@ -642,13 +644,16 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
             if (!arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
               throw new SessionError('protocol');
             }
+            if (emptyTerrain && (progress !== null || update.progress !== (1 << slot))) {
+              throw new SessionError('protocol');
+            }
             progress = update.progress;
             resolve(null); // The original callback may still settle this quest.
             break;
           }
           case QUEST_DELETED_REPLY:
             if (readQuestDeletedReply(reply) !== inventoryId) break;
-            if (encounter) throw new SessionError('protocol');
+            if (encounter || (emptyTerrain && arrived)) throw new SessionError('protocol');
             deleted = true;
             if (!arrived) {
               unsubscribe();
@@ -658,11 +663,16 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           case QUEST_FINISH_REPLY: {
             const settled = readQuestFinishReply(reply);
             if (settled.inventoryId !== inventoryId) break;
-            if (!arrived || encounter || !deleted || finish) throw new SessionError('protocol');
+            if (emptyTerrain || !arrived || encounter || !deleted || finish) throw new SessionError('protocol');
             finish = settled;
             resolve(null);
             break;
           }
+          case QUEST_DECK_STATE_REPLY:
+            if (readQuestDeckStateReply(reply).deckIndex === deckIndex) throw new SessionError('protocol');
+            break;
+          case QUEST_DUEL_FINISH_REPLY:
+            throw new SessionError('protocol');
           case QUEST_ERROR_REPLY: {
             const code = readQuestErrorReply(reply);
             if (arrived || !QUEST_LAND_REJECTIONS.has(code)) throw new SessionError('protocol');
@@ -685,9 +695,10 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
     const result = await bounded(Promise.race([notification, interrupted]), signal);
     if (result) return result;
 
-    await finishQuestObservation(socket, signal, unsubscribe);
+    // An authored empty land must also reject a contradictory frame coalesced with its Pong.
+    await finishQuestObservation(socket, signal, emptyTerrain ? undefined : unsubscribe);
     if (invalid || (deleted && !finish)) throw new SessionError('protocol');
-    return { slot, encounter: null, progress, finish };
+    return { slot, encounter: null, progress, finish, ...(emptyTerrain ? { emptyTerrain: true } : {}) };
   } finally {
     unsubscribe();
   }
@@ -716,15 +727,19 @@ async function readQuestRoute(questId, signal) {
   if (!response.ok) return null;
   const { quests } = await response.json();
   if (signal.aborted || !Array.isArray(quests) || quests.length !== 1 || quests[0].id !== questId) return null;
-  const { positions } = quests[0];
+  const { positions, mapId } = quests[0];
+  const ordinaryMap = Number.isInteger(mapId) && mapId >= 1 && mapId <= MAX_QUEST_MAP_ID;
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
-  for (const { slot, id, name, caption, enemyId, nextSlots } of positions) {
+  for (const { slot, id, name, caption, enemyId, emptyTerrain, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
           || Math.floor(next / 3) !== Math.floor(slot / 3) + 1)) return null;
-    nodes.set(slot, { slot, id, name, caption, enemyId: validQuestCardId(enemyId) ? enemyId : null, nextSlots });
+    nodes.set(slot, {
+      slot, id, name, caption, enemyId: validQuestCardId(enemyId) ? enemyId : null,
+      emptyTerrain: ordinaryMap && emptyTerrain === true && enemyId === 0, nextSlots,
+    });
   }
   if (positions.some(({ nextSlots }) => nextSlots.some((slot) => !nodes.has(slot)))) return null;
   return nodes;
@@ -732,6 +747,39 @@ async function readQuestRoute(questId, signal) {
 
 function sameValues(first, second) {
   return first.length === second.length && first.every((value, index) => value === second[index]);
+}
+
+function nextBattleLands(positions, slot, progress) {
+  const position = positions?.get(slot);
+  return (position?.nextSlots ?? [])
+    .filter((next) => (progress & (1 << next)) === 0)
+    .map((next) => positions.get(next))
+    .filter((next) => next.enemyId !== null)
+    .map(({ slot, id, name, caption, enemyId }) => ({ slot, id, name, caption, enemyId }));
+}
+
+function observeEmptyTerrain(socket, { inventoryId, deckIndex }, progress, onUncertain) {
+  const commands = [QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_DELETED_REPLY, QUEST_FINISH_REPLY,
+    QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_ERROR_REPLY];
+  function receive(reply) {
+    try {
+      if (reply.command === QUEST_PROGRESS_REPLY) {
+        const update = readQuestProgressReply(reply);
+        if (update.inventoryId !== inventoryId || update.progress === progress) return;
+      } else if (reply.command === QUEST_DECK_STATE_REPLY) {
+        if (readQuestDeckStateReply(reply).deckIndex !== deckIndex) return;
+      } else if (reply.command === QUEST_DELETED_REPLY) {
+        if (readQuestDeletedReply(reply) !== inventoryId) return;
+      } else if (reply.command === QUEST_FINISH_REPLY) {
+        if (readQuestFinishReply(reply).inventoryId !== inventoryId) return;
+      }
+    } catch {
+      // Any malformed evidence leaves the edge unavailable.
+    }
+    onUncertain();
+  }
+  let stop = socket.observe(commands, receive);
+  return { resume() { stop = socket.observe(commands, receive); }, stop: () => stop() };
 }
 
 function questRoster(cardIds, damage) {
@@ -1106,12 +1154,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
 
   function nextLands() {
     if (!routeReceiptReady()) return [];
-    const position = run.positions?.get(slot);
-    return (position?.nextSlots ?? [])
-      .filter((next) => (progress & (1 << next)) === 0)
-      .map((next) => run.positions.get(next))
-      .filter((next) => next.enemyId !== null)
-      .map(({ slot, id, name, caption, enemyId }) => ({ slot, id, name, caption, enemyId }));
+    return nextBattleLands(run.positions, slot, progress);
   }
 
   function routeReceiptReady() {
@@ -1547,6 +1590,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (returning) await returning.task.catch(() => {});
         if (retained) {
           if (retained.battle) await retained.battle.stop(reason);
+          retained.emptyObserver?.stop();
           await closeChannel(retained.channel);
         }
         await closeSession(auth, channels);
@@ -1609,6 +1653,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return adventure.battle;
   }
 
+  function availableNextLands(current) {
+    if (current.battle) return current.battle.nextLands;
+    if (!current.emptyTerrain || current.run.progress === null) return [];
+    return nextBattleLands(current.run.positions, current.slot, current.run.progress);
+  }
+
   function reconcileQuestSettlement(selected, receipt) {
     const avatar = initialData?.avatar;
     const deltas = { exp: null, gems: null, level: null };
@@ -1667,10 +1717,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     get questAdventure() {
       if (!adventure) return null;
       const { inventoryId, slot, state, channel, run } = adventure;
-      const nextLands = state === 'encounter' ? adventure.battle?.nextLands ?? [] : [];
+      const nextLands = ['encounter', 'progress'].includes(state) ? availableNextLands(adventure) : [];
       return {
         inventoryId, slot, state: nextLands.length ? 'between-lands' : state, closed: channel.socket.closed,
-        nextLands, progress: run.progress, damage: run.damage?.slice() ?? null,
+        nextLands, progress: run.progress, damage: run.damage?.slice() ?? null, emptyTerrain: adventure.emptyTerrain === true,
       };
     },
     get questBattle() { return adventure?.battle?.snapshot() ?? null; },
@@ -1792,12 +1842,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         throw error;
       }
     },
-    async enterQuestLand(inventoryId, slot, { signal } = {}) {
+    async enterQuestLand(inventoryId, slot, { signal, emptyTerrain = false } = {}) {
       if (signal?.aborted) throw new SessionError('cancelled');
       if (!initialData) throw new SessionError('network');
       assertQuestAvailable();
       if (!questData || !Number.isInteger(inventoryId) || inventoryId < 1 || inventoryId > 0x7fffffff
-          || !Number.isInteger(slot) || slot < 0 || slot > 2) {
+          || !Number.isInteger(slot) || slot < 0 || slot > 2 || typeof emptyTerrain !== 'boolean') {
         throw new SessionError('protocol');
       }
       const index = questData.rows.findIndex((row) => row.inventoryId === inventoryId);
@@ -1812,11 +1862,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       try {
         return await readFromQuest(
           async (socket, confirm, questSignal, channel) => {
+            const run = questRun();
+            if (emptyTerrain) {
+              const catalogSignal = AbortSignal.any([questSignal, AbortSignal.timeout(3500)]);
+              run.positions = await readQuestRoute(selected.questId, catalogSignal).catch(() => null);
+              questSignal.throwIfAborted();
+              if (!run.positions?.get(slot)?.emptyTerrain || !nextBattleLands(run.positions, slot, 0).length) {
+                throw new SessionError('quest-land-unavailable');
+              }
+            }
             const rows = await readQuestInventoryPushes(socket, confirm, questSignal);
             if (!rows.some((row) => row.inventoryId === inventoryId && row.questId === selected.questId
                 && row.status === QUEST_IN_PROGRESS)) throw new SessionError('quest-land-unavailable');
             const result = await submitQuestLand(socket, questSignal, selected, slot, () => {
-              current = { inventoryId, slot, channel, connected: true, state: 'entering', run: questRun() };
+              current = { inventoryId, slot, channel, selected, connected: true, state: 'entering', run };
               channel.retained = true;
               adventure = current;
               void socket.closed.then(() => {
@@ -1824,14 +1883,19 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
                 if (['entering', 'encounter', 'progress'].includes(current.state)) current.state = 'uncertain';
               });
             }, (encounter) => {
-              current.selected = selected;
               current.playerCards = encounter.playerCardIds.slice();
               current.battle = observeQuestBattle(socket, selected, slot, encounter, current.run,
                 (receipt) => reconcileQuestSettlement(selected, receipt));
-            });
+            }, { emptyTerrain });
             if (result.rejection !== undefined) {
               adventure = null;
               channel.retained = false;
+            } else if (result.emptyTerrain) {
+              current.run.progress = result.progress;
+              current.emptyObserver = observeEmptyTerrain(socket, selected, result.progress, () => {
+                if (['entering', 'progress'].includes(current.state)) current.state = 'uncertain';
+              });
+              current.emptyTerrain = true;
             } else if (result.finish) {
               if (current.state !== 'closed') current.state = 'finished';
               channel.retained = false;
@@ -1847,6 +1911,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             if (result.finish) questData.rows.splice(index, 1);
             else {
               current.channel.socket.assertOpen();
+              if (current.state === 'uncertain') throw new SessionError('quest-land-uncertain');
               current.state = result.encounter ? 'encounter' : 'progress';
             }
             return result;
@@ -1866,11 +1931,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (questRequest || questReturn || adventure?.battle?.busy) throw new SessionError('busy');
       if (adventure?.state === 'uncertain') throw new SessionError('quest-land-uncertain');
       const current = adventure;
-      const previous = current?.battle;
-      if (!validQuestSlot(slot) || current?.state !== 'encounter' || !current.connected
-          || !previous?.nextLands.some((land) => land.slot === slot)) {
+      if (!validQuestSlot(slot) || !['encounter', 'progress'].includes(current?.state) || !current.connected
+          || !availableNextLands(current).some((land) => land.slot === slot)) {
         throw new SessionError('quest-land-unavailable');
       }
+      const previousBattle = current.battle;
+      const previousObserver = previousBattle ?? current.emptyObserver;
+      const previousState = current.state;
 
       auth.assertOpen();
       for (const { socket } of channels) socket.assertOpen();
@@ -1885,20 +1952,25 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (current.heartbeat) await bounded(current.heartbeat, controller.signal);
         const pong = await socket.ask(3, [], [3], { signal: controller.signal, allowOther: true });
         pong.done();
-        if (current.state !== 'entering' || !previous.nextLands.some((land) => land.slot === slot)) {
+        if (current.state !== 'entering' || !availableNextLands(current).some((land) => land.slot === slot)) {
           throw new SessionError('quest-land-unavailable');
         }
 
-        const damage = current.run.damage.slice();
+        const damage = current.run.damage?.slice();
         const result = await submitQuestLand(socket, controller.signal, current.selected, slot,
           () => { dispatched = true; }, (encounter) => {
-            if (!sameValues(encounter.playerCardIds, current.playerCards) || !sameValues(encounter.playerDamage, damage)) {
+            if ((current.playerCards && !sameValues(encounter.playerCardIds, current.playerCards))
+                || (damage && !sameValues(encounter.playerDamage, damage))) {
               throw new SessionError('protocol');
             }
+            current.playerCards ??= encounter.playerCardIds.slice();
+            current.run.damage ??= encounter.playerDamage.slice();
             current.battle = observeQuestBattle(socket, current.selected, slot, encounter, current.run,
               (receipt) => reconcileQuestSettlement(current.selected, receipt));
             current.slot = slot;
-            void previous.stop('closed');
+            current.emptyTerrain = false;
+            current.emptyObserver = null;
+            void previousObserver.stop('closed');
           });
         controller.signal.throwIfAborted();
         if (result.rejection !== undefined && !result.deleted) throw new SessionError('quest-land-rejected', result.rejection);
@@ -1913,12 +1985,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         return result;
       } catch (error) {
         if (current.state === 'closed') throw error;
-        if (current.battle === previous) previous.resume();
+        if (current.battle === previousBattle) previousObserver.resume();
         if (dispatched && error.kind !== 'quest-land-rejected') {
           current.state = 'uncertain';
           throw new SessionError('quest-land-uncertain');
         }
-        if (current.state === 'entering') current.state = 'encounter';
+        if (current.state === 'entering') current.state = previousState;
         throw error;
       } finally {
         clearTimeout(timeout);

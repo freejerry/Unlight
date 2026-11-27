@@ -89,22 +89,28 @@ def native_quest_catalog():
         with (SERVER_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
             land_rows = list(DictReader(source))
     lands = {}
-    land_enemies = {}
+    land_contents = {}
     for row in land_rows:
         land_id = int(row["id"])
         lands[land_id] = {
             "id": land_id, "name": row["name_tcn"] or "", "caption": row["caption_tcn"] or "",
         }
+        contents = land_contents[land_id] = {}
         with suppress(TypeError, ValueError):
             enemy_id = int(row.get("monstar_no"))
             if 0 <= enemy_id <= 0x7fffffff:
-                land_enemies[land_id] = enemy_id
+                contents["enemyId"] = enemy_id
+                treasure_id = int(row.get("treasure_no"))
+                event_id = int(row.get("event_no"))
+                if all(0 <= value <= 0x7fffffff for value in (treasure_id, event_id)):
+                    contents["emptyTerrain"] = (enemy_id, treasure_id, event_id) == (0, 0, 0)
     quests = {}
     with (SERVER_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
             if row["name"]:
                 quest_id = int(row["id"])
-                area = maps.get(int(row["quest_map_id"]), {})
+                map_id = int(row["quest_map_id"])
+                area = maps.get(map_id, {})
                 slots = [int(row[field] or 0) for field in QUEST_LAND_FIELDS]
                 land_ids = dict.fromkeys(slots)
                 # Quest.startRow takes the last occupied slot in the first column.
@@ -112,9 +118,7 @@ def native_quest_catalog():
                 first = lands.get(slots[first_slot]) if first_slot is not None else None
                 first_land = None
                 if first and first["name"].strip() and first["caption"].strip():
-                    first_land = {"slot": first_slot, **first}
-                    if first["id"] in land_enemies:
-                        first_land["enemyId"] = land_enemies[first["id"]]
+                    first_land = {"slot": first_slot, **first, **land_contents.get(first["id"], {})}
                 positions = []
                 for slot, land_id in enumerate(slots):
                     if land_id <= 0:
@@ -128,12 +132,11 @@ def native_quest_catalog():
                         if target < len(slots) and slots[target] > 0 and mask & bit
                     ]
                     land = lands.get(land_id, {"id": land_id, "name": "", "caption": ""})
-                    position = {"slot": slot, **land, "nextSlots": next_slots}
-                    if land_id in land_enemies:
-                        position["enemyId"] = land_enemies[land_id]
+                    position = {"slot": slot, **land, "nextSlots": next_slots, **land_contents.get(land_id, {})}
                     positions.append(position)
                 quests[quest_id] = {
                     "id": quest_id, "name": row["name"], "map": area.get("name", ""),
+                    "mapId": map_id,
                     "caption": row["caption"] or "",
                     "ap": int(row["ap"]),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
