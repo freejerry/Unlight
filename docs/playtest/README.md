@@ -142,7 +142,7 @@ Chromium 連到隔離 Ruby 完成登入，再展開原生「最新消息」，�
 
 在 Chromium 用隔離 Ruby 帳號登入後，按「讀取區域地圖」才開啟 Quest 連線。瀏覽器依序送出交握 `0`、驗證 `1`、查詢區域 0 的 `6`，以及查詢結束後的 Quest 登出 `2`。原版 Quest 登入同時重送卡牌總數及未處於待定狀態的任務。回覆 `14` 含區域與地圖 ID，實測順序與 SQLite 的 44 筆區域 0 資料一致，包含 `201`、`1000` 和 `3011` 等 ID。清單取自區域索引，角色開放進度仍以登入快照為準。[原版封包](../../app/client/src/net/command/QuestCommand.as#L157) · [Quest 登入](../../app/server/src/controller/quest_controller.rb#L515) · [區域索引](../../app/server/src/model/quest_map.rb#L139)
 
-桌面及 320 CSS 像素、DPR 2 的頁面都能讀到完整清單。等待回覆時中斷 Quest 連線，原本的登入工作階段可繼續使用，同一按鈕可重試。另驗證登出會清除查詢，延遲抵達的回覆不會重新顯示清單。[桌面實測](native/28-native-quest-region.png) · [320 像素實測](native/29-native-quest-region-mobile.png) · [操作方式](../../web-client/README.md#啟動)
+桌面及 320 CSS 像素、DPR 2 的頁面都能讀到完整清單。查詢前後的任務庫存、進度、行動力及獎勵資料一致。等待回覆時中斷 Quest 連線，原本的登入工作階段可繼續使用，同一按鈕可重試。另驗證登出會清除查詢，延遲抵達的回覆不會重新顯示清單。[桌面實測](native/28-native-quest-region.png) · [320 像素實測](native/29-native-quest-region-mobile.png) · [操作方式](../../web-client/README.md#啟動)
 
 ## 原生對局紀錄回放
 
