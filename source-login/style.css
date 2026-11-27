@@ -288,6 +288,8 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 }
 
 #login-alert-message { margin: 0; overflow-wrap: anywhere; }
+#login-alert[data-kind="registration-error"] { min-block-size: 150px; }
+#login-alert[data-kind="registration-error"] #login-alert-message { white-space: pre-line; }
 
 #stage:has(#login-alert[open])::after {
   position: absolute;

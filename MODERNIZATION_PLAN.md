@@ -1,5 +1,7 @@
 # Unlight 現代化與視覺更新計畫
 
+目前的遊戲交付與完成條件以 [Flash 原版移植驗收](docs/playtest/flash-parity.md) 為準。此頁保存早期工程計畫、獨立技術試驗和基準紀錄。
+
 在 Codex 雲端工作區現代化《Unlight》。以現有 Ruby 後端、繁中資料和 Flash 原始碼建立工程基準，再驗證 Rust 戰鬥核心和 TypeScript／WebGL2 前端。產品名稱沿用《Unlight》。視覺更新以現代網頁介面為範圍。第一個里程碑是讓現有 Ruby 引擎跑完一場單人 PvE，留下可重播的對局紀錄。
 
 ## 可啟動入口

@@ -26,7 +26,7 @@ python3 tools/legacy-web/serve.py --native --port 4389 --server-offset 7800 \
 
 Auth 憑證驗證成功後，標題先按原版淡出，再播放 `loading.swf` 的玫瑰。玫瑰以每秒 24 幀播放，在第 100 幀跳回第 23 幀。大廳、資料與聊天連線在轉場期間繼續初始化。資料就緒後，大廳或新手開場進入舞台。[標題轉場](../app/client/src/view/TitleView.as#L194) · [玫瑰載入](../app/client/src/Main.as#L242)
 
-在隔離 Ruby 測試服務可以建立新帳號。成功後回到登入表單並保留帳號名稱，重新輸入密碼即可登入。Email 欄位依原版介面驗證；原版 Auth 註冊指令未傳送這個欄位。
+在隔離 Ruby 測試服務可以建立新帳號。成功後顯示「登錄完畢」，按 OK 或 Esc 會以這次註冊所用的帳密接續原版 Auth 與玫瑰轉場。Email 欄位依原版介面驗證，原版 Auth 註冊指令僅傳送名稱及驗證資料。[註冊流程驗收](../docs/playtest/flash-parity.md)
 
 可在預設測試公告啟用時，用 Chromium 跑標題頁驗收。測例向隔離 Ruby 送出一筆不存在的測試帳號登入，檢查錯誤視窗、焦點與原始音效。
 

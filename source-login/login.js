@@ -17,7 +17,9 @@ const confirmation = document.querySelector('#confirm-password');
 const email = document.querySelector('#email');
 const status = document.querySelector('#login-status');
 const loginAlert = document.querySelector('#login-alert');
+const loginAlertTitle = document.querySelector('#login-alert-title');
 const loginAlertMessage = document.querySelector('#login-alert-message');
+const loginAlertOK = document.querySelector('#login-alert-ok');
 
 const failureMessages = {
   credentials: '認證失敗',
@@ -36,6 +38,11 @@ const registrationFailures = {
   'account-register-rejected': '遊戲服務未接受這次建立帳號。',
   'account-register-uncertain': '尚未確認帳號是否已建立。請先嘗試登入。',
 };
+const registrationRejectionDetails = [
+  '「名字無效」',
+  '「郵件地址無效」',
+  '無法與伺服器連線。請按下更新鈕,重新登錄。',
+];
 
 let currentAttempt = null;
 let alertReturnFocus = null;
@@ -52,12 +59,42 @@ function showStatus(state, message = '', kind) {
   else delete status.dataset.errorKind;
 }
 
-function showError(kind, message, field) {
-  showStatus('error', '', kind);
+function openAlert(kind, heading, message, field = null) {
+  loginAlert.dataset.kind = kind;
+  loginAlertTitle.textContent = heading;
+  loginAlertTitle.lang = kind === 'registration-success' ? 'zh-Hant-TW' : 'en';
   loginAlertMessage.textContent = message;
   alertReturnFocus = field;
   loginAlert.showModal();
   playTitleAlert();
+}
+
+function showError(kind, message, field, alertKind = 'error') {
+  showStatus('error', '', kind);
+  openAlert(alertKind, 'Error', message, field);
+}
+
+function confirmRegistration(signal) {
+  if (signal.aborted) return Promise.resolve(false);
+  showStatus('success');
+  openAlert('registration-success', '登錄完畢', '登錄成功');
+  return new Promise(resolve => {
+    const listeners = new AbortController();
+    function finish(confirmed) {
+      listeners.abort();
+      resolve(confirmed);
+    }
+    function acknowledge(event) {
+      event.preventDefault();
+      finish(true);
+      loginAlert.close();
+    }
+    loginAlertOK.addEventListener('click', acknowledge, { signal: listeners.signal });
+    // An OK-only Flex Alert calls the original completion handler on Escape too.
+    loginAlert.addEventListener('cancel', acknowledge, { signal: listeners.signal });
+    loginAlert.addEventListener('close', () => finish(false), { signal: listeners.signal });
+    signal.addEventListener('abort', () => finish(false), { signal: listeners.signal });
+  });
 }
 
 function showInputError(registering) {
@@ -179,6 +216,7 @@ accountMode.addEventListener('click', () => {
 
 loginAlert.addEventListener('close', () => {
   if (loginAlert.open) return;
+  delete loginAlert.dataset.kind;
   alertReturnFocus?.focus({ preventScroll: true });
   alertReturnFocus = null;
 });
@@ -187,16 +225,19 @@ form.addEventListener('submit', async event => {
   event.preventDefault();
   if (currentAttempt || loginAlert.open) return;
 
-  const registering = form.dataset.mode === 'register';
+  let registering = form.dataset.mode === 'register';
   if (showInputError(registering)) return;
   const accountName = username.value;
-  const secret = password.value;
+  let secret = password.value;
 
   const attempt = { controller: new AbortController(), session: null, closing: null, transition: null };
+  const forgetSecret = () => { secret = ''; };
+  attempt.controller.signal.addEventListener('abort', forgetSecret, { once: true });
   currentAttempt = attempt;
   const restoreFocus = form.contains(document.activeElement);
   let target = password;
-  let loginFailure;
+  let failure;
+  let focusAfterDismissal = false;
   clearPasswords();
   fields.disabled = true;
   accountMode.disabled = true;
@@ -208,12 +249,20 @@ form.addEventListener('submit', async event => {
     if (registering) {
       await registerAccount(accountName, secret, options);
       if (currentAttempt !== attempt) return;
+      const confirmed = await confirmRegistration(options.signal);
+      if (currentAttempt !== attempt) return;
       setMode('login');
-      showStatus('success', '帳號建立成功。請輸入密碼登入。');
-      return;
+      if (!confirmed) {
+        forgetSecret();
+        showStatus('idle');
+        focusAfterDismissal = true;
+        return;
+      }
+      registering = false;
+      showStatus('working');
     }
 
-    const session = await startSession(accountName, secret, {
+    const authentication = startSession(accountName, secret, {
       ...options,
       onAuthenticated() {
         if (currentAttempt === attempt && !attempt.transition) {
@@ -221,6 +270,8 @@ form.addEventListener('submit', async event => {
         }
       },
     });
+    forgetSecret();
+    const session = await authentication;
     attempt.session = session;
     if (currentAttempt !== attempt) return;
     if (!Number.isSafeInteger(session?.playerId) || session.playerId < 1 || !session.initialData
@@ -250,21 +301,27 @@ form.addEventListener('submit', async event => {
     const messages = registering ? registrationFailures : failureMessages;
     const kind = error instanceof SessionError && Object.hasOwn(messages, error.kind) ? error.kind : 'network';
     if (kind === 'account-name-taken') target = username;
-    if (registering) {
-      showStatus('error', messages[kind], kind);
-    } else {
-      attempt.transition?.cancel();
-      loginFailure = kind;
+    let message = messages[kind];
+    let alertKind = 'error';
+    if ((kind === 'account-name-taken' || kind === 'account-register-rejected')
+        && Number.isInteger(error.code) && error.code > 0 && error.code <= 7) {
+      const details = registrationRejectionDetails.filter((_, index) => error.code & (1 << index));
+      message = ['在以下的註冊項目裏有錯誤', ...details].join('\n');
+      alertKind = 'registration-error';
     }
+    attempt.transition?.cancel();
+    failure = { kind, message, alertKind };
   } finally {
+    forgetSecret();
+    attempt.controller.signal.removeEventListener('abort', forgetSecret);
     await closeSession(attempt).catch(() => {});
     if (currentAttempt === attempt) {
       currentAttempt = null;
       fields.disabled = false;
       accountMode.disabled = false;
-      if (loginFailure) {
-        showError(loginFailure, failureMessages[loginFailure], target);
-      } else if (restoreFocus && document.activeElement === status) {
+      if (failure) {
+        showError(failure.kind, failure.message, target, failure.alertKind);
+      } else if (focusAfterDismissal || (restoreFocus && document.activeElement === status)) {
         target.focus({ preventScroll: true });
       }
     }

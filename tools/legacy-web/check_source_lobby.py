@@ -79,6 +79,13 @@ def active_session_traffic(sockets, live, start, player_id):
         frames_for(received, 4, 4 if urlsplit(url).path == "/socket/12003" else 2)
 
 
+def account_registration_traffic(sockets, live, start, result):
+    assert len(sockets) == len(live) == start + 1 and live[start].is_closed()
+    assert urlsplit(live[start].url).path == "/socket/12001"
+    assert command_ids(frames_for(sockets[start][1], 2, 1, exact=True)) == [5]
+    assert frames_for(sockets[start][2], 4, 1, exact=True) == [struct.pack("!Hi", 0, result)]
+
+
 def wait_logout(page, database, player_id):
     deadline = monotonic() + 3
     # Navigation destroys the old document's browser socket observers. Use Ruby's teardown state.
@@ -405,26 +412,41 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     secret = page.locator("#password")
     submit = page.locator("#login-submit")
     mode = page.locator("#account-mode")
+    confirmation = page.locator("#confirm-password")
+    notice = page.locator("#login-alert")
+    notice_title = page.locator("#login-alert-title")
+    notice_message = page.locator("#login-alert-message")
+    notice_ok = page.locator("#login-alert-ok")
     capture(stage, directory, "01-title.png")
+
+    def submit_registration(account_name, account_password):
+        username.fill(account_name)
+        page.locator("#email").fill("test@example.invalid")
+        secret.fill(account_password)
+        confirmation.fill(account_password)
+        submit.click()
+
+    def account_registered():
+        expect(notice).to_have_attribute("data-kind", "registration-success", timeout=TIMEOUT)
+        expect(notice).to_be_visible()
+        expect(notice_title).to_have_text("登錄完畢")
+        expect(notice_message).to_have_text("登錄成功")
+        expect(notice_ok).to_be_focused()
+        expect(title).to_have_text("Register")
+        expect(submit).to_be_disabled()
+        expect(secret).to_have_value("")
+        expect(confirmation).to_have_value("")
 
     mode.click()
     expect(title).to_have_text("Register")
     capture(stage, directory, "02-account-registration.png")
-    username.fill(name)
-    page.locator("#email").fill("test@example.invalid")
-    secret.fill(password)
-    page.locator("#confirm-password").fill(password)
-    submit.click()
-    expect(status).to_have_text("帳號建立成功。請輸入密碼登入。", timeout=TIMEOUT)
-    expect(title).to_have_text("Login")
+    submit_registration(name, password)
+    account_registered()
     expect(username).to_have_value(name)
-    expect(secret).to_have_value("")
-    assert len(sockets) == 1 and live[0].is_closed()
-    assert urlsplit(live[0].url).path == "/socket/12001"
-    assert command_ids(frames_for(sockets[0][1], 2, 1, exact=True)) == [5]
-    assert frames_for(sockets[0][2], 4, 1, exact=True) == [struct.pack("!Hi", 0, 0)]
+    account_registration_traffic(sockets, live, 0, 0)
     ((player_id, flags),) = player(database, name)
     assert not flags and not avatar(database, player_id)
+    capture(stage, directory, "02-account-registration-complete.png")
 
     def sign_in():
         start = len(sockets)
@@ -442,12 +464,20 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
 
     if verify_login_rose:
         page.emulate_media(reduced_motion="no-preference")
-    first = sign_in()
+    first = len(sockets)
+    if verify_login_rose:
+        notice_ok.click()
+    else:
+        notice_ok.press("Escape")
+    expect(notice).to_be_hidden()
     if verify_login_rose:
         expect(stage).to_have_attribute("data-login-transition", "rose", timeout=TIMEOUT)
         expect(page.locator("#stage-background[data-loading-frame]")).to_be_visible()
         expect(status).to_be_hidden()
-        capture(stage, directory, "02a-original-login-rose.png")
+        if directory is not None and stage.get_attribute("data-login-transition") == "rose":
+            rose_frame = stage.screenshot(scale="css")
+            if stage.get_attribute("data-login-transition") == "rose":
+                (directory / "02a-original-login-rose.png").write_bytes(rose_frame)
     screen(stage, "onboarding")
     if verify_login_rose:
         page.emulate_media(reduced_motion="reduce")
@@ -540,10 +570,48 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     music(page, "ulbgm02.mp3")
     capture(stage, directory, "13-direct-lobby-after-login.png")
     reload_title()
+
+    checked_passwords = [password]
+    if not verify_login_rose:
+        start = len(sockets)
+        mode.click()
+        submit_registration(name, password)
+        expect(notice).to_have_attribute("data-kind", "registration-error")
+        expect(notice).to_be_visible()
+        expect(notice_title).to_have_text("Error")
+        expect(notice_message).to_have_text("在以下的註冊項目裏有錯誤\n「名字無效」")
+        assert notice.bounding_box()["height"] == 150
+        expect(status).to_have_attribute("data-error-kind", "account-name-taken")
+        capture(stage, directory, "14-account-registration-rejected.png")
+        notice_ok.click()
+        expect(notice).to_be_hidden()
+        expect(title).to_have_text("Register")
+        expect(username).to_be_focused()
+        account_registration_traffic(sockets, live, start, 1)
+        assert player(database, name) == [(player_id, 0)] and avatar(database, player_id) == [profile]
+
+        abandoned_name, abandoned_password = "flowqa" + token_hex(5), token_hex(8)
+        checked_passwords.append(abandoned_password)
+        start = len(sockets)
+        submit_registration(abandoned_name, abandoned_password)
+        account_registered()
+        account_registration_traffic(sockets, live, start, 0)
+        assert page.reload(wait_until="domcontentloaded").ok
+        screen(stage, "title")
+        expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
+        expect(notice).to_be_hidden()
+        expect(title).to_have_text("Login")
+        expect(username).to_have_value("")
+        expect(secret).to_have_value("")
+        account_registration_traffic(sockets, live, start, 0)
+        ((abandoned_id, flags),) = player(database, abandoned_name)
+        assert not flags and not avatar(database, abandoned_id)
+
     assert page.url == origin + ENTRY and not errors, errors
-    assert [request.url for request in requests if request.resource_type == "document"] == [origin + ENTRY] * 3
+    expected_documents = 3 if verify_login_rose else 4
+    assert [request.url for request in requests if request.resource_type == "document"] == [origin + ENTRY] * expected_documents
     assert all(urlsplit(request.url).netloc == urlsplit(origin).netloc for request in requests)
-    ensure_no_password(requests, sockets, [password])
+    ensure_no_password(requests, sockets, checked_passwords)
     return first_portrait
 
 
