@@ -196,6 +196,12 @@ main { padding-block: 1.6rem 1.8rem; }
 .quest-move .quest-status { flex-basis: 100%; }
 .quest-move-table { flex: 1 1 100%; min-width: 0; padding: .35rem .55rem .48rem; border: 1px solid var(--line); border-radius: .4rem; background: #f2f7f9; color: #2d444f; font-size: .86rem; }
 .quest-move-table h6 { margin-top: 0; }
+.quest-combat { min-width: 0; margin-top: .75rem; padding-top: .2rem; border-top: 1px solid var(--line); }
+.quest-combat-controls, .quest-combat-data { margin-top: .5rem; }
+.quest-combat-controls > p:first-child, .quest-combat-subtitle { margin-bottom: .28rem; color: #203b46; font-size: .88rem; font-weight: 680; }
+.quest-combat-subtitle span { color: var(--muted); font-weight: 450; }
+.quest-combat-damage { margin: .25rem 0; padding-inline-start: 1.3rem; color: #2d444f; font-size: .9rem; overflow-wrap: anywhere; }
+.quest-combat-damage li + li { margin-top: .2rem; }
 .quest-region, .quest-service { margin-top: .8rem; padding-top: .65rem; border-top: 1px solid var(--line); }
 .quest-region h4, .quest-service h4 { margin: 0; font-size: .96rem; }
 .quest-service-description { margin-top: .4rem; color: var(--muted); font-size: .9rem; }

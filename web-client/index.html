@@ -180,7 +180,7 @@
             <select id="session-quest-deck" aria-describedby="session-quest-deck-status" disabled></select>
             <p id="session-quest-deck-status" class="quest-status" data-state="idle" role="status" aria-atomic="true"></p>
           </div>
-          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形已接通至第一回合移動。攻防及後續地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
+          <p id="session-quest-entry-note" class="quest-status" hidden>首格地形已接通至第一段攻防。後續攻防與地形尚未接通。原版服務會在重新登入時清除進行中的任務。</p>
           <table id="session-quest-inventory" class="quest-inventory" hidden>
             <caption class="sr-only">任務清單</caption>
             <thead>
@@ -218,7 +218,7 @@
               </section>
               <section id="session-quest-battle" class="quest-first-turn" aria-labelledby="session-quest-battle-title" hidden>
                 <h5 id="session-quest-battle-title">第一回合</h5>
-                <p class="quest-status">可選取行動卡或空手送出移動。事件卡與攻防尚未接通。</p>
+                <p class="quest-status">可選取行動卡或空手送出移動與本次攻防。事件卡效果尚未接通。</p>
                 <p id="session-quest-battle-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
                 <button id="session-quest-battle-ready" class="button primary" type="button" aria-controls="session-quest-battle-turn session-quest-battle-hand" disabled>開始第一回合</button>
                 <dl class="session-metadata quest-land-metadata" id="session-quest-battle-turn" hidden>
@@ -271,6 +271,41 @@
                     <p id="session-quest-committed-empty" class="quest-status">未使用卡片。</p>
                     <ol id="session-quest-committed-cards" class="quest-hand-cards" aria-label="本次結算的我方卡片" role="list"></ol>
                   </div>
+                </section>
+                <section id="session-quest-combat" class="quest-combat" aria-labelledby="session-quest-combat-title" hidden>
+                  <h6 id="session-quest-combat-title">首次攻防</h6>
+                  <p id="session-quest-combat-status" class="quest-status" data-state="idle" role="status" aria-atomic="true" tabindex="-1"></p>
+                  <div id="session-quest-combat-controls" class="quest-move-table quest-combat-controls" hidden>
+                    <p>已選攻防卡片</p>
+                    <p id="session-quest-combat-cards-empty" class="quest-status">尚未選取卡片。</p>
+                    <ol id="session-quest-combat-cards" class="quest-hand-cards" aria-label="已選攻防卡片" role="list"></ol>
+                    <button id="session-quest-combat-commit" class="button primary" type="button" aria-controls="session-quest-combat-reveal session-quest-combat-dice" disabled>空手送出</button>
+                  </div>
+                  <div id="session-quest-combat-reveal" class="quest-combat-data" hidden>
+                    <p class="quest-combat-subtitle">伺服器公開的卡片</p>
+                    <div class="quest-hand-piles">
+                      <div><p>我方</p><p id="session-quest-combat-player-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-player-cards" class="quest-hand-cards" aria-label="我方公開卡片" role="list"></ol></div>
+                      <div><p>對手</p><p id="session-quest-combat-opponent-cards-empty" class="quest-status" hidden>此回覆沒有公開卡片。</p><ol id="session-quest-combat-opponent-cards" class="quest-hand-cards" aria-label="對手公開卡片" role="list"></ol></div>
+                    </div>
+                  </div>
+                  <div id="session-quest-combat-dice" class="quest-combat-data" hidden>
+                    <p class="quest-combat-subtitle">擲骰順序 <span>原始骰值（0–5）</span></p>
+                    <div class="quest-hand-piles">
+                      <div><p id="session-quest-combat-attack-label">攻擊方</p><p id="session-quest-combat-attack-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-attack-dice" class="quest-hand-cards" aria-labelledby="session-quest-combat-attack-label" role="list"></ol></div>
+                      <div><p id="session-quest-combat-defense-label">防禦方</p><p id="session-quest-combat-defense-dice-empty" class="quest-status" hidden>本次未擲骰。</p><ol id="session-quest-combat-defense-dice" class="quest-hand-cards" aria-labelledby="session-quest-combat-defense-label" role="list"></ol></div>
+                    </div>
+                  </div>
+                  <div id="session-quest-combat-damage-detail" class="quest-combat-data" hidden>
+                    <p class="quest-combat-subtitle">伺服器回傳的傷害</p>
+                    <p id="session-quest-combat-damage-empty" class="quest-status" hidden>本次沒有收到傷害數值。</p>
+                    <ul id="session-quest-combat-damage" class="quest-combat-damage"></ul>
+                  </div>
+                  <dl id="session-quest-combat-values" class="session-metadata quest-land-metadata" hidden>
+                    <div hidden><dt>我方生命值</dt><dd id="session-quest-combat-player-hp"></dd></div>
+                    <div hidden><dt>對手生命值</dt><dd id="session-quest-combat-opponent-hp"></dd></div>
+                    <div hidden><dt>戰鬥結果</dt><dd id="session-quest-combat-duel-finish"></dd></div>
+                    <div hidden><dt>任務結果</dt><dd id="session-quest-combat-quest-finish"></dd></div>
+                  </dl>
                 </section>
               </section>
             </div>

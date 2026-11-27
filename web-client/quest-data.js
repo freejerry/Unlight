@@ -31,11 +31,18 @@ export const QUEST_PROGRESS_REPLY = 19;
 export const QUEST_FINISH_REPLY = 24;
 export const QUEST_ENCOUNTER_REPLY = 37;
 export const QUEST_DUEL_START_REPLY = 40;
+export const QUEST_DUEL_FINISH_REPLY = 41;
 export const QUEST_READY_REQUEST = 22;
 export const QUEST_DIRECTION_REQUEST = 23;
 export const QUEST_MOVE_CARD_ADD_REQUEST = 24;
 export const QUEST_MOVE_CARD_REMOVE_REQUEST = 25;
 export const QUEST_MOVE_COMMIT_REQUEST = 26;
+export const QUEST_ATTACK_CARD_ADD_REQUEST = 28;
+export const QUEST_ATTACK_CARD_REMOVE_REQUEST = 29;
+export const QUEST_DEFENCE_CARD_ADD_REQUEST = 30;
+export const QUEST_DEFENCE_CARD_REMOVE_REQUEST = 31;
+export const QUEST_ATTACK_DONE_REQUEST = 33;
+export const QUEST_DEFENCE_DONE_REQUEST = 34;
 export const QUEST_TURN_REPLY = 43;
 export const QUEST_ACTION_REFILL_REPLY = 44;
 export const QUEST_EVENT_REFILL_REPLY = 45;
@@ -43,9 +50,20 @@ export const QUEST_MOVE_PHASE_START_REPLY = 46;
 export const QUEST_MOVE_PHASE_FINISH_REPLY = 47;
 export const QUEST_MOVE_RESULT_REPLY = 48;
 export const QUEST_ATTACK_PHASE_START_REPLY = 51;
+export const QUEST_ATTACK_PHASE_FINISH_REPLY = 52;
+export const QUEST_DEFENCE_PHASE_START_REPLY = 53;
+export const QUEST_DEFENCE_PHASE_FINISH_REPLY = 54;
+export const QUEST_BATTLE_CARDS_REPLY = 55;
+export const QUEST_BATTLE_DICE_REPLY = 56;
+export const QUEST_DEAD_CHARA_CHANGE_REPLY = 57;
+export const QUEST_TURN_FINISH_REPLY = 59;
 export const QUEST_DIRECTION_REPLY = 60;
 export const QUEST_MOVE_CARD_ADD_REPLY = 61;
 export const QUEST_MOVE_CARD_REMOVE_REPLY = 62;
+export const QUEST_BATTLE_CARD_ADD_REPLY = 65;
+export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
+export const QUEST_DAMAGE_REPLY = 73;
+export const QUEST_HIT_POINT_REPLY = 79;
 
 const skipString = {};
 const skipStrings = (count) => Array(count).fill(skipString);
@@ -248,6 +266,17 @@ export function readQuestDuelStartReply(reply) {
   return { deckSize, playerEventDeckSize, opponentEventDeckSize, distance, multi: multi === 1 };
 }
 
+export function readQuestDuelFinishReply(reply) {
+  if (reply.command !== QUEST_DUEL_FINISH_REPLY) throw new Error('Unexpected quest duel finish reply.');
+  const result = reply.byte();
+  // The display only needs the result, but the original packet also carries seven reward integers and a flag.
+  for (let field = 0; field < 7; field += 1) reply.int();
+  readDuelBoolean(reply);
+  reply.done();
+  if (result < 0 || result > 2) throw new Error('Invalid quest duel result.');
+  return { result };
+}
+
 function readDuelCardIds(reply) {
   const ids = integerList(reply.string(MAX_ID_LIST_BYTES, true));
   if (ids.some((id) => id === 0 || id > MAX_INT32)) throw new Error('Invalid duel card ID.');
@@ -347,6 +376,82 @@ export function readQuestAttackPhaseReply(reply) {
   const playerAttacks = readDuelBoolean(reply);
   reply.done();
   return playerAttacks;
+}
+
+export function readQuestDefencePhaseReply(reply) {
+  if (reply.command !== QUEST_DEFENCE_PHASE_START_REPLY) throw new Error('Unexpected quest defence phase reply.');
+  const playerDefends = readDuelBoolean(reply);
+  reply.done();
+  return playerDefends;
+}
+
+export function readQuestBattleCardReply(reply) {
+  if (reply.command !== QUEST_BATTLE_CARD_ADD_REPLY && reply.command !== QUEST_BATTLE_CARD_REMOVE_REPLY) {
+    throw new Error('Unexpected quest battle card reply.');
+  }
+  const player = readDuelBoolean(reply);
+  const index = reply.byte();
+  const id = reply.int();
+  reply.done();
+  // Battle actions use index 0 on success. Failed actions use -1 and opponent IDs stay hidden.
+  if ((index !== 0 && index !== -1) || (player && index === 0 ? id <= 0 : id !== 0)) {
+    throw new Error('Invalid quest battle card reply.');
+  }
+  return { player, index, id };
+}
+
+export function readQuestBattleCardsReply(reply) {
+  if (reply.command !== QUEST_ATTACK_PHASE_FINISH_REPLY && reply.command !== QUEST_DEFENCE_PHASE_FINISH_REPLY
+    && reply.command !== QUEST_BATTLE_CARDS_REPLY) {
+    throw new Error('Unexpected quest battle cards reply.');
+  }
+  const playerCards = readPlayedCards(reply);
+  const opponentCards = readPlayedCards(reply);
+  const playerLocked = readDuelBoolean(reply);
+  const opponentLocked = readDuelBoolean(reply);
+  reply.done();
+  return { playerCards, opponentCards, playerLocked, opponentLocked };
+}
+
+export function readQuestBattleDiceReply(reply) {
+  if (reply.command !== QUEST_BATTLE_DICE_REPLY) throw new Error('Unexpected quest battle dice reply.');
+  const playerAttacks = readDuelBoolean(reply);
+  const attackDice = integerList(reply.string(MAX_ID_LIST_BYTES, true));
+  const defenceDice = integerList(reply.string(MAX_ID_LIST_BYTES, true));
+  reply.done();
+  if (attackDice.some((face) => face > 5) || defenceDice.some((face) => face > 5)) {
+    throw new Error('Invalid quest die face.');
+  }
+  return { playerAttacks, attackDice, defenceDice };
+}
+
+export function readQuestDamageReply(reply) {
+  if (reply.command !== QUEST_DAMAGE_REPLY) throw new Error('Unexpected quest damage reply.');
+  const player = readDuelBoolean(reply);
+  const damage = reply.int();
+  const nonHostile = readDuelBoolean(reply);
+  reply.done();
+  return { player, damage, nonHostile };
+}
+
+export function readQuestHitPointReply(reply) {
+  if (reply.command !== QUEST_HIT_POINT_REPLY) throw new Error('Unexpected quest hit point reply.');
+  const player = readDuelBoolean(reply);
+  const hp = reply.int();
+  reply.done();
+  return { player, hp };
+}
+
+export function readQuestCombatBoundaryReply(reply) {
+  if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
+    readDuelBoolean(reply);
+    readDuelBoolean(reply);
+    reply.discardString(MAX_ID_LIST_BYTES, true);
+    reply.discardString(MAX_ID_LIST_BYTES, true);
+  } else if (reply.command !== QUEST_TURN_FINISH_REPLY) {
+    throw new Error('Unexpected quest combat boundary reply.');
+  }
+  reply.done();
 }
 
 export function createQuestDataReader() {
