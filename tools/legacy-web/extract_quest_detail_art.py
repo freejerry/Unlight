@@ -77,6 +77,7 @@ SOURCE_DIGESTS = {
     "bg_btl07a": "ab487378eee6fb1ccaa8b4bd45f60de265d63e4e23a2fc45e5907a4e112b1736",
     "bg_btl11a": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
     "bg_btl11a_book": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
+    "bg_btl12a": "9f5f76fab4ebccdcbd49f51a31bb8ac369d064fff98f6aaab5cbd238de9aa256",
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
     "phase": "036bf094cb3399748e4da1a6d97ff25f44ccccdf0c6ecd7a58ee4ce856bcceda",
     "space": "8a8dcd9442e9eba116d7b2ca9a573e889975bd391107ce7e317e00063e452bf4",
@@ -114,6 +115,7 @@ SOURCE_DIGESTS = {
     "standmon003_00_f": "63d67d31585cddce6f3582956bf722ad00bd3353afc3d27356d77af09ad31e5a",
     "standmon003_01_f": "9c1a3914b9d660e98a7e34534637bea8e312a00db98289e76ebef37d061c72d7",
     "standmon028_00_f": "8cfbf8b27f1d026c91c544cd0b98137ead7cbf41d941b5d2f59be6d539582ea2",
+    "standmon050_00_f": "b96237eee3a6241dd31ed22b6110fec76793a03310ff82dc23495325cff18292",
     "standchara10_f": "455ec578878e539508cad752907fbfc9702abf930c4d0356c766640cd6cd2659",
     "standmon012_02_f": "de21836f609c798ec5990d44fc97277a9ba4292842d150cca9304ea083afa264",
     "standmon011_00_f": "b84a9dde353d2ecb9de6c5a78b9303d202510f2e247b3b28598e16cd33a03971",
@@ -121,7 +123,7 @@ SOURCE_DIGESTS = {
 }
 BATTLE_SOURCE_DIRS = {
     **dict.fromkeys(("bg_btl00a", "bg_btl00a_far", "bg_btl00a_book", "bg_btl02a", "bg_btl03a",
-                     "bg_btl07a", "bg_btl11a", "bg_btl11a_book"), "bg"),
+                     "bg_btl07a", "bg_btl11a", "bg_btl11a_book", "bg_btl12a"), "bg"),
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
                      "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p", "panel_change", "think",
                      "chara_status"), "game"),
@@ -135,6 +137,7 @@ MOVE_FACE_SOURCES = {
     "635": "standchara64_f", "1008": "standmon003_01_f",
     "1001": "standmon001_00_f", "1007": "standmon003_00_f",
     "1079": "standmon028_00_f", "94": "standchara10_f",
+    "1124": "standmon050_00_f",
     "1033": "standmon012_02_f", "1034": "standmon011_00_f",
     "1050": "standmon017_01_f",
 }
@@ -920,11 +923,21 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=(), character
         layer = add(lake, "stage03-lake", placements, "stage", art_set="battle", sourceDepth=3)
         return [dict(layer, depth=0)]
 
+    def stage13_battle_layers():
+        stone = movie("bg_btl12a")
+        _, placements = next(timeline(stone.root))
+        if [part["depth"] for part in placements] != ["3", "4"]:
+            raise ValueError("Unexpected original stage 13 FarBG composition")
+        # Both SWF layers live inside FarBG. NearBG is absent for stage 13.
+        return [dict(battle_art(stone, f"stage13-{name}", [part], sourceDepth=int(part["depth"])), depth=0)
+                for name, part in zip(("stone", "overlay"), placements, strict=True)]
+
     stage_extractors = {
         "2": (stage2_battle_layers, "002"),
         "3": (stage3_battle_layers, "003"),
         "7": (lambda: [dict(battle_far_jpeg(movie("bg_btl07a"), "stage07-far"), depth=0)], "007"),
         "11": (stage11_battle_layers, "000"),
+        "13": (stage13_battle_layers, "000"),
     }
 
     def stage_art(stages):
@@ -1483,7 +1496,7 @@ if __name__ == "__main__":
     parser.add_argument("--swfdump", default="swfdump", help="Apache Flex SDK swfdump")
     parser.add_argument("--move-face", action="append", choices=MOVE_FACE_SOURCES,
                         help="refresh only this cut-in in an existing output (repeatable)")
-    parser.add_argument("--battle-stage", action="append", choices=("2", "3", "7", "11"),
+    parser.add_argument("--battle-stage", action="append", choices=("2", "3", "7", "11", "13"),
                         help="refresh only this battle stage in an existing output (repeatable)")
     parser.add_argument("--character-change", action="store_true",
                         help="refresh only the source character change scene artwork")

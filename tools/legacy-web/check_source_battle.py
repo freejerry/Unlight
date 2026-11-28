@@ -358,16 +358,23 @@ def check_bench_hover(page, stage, battle, directory, *, reserve_index, card_id,
             'turnCueBounds': cue_bounds, 'restoredBounds': restored, 'raster': pixels}
 
 
-def check_opponent_hover(page, stage, battle, directory):
+def check_opponent_hover(page, stage, battle, directory, *,
+                         stats=(1004, '蝙蝠', 1, 3, 1, 1), skills=(), slot=None, lane=0,
+                         restore_front=True, prefix='05-q1-opponent'):
+    card_id, name, hp, attack, defense, level = stats
+    index = 0 if slot is None else slot
+    suffix = '' if slot is None else f'-{slot}'
+    x = lane * 168
     tabs = battle.locator('#quest-battle-opponent-tabs')
-    tab = tabs.locator('.quest-battle-opponent-tab[data-roster-index="0"][data-card-id="1004"]')
-    trigger = tab.locator('#quest-battle-opponent-trigger[data-opponent-trigger]')
+    tab = tabs.locator(f'.quest-battle-opponent-tab[data-roster-index="{index}"][data-card-id="{card_id}"]')
+    trigger = tab.locator(f'#quest-battle-opponent-trigger{suffix}[data-opponent-trigger]')
     plate = tab.locator('img[src$="quest-battle-reserve-tab-base.png"]')
-    card = battle.locator('#quest-battle-opponent-character')
+    card = battle.locator(f'#quest-battle-opponent-character{suffix}')
     slide = card.locator('xpath=..')
     flip = card.locator('.quest-battle-character-flip')
     cue = flip.locator('img.quest-battle-character-turn-cue[src$="/battle-card-art/chara-front-turn.png"]')
     health = battle.locator('#quest-battle-opponent-hp')
+    player_health = battle.locator('#quest-battle-player-hp')
     move_done = battle.locator('button[data-move-command="done"]')
     base = battle.bounding_box()
 
@@ -375,56 +382,61 @@ def check_opponent_hover(page, stage, battle, directory):
         page.mouse.move(base['x'] + x, base['y'] + y)
 
     def expand(face):
-        pointer(110, 17)
+        pointer(x + 110, 17)
         expect(trigger).to_have_attribute('aria-expanded', 'true')
-        expect(card).to_have_attribute('data-card-id', '1004')
+        expect(card).to_have_attribute('data-card-id', str(card_id))
         expect(card).to_have_attribute('data-face', face)
         expect(card).to_have_css('opacity', '1')
         expect(slide).to_have_css('transition-duration', '0.15s')
-        page.wait_for_function("""() => {
-          const view = document.getElementById('quest-battle-opponent-character');
+        page.wait_for_function("""suffix => {
+          const view = document.getElementById('quest-battle-opponent-character' + suffix);
           const board = document.getElementById('quest-map-battle');
           return view && Math.abs(view.getBoundingClientRect().top - board.getBoundingClientRect().top) < 0.25;
-        }""", timeout=qa.TIMEOUT)
-        pointer(110, 170)
+        }""", arg=suffix, timeout=qa.TIMEOUT)
+        pointer(x + 110, 170)
         expect(trigger).to_have_attribute('aria-expanded', 'true')
-        return match_reserve_bounds(card, battle, [0, 0, 168, 240])
+        return match_reserve_bounds(card, battle, [x, 0, 168, 240])
 
     def collapse():
-        pointer(205, 210)
+        pointer(400 if slot is not None else 205, 210)
         expect(trigger).to_have_attribute('aria-expanded', 'false')
         expect(card).to_have_js_property('inert', True)
         expect(card).to_have_css('opacity', '0')
         expect(slide).to_have_css('transition-duration', '0.08s')
-        return match_reserve_bounds(plate, battle, [0, 0, 168, 32])
+        return match_reserve_bounds(plate, battle, [x, 0, 168, 32])
 
-    expect(tabs.locator('.quest-battle-opponent-tab')).to_have_count(1)
-    expect(health).to_have_text('1/1')
+    if slot is None:
+        expect(tabs.locator('.quest-battle-opponent-tab')).to_have_count(1)
+        expect(health).to_have_text('1/1')
+        expect(player_health).to_have_text('7/7')
+    initial_health, initial_player_health = health.inner_text(), player_health.inner_text()
     expect(trigger).to_be_enabled()
     expect(trigger).to_have_attribute('aria-expanded', 'false')
     expect(card).to_be_hidden()
     expect(move_done).to_be_enabled()
     expect(plate).to_have_js_property('naturalWidth', 168)
     expect(plate).to_have_js_property('naturalHeight', 32)
-    collapsed = match_reserve_bounds(plate, battle, [0, 0, 168, 32])
-    match_reserve_bounds(trigger, battle, [0, 0, 168, 32])
-    fields = {'name': ('蝙蝠', [8, 2, 130, 18]), 'hp': ('1', [138, -2, 30, 25]),
-              'level': ('1', [14, 19, 19, 14]), 'attack': ('3', [61, 19, 19, 14]),
-              'defense': ('1', [100, 19, 19, 14]), 'maxHp': ('1', [150, 19, 19, 14])}
-    for field, (text, geometry) in fields.items():
+    collapsed = match_reserve_bounds(plate, battle, [x, 0, 168, 32])
+    match_reserve_bounds(trigger, battle, [x, 0, 168, 32])
+    fields = {'name': (name, (8, 2, 130, 18)), 'hp': (hp, (138, -2, 30, 25)),
+              'level': (level, (14, 19, 19, 14)), 'attack': (attack, (61, 19, 19, 14)),
+              'defense': (defense, (100, 19, 19, 14)), 'maxHp': (hp, (150, 19, 19, 14))}
+    for field, (text, (left, top, width, height)) in fields.items():
         label = tab.locator(f'[data-reserve-field="{field}"]')
-        expect(label).to_have_text(text)
-        match_reserve_bounds(label, battle, geometry)
+        expect(label).to_have_text(str(text))
+        match_reserve_bounds(label, battle, [x + left, top, width, height])
     sent = sent_quest_actions(page)
-    rest = snapshot(page, stage, directory, '05-q1-opponent-tab-at-rest')
+    rest = snapshot(page, stage, directory, f'{prefix}-tab-at-rest')
     opened = expand('front')
-    raised_plate = match_reserve_bounds(plate, battle, [0, 240, 168, 32])
+    raised_plate = match_reserve_bounds(plate, battle, [x, 240, 168, 32])
     raster = character_raster(card)
-    expect(card.locator('canvas.quest-battle-character-card')).to_have_attribute('aria-label', '蝙蝠 Lv.1 · HP 1 · ATK 3 · DEF 1')
+    expect(card.locator('canvas.quest-battle-character-card')).to_have_attribute(
+        'aria-label', f'{name} Lv.{level} · HP {hp} · ATK {attack} · DEF {defense}',
+    )
     expect(cue).to_be_visible()
     expect(cue).to_have_css('opacity', '1')
-    cue_bounds = match_reserve_bounds(cue, battle, [48, 104, 87.95, 47.95])
-    front = snapshot(page, stage, directory, '05-q1-opponent-raised-front')
+    cue_bounds = match_reserve_bounds(cue, battle, [x + 48, 104, 87.95, 47.95])
+    front = snapshot(page, stage, directory, f'{prefix}-raised-front')
 
     flip.click(position={'x': 110, 'y': 170})
     expect(card).to_have_attribute('data-face', 'back')
@@ -433,27 +445,56 @@ def check_opponent_hover(page, stage, battle, directory):
     rear = card.locator('.quest-battle-character-review img[src$="/battle-card-art/chara-reverse-plate.png"]')
     expect(rear).to_be_visible()
     expect(rear).to_have_js_property('naturalWidth', 168)
-    expect(card.locator('.quest-battle-character-feat')).to_have_count(0)
-    reverse = snapshot(page, stage, directory, '05-q1-opponent-raised-reverse')
+    feats = card.locator('.quest-battle-character-feat')
+    expect(feats).to_have_count(len(skills))
+    assert feats.evaluate_all('buttons => buttons.map(button => Number(button.dataset.featId))') == list(skills)
+    reverse = snapshot(page, stage, directory, f'{prefix}-raised-reverse')
     collapse()
     expand('back')
     expect(rear).to_be_visible()
     expect(cue).to_be_hidden()
-    reopened = snapshot(page, stage, directory, '05-q1-opponent-reopened-reverse')
-    flip.click(position={'x': 110, 'y': 170})
-    expect(card).to_have_attribute('data-face', 'front')
-    expect(flip).to_be_enabled()
-    assert character_raster(card) == raster
+    reopened = snapshot(page, stage, directory, f'{prefix}-reopened-reverse')
+    if restore_front:
+        flip.click(position={'x': 110, 'y': 170})
+        expect(card).to_have_attribute('data-face', 'front')
+        expect(flip).to_be_enabled()
+        assert character_raster(card) == raster
     collapse()
-    expect(health).to_have_text('1/1')
-    expect(battle.locator('#quest-battle-player-hp')).to_have_text('7/7')
+    expect(health).to_have_text(initial_health)
+    expect(player_health).to_have_text(initial_player_health)
     expect(battle).to_have_attribute('data-phase', 'move')
     expect(move_done).to_be_enabled()
     assert sent_quest_actions(page) == sent
-    restored = snapshot(page, stage, directory, '05-q1-opponent-tab-restored')
+    restored = snapshot(page, stage, directory, f'{prefix}-tab-restored')
     return {'rest': rest, 'front': front, 'reverse': reverse, 'reopened': reopened, 'restored': restored,
             'restBounds': collapsed, 'openedBounds': opened, 'raisedPlateBounds': raised_plate,
             'turnCueBounds': cue_bounds, 'raster': raster}
+
+
+def check_multi_opponent_hover(page, stage, battle, directory):
+    tabs = battle.locator('#quest-battle-opponent-tabs')
+    slots = tabs.locator('.quest-battle-opponent-tab')
+    expect(slots).to_have_count(2)
+    assert slots.evaluate_all("tabs => tabs.map(({dataset}) => [dataset.rosterIndex, dataset.cardId, dataset.active])") == [
+        ['0', '1124', 'true'], ['1', '1124', 'false'],
+    ]
+    expect(battle.locator('#quest-battle-opponent-hp[data-roster-index="0"]')).to_have_text('15/15')
+    expect(battle.locator('#quest-battle-player-hp')).to_have_text('7/7')
+    sent = sent_quest_actions(page)
+    stats = (1124, '聖女的貓', 15, 8, 11, 1)
+    inspections = []
+    for index in range(2):
+        inspections.append(check_opponent_hover(
+            page, stage, battle, directory, stats=stats, skills=(521, 524), slot=index, lane=index,
+            restore_front=False, prefix=f'05-q970-opponent-slot-{index}',
+        ))
+        expect(battle.locator(f'#quest-battle-opponent-trigger-{index}')).to_have_attribute(
+            'aria-controls', f'quest-battle-opponent-character-{index}',
+        )
+        expect(battle.locator(f'#quest-battle-opponent-character-{index}')).to_have_attribute('data-face', 'back')
+    assert inspections[0]['raster'] == inspections[1]['raster'], inspections
+    assert sent_quest_actions(page) == sent
+    return inspections
 
 
 def close_battle_lobby_notices(page, stage, origin):
@@ -515,10 +556,12 @@ def enter_battle(page, origin, database, user, password, directory, quest_id, *,
         expect(page.locator('#quest-map-view')).to_have_attribute('data-state', 'ready', timeout=qa.TIMEOUT)
         if quest_id == 82:
             expect(page.locator('#quest-map-view')).to_have_attribute('data-map-id', '6')
+        elif 970 <= quest_id <= 972:
+            expect(page.locator('#quest-map-view')).to_have_attribute('data-map-id', '36')
 
     if owned:
         detail, _ = qa.start_preowned_quest(page, database, player_id, quest, locked,
-                                           ap_cost={82: 2, 568: 4}.get(quest_id, 0))
+                                           ap_cost={82: 2, 568: 4, 970: 1, 971: 1, 972: 1}.get(quest_id, 0))
     else:
         inventory_id = quest[0]
         start_offset = len(qa.read_movement_trace(page)['replies'])
@@ -538,7 +581,7 @@ def enter_battle(page, origin, database, user, password, directory, quest_id, *,
         expect(detail).to_have_attribute('data-progress', '2', timeout=qa.TIMEOUT)
         entering = detail.locator('button.quest-map-detail-land[data-slot="4"]')
     else:
-        assert quest_id in (1, 82, 568)
+        assert quest_id in (1, 82, 568, 970, 971, 972)
         entering = first_land
     page.emulate_media(reduced_motion='no-preference')
     observe_battle_motion(page)
@@ -2005,14 +2048,18 @@ def check_battle(page, args, plan):
             evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
         if 'openingActions' in plan:
             assert [row[0] for row in evidence['2-and-6']['hand'] if row[2] == 'action'] == plan['openingActions']
-        if args.case == 'opponent-hover':
-            qa.music(page, 'quest-duel', 'bgm000.mp3')
+        if args.case in ('opponent-hover', 'multi-opponent-hover'):
             trace = qa.read_movement_trace(page)
             encounter, = [packet for packet in trace['replies'] if packet[0] == 37]
-            assert encounter[4:] == ['21', '1004', 11, 0, 0, 0, 0, 0, 0], encounter
             assert quest[6:] == (0, 0, 0), quest
             evidence['encounter'] = encounter
-            evidence['opponentHover'] = check_opponent_hover(page, stage, battle, args.screens)
+            if args.case == 'multi-opponent-hover':
+                assert encounter[4:] == ['21', '1124,1124', 13, 0, 0, 0, 0, 0, 0], encounter
+                evidence['opponentHover'] = check_multi_opponent_hover(page, stage, battle, args.screens)
+            else:
+                qa.music(page, 'quest-duel', 'bgm000.mp3')
+                assert encounter[4:] == ['21', '1004', 11, 0, 0, 0, 0, 0, 0], encounter
+                evidence['opponentHover'] = check_opponent_hover(page, stage, battle, args.screens)
             assert [code for code, _ in sent_quest_actions(page) if code >= 22] == [22]
             assert len(live) == 5 and all(not socket.is_closed() for socket in live), live
             assert qa.quest_inventory(args.database, avatar_id) == [quest[:2] + (2,) + quest[3:]]
@@ -2129,14 +2176,14 @@ def main():
     parser.add_argument('--chromium', default='/usr/bin/chromium')
     parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition',
                                           'feat-replacement', 'voluntary-change', 'borrower-change', 'forced-change',
-                                          'forced-change-before-dice', 'bench-hover', 'opponent-hover'),
+                                          'forced-change-before-dice', 'bench-hover', 'opponent-hover', 'multi-opponent-hover'),
                         default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
     if (args.case == 'skill') != (args.plan is not None):
         parser.error('--case skill and its original --plan must be used together')
-    if args.case == 'opponent-hover':
-        plan = {'questId': 1, 'cardId': 21}
+    if args.case in ('opponent-hover', 'multi-opponent-hover'):
+        plan = {'questId': 970 if args.case == 'multi-opponent-hover' else 1, 'cardId': 21}
     elif args.case == 'forced-change':
         plan = {
             'questId': 1, 'cardId': 21, 'direction': 1, 'openingActions': [12, 18, 4, 2, 39],

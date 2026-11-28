@@ -5,6 +5,7 @@ const cardWidth = 168;
 const cardHeight = 240;
 const fieldHeight = 680;
 const quadOut = 'cubic-bezier(.333333, .666667, .666667, 1)';
+const sineOut = 'linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1)';
 const expandedCards = new WeakMap();
 
 function place(node, x, y, width, height) {
@@ -49,6 +50,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
   const slots = new Map();
   let enabled = false;
   let active;
+  let lastFoeActive;
 
   function setOpen(slot, open, immediate = false) {
     const duration = immediate || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : open ? 150 : 80;
@@ -100,7 +102,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     expandedCards.get(battle)?.();
     if (!slot.inspector) {
       slot.damage = currentDamage(slot.row, slot.definition);
-      slot.inspector = inspect(slot.track, slot.definition, slot.row, slot.damage, slot.signal);
+      slot.inspector = inspect(slot.track, slot.definition, slot.row, slot.damage, slot.signal, slot.elementId);
       const { card } = slot.inspector;
       card.removeAttribute('data-roster-index');
       card.style.top = `${inspectTop}px`;
@@ -117,7 +119,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     setOpen(slot, true);
   }
 
-  function createSlot(row) {
+  function createSlot(row, suffix) {
     const node = document.createElement('div');
     node.className = `${prefix}-tab`;
     node.dataset.rosterIndex = String(row.index);
@@ -142,13 +144,8 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     const definition = definitions.get(row.cardId);
     const trigger = document.createElement('button');
     trigger.type = 'button';
-    if (foe) {
-      trigger.id = `${prefix}-trigger`;
-      trigger.dataset.opponentTrigger = '';
-    } else {
-      trigger.id = `${prefix}-trigger-${row.index}`;
-      trigger.dataset.reserveTrigger = '';
-    }
+    trigger.id = `${prefix}-trigger${suffix}`;
+    trigger.dataset[foe ? 'opponentTrigger' : 'reserveTrigger'] = '';
     trigger.style.pointerEvents = 'auto';
     trigger.setAttribute('aria-label', definition?.name ? `檢視${definition.name}的角色卡` : '檢視候補角色');
     place(trigger, 0, 0, width, height);
@@ -159,7 +156,8 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     place(hitArea, 0, inspectTop, cardWidth, cardHeight);
     track.append(hitArea);
     const life = new AbortController();
-    const slot = { node, track, hitArea, image, labels, trigger, definition, row, life, signal: AbortSignal.any([signal, life.signal]) };
+    const slot = { node, track, hitArea, image, labels, trigger, definition, row, life,
+      elementId: `${prefix}-character${suffix}`, signal: AbortSignal.any([signal, life.signal]) };
     setOpen(slot, false, true);
     root.append(node);
 
@@ -190,10 +188,17 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     return slot;
   }
 
-  function updateSlot(slot, row, order) {
+  function updateSlot(slot, row, column, order) {
     slot.row = row;
     const { node, definition, trigger, image, labels } = slot;
-    node.style.left = `${foe ? 0 : (order + 1) * cardWidth}px`;
+    if (slot.column !== column) {
+      if (foe && slot.column !== undefined) {
+        node.style.transition = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : `left 500ms ${sineOut}`;
+      }
+      slot.column = column;
+      node.style.left = `${column * cardWidth}px`;
+      if (foe) node.dataset.active = String(column === 0);
+    }
     trigger.disabled = !enabled || !definition;
     if (root.children[order] !== node) root.insertBefore(node, root.children[order] ?? null);
     const hp = Number.isInteger(row.hp) ? row.hp : null;
@@ -236,24 +241,35 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
       root.hidden = hidden || (foe && !party);
       root.inert = !enabled;
       if (hidden || !party) return;
-      const rows = foe
-        ? party.cards.filter(({ index, cardId }) => party.cards.length === 1 && index === party.activeIndex
-          && Number.isSafeInteger(cardId) && cardId > 0 && definitions.has(cardId))
-        : party.cards.filter(({ index }) => index !== party.activeIndex);
-      const identities = new Map(rows.map(({ index, cardId }) => [index, cardId]));
+      const suffix = index => !foe || party.cards.length > 1 ? `-${index}` : '';
+      let rows;
+      if (foe) {
+        if (lastFoeActive !== party.activeIndex && active) close(active, { immediate: true });
+        lastFoeActive = party.activeIndex;
+        // DuelCharaCards puts the confirmed active slot first, followed by the remaining party order.
+        const position = row => row.index === party.activeIndex ? -1 : row.index;
+        rows = party.cards.toSorted((a, b) => position(a) - position(b))
+          .map((row, column) => ({ row, column }))
+          .filter(({ row }) => Number.isSafeInteger(row.cardId) && row.cardId > 0 && definitions.has(row.cardId));
+      } else {
+        rows = party.cards.filter(({ index }) => index !== party.activeIndex).map((row, order) => ({ row, column: order + 1 }));
+      }
+      const focus = document.activeElement;
+      const identities = new Map(rows.map(({ row }) => [row.index, row.cardId]));
       for (const [index, slot] of slots) {
-        if (identities.get(index) === slot.row.cardId) continue;
+        if (identities.get(index) === slot.row.cardId && slot.elementId === `${prefix}-character${suffix(index)}`) continue;
         if (slot.node.contains(document.activeElement)) clearFocus();
         close(slot, { immediate: true, returnFocus: false });
         slot.life.abort();
         slot.node.remove();
         slots.delete(index);
       }
-      rows.forEach((row, order) => {
-        const slot = slots.get(row.index) ?? createSlot(row);
+      rows.forEach(({ row, column }, order) => {
+        const slot = slots.get(row.index) ?? createSlot(row, suffix(row.index));
         slots.set(row.index, slot);
-        updateSlot(slot, row, order);
+        updateSlot(slot, row, column, order);
       });
+      if (enabled && focus !== document.activeElement && root.contains(focus)) focus.focus({ preventScroll: true });
     },
   };
 }

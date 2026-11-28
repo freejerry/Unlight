@@ -1442,13 +1442,13 @@ async function renderBattleHud(battle, sourceAvatar, {
     ),
     restoreFocus: () => status.focus({ preventScroll: true }),
   });
-  const [opponentCardId] = encounter.opponentCardIds;
+  const { opponentCardIds } = encounter;
+  const knownOpponentCard = id => Number.isSafeInteger(id) && id > 0 && definitions.has(id);
   const ordinaryMap = Number.isInteger(mapIndex) && mapIndex >= 0 && mapIndex < 36;
-  const opponentTab = ordinaryMap && encounter.opponentCardIds.length === 1 && Number.isInteger(opponentCardId)
-    && opponentCardId > 0 && definitions.has(opponentCardId) ? createQuestBattleReserve(battle, {
+  const opponentTab = ordinaryMap && opponentCardIds.some(knownOpponentCard) ? createQuestBattleReserve(battle, {
       artwork: hud.characterChange?.reserveTab, definitions, signal, side: 'opponent',
-      inspect: (parent, definition, row, damage, cardSignal) => inspectCharacter(
-        parent, definition, row.cardId, damage, cardSignal, row.index, 'quest-battle-opponent-character',
+      inspect: (parent, definition, row, damage, cardSignal, elementId) => inspectCharacter(
+        parent, definition, row.cardId, damage, cardSignal, row.index, elementId,
       ),
       restoreFocus: () => status.focus({ preventScroll: true }),
     }) : null;
@@ -1521,17 +1521,25 @@ async function renderBattleHud(battle, sourceAvatar, {
   function updateOpponentInspection() {
     if (!opponentTab) return;
     const party = visualRoster()?.opponent;
-    const row = party?.cards[party.activeIndex];
+    const active = party?.cards?.[party.activeIndex];
     const shown = opponentHealth?.dataset;
-    if (party?.cards.length !== 1 || row?.cardId !== opponentCardId || Number(shown?.cardId) !== row.cardId
-      || Number(shown?.rosterIndex) !== row.index) {
+    if (!active || party.cards.length !== opponentCardIds.length || !knownOpponentCard(active.cardId)
+      || active.index !== party.activeIndex || active.cardId !== opponentCardIds[active.index]
+      || Number(shown?.cardId) !== active.cardId || Number(shown?.rosterIndex) !== active.index) {
       opponentTab.update(undefined, true, { enabled: false });
       return;
     }
     // Follow the presented gauge so an early Ruby damage receipt cannot expose HP ahead of its animation.
-    const hp = Number(shown.hp);
-    const displayed = { ...row, hp: Number.isInteger(hp) ? hp : null, alive: Number.isInteger(hp) ? hp > 0 : null };
-    opponentTab.update({ ...party, cards: [displayed] }, false, { enabled: opponentInspectionEnabled });
+    const gaugeHp = Number(shown.hp);
+    const hp = Number.isInteger(gaugeHp) ? gaugeHp : null;
+    // A CPU deck can use the same character definition in different roster slots.
+    const cards = party.cards.map((row, index) => {
+      if (row?.index !== index || row.cardId !== opponentCardIds[index] || !knownOpponentCard(row.cardId)) {
+        return { index, cardId: 0 };
+      }
+      return index === active.index ? { ...row, hp, alive: hp === null ? null : hp > 0 } : row;
+    });
+    opponentTab.update({ ...party, cards }, false, { enabled: opponentInspectionEnabled });
   }
 
   function observeCurrentSkills() {
@@ -1568,7 +1576,10 @@ async function renderBattleHud(battle, sourceAvatar, {
       actors[side] = actor;
       battle.dataset[`${side}ActiveCardId`] = String(actor.cardId);
       health.setActor(side, actor);
-      if (side !== 'player') continue;
+      if (side === 'opponent') {
+        updateOpponentInspection();
+        continue;
+      }
       faceScope.abort();
       faceScope = new AbortController();
       const focus = activeFace.card.contains(document.activeElement);

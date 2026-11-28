@@ -208,6 +208,14 @@ Q1 新版第二回合，馬庫斯以 8/8 接替後，仍可滑入檢視已倒下
 
 原版與新版使用同一副無傷勢牌組和種子實跑 Q1。原版以 `F3` 關閉除錯字樣後，兩版皆從 `(110,17)` 滑入、在 `(110,170)` 翻面、至 `(205,210)` 收回。兩版再次展開均保留卡背，翻面與檢視未新增戰鬥指令。新版核對蝙蝠 Lv1、HP 1/1、ATK 3、DEF 1、卡背無技能，以及原版的銀色「CLICK」素材。一般地圖的敵方初始 HP 依已確認的名單、原始角色資料和 `SC37` 傷勢建立，卡籤跟隨已播放的 HP 變化。己方換角期間，敵方卡籤仍可檢視。 [左上卡籤對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/tab-comparison.png) · [正面對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/front-comparison.png) · [卡背對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/reverse-comparison.png) · [原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/original/wire.json) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/native/battle-numbered-wire.json)
 
+### 已知敵方多卡檢視
+
+一般 Quest 36「聖女的寶座」的 Q970「腐朽的小屋1」，首格「依偎獸1」使用第 13 場地，`SC37` 中的敵方名單為兩張 #1124「聖女的貓」。兩張皆為 Lv1、HP 15、ATK 8、DEF 11，HP 與翻面狀態按原始欄位各自更新。原版將敵方主戰卡放在 x0，其他原始欄位按順序放在 x168、336。卡籤與卡身沿用敵方單卡的展開位置與時間。原版先確認換位欄位及角色，再於 `SC50` 或 `SC58` 進入換位，之後以 500 ms 重新排列左上卡籤。 [Q970 定義](../../../app/server/data/csv/tcn/Quests.csv#L971) · [原版完整敵方名單](../../../app/server/src/controller/quest_controller.rb#L175) · [敵方換位](../../../app/client/src/view/scene/game/DuelCharaCards.as#L807)
+
+原版與新版各用原版模型搜尋 Q970，進入首回合 Move。原版兩張正面在相對座標的比較區完全相同。兩版皆驗證左卡翻面後右卡初次展開仍為正面，回到左卡則保留卡背，收回兩張後頂端狀態列回到原位。新版兩欄各為 15 HP，卡背有「碧之魔眼」#521 與「青與白之座」#524。檢視全程未新增 Quest 指令。 [兩張收合](/workspace/shared/unlight-web-port/flash-parity/quest-multi-opponent-inspection/closed-pair-comparison.png) · [左卡保留背面](/workspace/shared/unlight-web-port/flash-parity/quest-multi-opponent-inspection/left-reverse-comparison.png) · [右卡正面](/workspace/shared/unlight-web-port/flash-parity/quest-multi-opponent-inspection/right-front-comparison.png) · [原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-multi-opponent-inspection/original/wire.json) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-multi-opponent-inspection/native/battle-numbered-wire.json)
+
+新版沿用原版第 13 場地的遠景和半透明前置圖層，以及 #1124 的站姿、影子、登場和移動特寫。欄位切換的離線測試先待 `SC58` 與退場畫面交接，再讓原欄位 1 接替。欄位 0 保留原先 HP 0 與倒下樣式。待兩版實戰確認擊倒後接替及下一回合。 [場地與移動素材](../../../source-login/quest-art/sources.json) · [站姿來源](../../../source-login/battle-card-art/index.json) · [原版擊倒流程](../../../app/server/src/rule/event/multi_duel_event.rb#L205)
+
 ### 首回合第一組攻防
 
 | 階段 | 原版規格 |

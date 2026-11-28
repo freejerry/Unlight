@@ -256,6 +256,17 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case opponent-hover \
   --screens "$proof_dir/opponent-hover-native"
 ```
 
+### 重跑 Q970 同 ID 敵方雙卡
+
+隔離角色保留無傷的起始卡 #21，以原版經驗流程取得至少 11 AP。用原版 `quest_map_clear(35)` 解鎖地圖 36，確認清關量為 0，再以種子 1 呼叫原版 `get_quest(36,0)`。搜尋用 10 AP，開始另用 1 AP。從持有清單開 Q970 並進首格，以 `SC37` 核對場地 13 及兩個 #1124。等 `SC46` 後在 `(110,17)` 和 `(278,17)` 滑入各欄，再移進各自卡身及點擊翻面。驗證兩欄各為 15 HP，背面顯示原版技能 #521、#524。查看另一欄及重新展開時，逐欄確認正反面狀態和 Quest 指令數。 [原版欄位與座標](quest-pve.md#已知敵方多卡檢視)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case multi-opponent-hover \
+  --port 4397 --database "$proof_dir/multi-opponent-ruby/app/server/data/game_dev2.db" \
+  --user questmultifoe --password-file "$proof_dir/questmultifoe-password" \
+  --screens "$proof_dir/multi-opponent-native"
+```
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。
