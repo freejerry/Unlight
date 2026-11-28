@@ -280,6 +280,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
 
 測例對照 Data `SC6` 內的實體道具、外觀、裝備位元、到期秒數及容量。核對 Lobby 的 `CS17`、`CS25(0)`、實際回覆與同一組連線。道具頁每個子分類按原版定義轉換，驗收沒有發出使用、裝備或丟棄的命令，並確認 SQLite 庫存及付款列。驗收器監看 `ulse02`、`ulse01` 的播放，並確認 `ulbgm02` 保留同一個持續播放的聲道。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [整頁道具規格](lobby-views.md#道具與外觀)
 
+### 重跑整頁道具使用魔女秘藥
+
+使用完成教學的隔離角色 `itemdrawpot`。透過原版 `get_item(3)` 發放兩瓶未使用的魔女秘藥，再用 `energy_use(1)` 把 AP 降為 4/5。付款表只使用無待發放項目的角色。原版與新版各自使用新備份，從大廳中央進整頁道具，先選魔女秘藥，進確認框按 No，再開一次按 Yes。[原版確認畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-potion-live/original/05-no-original-confirmation.png) · [原版封包與存檔](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-potion-live/original/trace.json)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user itemdrawpot --quest-start-password-file /path/to/private-password \
+  --lobby-main-item-use --screens /tmp/unlight-main-item-potion
+```
+
+取消後核對 AP 4/5、兩瓶實體資料、同一選取及無使用命令。確認僅送一次含實體庫存 ID 的 `CS18`。暫緩真正的 `SC28`，讓 `SC17(5,0)` 先到，核對 Ruby 已存檔、AP 顯示 5/5、原選取仍是兩瓶及成功窗尚未出現。放行後只顯示一次「訊息／使用了魔女秘藥」，同頁數量變成一，按 OK 回原選取。再核對原 BGM、實體存檔與返回大廳。[瀏覽器驗收](../../../tools/legacy-web/check_source_lobby.py)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

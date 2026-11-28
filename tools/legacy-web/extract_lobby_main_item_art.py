@@ -44,6 +44,14 @@ OUTER_STATES = (
 )
 STATES = ("selected", "up", "over", "down")
 TITLE_GLYPHS = "所持品訊息"
+USE_PANEL_SOURCE = "app/client/src/view/image/item/UseSendPanel.as"
+USE_CONFIRM = {
+    "panel": [255, 230, 250, 150],
+    "title": "確認",
+    "message": {"text": "要使用此道具嗎？", "bounds": [268, 280, 200, 50]},
+    "yes": {"text": "Yes", "bounds": [295, 330, 60, 23]},
+    "no": {"text": "No", "bounds": [405, 330, 60, 23]},
+}
 LABEL_GROUPS = [
     ["虛擬人物", "任務", "對戰", "突擊", "特殊"],
     ["身體顏色", "眼睛", "嘴", "髮型"],
@@ -57,6 +65,8 @@ DETAIL_TEXT_SOURCES = (
 DETAIL_COLUMNS = ("name_tcn", "caption_tcn")
 # ItemListPanel, ItemTileList, BodyListPanel and TimeFormat use these count and timer characters.
 DETAIL_NUMERIC_GLYPHS = "0123456789x- /:[]DHmdh"
+USE_ALERT_GLYPHS = "訊息使用了OK"
+USE_ALERT_SOURCES = ("app/client/src/net/server/LobbyServer.as", "app/client/lib/Alerter.as")
 
 
 def layer(file, x, y, width, height):
@@ -233,7 +243,7 @@ def tile_art(assets, swfdump, publish):
 def detail_font(source, output, provenance):
     from fontTools.ttLib import TTFont
 
-    glyphs = set(DETAIL_NUMERIC_GLYPHS)
+    glyphs = set(DETAIL_NUMERIC_GLYPHS + USE_ALERT_GLYPHS)
     for pin in DETAIL_TEXT_SOURCES:
         with checked_source(REPO, pin).open(encoding="utf-8-sig", newline="") as master:
             for row in DictReader(master):
@@ -246,6 +256,10 @@ def detail_font(source, output, provenance):
     provenance[file]["detailText"] = [
         {"source": path, "sourceSha256": digest, "columns": list(DETAIL_COLUMNS)}
         for path, digest in DETAIL_TEXT_SOURCES
+    ]
+    provenance[file]["useAlertText"] = [
+        {"source": path, "sourceSha256": sha256((REPO / path).read_bytes()).hexdigest()}
+        for path in USE_ALERT_SOURCES
     ]
     provenance[file]["missingGlyphs"] = "".join(sorted(glyphs - coverage))
     return value
@@ -264,20 +278,22 @@ def extract(args):
     inner = panel_art(args.assets, args.swfdump, publish)
     tile = tile_art(args.assets, args.swfdump, publish)
     fonts = {
-        "title": font_subset(args.tcn_device_font, args.output, "main-item-title.woff", DEVICE_FONT, TITLE_GLYPHS, provenance),
+        "title": font_subset(args.tcn_device_font, args.output, "main-item-title.woff", DEVICE_FONT,
+                             TITLE_GLYPHS + USE_CONFIRM["title"], provenance),
         "labels": font_subset(args.mincho_font, args.output, "main-item-labels.woff", ("res/data/wt004.ttf", FONT_SHA),
-                              "".join(label for group in LABEL_GROUPS for label in group), provenance),
+                              "".join(label for group in LABEL_GROUPS for label in group) + USE_CONFIRM["message"]["text"],
+                              provenance),
         "detail": detail_font(args.tcn_device_font, args.output, provenance),
     }
     index = {
         "assetRevision": REVISION, "background": background, "backgroundRect": background_rect, "capacityPlate": capacity_plate,
         "capacity": [449, 630, 100, 25], "outerTabs": outer_tabs, "inner": inner, "tile": tile,
         "grid": {"x": 24, "y": 104, "columns": 5, "rows": 3, "stepX": 95, "stepY": 95},
-        "page": [242, 392, 30, 20], "fonts": fonts, "labels": LABEL_GROUPS,
+        "page": [242, 392, 30, 20], "fonts": fonts, "labels": LABEL_GROUPS, "useConfirm": USE_CONFIRM,
         "layoutSources": [
             "app/client/src/view/ItemView.as", "app/client/src/view/image/item/ItemInventoryImage.as",
             "app/client/src/view/image/item/ItemInventoryPanelImage.as", "app/client/src/view/scene/common/BaseItemListPanel.as",
-            "app/client/src/view/scene/item/ItemTileList.as", "app/client/src/model/AvatarItem.as",
+            "app/client/src/view/scene/item/ItemTileList.as", USE_PANEL_SOURCE, "app/client/src/model/AvatarItem.as",
             "app/client/src/model/AvatarPart.as", "app/client/data/css/UL.css.cn",
         ],
         "provenance": provenance,

@@ -107,7 +107,7 @@ function showError(kind, message, field, alertKind = 'error') {
   openAlert(alertKind, 'Error', message, field);
 }
 
-function showFriendAlert(kind, heading, message, field, signal) {
+function showScopedAlert(kind, heading, message, field, signal) {
   if (signal.aborted || loginAlert.open || friendConfirm.open) return;
   openAlert(kind, heading, message, field);
   loginAlertOK.focus({ preventScroll: true });
@@ -126,12 +126,12 @@ function showFriendAlert(kind, heading, message, field, signal) {
 }
 
 function showFriendSearchError(field, signal) {
-  showFriendAlert('lobby-friend-search-error', 'Error', '最少需要3個字', field, signal);
+  showScopedAlert('lobby-friend-search-error', 'Error', '最少需要3個字', field, signal);
 }
 
 function showFriendWarning(code, { focus, signal }) {
   if (Number.isInteger(code) && Object.hasOwn(friendWarnings, code)) {
-    showFriendAlert('lobby-friend-warning', '警告', friendWarnings[code], focus, signal);
+    showScopedAlert('lobby-friend-warning', '警告', friendWarnings[code], focus, signal);
   }
 }
 
@@ -396,7 +396,14 @@ async function switchMainItem(session, opening) {
 
   changeScreen('main-item', 'lobby');
   stage.dataset.itemTransition = 'joining';
-  const scene = mountLobbyMainItem(postLogin, { session, signal, onBack: () => switchMainItem(session, false) });
+  const scene = mountLobbyMainItem(postLogin, {
+    session,
+    signal,
+    onBack: () => switchMainItem(session, false),
+    onItemUsed({ name }, focus) {
+      showScopedAlert('lobby-main-item-used', '訊息', `使用了${name}`, focus, signal);
+    },
+  });
   cleanupScreen = scene.dispose;
   const itemView = postLogin.firstElementChild;
   itemView.inert = true;

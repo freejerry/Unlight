@@ -29,6 +29,7 @@
 }
 
 #lobby-main-item-chrome,
+#lobby-main-item-pane,
 #lobby-main-item-rows,
 #lobby-main-item-detail { position: absolute; inset: 0; pointer-events: none; }
 
@@ -146,3 +147,59 @@
 }
 
 #lobby-main-item-capacity.lobby-main-item-over-capacity { color: #f00; }
+
+#lobby-main-item-use-confirm {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+#lobby-main-item-use-confirm > img { image-rendering: pixelated; }
+
+#lobby-main-item-use-title,
+#lobby-main-item-use-message,
+#lobby-main-item-use-confirm > button {
+  position: absolute;
+  margin: 0;
+}
+
+#lobby-main-item-use-title {
+  top: 6px;
+  left: 10px;
+  color: #000;
+  font: 12px/16px 'Unlight Main Item Title', serif;
+}
+
+#lobby-main-item-use-message {
+  padding: 2px;
+  color: #fff;
+  font: 12px/16px 'Unlight Main Item Labels', serif;
+  text-align: right;
+}
+
+#lobby-main-item-use-confirm > button {
+  padding: 3px 2px 0;
+  border: 1px solid;
+  border-color: #666 #555 #333;
+  border-radius: 3px;
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%),
+    linear-gradient(rgb(255 255 255 / 60%), rgb(204 204 204 / 40%));
+  color: #000;
+  font: 12px/1 'Unlight Main Item Detail', Palatino, Georgia, serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+#lobby-main-item-use-confirm > button:hover {
+  border-color: #600 #500 #4c0000;
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%),
+    linear-gradient(rgb(255 255 255 / 75%), rgb(238 238 238 / 65%));
+  color: #fff;
+}
+
+#lobby-main-item-use-confirm > button:active {
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%), linear-gradient(#e8d8d8, #c19999);
+  color: #600;
+}
+
+#lobby-main-item-use-confirm > button:focus-visible { outline: 2px solid #600; outline-offset: 1px; }

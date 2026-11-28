@@ -133,12 +133,13 @@ async function preloadStageArt(view, manifest, images, signal) {
   }
 }
 
-export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
+export function mountLobbyMainItem(host, { session, signal, onBack, onItemUsed } = {}) {
   const scope = new AbortController();
   const lifetime = scope.signal;
   const images = new Map();
   const view = add(host, 'section', 'view');
   view.dataset.state = 'loading';
+  view.dataset.useState = 'idle';
   view.setAttribute('aria-labelledby', 'lobby-main-item-title');
   const chrome = add(view, 'div', 'chrome');
   const avatar = add(view, 'div', null, 'avatar-layer');
@@ -198,13 +199,16 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
   }
 
   function build(manifest, metadata) {
-    const { grid, tile, inner } = manifest;
+    const { grid, tile, inner, useConfirm } = manifest;
     const pageSize = grid.columns * grid.rows;
     const categories = Object.fromEntries(manifest.outerTabs.map(({ key }) => [key, { inner: 0, pages: [], selected: null }]));
     let category = 'items';
     let inventory;
     let itemsSnapshot = session?.readAvatarItems?.() ?? empty;
     let partsSnapshot = session?.readAvatarParts?.() ?? empty;
+    let confirmation;
+    let using = false;
+    let uncertainId;
 
     sprite(chrome, manifest.background);
     sprite(chrome, {
@@ -232,15 +236,16 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
       });
     }
 
+    const paneContent = add(chrome, 'div', 'pane');
     const innerButtons = inner.tabs.map((tab, index) => {
-      const { button, skins } = artButton(chrome, `inner-tab-${index}`, '', tab);
+      const { button, skins } = artButton(paneContent, `inner-tab-${index}`, '', tab);
       const label = add(button, 'span', null, 'lobby-main-item-inner-label');
       const [x, y, width, height] = tab.label;
       place(label, x - tab.hit[0], y - tab.hit[1], width, height);
       animateTabHover(button, skins.over, tab.hover, lifetime);
       listen(button, 'click', () => {
         const pane = categories[category];
-        if (leaving || button.hidden || pane.inner === index) return;
+        if (leaving || confirmVisible() || button.hidden || pane.inner === index) return;
         pane.inner = index;
         pane.selected = null;
         render();
@@ -248,32 +253,32 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
       return { button, label };
     });
 
-    const rows = add(chrome, 'div', 'rows');
+    const rows = add(paneContent, 'div', 'rows');
     rows.setAttribute('role', 'group');
     rows.setAttribute('aria-label', '所持品');
     listen(rows, 'click', event => {
       const button = event.target.closest('.lobby-main-item-tile');
-      if (leaving || !button || !rows.contains(button)) return;
+      if (leaving || confirmVisible() || !button || !rows.contains(button)) return;
       playBackClick();
       const pane = categories[category];
       pane.selected = Number(button.dataset.groupId);
       paintSelection(currentGroups(pane));
     });
-    const page = add(chrome, 'span', 'page');
+    const page = add(paneContent, 'span', 'page');
     place(page, ...manifest.page);
     const capacity = add(chrome, 'span', 'capacity');
     place(capacity, ...manifest.capacity);
-    const first = artButton(chrome, 'first', '第一頁', inner.pager.first).button;
-    const previous = artButton(chrome, 'prev', '上一頁', inner.pager.previous).button;
-    const next = artButton(chrome, 'next', '下一頁', inner.pager.next).button;
-    const last = artButton(chrome, 'last', '最後一頁', inner.pager.last).button;
+    const first = artButton(paneContent, 'first', '第一頁', inner.pager.first).button;
+    const previous = artButton(paneContent, 'prev', '上一頁', inner.pager.previous).button;
+    const next = artButton(paneContent, 'next', '下一頁', inner.pager.next).button;
+    const last = artButton(paneContent, 'last', '最後一頁', inner.pager.last).button;
     const pagers = [first, previous, next, last];
     listen(first, 'click', () => changePage(() => 0));
     listen(previous, 'click', () => changePage((current, count) => (current + count - 1) % count));
     listen(next, 'click', () => changePage((current, count) => (current + 1) % count));
     listen(last, 'click', () => changePage((current, count) => count - 1));
 
-    const details = add(chrome, 'section', 'detail');
+    const details = add(paneContent, 'section', 'detail');
     const selectedIcon = add(details, 'div', 'detail-icon');
     const fields = {};
     for (const [key, bounds] of Object.entries(detailPositions)) {
@@ -283,10 +288,41 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
     }
     const actions = {};
     for (const [key, label] of Object.entries(actionLabels)) {
-      const { button } = artButton(chrome, key, label, inner.actions[key]);
+      const { button } = artButton(paneContent, key, label, inner.actions[key]);
       button.disabled = true;
       actions[key] = button;
     }
+
+    const confirm = add(chrome, 'section', 'use-confirm');
+    confirm.hidden = true;
+    confirm.setAttribute('role', 'dialog');
+    confirm.setAttribute('aria-labelledby', 'lobby-main-item-use-title');
+    confirm.setAttribute('aria-describedby', 'lobby-main-item-use-message');
+    const [confirmX, confirmY, width, height] = useConfirm.panel;
+    place(confirm, ...useConfirm.panel);
+    sprite(confirm, { url: '/source-login/assets/panel_gene.png', x: 0, y: 0, width, height });
+    add(confirm, 'h2', 'use-title').textContent = useConfirm.title;
+    function confirmField(tag, id, source) {
+      const node = add(confirm, tag, `use-${id}`);
+      const [x, y, w, h] = source.bounds;
+      place(node, x - confirmX, y - confirmY, w, h);
+      node.textContent = source.text;
+      return node;
+    }
+    confirmField('p', 'message', useConfirm.message);
+    const yes = confirmField('button', 'yes', useConfirm.yes);
+    const no = confirmField('button', 'no', useConfirm.no);
+    yes.type = no.type = 'button';
+    listen(yes, 'click', () => { void decideUse(true); });
+    listen(no, 'click', () => { void decideUse(false); });
+    listen(actions.use, 'click', () => {
+      const group = selectedPotion();
+      if (!mayUse(group) || leaving || using || confirmation) return;
+      confirmation = { inventoryId: group.row.inventoryId, name: group.definition.name };
+      playBackClick();
+      paintUseControls();
+      no.focus({ preventScroll: true });
+    });
 
     function currentGroups(pane) {
       const kind = metadata.tabs[category][pane.inner].kind;
@@ -296,9 +332,65 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
     function changePage(projection) {
       const pane = categories[category];
       const count = Math.ceil(currentGroups(pane).length / pageSize);
-      if (leaving || count < 2) return;
+      if (leaving || confirmVisible() || count < 2) return;
       pane.pages[pane.inner] = projection(pane.pages[pane.inner] ?? 0, count);
       render();
+    }
+
+    function selectedPotion() {
+      if (category !== 'items') return null;
+      const pane = categories.items;
+      return pane.selected === 3 ? currentGroups(pane).find(group => group.id === 3) : null;
+    }
+
+    function mayUse(group) {
+      return inventory.itemsStatus === 'ready' && group?.definition.kind === 0 && group.row.state === 0 &&
+        uncertainId !== group.row.inventoryId && session?.canUseLobbyAvatarItem?.(group.row.inventoryId) === true &&
+        typeof session.useLobbyAvatarItem === 'function';
+    }
+
+    function confirmVisible() { return Boolean(confirmation) && category === 'items'; }
+
+    function paintUseControls() {
+      const visible = confirmVisible();
+      const group = selectedPotion();
+      confirm.hidden = !visible;
+      confirm.dataset.state = visible ? 'open' : 'closed';
+      if (visible) confirm.dataset.inventoryId = String(confirmation.inventoryId);
+      else delete confirm.dataset.inventoryId;
+      paneContent.inert = visible;
+      actions.use.disabled = leaving || using || visible || !mayUse(group);
+      view.dataset.useState = using ? 'pending' : visible ? 'confirming' :
+        group && uncertainId === group.row.inventoryId ? 'uncertain' : 'idle';
+    }
+
+    async function decideUse(accepted) {
+      if (leaving || !confirmVisible() || using) return;
+      const potion = confirmation;
+      const group = selectedPotion();
+      confirmation = undefined;
+      playBackClick();
+      using = accepted && mayUse(group) && group.row.inventoryId === potion.inventoryId;
+      paintUseControls();
+      if (!using) {
+        (actions.use.disabled ? back : actions.use).focus({ preventScroll: true });
+        return;
+      }
+      let receipt;
+      try {
+        const response = await session.useLobbyAvatarItem(potion.inventoryId, { signal: lifetime });
+        if (response?.inventoryId === potion.inventoryId && response.itemId === 3) receipt = response;
+        else uncertainId = potion.inventoryId;
+      } catch (error) {
+        if (error?.kind === 'lobby-item-uncertain') uncertainId = potion.inventoryId;
+      } finally {
+        using = false;
+        if (!leaving && !lifetime.aborted) paintUseControls();
+      }
+      if (!leaving && !lifetime.aborted && receipt) {
+        const focus = actions.use.disabled ? back : actions.use;
+        onItemUsed?.({ name: potion.name, inventoryId: receipt.inventoryId }, focus, lifetime);
+      }
     }
 
     function paintSelection(groups) {
@@ -315,6 +407,7 @@ export function mountLobbyMainItem(host, { session, signal, onBack } = {}) {
       clearInterval(durationTimer);
       durationTimer = undefined;
       for (const button of rows.children) button.setAttribute('aria-pressed', String(Number(button.dataset.groupId) === pane.selected));
+      paintUseControls();
       if (!selected) return;
 
       const { id, definition, row, count, equipped, activated } = selected;

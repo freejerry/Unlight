@@ -1041,12 +1041,49 @@
       "ETC"
     ]
   ],
+  "useConfirm": {
+    "panel": [
+      255,
+      230,
+      250,
+      150
+    ],
+    "title": "確認",
+    "message": {
+      "text": "要使用此道具嗎？",
+      "bounds": [
+        268,
+        280,
+        200,
+        50
+      ]
+    },
+    "yes": {
+      "text": "Yes",
+      "bounds": [
+        295,
+        330,
+        60,
+        23
+      ]
+    },
+    "no": {
+      "text": "No",
+      "bounds": [
+        405,
+        330,
+        60,
+        23
+      ]
+    }
+  },
   "layoutSources": [
     "app/client/src/view/ItemView.as",
     "app/client/src/view/image/item/ItemInventoryImage.as",
     "app/client/src/view/image/item/ItemInventoryPanelImage.as",
     "app/client/src/view/scene/common/BaseItemListPanel.as",
     "app/client/src/view/scene/item/ItemTileList.as",
+    "app/client/src/view/image/item/UseSendPanel.as",
     "app/client/src/model/AvatarItem.as",
     "app/client/src/model/AvatarPart.as",
     "app/client/data/css/UL.css.cn"
@@ -1742,22 +1779,22 @@
       "source": "res/data/cwming.ttf",
       "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
-      "sha256": "28a363ca0c25903c123c8a9aa2db97b651acbc67f67cc095c0b518f1d622eba7",
-      "glyphs": "品息所持訊"
+      "sha256": "d4d380ae05bf75dd68ccc7eee6604eba82cdae760fc44770d5f0799c0d9afeb4",
+      "glyphs": "品息所持確訊認"
     },
     "main-item-labels.woff": {
       "source": "res/data/wt004.ttf",
       "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
-      "sha256": "a1af1ef3bfe344c86a59927e6304b1b592653709117b0fcac830cfb1be6f68b2",
-      "glyphs": "CET上下人任務嘴型對戰手擊擬服殊物特眼睛禮突臂臉色虛衣身鞋頭顏體髮"
+      "sha256": "6845506048ee21c635bc43395223590f08c1cd129b8bfba8ac300415a0009f1e",
+      "glyphs": "CET上下人任使具務嗎嘴型對戰手擊擬服此殊物特用眼睛禮突臂臉色虛衣要身道鞋頭顏體髮？"
     },
     "main-item-detail.woff": {
       "source": "res/data/cwming.ttf",
       "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
-      "sha256": "1b8d57762e6a8d5cffc3a367df6244d3aebbcbb820bf028acbf7823efea06328",
-      "glyphs": " %()+,-./0123456789:?ABCDEFGHILMOPRSUVW[]_abdeghilmnostuvxαβγ…。「」一三上下不丑世丘中丹主乃之乳乾了事亞亡人仔代以任伊伍休伯佛你使來侍依侵修個倫值假偶傑傘備傳傷像儀優元光克兜內全公其具典冠冥冬凱凶出刀分列判別利刪到制券刺前劍力加勒動務勝勞勵包化區升半協南卡印卷及友反取受口古只可史右合同名君含吸周命和咒品哇哈哥哭問啾喚單嘴器四回圈國圍圖在地坐型域基塊塔境墜增墨壞士夏外多夠夢大天太夫失夾奇奈套奧女好妖妙妮妲姆始姬姿威娃娜婦婪媞子字季守安完官定家寄寡寧審寫寶將專尋導小尤就尼尾居屐層屬山岩左巧巨差巾布希帕帶常帽幣年幸幻幼幽度庫康廉廢式弗強彈彩影往待律後得徙從復德心忍念怒思急性恢恩情惑惡惰愛憤憶懶成戒戮戰戲所手托扶找投披抽拉拐拖招持指掉探接提插搜搭摩撲擇擊擬擺收改放效救敗散數斗斛斯新方於旋旗日明昏星是時普晶暗曜曬曲書最會月有朋服朗期木本朱李材杖束杯板枕林果查柯核根格桂桃案桑梅梢械棄棍森棺楠極模樹橘橙機檳櫃櫥欄權次款此歪死殘殺每比毛氣水汀汪沃沌沒沙油況法波泰泳洋洛活浮浴海消液涼淚淡淨深淵混渦測準滿漏漸潑潔灘灰災炎為烈烏無熟熱爾片牌牛牡物特牽狐獎獲獸玄王玻珍珠現球琳琴瑞瑟瑪璃環瓜瓦甜生用甲界略畫異當痕發白的皇盒目直真眼睡瞬知短石砂破硬碎碧碼磁示神票福禮秘稀種空突竹符筒算管箱節篷籃籌籤米粉粽精糕糖紀紅純級素索紫組結絲經綠綢維綻綿緊緋緞緹縫縮繃繪繼續缸罩置羅羊美義羽翅習翠翡翼老者耳聖聲肖肩肯背能脛腰膀膝膠自至與舊色艷艾芒芙花苞若茉茱茵茶草莉莫菇菈菲萃萬葉著蒂蕉蕾薩薰藍藏藥蘑蘭虎虛號虹蚊蛙蝙蝠蝴蝶螺血行術衣衫袋袍裁裙裝製複褐褲襪襯襲西要覆見角計討記訝詛試詭話該誕諾證識議護變豔豬貝財貪貴質贈赤超越趴跡路跳身軍軟載輪近迪迷追送逃逐這通連週進逼遊運道達遠遮遷選那邸都里重量金針鈴銀銅鋼錄鍊鎧鏡鐘鐵鐺長門開閒間闇防阿附限除陸陽隆隊隨隱雄雅集雙難雨雪零雷電需露靈青靛面靴鞋音響頁頭顯風飢飾餅餓館首香馬馴驗驚骰體高髮鬍鬚鬥鬼魔魯鳥鹿麗麻黃黑點鼻齒龍（），７：ＡＢ",
+      "sha256": "080c78bf305b50e285443aa2818107402767b370a6d8b58632ce70408622e47f",
+      "glyphs": " %()+,-./0123456789:?ABCDEFGHIKLMOPRSUVW[]_abdeghilmnostuvxαβγ…。「」一三上下不丑世丘中丹主乃之乳乾了事亞亡人仔代以任伊伍休伯佛你使來侍依侵修個倫值假偶傑傘備傳傷像儀優元光克兜內全公其具典冠冥冬凱凶出刀分列判別利刪到制券刺前劍力加勒動務勝勞勵包化區升半協南卡印卷及友反取受口古只可史右合同名君含吸周命和咒品哇哈哥哭問啾喚單嘴器四回圈國圍圖在地坐型域基塊塔境墜增墨壞士夏外多夠夢大天太夫失夾奇奈套奧女好妖妙妮妲姆始姬姿威娃娜婦婪媞子字季守安完官定家寄寡寧審寫寶將專尋導小尤就尼尾居屐層屬山岩左巧巨差巾布希帕帶常帽幣年幸幻幼幽度庫康廉廢式弗強彈彩影往待律後得徙從復德心忍念怒思急性恢恩息情惑惡惰愛憤憶懶成戒戮戰戲所手托扶找投披抽拉拐拖招持指掉探接提插搜搭摩撲擇擊擬擺收改放效救敗散數斗斛斯新方於旋旗日明昏星是時普晶暗曜曬曲書最會月有朋服朗期木本朱李材杖束杯板枕林果查柯核根格桂桃案桑梅梢械棄棍森棺楠極模樹橘橙機檳櫃櫥欄權次款此歪死殘殺每比毛氣水汀汪沃沌沒沙油況法波泰泳洋洛活浮浴海消液涼淚淡淨深淵混渦測準滿漏漸潑潔灘灰災炎為烈烏無熟熱爾片牌牛牡物特牽狐獎獲獸玄王玻珍珠現球琳琴瑞瑟瑪璃環瓜瓦甜生用甲界略畫異當痕發白的皇盒目直真眼睡瞬知短石砂破硬碎碧碼磁示神票福禮秘稀種空突竹符筒算管箱節篷籃籌籤米粉粽精糕糖紀紅純級素索紫組結絲經綠綢維綻綿緊緋緞緹縫縮繃繪繼續缸罩置羅羊美義羽翅習翠翡翼老者耳聖聲肖肩肯背能脛腰膀膝膠自至與舊色艷艾芒芙花苞若茉茱茵茶草莉莫菇菈菲萃萬葉著蒂蕉蕾薩薰藍藏藥蘑蘭虎虛號虹蚊蛙蝙蝠蝴蝶螺血行術衣衫袋袍裁裙裝製複褐褲襪襯襲西要覆見角計訊討記訝詛試詭話該誕諾證識議護變豔豬貝財貪貴質贈赤超越趴跡路跳身軍軟載輪近迪迷追送逃逐這通連週進逼遊運道達遠遮遷選那邸都里重量金針鈴銀銅鋼錄鍊鎧鏡鐘鐵鐺長門開閒間闇防阿附限除陸陽隆隊隨隱雄雅集雙難雨雪零雷電需露靈青靛面靴鞋音響頁頭顯風飢飾餅餓館首香馬馴驗驚骰體高髮鬍鬚鬥鬼魔魯鳥鹿麗麻黃黑點鼻齒龍（），７：ＡＢ",
       "detailText": [
         {
           "source": "app/server/data/csv/ja/AvatarItems.csv",
@@ -1774,6 +1811,16 @@
             "name_tcn",
             "caption_tcn"
           ]
+        }
+      ],
+      "useAlertText": [
+        {
+          "source": "app/client/src/net/server/LobbyServer.as",
+          "sourceSha256": "fdc44415804fcdb41f840b5571fbe93ed3c27d836012afee4bfd72779cb5d338"
+        },
+        {
+          "source": "app/client/lib/Alerter.as",
+          "sourceSha256": "ccf3db8e006560708b0a61d8b94b68fe588fef3df7a68c43a48a4440c9abf7cb"
         }
       ],
       "missingGlyphs": "纸髪黒"

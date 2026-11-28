@@ -432,15 +432,18 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 #login-alert[data-kind="registration-error"] #login-alert-message { white-space: pre-line; }
 
 /* Compact Flex alerts share a stretched skin and focused OK frame. */
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"], [data-kind^="lobby-friend-"])::before {
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"],
+    [data-kind="lobby-main-item-used"], [data-kind^="lobby-friend-"])::before {
   content: "";
   border: 0;
   background: url("/source-login/assets/panel_gene.png") 0 0 / 100% 100% no-repeat;
 }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"], [data-kind^="lobby-friend-"]) > .stage-panel-skin { display: none; }
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"],
+    [data-kind="lobby-main-item-used"], [data-kind^="lobby-friend-"]) > .stage-panel-skin { display: none; }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"], [data-kind^="lobby-friend-"]) #login-alert-ok {
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"],
+    [data-kind="lobby-main-item-used"], [data-kind^="lobby-friend-"]) #login-alert-ok {
   position: absolute;
   top: 68px;
   left: 55px;
@@ -455,7 +458,8 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   letter-spacing: 1px;
 }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"], [data-kind^="lobby-friend-"]) #login-alert-ok:focus {
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"],
+    [data-kind="lobby-main-item-used"], [data-kind^="lobby-friend-"]) #login-alert-ok:focus {
   border-color: #650000 #640000 #4d0000;
   outline: none;
 }
@@ -470,7 +474,8 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   animation: login-scrim-in 100ms ease-out both;
 }
 
-#stage:has(#login-alert[open]:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"]))::after {
+#stage:has(#login-alert[open]:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"],
+    [data-kind="lobby-selectable-reward"], [data-kind="lobby-main-item-used"]))::after {
   backdrop-filter: blur(1px);
 }
 
@@ -500,6 +505,22 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 }
 
 #login-alert[data-kind="lobby-friend-warning"] #login-alert-ok { left: calc(50% - 32px); }
+
+#login-alert[data-kind="lobby-main-item-used"] #login-alert-title {
+  padding-block-start: 4px;
+  color: #000;
+  font: 12px/1.3 'Unlight Main Item Title', serif;
+}
+
+#login-alert[data-kind="lobby-main-item-used"] .login-alert-body {
+  color: #999;
+  font: 11px/1.3 'Unlight Main Item Detail', serif;
+}
+
+#login-alert[data-kind="lobby-main-item-used"] #login-alert-ok {
+  width: 65px;
+  font-family: 'Unlight Main Item Detail', serif;
+}
 
 @keyframes login-scrim-in { from { opacity: 0; } }
 

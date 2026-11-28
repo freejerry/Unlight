@@ -350,6 +350,7 @@ def observe_session_codec(page, origin):
         if (lobby?.mainItem && [17, 20, 27, 28, 35, 42, 43, 44, 50].includes(reply.command)) {
           const fields = read(body);
           const values = reply.command === 17 && body.byteLength === 10 ? [fields.int(), fields.int()]
+            : reply.command === 28 && body.byteLength === 6 ? [fields.int()]
             : reply.command === 42 && body.byteLength === 3 ? [fields.byte()] : [];
           lobby.mainItem.replies.push([reply.command, body.byteLength, ...values]);
         }
@@ -436,6 +437,12 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         return queued.length;
       }};
       // Keep complete source frames in order when withholding one authenticated reply.
+      function matchesHeldInventory(buffered, hold) {{
+        if (hold.inventoryId === null || hold.inventoryId === undefined) return true;
+        const field = buffered.slice(6, 10);
+        for (let index = 0; index < field.length; index++) field[index] ^= hold.key[(index + 2) % hold.key.length];
+        return new DataView(field.buffer).getInt32(0) === hold.inventoryId;
+      }}
       function frameReader(receive, getHold) {{
         let buffered = new Uint8Array();
         const forward = () => {{
@@ -446,7 +453,7 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
             if (hold?.key && (hold.bodyLength === null || size === hold.bodyLength + 5)) {{
               const high = buffered[4] ^ hold.key[0];
               const low = buffered[5] ^ hold.key[1 % hold.key.length];
-              if ((high << 8 | low) === hold.reply) {{
+              if ((high << 8 | low) === hold.reply && matchesHeldInventory(buffered, hold)) {{
                 hold.resume = forward;
                 return;
               }}
@@ -525,7 +532,8 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
             if (this.mainItemData) {{
               this.mainItemData.push([encoded.command, size]);
             }} else {{
-              const field = encoded.command === 25 ? encoded.paymentCheck : encoded.notice;
+              const field = encoded.command === 25 ? encoded.paymentCheck
+                : encoded.command === 18 ? encoded.lobbyItem : encoded.notice;
               this.lobbyTrace.mainItem.sent.push([encoded.command, size, ...(field == null ? [] : [field])]);
             }}
           }}
@@ -2801,9 +2809,9 @@ def read_lobby_achievement_trace(page):
     return page.evaluate("window.qaQuestWire.lobby.achievement")
 
 
-def hold_lobby_reply(page, request, reply, body_length, *, after=None):
+def hold_lobby_reply(page, request, reply, body_length, *, after=None, inventory_id=None):
     page.evaluate("hold => { window.qaQuestWire.lobbyHold = hold; }",
-                  {"request": request, "reply": reply, "bodyLength": body_length, "after": after})
+                  {"request": request, "reply": reply, "bodyLength": body_length, "after": after, "inventoryId": inventory_id})
 
 
 def wait_held_lobby_reply(page):
@@ -3112,7 +3120,128 @@ def check_main_item_chrome(screenshot):
             "footerBounds": footer_bounds, "footerMatchedPixels": footer_pixels, "footerRGB": [133, 133, 133]}
 
 
-def check_lobby_main_item(page, origin, database, name, password, directory):
+def check_main_item_potion(page, stage, view, database, player_id, stored, potion_copies, directory):
+    (profile,) = avatar(database, player_id)
+    assert profile[5:7] == (4, 5), profile[5:7]
+    assert len(potion_copies) == 2 and all((identifier, 3, 0) in stored for identifier in potion_copies), potion_copies
+    physical, remaining = potion_copies
+    trace = "window.qaQuestWire.lobby.mainItem"
+    detail = view.locator("#lobby-main-item-detail")
+    row = view.locator('#lobby-main-item-rows [data-item-id="3"]')
+    count = view.locator("#lobby-main-item-count")
+    energy = view.locator("#lobby-main-item-energy")
+    use = view.locator("#lobby-main-item-use")
+    confirm = view.locator('#lobby-main-item-use-confirm[data-state="open"]')
+    alert = page.locator("#login-alert[open]")
+    expect(energy).to_have_text("4/5")
+    expect(detail).to_have_attribute("data-inventory-id", str(physical))
+    expect(use).to_be_enabled()
+    page.evaluate("""() => {
+      const alert = document.getElementById('login-alert');
+      const proof = window.qaQuestWire.lobby.mainItem;
+      proof.notices = [];
+      new MutationObserver(() => {
+        if (alert.open) proof.notices.push(alert.dataset.kind);
+      }).observe(alert, {attributes: true, attributeFilter: ['open']});
+    }""")
+    baseline = page.evaluate(trace)
+
+    def check_inventory(quantity, inventory):
+        expect(view).to_be_visible()
+        expect(row).to_have_attribute("aria-pressed", "true")
+        expect(row).to_have_attribute("data-count", str(quantity))
+        expect(detail).to_have_attribute("data-inventory-id", str(inventory))
+        expect(count).to_have_text(str(quantity))
+
+    use.click()
+    expect(confirm).to_be_visible()
+    expect(confirm).to_have_attribute("data-inventory-id", str(physical))
+    expect(view).to_have_attribute("data-use-state", "confirming")
+    expect(view.locator("#lobby-main-item-pane")).to_have_js_property("inert", True)
+    expect(view.locator("#lobby-main-item-back")).to_be_enabled()
+    expect(confirm.locator("#lobby-main-item-use-title")).to_have_text("確認")
+    expect(confirm.locator("#lobby-main-item-use-message")).to_have_text("要使用此道具嗎？")
+    outer, box = stage.bounding_box(), confirm.bounding_box()
+    assert outer and box
+    geometry = (box["x"] - outer["x"], box["y"] - outer["y"], box["width"], box["height"])
+    assert all(abs(actual - source) <= 1 for actual, source in zip(geometry, (255, 230, 250, 150))), geometry
+    for action, label, x in (("yes", "Yes", 295), ("no", "No", 405)):
+        button = confirm.locator(f"#lobby-main-item-use-{action}")
+        expect(button).to_have_text(label)
+        hit = button.bounding_box()
+        assert hit
+        position = (hit["x"] - outer["x"], hit["y"] - outer["y"], hit["width"], hit["height"])
+        assert all(abs(actual - source) <= 1 for actual, source in zip(position, (x, 330, 60, 23))), (action, position)
+    assert page.evaluate(trace) == baseline
+    capture(stage, directory, "06-main-item-potion-confirmation.png", animations="allow")
+
+    confirm.locator("#lobby-main-item-use-no").click()
+    expect(confirm).to_have_count(0)
+    expect(view).to_have_attribute("data-use-state", "idle")
+    expect(use).to_be_focused()
+    expect(view.locator("#lobby-main-item-pane")).to_have_js_property("inert", False)
+    expect(energy).to_have_text("4/5")
+    expect(alert).to_have_count(0)
+    check_inventory(2, physical)
+    cancelled = page.evaluate(trace)
+    assert cancelled == baseline and owned_avatar_items(database, profile[0]) == stored
+    assert avatar(database, player_id) == [profile]
+    page.mouse.move(770, 340)
+    capture(stage, directory, "07-main-item-potion-after-no.png", animations="allow")
+
+    box = use.bounding_box()
+    assert box
+    use.click()
+    expect(confirm).to_be_visible()
+    assert page.evaluate(trace) == cancelled
+    hold_lobby_reply(page, 18, 28, 6, inventory_id=physical)
+    confirm.locator("#lobby-main-item-use-yes").click()
+    wait_held_lobby_reply(page)
+    try:
+        expect(confirm).to_have_count(0)
+        expect(view).to_have_attribute("data-use-state", "pending")
+        expect(use).to_be_disabled()
+        expect(alert).to_have_count(0)
+        expect(energy).to_have_text("5/5")
+        check_inventory(2, physical)
+        held = page.evaluate(trace)
+        assert held["sent"][len(baseline["sent"]):] == [[18, 6, physical]], held
+        assert held["replies"][len(baseline["replies"]):] == [[17, 10, 5, 0]], held
+        assert held["notices"] == []
+        expected_items = [(identifier, definition, 2 if identifier == physical else state)
+                          for identifier, definition, state in stored]
+        assert owned_avatar_items(database, profile[0]) == expected_items
+        assert avatar(database, player_id) == [profile[:5] + (5,) + profile[6:]]
+        page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        assert page.evaluate(trace) == held
+        capture(stage, directory, "08-main-item-real-ap-with-consumption-held.png", animations="allow")
+    finally:
+        release_lobby_reply(page)
+
+    expect(alert).to_have_attribute("data-kind", "lobby-main-item-used", timeout=TIMEOUT)
+    expect(alert.locator("#login-alert-title")).to_have_text("訊息")
+    expect(alert.locator("#login-alert-message")).to_have_text("使用了魔女秘藥")
+    expect(energy).to_have_text("5/5")
+    check_inventory(1, remaining)
+    acknowledged = page.evaluate(trace)
+    assert acknowledged["sent"] == held["sent"]
+    assert acknowledged["replies"][len(held["replies"]):] == [[28, 6, physical]], acknowledged
+    assert acknowledged["notices"] == ["lobby-main-item-used"], acknowledged
+    capture(stage, directory, "09-main-item-real-consumption-notice.png", animations="allow")
+    alert.locator("#login-alert-ok").click()
+    expect(alert).to_have_count(0)
+    expect(view).to_have_attribute("data-use-state", "idle")
+    expect(use).to_be_focused()
+    check_inventory(1, remaining)
+    assert page.evaluate(trace) == acknowledged
+    assert query(database, "SELECT state, use_at IS NOT NULL FROM item_inventories WHERE id = ? AND avatar_id = ?",
+                 physical, profile[0]) == [(2, 1)]
+    capture(stage, directory, "10-main-item-potion-used-and-selected.png", animations="allow")
+    return {"confirmation": geometry, "consumed": physical, "remaining": remaining, "start": baseline,
+            "afterNo": cancelled, "held": held, "released": acknowledged, "itemsAfter": expected_items}
+
+
+def check_lobby_main_item(page, origin, database, name, password, directory, *, use_potion=False):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
     avatar_id = profile[0]
@@ -3191,7 +3320,10 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
     entry_sends = [packet for packet in entry["sent"][len(start["sent"]):] if packet != [3, 2]]
     assert entry_sends == [[17, 2], [25, 6, 0]], entry_sends
     entry_replies = [packet for packet in entry["replies"][len(start["replies"]):] if packet[0] != 35]
-    assert [packet[:2] for packet in entry_replies] == [[17, 10], [42, 3]], entry_replies
+    expected_entry_replies = ([[17, 10]] if use_potion else []) + [[17, 10], [42, 3]]
+    assert [packet[:2] for packet in entry_replies] == expected_entry_replies, entry_replies
+    if use_potion:
+        assert all(packet[2] == 4 and 0 < packet[3] <= 1800 for packet in entry_replies[:2]), entry_replies
 
     panel_rows = view.locator("#lobby-main-item-rows")
     detail = view.locator("#lobby-main-item-detail")
@@ -3199,6 +3331,7 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
     detail_count = view.locator("#lobby-main-item-count")
     detail_caption = view.locator("#lobby-main-item-caption")
     checked_tabs = {}
+    potion = None
 
     for number, (category, types) in enumerate((
         ("items", (0, 1, 2, 4, 3)), ("body", range(4)), ("clothes", range(10, 14)), ("accessories", range(20, 24)),
@@ -3252,17 +3385,24 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
                 expect(detail_count).to_have_text(str(len(item_groups[3])))
                 expect(detail_caption).to_have_text(caption)
                 expect(view.locator("#lobby-main-item-use")).to_be_visible()
-                for action in ("use", "remove", "drop", "sell"):
+                for action in ("remove", "drop", "sell"):
                     expect(view.locator(f"#lobby-main-item-{action}")).to_be_disabled()
                 capture(stage, directory, "01a-main-item-selected-potion.png", animations="allow")
+                if use_potion:
+                    potion = check_main_item_potion(page, stage, view, database, player_id, stored_items, item_groups[3], directory)
             elif category == "items" and kind == 2:
                 assert not actual, "Use an original fixture without Duel items for the empty-tab proof"
                 capture(stage, directory, "01b-main-item-empty-duel.png", animations="allow")
         checked_tabs[category] = tab_views
 
     browsed = traffic()
-    assert all(packet == [3, 2] for packet in browsed["sent"][len(entry["sent"]):]), browsed["sent"]
-    assert all(packet[0] == 35 for packet in browsed["replies"][len(entry["replies"]):]), browsed["replies"]
+    browsing_sends = [packet for packet in browsed["sent"][len(entry["sent"]):] if packet != [3, 2]]
+    browsing_replies = [packet for packet in browsed["replies"][len(entry["replies"]):] if packet[0] != 35]
+    if potion:
+        assert browsing_sends == [[18, 6, potion["consumed"]]], browsing_sends
+        assert browsing_replies == [[17, 10, 5, 0], [28, 6, potion["consumed"]]], browsing_replies
+    else:
+        assert browsing_sends == browsing_replies == [], (browsing_sends, browsing_replies)
     wait_refresh_cooldown(page)
     back = view.locator("#lobby-main-item-back")
     expect(back).to_be_enabled()
@@ -3276,7 +3416,10 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
     expect(view).to_be_hidden()
     expect(trigger).to_be_focused()
     assert audio.evaluate("(audio, time) => audio === window.qaMainItemMusic && !audio.paused && audio.currentTime > time", audio_clock)
-    expected_cues = ["ulse02.mp3", *["ulse01.mp3"] * 5]  # Selection, three outer changes, and Back.
+    expected_cues = ["ulse02.mp3", "ulse01.mp3"]  # Entry and selection.
+    if potion:
+        expected_cues += ["ulse01.mp3"] * 4 + ["ulse02.mp3"]  # Both confirmations, No/Yes, then true Alert.
+    expected_cues += ["ulse01.mp3"] * 4  # Three outer changes and Back.
     page.wait_for_function("offset => window.qaMainItemCues.slice(offset).every(cue => cue.played !== null)",
                            arg=cue_start, timeout=TIMEOUT)
     cues = page.evaluate("offset => window.qaMainItemCues.slice(offset)", cue_start)
@@ -3287,7 +3430,12 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
     assert [packet for packet in back_sends if packet != [3, 2]] == [[17, 2], [35, 3, 1]] and [3, 2] in back_sends, back_sends
     assert [packet[:2] for packet in back_replies] == [[17, 10], [42, 3]], back_replies
     assert all(packet == [3, 2] for packet in returned["dataSent"][len(start["dataSent"]):]), returned["dataSent"]
-    assert owned_avatar_items(database, avatar_id) == stored_items and persisted_parts() == stored_parts and payments() == stored_payments
+    items_after = potion["itemsAfter"] if potion else stored_items
+    assert owned_avatar_items(database, avatar_id) == items_after and persisted_parts() == stored_parts and payments() == stored_payments
+    if potion:
+        expect(page.locator("#lobby-energy")).to_have_text("5/5")
+        assert avatar(database, player_id) == [profile[:5] + (5,) + profile[6:]]
+        assert returned["notices"] == ["lobby-main-item-used"] and page.locator("#login-alert[open]").count() == 0
     assert query(database, "SELECT part_inventory_max FROM avatars WHERE id = ?", avatar_id) == [(capacity,)]
     assert len(live) == 4 and all(not peer.is_closed() for peer in live) and not errors, errors
     page.mouse.move(770, 340)
@@ -3297,6 +3445,8 @@ def check_lobby_main_item(page, origin, database, name, password, directory):
                     "entry": entry_sends, "entryReplies": entry_replies, "back": back_sends, "backReplies": back_replies, "cues": cues,
                     "joiningOpacity": joining, "chrome": chrome,
                     "dataCommands": returned["dataSent"][len(start["dataSent"]):], "sameCorePeers": len(live)}
+        if potion:
+            evidence["potion"] = potion
         (directory / "lobby-main-item-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
 
 
@@ -7253,8 +7403,11 @@ def main():
                         help="Verify the native read-only Record book using a warm level 1 original fixture")
     parser.add_argument("--lobby-item", choices=("populated", "empty", "potion"),
                         help="Verify the original basic Item drawer and optional real potion use")
-    parser.add_argument("--lobby-main-item", action="store_true",
-                        help="Verify the full-stage ItemView with a warm original potion and ticket fixture")
+    main_item = parser.add_mutually_exclusive_group()
+    main_item.add_argument("--lobby-main-item", dest="lobby_main_item", action="store_const", const="browse",
+                           help="Verify the full-stage ItemView with a warm original potion and ticket fixture")
+    main_item.add_argument("--lobby-main-item-use", dest="lobby_main_item", action="store_const", const="use",
+                           help="Use one real Main ItemView potion on a disposable stock 4/5 AP, two-potion fixture")
     parser.add_argument("--lobby-friend", choices=("populated", "empty"), nargs="?", const="populated",
                         help="Verify the original read-only Friends viewer on the matching disposable fixture")
     parser.add_argument("--lobby-friend-write", action="store_true",
@@ -7324,7 +7477,7 @@ def main():
                                  or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record
                                  or args.lobby_item or args.lobby_friend or args.lobby_friend_write or args.lobby_friend_refresh
                                  or args.lobby_friend_invite):
-        parser.error("--lobby-main-item requires --quest-start-user with its own disposable ItemView fixture")
+        parser.error("Main ItemView checks require --quest-start-user with the matching disposable fixture")
     if args.lobby_friend and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
                               or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
                               or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record or args.lobby_item):
@@ -7378,8 +7531,12 @@ def main():
                     print(f"Original Lobby Item drawer and authenticated inventory passed ({args.lobby_item}).")
                 elif args.lobby_main_item:
                     check_lobby_main_item(page, origin, args.database, args.quest_start_user,
-                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens)
-                    print("Original Main ItemView, authenticated inventory, four categories, and same-session Back passed.")
+                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
+                                          use_potion=args.lobby_main_item == "use")
+                    if args.lobby_main_item == "use":
+                        print("Original Main ItemView Potion cancellation, exact consumption, alert, and same-session Back passed.")
+                    else:
+                        print("Original Main ItemView, authenticated inventory, four categories, and same-session Back passed.")
                 elif args.lobby_friend:
                     check_lobby_friends(page, origin, args.database, args.quest_start_user,
                                         args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens, args.lobby_friend)

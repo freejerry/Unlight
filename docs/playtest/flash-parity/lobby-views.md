@@ -50,7 +50,13 @@
 - `btn_e` 是整頁 `ItemView`。繁中 `item_inventory_ch.swf` 置於 `(0,0)`，`item_panel`／`item_base` 支援分類、列表、卡格及操作。道具／身體／衣服／飾品，預設第一頁。道具列表 `(24,104)`、部件數 `(449,630)`，共用 `PL_AVATAR_QUEST`。入退場 tween 約 470.6ms，入場程式在 join 之後才掛主容器，不能直接據該值推斷每層可見順序。 [ItemView.as](../../../app/client/src/view/ItemView.as#L74) · [ItemView.as](../../../app/client/src/view/ItemView.as#L220) · [ItemInventoryImage.as](../../../app/client/src/view/image/item/ItemInventoryImage.as#L23) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L55)
 - 固定繁中道具頁依序是虛擬人物、任務、對戰、突擊、特殊。只按原版主分類放入整頁，類型 5 歸特殊。原版道具格每頁 5×3，子分類與翻頁用 `item_panel_ch` 的命名按鈕。道具沿用已認證的實體庫存，外觀頁從 `SC6`／`SC4` 保留實體部件、裝備位元、期限及容量。整合原版 456 筆道具與 824 筆部件。資產清單記錄超出原影片範圍的 14 筆既有畫格引用，以原檔末幀顯示。[素材與座標盤點](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/source-audit.md) · [登入庫存欄位](../../../app/server/src/protocol/command/datacommand.rb#L187) · [原始資料及圖集](../../../source-login/item-inventory-art/index.json)
 - **Flash 實跑。** 從大廳原大型 `btn_e` 進整頁道具，經黑色過場進場。切四個外層分頁再按 `(736,16)` 返回大廳。入口實測送出 Lobby `CS17` 和 `CS25(0)`。全程保留既有 Lobby 與 Data，隔離角色的實體道具、六件外觀及付款列一致。Ruffle 的同一個音訊 context 持續運作。[四個完整畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/original-four-tabs.png) · [原版進出證據](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/README.md)
-- **新版實跑。** 接入大廳實際入口與原版黑幕，核對四個外層分頁與各子分類、魔女秘藥詳情、空對戰分頁、容量 `6/30` 及同登入返回。入場實測 `CS17` 後送 `CS25(0)`，瀏覽期間無寫入，BGM 延續。頁首採同一原圖，容量列下方沿用原 SWF 的 `#858585` 向量層。使用、裝備、卸下及丟棄需要各自的確認、伺服器回覆及錯誤驗收。[分項畫面與封包](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-live/README.md) · [重跑步驟](qa.md#重跑大廳整頁道具)
+- **新版實跑。** 接入大廳實際入口與原版黑幕，核對四個外層分頁與各子分類、魔女秘藥詳情、空對戰分頁、容量 `6/30` 及同登入返回。入場實測 `CS17` 後送 `CS25(0)`，瀏覽期間無寫入，BGM 延續。頁首採同一原圖，容量列下方沿用原 SWF 的 `#858585` 向量層。[分項畫面與封包](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-live/README.md) · [重跑步驟](qa.md#重跑大廳整頁道具)
+
+### 整頁道具使用魔女秘藥
+
+- 原版確認框 `(255,230) 250×150`，完整拉伸 `panel_gene`。開啟時暫停內層道具操作，外層分類與 Back 保持可用。實跑按 No 保留選取、兩瓶及 AP 4/5，沒有使用命令。按 Yes 先收起確認框，再送一次第一瓶實體 ID 的 `CS18`。開窗和 Yes、No 都使用 `ulse01`。[原版 UseSendPanel](../../../app/client/src/view/image/item/UseSendPanel.as#L37) · [確認框並排](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-potion-live/confirmation-comparison.png)
+- 兩版實跑 `SC17(5,0)` 與 `SC28`。新版暫緩真正 `SC28` 後，AP 已到 5/5，仍保留兩瓶及原選取。放行後只扣除已配對實體，數量變成一瓶，開啟「訊息／使用了魔女秘藥」。按 OK 回同一選取。大廳 BGM、連線及剩餘實體 ID 維持。確認鍵文字、細字抗鋸齒與成功遮罩的模糊尚有差異。[回覆暫緩與成功並排](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-potion-live/README.md) · [重跑步驟](qa.md#重跑整頁道具使用魔女秘藥)
+- 範圍為魔女秘藥 #3。重複點擊與晚到回覆用同一登入的實體 ID 鎖定。滿 AP 的 Ruby 路徑會回復道具狀態且無成功封包，仍待整頁實跑。其他道具、裝備、卸下和丟棄各有後續回覆及錯誤驗收。[Ruby 消耗及失敗狀態](../../../app/server/src/model/item_inventory.rb#L55) · [整頁成功提示](../../../app/client/src/net/server/LobbyServer.as#L1218)
 
 ### 右側道具速查
 
