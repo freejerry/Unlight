@@ -1,9 +1,10 @@
 import { readNews } from '/news.js';
 import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
-import { playLobbyClick, playQuestBattleEffect } from './bgm.js';
+import { playBackClick, playLobbyClick, playQuestBattleEffect } from './bgm.js';
 import { mountLobbyAchievementNotices } from './lobby-achievement.js';
 import { mountLobbyApTooltip } from './lobby-ap-tooltip.js';
 import { mountLobbyRecord } from './lobby-record.js';
+import { mountLobbyItem } from './lobby-item.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -41,6 +42,7 @@ const layout = `
     <div class="lower-slot chat" aria-hidden="true"></div>
     <button id="lobby-ap-gauge" type="button" aria-label="AP" aria-describedby="lobby-ap-tooltip"></button>
     <button id="lobby-record-open" class="source-record-open" type="button" aria-label="紀錄" aria-haspopup="dialog" disabled></button>
+    <button id="lobby-item-open" class="source-item-open" type="button" aria-label="道具" aria-haspopup="dialog" disabled></button>
     <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
@@ -119,14 +121,23 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     onIdle: presentNotices,
   });
   const recordTrigger = view.querySelector('#lobby-record-open');
+  const itemTrigger = view.querySelector('#lobby-item-open');
+  const canOpenSidePanel = () => ready && !checkingAchievements && !news.open && !achievements.hasPending();
   const record = mountLobbyRecord(view, {
     session, trigger: recordTrigger, signal,
-    canOpen: () => ready && !checkingAchievements && !news.open && !achievements.hasPending(),
+    canOpen: () => canOpenSidePanel() && !item.isOpen(),
     onClose: presentNotices,
+  });
+  const item = mountLobbyItem(view, {
+    session, trigger: itemTrigger, signal,
+    canOpen: () => canOpenSidePanel() && !record.isOpen(),
+    onClose: presentNotices,
+    onRowClick: playBackClick,
+    onUse: (row, options) => session.useLobbyAvatarItem(row.inventoryId, options),
   });
 
   function presentNotices() {
-    if (!ready || checkingAchievements || signal.aborted || news.open || record.isOpen()) return;
+    if (!ready || checkingAchievements || signal.aborted || news.open || record.isOpen() || item.isOpen()) return;
     if (waitingNotices.length) {
       achievements.enqueue(waitingNotices.splice(0));
     } else if (newsAvailable && !newsSeen.has(session.playerId) && !achievements.hasPending() &&
@@ -170,6 +181,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     options.disabled = !canOpenOptions;
     quest.disabled = !canOpenQuest;
     recordTrigger.disabled = false;
+    itemTrigger.disabled = false;
     if (document.activeElement === title) focus.focus({ preventScroll: true });
     session.refreshLobbyAvatar?.();
     session.subscribeLobbyAchievementEvents(event => {

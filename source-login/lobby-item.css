@@ -1,0 +1,92 @@
+@font-face {
+  font-family: 'Unlight Lobby Item Mincho';
+  src: url('./lobby-item-art/lobby-item-mincho.woff') format('woff');
+  font-display: swap;
+}
+
+#lobby-item-shell {
+  position: fixed;
+  inset: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: clip;
+  border: 0;
+  background: transparent;
+}
+
+#lobby-item-shell::backdrop { background: transparent; }
+
+#lobby-item {
+  position: absolute;
+  color: #000;
+  font: 12px/1.3 'Unlight Lobby Item Mincho', var(--interface-font, serif);
+}
+
+#lobby-item [hidden] { display: none !important; }
+
+.lobby-item-art,
+.lobby-item-label {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lobby-item-button {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-item-button:disabled { cursor: default; }
+.lobby-item-button:focus-visible { outline: 1px solid #82e1f9; outline-offset: 1px; }
+
+.lobby-item-button > [data-skin]:not([data-skin="up"]),
+.lobby-item-button:not(:disabled):is(:hover, :focus-visible, :active) > [data-skin="up"],
+.lobby-item-button:not(:disabled):active > [data-skin="over"],
+.lobby-item-button[aria-pressed="true"] > [data-skin] { visibility: hidden; }
+
+.lobby-item-button:not(:disabled):is(:hover, :focus-visible):not(:active):not([aria-pressed="true"]) > [data-skin="over"],
+.lobby-item-button:not(:disabled):active:not([aria-pressed="true"]) > [data-skin="down"],
+.lobby-item-button[aria-pressed="true"] > [data-skin="selected"] { visibility: visible; }
+
+#lobby-item-use[data-available="true"]:disabled:hover > [data-skin="up"] { visibility: hidden; }
+#lobby-item-use[data-available="true"]:disabled:hover > [data-skin="over"] { visibility: visible; }
+
+#lobby-item-rows,
+#lobby-item-detail { position: absolute; inset: 0; pointer-events: none; }
+#lobby-item-rows > button { pointer-events: auto; }
+
+.lobby-item-label { padding-inline: 2px; overflow: hidden; }
+
+#lobby-item-name {
+  padding-top: 1px;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+#lobby-item-caption { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+#lobby-item-count,
+#lobby-item-duration,
+#lobby-item-page,
+.lobby-item-row-count { text-align: right; }
+
+#lobby-item-page { color: #fff; font-family: Verdana, var(--interface-font, sans-serif); }
+
+.lobby-item-row-count {
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}

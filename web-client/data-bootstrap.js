@@ -42,6 +42,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
   let reader;
   let quests = createQuestDataReader();
   let equippedPartIds = null;
+  let avatarItemInventory = null;
   const cancel = () => {
     void reader?.cancel().catch(() => {});
   };
@@ -75,6 +76,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
           quests?.push(value);
         } catch {
           equippedPartIds = quests.equippedPartIds();
+          avatarItemInventory = quests.itemInventory();
           quests.dispose();
           quests = null;
         }
@@ -111,13 +113,14 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
     } catch {
       // A shorter legacy header still provides the existing avatar snapshot.
     }
+    avatarItemInventory = quests?.itemInventory() ?? avatarItemInventory;
     let questData = null;
     try {
-      questData = quests?.result() ?? null;
+      questData = quests?.result(avatarItemInventory) ?? null;
     } catch {
       // A quest schema mismatch leaves the independently validated avatar available.
     }
-    const profile = { avatar, questData };
+    const profile = { avatar, questData, avatarItemInventory };
     if (includeDeckCollection) {
       profile.deckCollection = quests?.deckCollection() ?? null;
       profile.selectedDeck = quests?.selectedDeck() ?? null;

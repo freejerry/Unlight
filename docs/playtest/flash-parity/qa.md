@@ -208,6 +208,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 腳本獨立解壓原始 Data `SC7`，比對 SQLite，再從大廳與設定驗證分頁、分類、進度、關閉焦點、面板動畫及既有 BGM。瀏覽清單前後比對四條登入連線的送出計數與資料庫。用另一位原版 q3 測試角色加 `--quest-complete-q3 --lobby-achievements --lobby-record`，核對從同一 Lobby 收到的 `SC56`，以及 #2 與 #31 從進行中切到完成。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [紀錄來源](lobby-views.md#右側紀錄清單)
 
+### 重跑右側道具速查
+
+以相同 offset 啟動隔離 Ruby 及新版 gateway。用三位已完成教學、已初始化成就的 Lv1 角色。每位用 `Avatar.regist`、`avatar.init` 及 `avatar.get_avatar_info_set` 建立角色和原始抽獎券。`populated` 再用 `get_item` 加入原始道具 `[1, 1, 2, 3, 25, 26, 27, 28]`。`empty` 保留原有抽獎券。`potion` 再加入 `[3, 3]`，以 `energy_use(1)` 把 AP 降至 4/5，並在自然回復之前測試。原始 SQLite 留在隔離環境。[隔離服務](../../../tools/legacy-server/README.md)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user item-potion --quest-start-password-file /path/to/disposable-password \
+  --lobby-item potion --screens /tmp/unlight-lobby-item
+```
+
+腳本獨立解碼 Data `SC6` 與 SQLite 比對。`populated` 驗證六組加一組、雙向循環、關閉重開及設定頁；`empty` 核對速查類別沒有可列道具。`potion` 暫緩真實 `SC28`，確認 AP 已依 `SC17` 更新而數量仍為 2。放行後維持選取、數量變為 1，兩個時間點皆無提示窗。核對只送一次 `CS18`，只改一筆實體庫存及其使用時間。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [原版與新版實跑](/workspace/shared/unlight-web-port/flash-parity/lobby-item-quick-live/README.md)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

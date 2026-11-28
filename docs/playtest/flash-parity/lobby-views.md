@@ -48,7 +48,12 @@
 ## 道具與外觀
 
 - `btn_e` 是整頁 `ItemView`。繁中 `item_inventory_ch.swf` 置於 `(0,0)`，`item_panel`／`item_base` 支援分類、列表、卡格及操作。道具／身體／衣服／飾品，預設第一頁。道具列表 `(24,104)`、部件數 `(449,630)`，共用 `PL_AVATAR_QUEST`。入退場 tween 約 470.6ms，入場程式在 join 之後才掛主容器，不能直接據該值推斷每層可見順序。 [ItemView.as](../../../app/client/src/view/ItemView.as#L74) · [ItemView.as](../../../app/client/src/view/ItemView.as#L220) · [ItemInventoryImage.as](../../../app/client/src/view/image/item/ItemInventoryImage.as#L23) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L55)
-- 右側 `btn_map_item` 另開 `WindowItemListPanel`。大廳與設定取虛擬人物類物品，每頁六格，箭頭循環翻頁。窗體 208×360，沿 `x798→498`、`y107` 在 200 ms Quad-out 滑入，150 ms sine-out 退出。選取播放 `ulse01` 並顯示物品詳情。速查的 Use 直接送出選定的實體庫存 ID，收到 `SC28` 才移除並提示成功。整頁道具介面另有確認視窗。原始視窗素材已在高低獎勵骰道具窗驗過，另待補拍大廳實際入口與同帳號持有物。[原版道具入口](../../../app/client/src/view/image/common/ItemListButton.as#L78) · [速查窗操作](../../../app/client/src/view/scene/item/WindowItemListPanel.as#L193) · [整頁確認](../../../app/client/src/view/scene/item/ItemListPanel.as#L147)
+
+### 右側道具速查
+
+- 大廳與設定的 `btn_map_item` 開啟 `WindowItemListPanel`。固定窗體 208×360，沿 `x798→498`、`y107` 用 200 ms Quad-out 滑入，150 ms sine-out 退出。按道具編號排序後每頁最多六組，箭頭循環翻頁。選取播放 `ulse01`。翻頁保留選取詳情，關閉後重開保留頁次並清除詳情。沿用所在場景的 BGM。[原版入口](../../../app/client/src/view/image/common/ItemListButton.as#L78) · [窗體轉場](../../../app/client/src/view/ItemListView.as#L40) · [素材與字體](../../../source-login/lobby-item-art/index.json)
+- 讀取已登入角色的 Data `SC6` 實體道具清單。新角色快照來自 Lobby `SC4`，後續依 `SC27` 及 `SC28` 按實體 ID 更新。速查只列這個場景的虛擬人物類道具，已收錄 32 筆繁中定義。開關、選取和翻頁沿用現有連線與資料，瀏覽不發送寫入。[原始使用路由](../../../app/client/src/view/scene/item/WindowItemListPanel.as#L193) · [庫存解碼](../../../web-client/data-bootstrap.js)
+- 行動力道具 #1、#2、#3 送 Lobby `CS18`。原版用同一組道具的第一筆實體庫存，收到對應 `SC28` 才扣除，AP 由 `SC17` 獨立更新。大廳把 Lobby 提示關閉，魔女秘藥在原版實跑中維持速查窗與選取，數量由 2 降至 1，無彈窗或使用音效。整頁道具介面的確認窗有自己的入口。藥水 #3 已用原版與新版的隔離角色實跑，#1、#2 與其餘道具效果待各自驗收。[大廳提示開關](../../../app/client/src/view/LobbyView.as#L123) · [繁中使用回覆](../../../app/client/src/net/server/LobbyServer.as#L1218) · [整頁確認](../../../app/client/src/view/scene/item/ItemListPanel.as#L147) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-item-quick-live/README.md)
 
 ## 商店與暗房
 
@@ -61,6 +66,12 @@
 - 好友 `friend/btn_f_list.swf → friend/friendlist.swf`，`x125,y−120→150`、0.3s Quad.easeOut，關閉 0.15s sine-out。好友、申請待處理、封鎖、搜尋四 tab，搜尋停刷新且須驗名稱最短限制，等回覆暫停輸入。Data 搜尋、Lobby 更新／申請／確認／刪除，5 分鐘檢查、限流後延 3s 更新，關閉停 timer。寄任務是另一個僅開好友 tab 的模式。不能以本機假結果代替權限、回覆或失敗提示。 [FriendListButton.as](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L250) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L398) · [FriendListContainer.as](../../../app/client/src/view/scene/common/FriendListContainer.as#L148) · [Lobby Ruby controller](../../../app/server/src/controller/lobby_controller.rb#L235)
 - 右側「紀錄」實為 `AchievementListView`，`achievement/achievement.swf`，`x52,y−120→100`、0.3s Quad.easeOut，關閉 0.15s sine-out。顯示真正成就狀態及條件，開啟會刷新本機列表。另有 `LogListView`（`x152,y150`，須 `activate`）及 AvatarDetailBase 的 `log` 符號被隱藏。與右側成就、原生獨立戰鬥紀錄皆為不同入口。 [AchievementListButton.as](../../../app/client/src/view/image/common/AchievementListButton.as#L51) · [AchievementListView.as](../../../app/client/src/view/AchievementListView.as#L45) · [AchievementListContainer.as](../../../app/client/src/view/scene/common/AchievementListContainer.as#L255) · [LogListView.as](../../../app/client/src/view/LogListView.as#L63)
 - 原版每次大廳進場序列完成後，另以同一 Lobby 連線送 `CS35(true)` 檢查成就。新版已接上就緒時的檢查、直接獎勵通知、實體道具和卡片，以及 Gem 絕對餘額。q568 先前原版試跑在終局返回後也發放「突破初期地區」的道具 3 和 3,000 Gem。[原版進場順序](../../../app/client/src/view/LobbyView.as#L319) · [Ruby 成就檢查](../../../app/server/src/controller/lobby_controller.rb#L351) · [q568 大廳成就紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/lobby-grant-proof.json)
+
+### 右側好友清單
+
+- **已盤點原始碼。** 開啟重設至好友分類，窗體自 `(125,-120)` 至 `(125,150)`，300 ms Quad-out，關閉用 150 ms sine-out。面板開啟時阻止底層點擊。每頁五欄兩列，列卡使用實際角色名、等級及裝備。右側按鈕的提醒只取已讀關係中待本人確認的狀態 1，等候總數包括送出與收到。[按鈕狀態](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [進退場](../../../app/client/src/view/FriendListView.as#L249) · [列卡與分頁](../../../app/client/src/view/scene/common/FriendListContainer.as#L148)
+- 好友、等待、封鎖由已認證 Data `CS8` 以類型 1、0、2 取每頁十筆，`SC12` 另帶各類總數。顯示角色資料時以正整數角色 ID 送 `CS5` 等 `SC9`。原分頁在總數恰為十的倍數時多一空頁。封鎖分頁仍可能收到被對方封鎖的關係，畫面只列本人封鎖的資料。搜尋用三至十二個字元，按 Enter 或按鈕才送 `CS15`，`SC26` 回傳同伺服器的角色名稱前綴比對結果，原版亦有一秒等候顯示。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版資料服務](../../../app/server/src/controller/data_controller.rb#L24) · [封鎖計數與排序](../../../app/server/src/model/friend_link.rb#L84)
+- 首輪驗收涵蓋點擊入口、四種分類、翻頁、收到及送出的待確認、空搜尋、同伺服器前綴匹配，以及一般關閉。關閉會另外觸發 Lobby `CS35(true)` 成就檢查。好友申請、接受、刪除與封鎖需寫入並依照原伺服器回覆，另以隔離角色驗收。[關閉行為](../../../app/client/src/view/FriendListView.as#L319) · [原版關係寫入](../../../app/server/src/controller/lobby_controller.rb#L235)
 
 ### 右側紀錄清單
 

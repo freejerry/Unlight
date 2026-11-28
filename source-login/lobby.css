@@ -244,10 +244,9 @@
 
 #lobby-ap-gauge:focus-visible { outline: 1px solid #e9dbc0; outline-offset: -1px; }
 
-.source-record-open {
+:is(.source-record-open, .source-item-open) {
   position: absolute;
   left: 712px;
-  top: 480px;
   width: 48px;
   height: 32px;
   padding: 0;
@@ -256,9 +255,12 @@
   cursor: pointer;
 }
 
-.source-record-open:disabled { cursor: default; }
+.source-record-open { top: 480px; }
+.source-item-open { top: 576px; }
+:is(.source-record-open, .source-item-open):disabled { cursor: default; }
 
-:is(.source-lobby, .source-options):has(> .source-record-open:not(:disabled):is(:hover, :focus-visible)) [data-symbol="record"] {
+:is(.source-lobby, .source-options):has(> .source-record-open:not(:disabled):is(:hover, :focus-visible)) [data-symbol="record"],
+:is(.source-lobby, .source-options):has(> .source-item-open:not(:disabled):is(:hover, :focus-visible)) [data-symbol="item"] {
   --lobby-art-up: none;
   --lobby-art-over: block;
 }

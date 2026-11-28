@@ -668,6 +668,7 @@ def create_app(
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "lobby-achievement.js", "lobby-achievement.css",
                 "lobby-ap-tooltip.js", "lobby-ap-tooltip.css",
                 "lobby-record.js", "lobby-record.css",
+                "lobby-item.js", "lobby-item.css",
                 "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
                 "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
@@ -699,6 +700,11 @@ def create_app(
                 if artifact.suffix in (".png", ".woff") or artifact.name in ("index.json", "catalogue.json"):
                     headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
                     app.router.add_get(f"/source-login/lobby-record-art/{artifact.name}", serve_file(artifact, headers))
+            lobby_item_art = SOURCE_LOGIN_ROOT / "lobby-item-art"
+            for artifact in sorted(lobby_item_art.glob("*")):
+                if artifact.suffix in (".png", ".woff") or artifact.name == "index.json":
+                    headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
+                    app.router.add_get(f"/source-login/lobby-item-art/{artifact.name}", serve_file(artifact, headers))
             for name in ("background.jpg", "back.png", "back-over.png"):
                 filename = f"option-art/{name}"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))

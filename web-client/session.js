@@ -68,6 +68,7 @@ const LOBBY_ACHIEVEMENT_CHECK = 35;
 const LOBBY_SELECTABLE_REWARD_REQUEST = 51;
 const LOBBY_PONG = 35;
 const LOBBY_REFRESH_AVATAR = 17;
+const LOBBY_USE_ITEM_REQUEST = 18;
 const LOBBY_ENERGY_REPLY = 17;
 const LOBBY_ENERGY_MAX_REPLY = 18;
 const LOBBY_LEVEL_REPLY = 22;
@@ -75,6 +76,7 @@ const LOBBY_DECK_EXP_REPLY = 23;
 const LOBBY_DECK_LEVEL_REPLY = 24;
 const LOBBY_GEMS_REPLY = 25;
 const LOBBY_ITEM_GRANTED_REPLY = 27;
+const LOBBY_ITEM_CONSUMED_REPLY = 28;
 const LOBBY_CHARACTER_GRANTED_REPLY = 31;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
 const LOBBY_RECOVERY_INTERVAL_REPLY = 45;
@@ -84,6 +86,7 @@ const LOBBY_SELECTABLE_RESULT_REPLY = 72;
 const LOBBY_SELECTABLE_NOTICE_TYPE = '26';
 const LOBBY_NOTICE_MAX_BYTES = 1024 * 1024 - 6;
 const LOBBY_SELECTABLE_OPTIONS_MAX_BYTES = 4096;
+const LOBBY_AP_ITEM_IDS = new Set([1, 2, 3]); // Original basis potions, effects 0–2.
 const LOBBY_REFRESH_INTERVAL = 2000;
 // Destination levels with a nonzero LEVEL_ENG_BOUNUS in the original Ruby table (levels 1–150).
 const ENERGY_CAP_GROWTH_LEVELS = [2, 4, 6, 8, 10, 13, 17, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 73, 80, 90, 100,
@@ -225,6 +228,8 @@ const messages = {
   'lobby-reward-unavailable': '目前無法領取這項成就獎勵。',
   'lobby-reward-rejected': '伺服器未接受這次獎勵選擇。',
   'lobby-reward-uncertain': '尚未確認獎勵是否入庫，請重新登入查看。',
+  'lobby-item-unavailable': '目前無法使用這個道具。',
+  'lobby-item-uncertain': '尚未確認道具是否已使用，請重新登入查看。',
 };
 
 export class SessionError extends Error {
@@ -559,6 +564,11 @@ function observeLobbyAvatar(reply, publish) {
             ? { kind: 'item', inventoryId, itemId: definitionId }
             : { kind: 'card', inventoryId, cardId: definitionId };
         }
+        break;
+      }
+      case LOBBY_ITEM_CONSUMED_REPLY: {
+        const inventoryId = reply.int();
+        if (inventoryId > 0) event = { kind: 'item-used', inventoryId };
         break;
       }
       case LOBBY_NOTICE_REPLY:
@@ -3166,7 +3176,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   };
 }
 
-function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar,
+function activeSession(auth, channels, playerId, sessionKey, { questData, avatarItemInventory, ...initialData }, attachLobbyAvatar,
   lobbyStartupComplete, startupLobbyEvents, achievementRecords) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const data = channels.find(({ port }) => port === DATA_PORT);
@@ -3203,45 +3213,73 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let adventure = null;
   const boundQuestDecks = new Map();
   const confirmedQuestAwards = new Set();
-  let knownQuestItems = readItemInventory(questData);
+  let avatarItems = new Map((avatarItemInventory ?? []).map(item => [item.inventoryId, item]));
+  let avatarItemStatus = avatarItemInventory ? 'ready' : 'unknown';
+  let avatarItemSnapshot = itemSnapshot();
+  const avatarItemSubscriptions = new Set();
+  const removedAvatarItems = new Set();
+  const uncertainLobbyItemUses = new Set();
+  let lobbyItemUse;
   const blockedQuestItems = new Set();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
-  function readItemInventory(data) {
-    return data?.itemInventory ? new Map(data.itemInventory.map((item) => [item.inventoryId, item])) : null;
+  function itemSnapshot() {
+    return Object.freeze({ status: avatarItemStatus, rows: Object.freeze([...avatarItems.values()]) });
+  }
+
+  function publishAvatarItems() {
+    avatarItemSnapshot = itemSnapshot();
+    for (const subscription of [...avatarItemSubscriptions]) {
+      if (avatarItemSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, avatarItemSnapshot);
+    }
+  }
+
+  function replaceAvatarItems(rows) {
+    avatarItems = new Map((rows ?? []).map(item => [item.inventoryId, item]));
+    avatarItemStatus = rows ? 'ready' : 'unknown';
+    publishAvatarItems();
+  }
+
+  function removeAvatarItem(inventoryId) {
+    removedAvatarItems.add(inventoryId);
+    uncertainLobbyItemUses.delete(inventoryId);
+    const item = avatarItems.get(inventoryId);
+    if (avatarItems.delete(inventoryId)) publishAvatarItems();
+    return item;
   }
 
   const rewardItemInventory = {
     available() {
-      if (!knownQuestItems) return [];
-      return [...knownQuestItems.values()].filter(({ itemId, state }) => state === 0 && QUEST_REWARD_ITEMS.has(itemId))
+      if (avatarItemStatus !== 'ready') return [];
+      return [...avatarItems.values()].filter(({ itemId, state }) => state === 0 && QUEST_REWARD_ITEMS.has(itemId))
         .map((item) => ({ ...item, blocked: blockedQuestItems.has(item.inventoryId) }));
     },
     block(id) { blockedQuestItems.add(id); },
     consume(id) {
-      const item = knownQuestItems?.get(id);
-      if (item?.state !== 0 || blockedQuestItems.has(id)) throw new SessionError('protocol');
-      knownQuestItems.set(id, { ...item, state: 2 });
+      const item = avatarItems.get(id);
+      if (avatarItemStatus !== 'ready' || item?.state !== 0 || blockedQuestItems.has(id)) throw new SessionError('protocol');
+      removeAvatarItem(id);
     },
   };
 
   function rememberItemGrant({ inventoryId, itemId }) {
-    if (!knownQuestItems) return false;
-    const previous = knownQuestItems.get(inventoryId);
-    if (previous && (previous.itemId !== itemId || previous.state === 2)) throw new SessionError('protocol');
+    if (removedAvatarItems.has(inventoryId)) return false;
+    const previous = avatarItems.get(inventoryId);
+    if (previous && previous.itemId !== itemId) throw new SessionError('protocol');
     if (previous) return false;
-    knownQuestItems.set(inventoryId, { inventoryId, itemId, state: 0 });
+    avatarItems.set(inventoryId, Object.freeze({ inventoryId, itemId, state: 0 }));
+    if (avatarItemStatus === 'unknown') avatarItemStatus = 'partial';
+    publishAvatarItems();
     return true;
   }
 
   function receiveQuestItemGrant(scene, reply) {
     if (reply.command !== QUEST_ITEM_GRANTED_REPLY || !scene?.channel.verified || questScene !== scene) return false;
-    if (!knownQuestItems) return true;
     try {
       if (!rememberItemGrant(readQuestItemReply(reply))) return true;
     } catch {
-      knownQuestItems = null;
+      replaceAvatarItems(null);
     }
     publishQuestScene(scene);
     return true;
@@ -3276,13 +3314,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     }
     if (event.kind === 'item') {
       try {
-        if (knownQuestItems && !rememberItemGrant(event)) return;
+        if (!rememberItemGrant(event)) return;
       } catch {
-        knownQuestItems = null;
+        replaceAvatarItems(null);
         if (questScene?.state === 'open') publishQuestScene(questScene);
         return;
       }
       if (questScene?.state === 'open') publishQuestScene(questScene);
+    } else if (event.kind === 'item-used') {
+      const item = removeAvatarItem(event.inventoryId);
+      if (item && lobbyItemUse?.dispatched && lobbyItemUse.inventoryId === event.inventoryId) {
+        lobbyItemUse.confirm(item);
+      }
+      if (item && questScene?.state === 'open') publishQuestScene(questScene);
+      return;
     } else if (event.kind === 'card') {
       const { inventoryId, cardId } = event;
       const { deckCollection, deckChoices, selectedDeck } = initialData;
@@ -3315,6 +3360,43 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const entry = lobbyRewardEntry(receipt);
     if (entry) entry.state = 'unavailable';
     pendingLobbyAchievements.delete(receipt);
+  }
+
+  function canUseLobbyAvatarItem(inventoryId) {
+    const item = avatarItems.get(inventoryId);
+    return Boolean(initialData?.avatar && lobby.verified && avatarItemStatus === 'ready' && item?.state === 0
+      && LOBBY_AP_ITEM_IDS.has(item.itemId) && !uncertainLobbyItemUses.has(inventoryId));
+  }
+
+  async function useLobbyAvatarItem(inventoryId, { signal } = {}) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (profileRequest || lobbyItemUse || questRequest || questReturn || questScene || adventure) throw new SessionError('busy');
+    if (uncertainLobbyItemUses.has(inventoryId)) throw new SessionError('lobby-item-uncertain');
+    if (!canUseLobbyAvatarItem(inventoryId)) throw new SessionError('lobby-item-unavailable');
+    auth.assertOpen();
+    const attempt = { inventoryId, dispatched: false };
+    lobbyItemUse = attempt;
+    try {
+      return await withRegistrationChannel(lobby, undefined, async (socket, requestSignal) => {
+        if (signal?.aborted) throw new SessionError('cancelled');
+        if (!canUseLobbyAvatarItem(inventoryId)) throw new SessionError('lobby-item-unavailable');
+        const confirmation = new Promise(resolve => { attempt.confirm = resolve; });
+        socket.send(LOBBY_USE_ITEM_REQUEST, [inventoryId]);
+        attempt.dispatched = true;
+        // Leave the authoritative receipt attached to the session after view cancellation.
+        const item = await bounded(confirmation, requestSignal);
+        return Object.freeze({ inventoryId, itemId: item.itemId });
+      });
+    } catch (error) {
+      if (!attempt.dispatched) throw error;
+      if (initialData && !removedAvatarItems.has(inventoryId)) {
+        uncertainLobbyItemUses.add(inventoryId);
+        publishAvatarItems();
+      }
+      throw new SessionError('lobby-item-uncertain');
+    } finally {
+      lobbyItemUse = null;
+    }
   }
 
   async function claimLobbyReward(receipt, selectionIndex, signal) {
@@ -3523,6 +3605,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       initialData = null;
       questData = null;
       achievementRecords.close();
+      for (const subscription of avatarItemSubscriptions) subscription.unsubscribe();
+      removedAvatarItems.clear();
+      uncertainLobbyItemUses.clear();
+      replaceAvatarItems(null);
       confirmedAvatar = null;
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       for (const subscription of lobbyAchievementSubscriptions) subscription.unsubscribe();
@@ -4364,6 +4450,22 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     subscribeAchievementRecords(listener, options) {
       return achievementRecords.subscribe(listener, options);
     },
+    readAvatarItems() {
+      return avatarItemSnapshot;
+    },
+    subscribeAvatarItems(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      const subscription = { listener, unsubscribe() {
+        avatarItemSubscriptions.delete(subscription);
+        signal?.removeEventListener('abort', subscription.unsubscribe);
+      } };
+      avatarItemSubscriptions.add(subscription);
+      signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+      notifyLobbyListener(listener, avatarItemSnapshot);
+      return subscription.unsubscribe;
+    },
+    canUseLobbyAvatarItem,
+    useLobbyAvatarItem,
     refreshLobbyAvatar() {
       const now = performance.now();
       if (!initialData?.avatar || profileRequest || questRequest || questReturn) return false;
@@ -4501,10 +4603,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           pong.done();
           requestSignal.throwIfAborted();
           socket.assertOpen();
-          const { questData: profileQuests, ...profile } = confirmedAvatar;
+          const { questData: profileQuests, avatarItemInventory: profileItems, ...profile } = confirmedAvatar;
           initialData = { ...initialData, ...profile, registration: null };
           questData = profileQuests;
-          knownQuestItems = readItemInventory(questData);
+          replaceAvatarItems(profileItems);
           confirmedAvatar = null;
           registrationState = 'active';
           publishAvatar();

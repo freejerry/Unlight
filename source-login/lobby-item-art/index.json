@@ -1,0 +1,1373 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "origin": [
+    498,
+    107
+  ],
+  "motion": {
+    "initialX": 798,
+    "openMs": 200,
+    "closeMs": 150,
+    "openEasing": "quad-out",
+    "closeEasing": "sine-out"
+  },
+  "plate": {
+    "file": "bonus-item-panel.png",
+    "x": 0.0,
+    "y": 0.0,
+    "width": 208,
+    "height": 360,
+    "url": "/source-login/quest-result-art/bonus-item-panel.png"
+  },
+  "controls": {
+    "close": {
+      "up": {
+        "file": "bonus-item-panel-close-up.png",
+        "x": 180.0,
+        "y": 4.0,
+        "width": 24,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-close-up.png"
+      },
+      "over": {
+        "file": "bonus-item-panel-close-over.png",
+        "x": 180.0,
+        "y": 4.0,
+        "width": 24,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-close-over.png"
+      },
+      "down": {
+        "file": "bonus-item-panel-close-down.png",
+        "x": 180.0,
+        "y": 4.0,
+        "width": 24,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-close-down.png"
+      },
+      "hit": [
+        180.0,
+        4.0,
+        23.95,
+        23.95
+      ]
+    },
+    "use": {
+      "up": {
+        "file": "bonus-item-panel-use-up.png",
+        "x": 32.0,
+        "y": 330.0,
+        "width": 80,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-use-up.png"
+      },
+      "over": {
+        "file": "bonus-item-panel-use-over.png",
+        "x": 32.0,
+        "y": 330.0,
+        "width": 80,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-use-over.png"
+      },
+      "down": {
+        "file": "bonus-item-panel-use-over.png",
+        "x": 32.0,
+        "y": 330.0,
+        "width": 80,
+        "height": 24,
+        "url": "/source-login/quest-result-art/bonus-item-panel-use-over.png"
+      },
+      "hit": [
+        32.0,
+        330.0,
+        79.95,
+        23.95
+      ]
+    },
+    "back": {
+      "up": {
+        "file": "bonus-item-panel-back-up.png",
+        "x": 144.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-back-up.png"
+      },
+      "over": {
+        "file": "bonus-item-panel-back-over.png",
+        "x": 144.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-back-over.png"
+      },
+      "down": {
+        "file": "bonus-item-panel-back-over.png",
+        "x": 144.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-back-over.png"
+      },
+      "hit": [
+        144.0,
+        345.0,
+        15.95,
+        13.95
+      ]
+    },
+    "next": {
+      "up": {
+        "file": "bonus-item-panel-next-up.png",
+        "x": 191.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-next-up.png"
+      },
+      "over": {
+        "file": "bonus-item-panel-next-over.png",
+        "x": 191.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-next-over.png"
+      },
+      "down": {
+        "file": "bonus-item-panel-next-over.png",
+        "x": 191.0,
+        "y": 345.0,
+        "width": 16,
+        "height": 14,
+        "url": "/source-login/quest-result-art/bonus-item-panel-next-over.png"
+      },
+      "hit": [
+        191.0,
+        345.0,
+        15.95,
+        13.95
+      ]
+    }
+  },
+  "row": {
+    "up": {
+      "file": "bonus-item-row-up.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 40,
+      "url": "/source-login/quest-result-art/bonus-item-row-up.png"
+    },
+    "over": {
+      "file": "bonus-item-row-over.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 40,
+      "url": "/source-login/quest-result-art/bonus-item-row-over.png"
+    },
+    "down": {
+      "file": "bonus-item-row-over.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 40,
+      "url": "/source-login/quest-result-art/bonus-item-row-over.png"
+    },
+    "hit": [
+      0.0,
+      0.0,
+      40.0,
+      40.0
+    ],
+    "selected": {
+      "file": "bonus-item-row-selected.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 40,
+      "url": "/source-login/quest-result-art/bonus-item-row-selected.png"
+    }
+  },
+  "list": {
+    "x": 152,
+    "y": 56,
+    "step": 48,
+    "maxRows": 6
+  },
+  "labels": {
+    "name": [
+      10,
+      5,
+      200,
+      30
+    ],
+    "count": [
+      5,
+      154,
+      135,
+      30
+    ],
+    "duration": [
+      5,
+      189,
+      135,
+      30
+    ],
+    "caption": [
+      5,
+      227,
+      130,
+      100
+    ],
+    "rowCount": [
+      10,
+      32,
+      40,
+      20
+    ],
+    "page": [
+      156,
+      342,
+      30,
+      20
+    ]
+  },
+  "iconAnchors": {
+    "detail": {
+      "x": 73,
+      "y": 86,
+      "scale": 0.7
+    },
+    "row": {
+      "x": 20,
+      "y": 20,
+      "scale": 0.2
+    }
+  },
+  "items": {
+    "1": {
+      "name": "精靈之藥",
+      "caption": "恢復3點虛擬人物的行動力。",
+      "kind": 0,
+      "subTypes": [
+        1,
+        4
+      ],
+      "icon": {
+        "file": "item-1.png",
+        "x": -23.4,
+        "y": -60.75,
+        "width": 47,
+        "height": 122
+      }
+    },
+    "2": {
+      "name": "古代妙藥",
+      "caption": "恢復10點虛擬人物的行動力。",
+      "kind": 0,
+      "subTypes": [
+        1,
+        4
+      ],
+      "icon": {
+        "file": "item-2.png",
+        "x": -23.4,
+        "y": -60.75,
+        "width": 47,
+        "height": 122
+      }
+    },
+    "3": {
+      "name": "魔女秘藥",
+      "caption": "完全恢復虛擬人物的行動力。",
+      "kind": 0,
+      "subTypes": [
+        1,
+        4
+      ],
+      "icon": {
+        "file": "item-3.png",
+        "x": -23.4,
+        "y": -60.75,
+        "width": 47,
+        "height": 122
+      }
+    },
+    "25": {
+      "name": "白色餅乾",
+      "caption": "好友上限+1",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-25.png",
+        "x": -58.45,
+        "y": -57.65,
+        "width": 117,
+        "height": 116
+      }
+    },
+    "26": {
+      "name": "情人節巧克力",
+      "caption": "好友上限+1",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-26.png",
+        "x": -60.9,
+        "y": -44.4,
+        "width": 122,
+        "height": 96
+      }
+    },
+    "27": {
+      "name": "人偶的日記本",
+      "caption": "好友上限+5",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-27.png",
+        "x": -59.55,
+        "y": -55.9,
+        "width": 120,
+        "height": 112
+      }
+    },
+    "28": {
+      "name": "追憶的日記本",
+      "caption": "好友上限+10",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-28.png",
+        "x": -59.55,
+        "y": -55.9,
+        "width": 120,
+        "height": 112
+      }
+    },
+    "29": {
+      "name": "星型糖果",
+      "caption": "好友上限+1",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-29.png",
+        "x": -52.0,
+        "y": -54.0,
+        "width": 104,
+        "height": 114
+      }
+    },
+    "37": {
+      "name": "神秘衣櫃",
+      "caption": "虛擬人物服裝最大持有數+5。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-37.png",
+        "x": -53.1,
+        "y": -58.8,
+        "width": 112,
+        "height": 118
+      }
+    },
+    "38": {
+      "name": "特製蘑菇萃取液",
+      "caption": "恢復50點虛擬人物的行動力。這個效果將突破最大AP的上限。",
+      "kind": 0,
+      "subTypes": [
+        1,
+        4
+      ],
+      "icon": {
+        "file": "item-38.png",
+        "x": -23.4,
+        "y": -60.75,
+        "width": 47,
+        "height": 122
+      }
+    },
+    "39": {
+      "name": "至寶的神藥",
+      "caption": "增加虛擬人物最大AP值1點",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-39.png",
+        "x": -43.9,
+        "y": -61.75,
+        "width": 88,
+        "height": 124
+      }
+    },
+    "40": {
+      "name": "青色淨化之炎",
+      "caption": "重置虛擬人物的勝敗數",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-40.png",
+        "x": -57.0,
+        "y": -57.0,
+        "width": 114,
+        "height": 114
+      }
+    },
+    "41": {
+      "name": "紅色淨化之炎",
+      "caption": "重置虛擬人物的BP值",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-41.png",
+        "x": -57.0,
+        "y": -57.0,
+        "width": 114,
+        "height": 114
+      }
+    },
+    "42": {
+      "name": "魔女衣櫃",
+      "caption": "虛擬人物服裝最大持有數+10。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-42.png",
+        "x": -53.1,
+        "y": -58.8,
+        "width": 112,
+        "height": 118
+      }
+    },
+    "46": {
+      "name": "至寶的神藥5",
+      "caption": "虛擬人物的最大AP+5",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-46.png",
+        "x": -43.9,
+        "y": -61.75,
+        "width": 88,
+        "height": 124
+      }
+    },
+    "50": {
+      "name": "小型衣櫥",
+      "caption": "虛擬人物服裝最大持有數+1。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-50.png",
+        "x": -53.1,
+        "y": -58.8,
+        "width": 112,
+        "height": 118
+      }
+    },
+    "53": {
+      "name": "黃之寶石袋",
+      "caption": "使用後獲得500GEM",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-53.png",
+        "x": -51.0,
+        "y": -50.5,
+        "width": 102,
+        "height": 106
+      }
+    },
+    "54": {
+      "name": "綠之寶石袋",
+      "caption": "使用後獲得1000GEM",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-54.png",
+        "x": -51.0,
+        "y": -50.5,
+        "width": 102,
+        "height": 106
+      }
+    },
+    "55": {
+      "name": "青之寶石袋",
+      "caption": "使用後獲得3000GEM",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-55.png",
+        "x": -51.0,
+        "y": -50.5,
+        "width": 102,
+        "height": 106
+      }
+    },
+    "56": {
+      "name": "赤之寶石袋",
+      "caption": "使用後獲得5000GEM",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-56.png",
+        "x": -51.0,
+        "y": -50.5,
+        "width": 102,
+        "height": 106
+      }
+    },
+    "57": {
+      "name": "紫之寶石袋",
+      "caption": "使用後獲得10000GEM",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-57.png",
+        "x": -51.0,
+        "y": -50.5,
+        "width": 102,
+        "height": 106
+      }
+    },
+    "85": {
+      "name": "牌組之書Lv1",
+      "caption": "將獲得新的牌組。（Lv1 Cost 45）",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-85.png",
+        "x": -59.15,
+        "y": -61.15,
+        "width": 121,
+        "height": 123
+      }
+    },
+    "86": {
+      "name": "牌組之書Lv31",
+      "caption": "將獲得新的牌組。（Lv31 Cost 75）",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-85.png",
+        "x": -59.15,
+        "y": -61.15,
+        "width": 121,
+        "height": 123
+      }
+    },
+    "87": {
+      "name": "牌組之書Lv56",
+      "caption": "將獲得新的牌組。（Lv56 Cost 100）",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-85.png",
+        "x": -59.15,
+        "y": -61.15,
+        "width": 121,
+        "height": 123
+      }
+    },
+    "134": {
+      "name": "妖精方塊(黃)",
+      "caption": "使用後可以得到1GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-134.png",
+        "x": -64.0,
+        "y": -64.0,
+        "width": 128,
+        "height": 128
+      }
+    },
+    "135": {
+      "name": "妖精方塊(綠)",
+      "caption": "使用後可以得到50GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-135.png",
+        "x": -64.0,
+        "y": -64.0,
+        "width": 128,
+        "height": 128
+      }
+    },
+    "136": {
+      "name": "妖精方塊(藍)",
+      "caption": "使用後可以得到100GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-136.png",
+        "x": -64.0,
+        "y": -64.0,
+        "width": 128,
+        "height": 128
+      }
+    },
+    "137": {
+      "name": "妖精方塊(紅)",
+      "caption": "使用後可以得到200GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-137.png",
+        "x": -64.0,
+        "y": -64.0,
+        "width": 128,
+        "height": 128
+      }
+    },
+    "138": {
+      "name": "妖精方塊(紫)",
+      "caption": "使用後可以得到500GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-138.png",
+        "x": -64.0,
+        "y": -64.0,
+        "width": 128,
+        "height": 128
+      }
+    },
+    "139": {
+      "name": "高級巧克力",
+      "caption": "朋友欄 +10",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-139.png",
+        "x": -42.5,
+        "y": -45.5,
+        "width": 89,
+        "height": 91
+      }
+    },
+    "233": {
+      "name": "週年紀念幣",
+      "caption": "Unlight4週年紀念幣。活動結束後使用的話，能夠取得4GEM。",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-233.png",
+        "x": -57.0,
+        "y": -57.0,
+        "width": 114,
+        "height": 114
+      }
+    },
+    "261": {
+      "name": "0",
+      "caption": "",
+      "kind": 0,
+      "subTypes": [],
+      "icon": {
+        "file": "item-1.png",
+        "x": -23.4,
+        "y": -60.75,
+        "width": 47,
+        "height": 122
+      }
+    }
+  },
+  "wording": {
+    "heading": "道具",
+    "close": "關閉",
+    "use": "使用",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "count": "擁有數",
+    "durationLabel": "效果時間",
+    "caption": "效果",
+    "duration": "-"
+  },
+  "font": {
+    "file": "lobby-item-mincho.woff"
+  },
+  "provenance": {
+    "catalogue": {
+      "source": "app/server/data/csv/ja/AvatarItems.csv",
+      "sourceSha256": "4621c7cf928cb37c289637cfc632f7dac7c1deb36e1bbdcc60fe88f143d936f9",
+      "kind": 0,
+      "fields": [
+        "name_tcn",
+        "caption_tcn",
+        "image",
+        "image_frame",
+        "sub_kind"
+      ]
+    },
+    "shared": {
+      "/source-login/quest-result-art/bonus-item-panel-close-up.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "763ac9d43b9455d4f2f5ce6bdf8c49ec1bfc649c32656ee492e4ff22233eb033",
+        "shapeIds": [
+          21
+        ],
+        "bitmapIds": [
+          20
+        ],
+        "sourceInstance": "btn_close",
+        "sourceButton": 26,
+        "sourceStates": [
+          "up"
+        ],
+        "hitShapeIds": [
+          25
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-close-over.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "99db5a188d091592bd9fd35af0050cf520b4b5d7fd810a2311199c7edeabd501",
+        "shapeIds": [
+          23
+        ],
+        "bitmapIds": [
+          22
+        ],
+        "sourceInstance": "btn_close",
+        "sourceButton": 26,
+        "sourceStates": [
+          "over"
+        ],
+        "hitShapeIds": [
+          25
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-close-down.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "c7c23f213c710c8cf0c2166767436c6c1cf0ca66e876ae700c06fc1bf86eac98",
+        "shapeIds": [
+          25
+        ],
+        "bitmapIds": [
+          24
+        ],
+        "sourceInstance": "btn_close",
+        "sourceButton": 26,
+        "sourceStates": [
+          "down"
+        ],
+        "hitShapeIds": [
+          25
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-use-up.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "622dae3e2298a885134b7e28138361b8c3db57edc034da7f6d9cac1eae25d9f5",
+        "shapeIds": [
+          28
+        ],
+        "bitmapIds": [
+          27
+        ],
+        "sourceInstance": "btn_use",
+        "sourceButton": 31,
+        "sourceStates": [
+          "up"
+        ],
+        "hitShapeIds": [
+          30
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-use-over.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "abe39718ded367905222e0cb2af57f43782f94a1b6879889854e452abdcbcd08",
+        "shapeIds": [
+          30
+        ],
+        "bitmapIds": [
+          29
+        ],
+        "sourceInstance": "btn_use",
+        "sourceButton": 31,
+        "sourceStates": [
+          "over",
+          "down"
+        ],
+        "hitShapeIds": [
+          30
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-back-up.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "b2f68fd2146cd55e4bdf04f89d1576cc2a63cf9eeb0e12b78aa2db8f0f01af77",
+        "shapeIds": [
+          11
+        ],
+        "bitmapIds": [
+          10
+        ],
+        "sourceInstance": "btn_back",
+        "sourceButton": 14,
+        "sourceStates": [
+          "up"
+        ],
+        "hitShapeIds": [
+          13
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-back-over.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "afc46bf6235909c3b4115ebaaff9afef749cf9858625a4d5800c623cc89c0b68",
+        "shapeIds": [
+          13
+        ],
+        "bitmapIds": [
+          12
+        ],
+        "sourceInstance": "btn_back",
+        "sourceButton": 14,
+        "sourceStates": [
+          "over",
+          "down"
+        ],
+        "hitShapeIds": [
+          13
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-next-up.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "4469383094ad79aa4d463c1fdf6a70639bbe855a1bd9507317460026c1a3d468",
+        "shapeIds": [
+          16
+        ],
+        "bitmapIds": [
+          15
+        ],
+        "sourceInstance": "btn_next",
+        "sourceButton": 19,
+        "sourceStates": [
+          "up"
+        ],
+        "hitShapeIds": [
+          18
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-panel-next-over.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "0a8757166449db462a47b68a2dcb161c3e0e9acc7016733de9d72fc2e57fb393",
+        "shapeIds": [
+          18
+        ],
+        "bitmapIds": [
+          17
+        ],
+        "sourceInstance": "btn_next",
+        "sourceButton": 19,
+        "sourceStates": [
+          "over",
+          "down"
+        ],
+        "hitShapeIds": [
+          18
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-row-up.png": {
+        "source": "data/image/item/itemwin_itembase.swf",
+        "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+        "sha256": "2f6257356dc4c38a11055138ebbba2c3426daa7175d2c23df4bd1e27a11a6f20",
+        "shapeIds": [
+          1,
+          3
+        ],
+        "bitmapIds": [],
+        "sourceInstance": "btn_base",
+        "sourceButton": 7,
+        "sourceStates": [
+          "up"
+        ],
+        "hitShapeIds": [
+          5
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-row-over.png": {
+        "source": "data/image/item/itemwin_itembase.swf",
+        "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+        "sha256": "9b36dd10241f8868792755d9587a15e92566efcf2c587aa5f19e509e53cafc1f",
+        "shapeIds": [
+          1,
+          5
+        ],
+        "bitmapIds": [],
+        "sourceInstance": "btn_base",
+        "sourceButton": 7,
+        "sourceStates": [
+          "over",
+          "down"
+        ],
+        "hitShapeIds": [
+          5
+        ]
+      },
+      "/source-login/quest-result-art/bonus-item-row-selected.png": {
+        "source": "data/image/item/itemwin_itembase.swf",
+        "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+        "sha256": "b2d5a9abfc77e6676c0d817449583edaf480cea14419a3acecabe17c6634d73a",
+        "shapeIds": [
+          1
+        ],
+        "bitmapIds": [],
+        "sourceState": "btn_base hidden"
+      },
+      "/source-login/quest-result-art/bonus-item-panel.png": {
+        "source": "data/image/item/itemwindow_ch.swf",
+        "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+        "sha256": "47eeb9298d496a8fe542c76bf57812fb720b56096c71f9ad2c10671c786a33b2",
+        "shapeIds": [
+          1,
+          3,
+          5,
+          7,
+          9
+        ],
+        "bitmapIds": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "sourceDepths": [
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
+    },
+    "item-1.png": {
+      "source": "public/image/avatar_items/item_c_a000.swf",
+      "sourceSha256": "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c",
+      "sha256": "fcf8199f7003a49058d51fde3b1d2dc8906efaf05d07a3cbd43feaebfe4a5b2b",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        1,
+        261
+      ]
+    },
+    "item-2.png": {
+      "source": "public/image/avatar_items/item_c_a000.swf",
+      "sourceSha256": "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c",
+      "sha256": "a42663a4b2a86fd6dc958ce99b3dbed5eedd10378cf471d7d41adbfb14ee0308",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        3
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        2
+      ]
+    },
+    "item-3.png": {
+      "source": "public/image/avatar_items/item_c_a000.swf",
+      "sourceSha256": "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c",
+      "sha256": "35ad1b80523d81c2d57c4f4a997e2c366d825b7bbcc702173181badae6a3676f",
+      "sourceFrame": 3,
+      "sourceShapes": [
+        5
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        3
+      ]
+    },
+    "item-25.png": {
+      "source": "public/image/avatar_items/item_c_e001.swf",
+      "sourceSha256": "650752b8f5ac319a1fc84792c35fd602a1275a324797c0acc51c49a9e3ae93ad",
+      "sha256": "ef1c456a385f50ede1e17e430902a89f372ed12b457eefb970a562bb0560c2b0",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        2
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        25
+      ]
+    },
+    "item-26.png": {
+      "source": "public/image/avatar_items/item_c_e000.swf",
+      "sourceSha256": "748c02ee16c36cb0c894dceac1106311927337b28e50462a9d98fd57e7819243",
+      "sha256": "3dbd00d2c6a13e6cc2b74b64566c7ef0858a03b35838716a8950546cbdded224",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        26
+      ]
+    },
+    "item-27.png": {
+      "source": "public/image/avatar_items/item_c_b200.swf",
+      "sourceSha256": "92748c3c44559c02afdd61a6021a3fec8e8b967ab9c224fe42aba5a27a3b7c7e",
+      "sha256": "5821fc4913fed8399929fb88faac8efccc5da852bf729588cfe60244488b7c66",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        27
+      ]
+    },
+    "item-28.png": {
+      "source": "public/image/avatar_items/item_c_b201.swf",
+      "sourceSha256": "e7a2bd4968a2ac88943c784774e1040ce1837bd35e46324277f8b4479f871ba3",
+      "sha256": "74681f850ac7ccf63e3fe1193a7f5703deb67f65d9b5509056675c7ebb25a55e",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        28
+      ]
+    },
+    "item-29.png": {
+      "source": "public/image/avatar_items/item_c_e002.swf",
+      "sourceSha256": "3c5db4039a6a4f8132efde1efe7971fe3766aa8aa3a82b9b606d945e33c18198",
+      "sha256": "4da5d8bd76ca8956bddf462fc15547896abe115849705d1eb9c00abf9bb62af6",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        3,
+        4
+      ],
+      "sourceBitmaps": [
+        2
+      ],
+      "itemIds": [
+        29
+      ]
+    },
+    "item-37.png": {
+      "source": "public/image/avatar_items/item_c_f000.swf",
+      "sourceSha256": "52e692e5a5edd62f216dba3727204914818b0b8262dbbd7fabadb9c209e53c19",
+      "sha256": "d0770968ee6525613345ed201c225c7050994d55f1bd349f3135e676cc19d122",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        1,
+        4
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        37
+      ]
+    },
+    "item-38.png": {
+      "source": "public/image/avatar_items/item_c_a000.swf",
+      "sourceSha256": "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c",
+      "sha256": "28408d2903307659246fe58088033dce2789e38005636f4c4bea518543f1d1db",
+      "sourceFrame": 4,
+      "sourceShapes": [
+        7
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        38
+      ]
+    },
+    "item-39.png": {
+      "source": "public/image/avatar_items/item_c_a001.swf",
+      "sourceSha256": "2f366600de8aabdcf70e5484558e18c1b282b250c515ba49524933382dc10332",
+      "sha256": "b9e7a478027a7fa45cf972a04449fde5cb88f070bf18c43f7aca3f44f585a8af",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        39
+      ]
+    },
+    "item-40.png": {
+      "source": "public/image/avatar_items/item_c_b300.swf",
+      "sourceSha256": "f0a48915be3fba429ecff33b53a70d363672950f4832076b9aec1776c9566cf3",
+      "sha256": "66f7499e5ceb19e69dcd681f23990c41676840c1b85db229c18279cb7834509e",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        40
+      ]
+    },
+    "item-41.png": {
+      "source": "public/image/avatar_items/item_c_b300.swf",
+      "sourceSha256": "f0a48915be3fba429ecff33b53a70d363672950f4832076b9aec1776c9566cf3",
+      "sha256": "340e5e35ffebaaa803577a9f2a4d667bcf3c985ab8cd1dc2df914cc049051912",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        3
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        41
+      ]
+    },
+    "item-42.png": {
+      "source": "public/image/avatar_items/item_c_f000.swf",
+      "sourceSha256": "52e692e5a5edd62f216dba3727204914818b0b8262dbbd7fabadb9c209e53c19",
+      "sha256": "e5cdf43583921dbcfab008c824232198f6b85d12192e92e563f8a6b041f44571",
+      "sourceFrame": 3,
+      "sourceShapes": [
+        1,
+        5
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        42
+      ]
+    },
+    "item-46.png": {
+      "source": "public/image/avatar_items/item_c_a001.swf",
+      "sourceSha256": "2f366600de8aabdcf70e5484558e18c1b282b250c515ba49524933382dc10332",
+      "sha256": "b46317bec37f3782ed55134a7333d118ec6457b54d9604b0de12b28f7c3c1e70",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        3
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        46
+      ]
+    },
+    "item-50.png": {
+      "source": "public/image/avatar_items/item_c_f000.swf",
+      "sourceSha256": "52e692e5a5edd62f216dba3727204914818b0b8262dbbd7fabadb9c209e53c19",
+      "sha256": "1b026a80d2056c0f339e54e58c67df59da82e6c8f3d51c257971076c10669c5d",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        3
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        50
+      ]
+    },
+    "item-53.png": {
+      "source": "public/image/avatar_items/item_c_b150.swf",
+      "sourceSha256": "a8b38d19f6ae90d6512be40262ccd194fc3b4595cc0e901e5d15c2658ba02f3d",
+      "sha256": "c7baa7d2bf4969edc0259d2aac0c445de2fe92ebf4a301625c11d53f14b22fb8",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        2
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        53
+      ]
+    },
+    "item-54.png": {
+      "source": "public/image/avatar_items/item_c_b150.swf",
+      "sourceSha256": "a8b38d19f6ae90d6512be40262ccd194fc3b4595cc0e901e5d15c2658ba02f3d",
+      "sha256": "4e9a74fbe89fd7f8e0fa90763992acad990d86dff9f3edb8645c5b83278850d5",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        1,
+        5
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        54
+      ]
+    },
+    "item-55.png": {
+      "source": "public/image/avatar_items/item_c_b150.swf",
+      "sourceSha256": "a8b38d19f6ae90d6512be40262ccd194fc3b4595cc0e901e5d15c2658ba02f3d",
+      "sha256": "6a6a510879cba72e406ec4edd0bd301c679f3518a64eb4e5ae93688f47b20f0f",
+      "sourceFrame": 3,
+      "sourceShapes": [
+        8,
+        9
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        55
+      ]
+    },
+    "item-56.png": {
+      "source": "public/image/avatar_items/item_c_b150.swf",
+      "sourceSha256": "a8b38d19f6ae90d6512be40262ccd194fc3b4595cc0e901e5d15c2658ba02f3d",
+      "sha256": "5193347b93a2a235b4b867881650ce97d5a6b6984f1bd847c466b829de34374e",
+      "sourceFrame": 4,
+      "sourceShapes": [
+        8,
+        12
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        56
+      ]
+    },
+    "item-57.png": {
+      "source": "public/image/avatar_items/item_c_b150.swf",
+      "sourceSha256": "a8b38d19f6ae90d6512be40262ccd194fc3b4595cc0e901e5d15c2658ba02f3d",
+      "sha256": "5193347b93a2a235b4b867881650ce97d5a6b6984f1bd847c466b829de34374e",
+      "sourceFrame": 5,
+      "sourceShapes": [
+        8,
+        12
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        57
+      ]
+    },
+    "item-85.png": {
+      "source": "public/image/avatar_items/item_c_b100.swf",
+      "sourceSha256": "75f51b8dfd6acd75b7b182542e56b093bf15d164fc71d8e57fd68bf9ef957dcf",
+      "sha256": "073f482fda94da5b13c70e3d6a9ffe302eec7c3727930d7c8c20d44ba14abbcc",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        85,
+        86,
+        87
+      ]
+    },
+    "item-134.png": {
+      "source": "public/image/avatar_items/item_c_b160.swf",
+      "sourceSha256": "af3932cde799ade058f44d9de5a408561635cb49d36d966bddb5005ba433e37a",
+      "sha256": "cfc0c411453977970e885e1c667dee575bb5b6ae7d9a9d04102b766b86de7748",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        2
+      ],
+      "sourceBitmaps": [
+        1
+      ],
+      "itemIds": [
+        134
+      ]
+    },
+    "item-135.png": {
+      "source": "public/image/avatar_items/item_c_b160.swf",
+      "sourceSha256": "af3932cde799ade058f44d9de5a408561635cb49d36d966bddb5005ba433e37a",
+      "sha256": "8052bda7b749a97e1e054e1d5088377a31c49cc87f79e5c029e213f1ed254c16",
+      "sourceFrame": 2,
+      "sourceShapes": [
+        4
+      ],
+      "sourceBitmaps": [
+        3
+      ],
+      "itemIds": [
+        135
+      ]
+    },
+    "item-136.png": {
+      "source": "public/image/avatar_items/item_c_b160.swf",
+      "sourceSha256": "af3932cde799ade058f44d9de5a408561635cb49d36d966bddb5005ba433e37a",
+      "sha256": "fdbe1cd7761e22c26f24203c620f830a7859ab46a8421db4bdde76519ce5275c",
+      "sourceFrame": 3,
+      "sourceShapes": [
+        6
+      ],
+      "sourceBitmaps": [
+        5
+      ],
+      "itemIds": [
+        136
+      ]
+    },
+    "item-137.png": {
+      "source": "public/image/avatar_items/item_c_b160.swf",
+      "sourceSha256": "af3932cde799ade058f44d9de5a408561635cb49d36d966bddb5005ba433e37a",
+      "sha256": "0712df637c710a081b5b402c30e14beadf854169664a88b62776fa06324c07b8",
+      "sourceFrame": 4,
+      "sourceShapes": [
+        8
+      ],
+      "sourceBitmaps": [
+        7
+      ],
+      "itemIds": [
+        137
+      ]
+    },
+    "item-138.png": {
+      "source": "public/image/avatar_items/item_c_b160.swf",
+      "sourceSha256": "af3932cde799ade058f44d9de5a408561635cb49d36d966bddb5005ba433e37a",
+      "sha256": "3e7a5be6ce23e4608cb4102ffc0599abf68bc98d9ecca4edbe126e6e9202d7fb",
+      "sourceFrame": 5,
+      "sourceShapes": [
+        10
+      ],
+      "sourceBitmaps": [
+        9
+      ],
+      "itemIds": [
+        138
+      ]
+    },
+    "item-139.png": {
+      "source": "public/image/avatar_items/item_c_e049.swf",
+      "sourceSha256": "4bbb0bc075ed303d5966d8ac90de8eb963d896dff0adda97b617bb27f20ce10b",
+      "sha256": "5ff90213e8c64f8c7c07af76ff792988831bafe9da1c86631126e5d9282b912a",
+      "sourceFrame": 1,
+      "sourceShapes": [
+        1,
+        2
+      ],
+      "sourceBitmaps": [],
+      "itemIds": [
+        139
+      ]
+    },
+    "item-233.png": {
+      "source": "public/image/avatar_items/item_c_e028.swf",
+      "sourceSha256": "a6faedf9ea743e8fcb40bbdbfee8c414ba876e9c62c958c76902db12f36ee18f",
+      "sha256": "c84e3b92a8f20018874ed773d66cbd48ca53a5ebf12155d11962d30c80ebb29c",
+      "sourceFrame": 3,
+      "sourceShapes": [
+        7,
+        9
+      ],
+      "sourceBitmaps": [
+        8
+      ],
+      "itemIds": [
+        233
+      ]
+    },
+    "lobby-item-mincho.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "8e3c2277fa01639d9901e5f1a7e6ea19d80a0e9ac2090a7dc2cef2c14a4ee3d4",
+      "glyphs": " ()+-/0123456789ABCEGLMPUghilnostvx。一上下之乾人代以使個值偶克全具到力加動勝化友取古可型塊增夠大女好妖妙完寶將小巧幣年後得復念恢情憶持擁擬效敗數新方日星時書最有朋服本束果櫃櫥欄活液淨炎牌物特獲用白的石破神秘突節精糖紀紅級紫組結綠置能至色菇萃藍藥蘑虛行衣袋裝製記話赤追這週道重閉間關限靈青頁餅高魔黃點（），"
+    }
+  }
+}

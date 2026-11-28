@@ -916,7 +916,10 @@ export function createQuestDataReader() {
       if (!(tutorialQuestFlag >= 2008 && tutorialQuestClearNum >= 0)) return null;
       return Object.freeze({ tutorialQuestFlag, tutorialQuestClearNum });
     },
-    result() {
+    itemInventory() {
+      return readOwnedItems(values);
+    },
+    result(itemInventory = readOwnedItems(values)) {
       if (fieldIndex < questFields.length) throw new Error('Incomplete quest data.');
       const { capacity, count, inventoryIds, questIds, statuses, findTimes, questFlag, questClearNum } = values;
       if (capacity < 0 || count < 0 || questFlag < 0 || questClearNum < 0
@@ -939,7 +942,7 @@ export function createQuestDataReader() {
         }),
       };
       // The session uses this separately from the ordinary Quest inventory snapshot.
-      return Object.defineProperty(result, 'itemInventory', { value: readOwnedItems(values) });
+      return Object.defineProperty(result, 'itemInventory', { value: itemInventory });
     },
     dispose() {
       buffer?.fill(0);
