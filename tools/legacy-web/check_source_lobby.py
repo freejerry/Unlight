@@ -1472,11 +1472,11 @@ def check_movement_effects(page, *, rotations, transfers):
     page.wait_for_function("""({rotations, transfers}) => {
       const effects = window.qaQuestWire.sockets.at(-1).openingEffects;
       return effects.filter(([file]) => file === 'ulse08.mp3').length >= rotations
-        && effects.filter(([file, phase]) => file === 'ulse06.mp3' && phase !== 'draw').length >= transfers;
+        && effects.filter(([file, phase]) => file === 'ulse06.mp3' && phase === 'move').length >= transfers;
     }""", arg={"rotations": rotations, "transfers": transfers}, timeout=TIMEOUT)
     effects = read_movement_trace(page)["openingEffects"]
     assert sum(file == "ulse08.mp3" for file, _ in effects) == rotations, effects
-    assert sum(file == "ulse06.mp3" and phase != "draw" for file, phase in effects) == transfers, effects
+    assert sum(file == "ulse06.mp3" and phase == "move" for file, phase in effects) == transfers, effects
 
 
 def check_quest_movement(page, stage, directory, initial_hand, *, drop_reply):
@@ -1783,8 +1783,8 @@ def check_quest_combat(page, stage, directory, initial_hand, *, drop_reply):
         page.mouse.click(*duplicate_hit)
         trace = read_movement_trace(page)
         assert trace["combat"] == actions and [65, 8, 1, 0, card_id] in trace["replies"], trace
-        assert sum(file == "ulse06.mp3" for file, _ in trace["openingEffects"]) == sum(
-            file == "ulse06.mp3" for file, _ in effects_before
+        assert sum(file == "ulse06.mp3" and phase == role for file, phase in trace["openingEffects"]) == sum(
+            file == "ulse06.mp3" and phase == role for file, phase in effects_before
         )
         expect(result).to_have_count(0)
         capture(stage, directory, "19c-combat-reply-uncertain.png")
@@ -1892,8 +1892,8 @@ def check_quest_combat(page, stage, directory, initial_hand, *, drop_reply):
       dataset.player === 'true', Number(dataset.damage), dataset.nonHostile === 'true'
     ])""") == [[bool(payload[2]), payload[3], bool(payload[4])] for payload in health if payload[0] == 73]
     effects = read_movement_trace(page)["openingEffects"]
-    assert sum(file == "ulse06.mp3" for file, _ in effects) - sum(
-        file == "ulse06.mp3" for file, _ in effects_before
+    assert sum(file == "ulse06.mp3" and phase == role for file, phase in effects) - sum(
+        file == "ulse06.mp3" and phase == role for file, phase in effects_before
     ) == 3, effects
     assert sum(file == "ulse07.mp3" for file, _ in effects) == (len(die[3]) + len(die[4]) if die[3] and die[4] else 0), effects
     assert [phase for file, phase in effects if file == "ulse12.mp3" and phase not in {"draw", "move"}][:1] == [role], effects

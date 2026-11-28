@@ -39,11 +39,12 @@ def observe_battle_receipts(page, origin):
 
 def observe_battle_motion(page):
     page.evaluate("""() => {
-      const evidence = window.qaBattleMotion = {deals: {}, backs: {}, sweeps: {}, standing: [], stages: []};
+      const evidence = window.qaBattleMotion = {deals: {}, backs: {}, sweeps: {}, moveSweeps: {}, standing: [], stages: [], health: []};
       const identities = new WeakMap();
       const bounds = ['x', 'y', 'width', 'height'];
       let serial = 0;
       let phaseKey;
+      let healthKey;
       let lastStanding = 0;
       function box(node, boundsOrigin) {
         const rect = node.getBoundingClientRect();
@@ -58,12 +59,12 @@ def observe_battle_motion(page):
         }
         return true;
       }
-      function series(collection, node, root, now) {
+      function series(collection, node, root, now, context = {}) {
         if (!identities.has(node)) identities.set(node, ++serial);
         const samples = collection[identities.get(node)] ??= [];
         const pixels = box(node, root);
         if (samples.length < 24 && pixels.join() !== samples.at(-1)?.position.join()) {
-          samples.push({at: now, position: pixels, opacity: Number(getComputedStyle(node).opacity),
+          samples.push({at: now, position: pixels, opacity: Number(getComputedStyle(node).opacity), ...context,
             zone: node.parentNode.id, direction: node.dataset.coveredTransfer ?? null,
             identified: node.hasAttribute('data-card-id'), cardId: node.dataset.cardId ? +node.dataset.cardId : null});
         }
@@ -72,16 +73,30 @@ def observe_battle_motion(page):
         const battle = document.getElementById('quest-map-battle');
         if (battle) {
           const root = battle.getBoundingClientRect();
-          const {phase, exchangePhase, exchangeIndex, moveResult, intro, burn, outcomeState, turn} = battle.dataset;
+          const {phase, exchangePhase, exchangeIndex, combatRole, moveResult, intro, burn, outcomeState, turn} = battle.dataset;
+          const distance = battle.dataset.distance === undefined ? null : Number(battle.dataset.distance);
           const diceNode = battle.querySelector('#quest-battle-dice-roll');
           const dice = diceNode && (diceNode.dataset.state || 'mounted');
           const sweep = battle.querySelector('#quest-battle-exchange')?.dataset.sweepState;
           const result = battle.querySelector('#quest-battle-result')?.dataset.state;
-          const key = [phase, exchangePhase, exchangeIndex, moveResult, intro, burn, outcomeState, turn, dice, sweep, result].join(':');
+          const key = [phase, exchangePhase, exchangeIndex, moveResult, intro, burn, outcomeState, turn, dice, sweep, result, distance].join(':');
           if (key !== phaseKey) {
             evidence.stages.push({at: now, phase, exchangePhase, exchangeIndex, moveResult, intro, burn,
-              outcomeState, turn, dice, sweep, result});
+              outcomeState, turn, dice, sweep, result, distance});
             phaseKey = key;
+          }
+          if (turn === '1' && ['1', '2'].includes(exchangeIndex)) {
+            const indicator = battle.querySelector('#quest-battle-player-hp');
+            const comparison = Array.from(battle.querySelectorAll('#quest-battle-dice-symbols img')).some(painted);
+            const caption = Array.from(battle.querySelectorAll('.quest-battle-damage-number')).find(painted)?.textContent ?? null;
+            const done = battle.querySelector('button[data-combat-command="done"]');
+            const attackReady = exchangeIndex === '2' && combatRole === 'attack' && painted(done) && !done.disabled;
+            const hp = painted(indicator) ? Number(indicator.dataset.hp) : null;
+            const state = [exchangeIndex, dice, comparison, caption, hp, attackReady].join(':');
+            if (state !== healthKey) {
+              evidence.health.push({at: now, exchangeIndex, dice, comparison, caption, hp, attackReady});
+              healthKey = state;
+            }
           }
           if (phase === 'draw') {
             for (const node of battle.querySelectorAll('#quest-battle-player-hand .quest-battle-hand-card')) {
@@ -91,15 +106,20 @@ def observe_battle_motion(page):
           for (const node of battle.querySelectorAll('[data-covered-transfer]')) {
             series(evidence.backs, node, root, now);
           }
-          for (const node of battle.querySelectorAll('[data-sweep="discard"]')) {
-            series(evidence.sweeps, node, root, now);
+          const discard = battle.querySelectorAll('#quest-battle-player-table > [data-sweep="discard"], #quest-battle-opponent-table > [data-sweep="discard"]');
+          const moveDiscard = moveResult === 'sweeping' && sweep !== 'moving' && discard.length > 0;
+          for (const node of discard) {
+            if (moveDiscard) {
+              series(evidence.moveSweeps, node, root, now, {distance, up: node.dataset.up ?? null});
+            } else if (sweep === 'moving') series(evidence.sweeps, node, root, now);
           }
-          if ((phase === 'move' || moveResult === 'revealing') && now - lastStanding >= 50) {
-            const stands = Array.from(battle.querySelectorAll('.quest-battle-stand'), node =>
-              [node.dataset.side, painted(node), box(node, root)]);
+          if (moveDiscard || ((phase === 'move' || ['revealing', 'sweeping'].includes(moveResult)) && now - lastStanding >= 50)) {
+            const actors = Array.from(battle.querySelectorAll('.quest-battle-stand'));
+            const stands = actors.map(node => [node.dataset.side, painted(node), box(node, root)]);
             const avatar = battle.querySelector('.quest-battle-avatar-layer .quest-battle-avatar');
             if (evidence.standing.length < 800) evidence.standing.push({at: now, phase,
-              result: moveResult ?? null, stands, avatar: painted(avatar)});
+              result: moveResult ?? null, stands, avatar: painted(avatar), distance, moveDiscard,
+              standDistances: actors.map(node => Number(node.dataset.distance))});
             lastStanding = now;
           }
         }
@@ -311,6 +331,7 @@ def check_attention_controls(page, stage, battle, directory, card_id, skill_id, 
 
 def play_movement(page, stage, battle, directory, direction, movement_cards):
     start = qa.read_movement_trace(page)
+    initial_distance = int(battle.get_attribute('data-distance'))
     name = {-1: 'forward', 0: 'stay', 1: 'back'}[direction]
     battle.locator(f'button[data-move-command="{name}"]').click()
     expect(battle).to_have_attribute('data-direction', str(direction))
@@ -339,21 +360,53 @@ def play_movement(page, stage, battle, directory, direction, movement_cards):
     pending = qa.read_movement_trace(page)
     assert [packet[0] for packet in pending['replies'][len(start['replies']):] if packet[0] in (47, 48)] == [47]
     expect(battle.locator('#quest-battle-move-result')).to_be_hidden()
+    expect(battle.locator('[data-sweep="discard"]')).to_have_count(0)
+    expect(battle).to_have_attribute('data-distance', str(initial_distance))
     before = snapshot(page, stage, directory, '08-move-ok-before-authoritative-reveal')
     qa.release_movement_reply(page)
     expect(battle).to_have_attribute('data-move-result', 'settled', timeout=qa.TIMEOUT)
     (result,) = [packet for packet in qa.read_movement_trace(page)['replies'][len(start['replies']):] if packet[0] == 48]
     assert result[4] == movement_cards, result
     expect(battle).to_have_attribute('data-distance', str(result[3]))
-    motion = page.evaluate('window.qaBattleMotion.standing')
+    page.wait_for_function("() => window.qaBattleMotion.stages.some(sample => sample.moveResult === 'settled')")
+    animation = page.evaluate('window.qaBattleMotion')
+    motion = animation['standing']
     in_move = [sample for sample in motion if sample['phase'] == 'move']
     during_result = [sample for sample in motion if sample['result'] == 'revealing']
+    during_sweep = [sample for sample in motion if sample['moveDiscard']]
     assert in_move and len(during_result) >= 2, motion
-    for sample in in_move + during_result:
+    for sample in in_move + during_result + [sample for sample in motion if sample['result'] == 'sweeping']:
         assert sample['avatar'] and sorted((side, visible) for side, visible, _ in sample['stands']) == [
             ('opponent', True), ('player', True),
         ], sample
-    return {'before': before, 'receipt': result, 'standing': motion,
+    position_before_sweep = during_result[-1]['stands']
+    for sample in during_sweep:
+        assert sample['distance'] == initial_distance and sample['standDistances'] == [initial_distance] * 2, sample
+        assert sample['stands'] == position_before_sweep, sample
+
+    sweeps = list(animation['moveSweeps'].values())
+    for side, cards, locked, start_y in (
+            ('player', result[4], False, 346), ('opponent', result[5], bool(result[9]), 84)):
+        zone = f'quest-battle-{side}-table'
+        flights = [flight for flight in sweeps if flight[0]['zone'] == zone]
+        assert [[flight[0]['cardId'], flight[0]['up']] for flight in flights] == [
+            [None, None] if locked else [card, str(up).lower()] for card, up in cards
+        ], (side, cards, flights)
+        for flight in flights:
+            assert len(flight) > 1, flight
+            assert all(sample['zone'] == zone and sample['distance'] == initial_distance for sample in flight), flight
+            start_x, first_y, width, height = flight[0]['position']
+            end_x, end_y, *_ = flight[-1]['position']
+            assert (width, height) == (56, 86) and start_x > 290 and first_y == start_y, flight
+            assert abs(end_x + width / 2 - 40) <= 25 and abs(end_y + height / 2 - 105) <= 12, flight
+
+    distance_changed_at = None
+    if initial_distance != result[3]:
+        distance_changed_at = next(sample['at'] for sample in animation['stages']
+                                   if sample.get('moveResult') in ('sweeping', 'settled') and sample['distance'] == result[3])
+        assert all(sample['at'] < distance_changed_at for sample in during_sweep), during_sweep
+    return {'before': before, 'receipt': result, 'standing': motion, 'initialDistance': initial_distance,
+            'distanceChangedAt': distance_changed_at, 'discardSweep': sweeps,
             'after': snapshot(page, stage, directory, '09-actors-after-real-move-receipt')}
 
 
@@ -421,10 +474,38 @@ def check_enemy_first(page, stage, battle, directory, defense):
         assert start_x > 290 and start_y == 84, flight
         assert abs(end_x + width / 2 - 40) <= 25 and abs(end_y + height / 2 - 105) <= 12, flight
     dice = snapshot(page, stage, directory, '09-dice-roll-after-foe-card-discard')
+    hit = check_first_dwarf_hit(page, stage, battle, directory)
     expect(battle).to_have_attribute('data-exchange-index', '2', timeout=qa.TIMEOUT)
     return {'maskedTransfers': masked, 'flights': flights, 'before': before, 'closed': both, 'revealed': reveal,
             'submitted': submitted, 'after': after, 'bothFaces': both_faces, 'discardSweep': sweeps, 'movingAt': moving['at'],
-            'firstRenderedDiceAt': first_roll['at'], 'rolled': dice}
+            'firstRenderedDiceAt': first_roll['at'], 'rolled': dice, 'firstHit': hit}
+
+
+def check_first_dwarf_hit(page, stage, battle, directory):
+    hp = battle.locator('#quest-battle-player-hp')
+    comparison = battle.locator('#quest-battle-dice-symbols img:visible').first
+    expect(comparison).to_be_visible(timeout=qa.TIMEOUT)
+    expect(hp).to_have_text('6/7')
+    dice_comparison = snapshot(page, stage, directory, '09-first-hit-still-pending-during-dice-comparison')
+    page.wait_for_function("() => window.qaBattleMotion.health.some(sample => sample.attackReady)", timeout=qa.TIMEOUT)
+    expect(hp).to_have_text('3/7')
+    expect(battle.locator('button[data-combat-command="done"]')).to_be_enabled()
+    expect(battle.locator('.quest-battle-damage-number')).to_have_text('3')
+    resumed = snapshot(page, stage, directory, '09-next-attack-with-confirmed-hp-and-lingering-damage')
+
+    replies = qa.read_movement_trace(page)['replies']
+    first_hit = next(packet for packet in replies if packet[0] == 73)
+    assert first_hit == [73, 8, 1, 3, 0], first_hit
+    assert next(i for i, packet in enumerate(replies) if packet[0] == 56) < replies.index(first_hit), replies
+    timeline = page.evaluate('window.qaBattleMotion.health')
+    attacked = next(sample for sample in timeline if sample['hp'] == 3)
+    ready = next(sample for sample in timeline if sample['attackReady'])
+    before_damage = [sample for sample in timeline if sample['at'] < attacked['at']]
+    assert any(sample['dice'] for sample in before_damage) and any(sample['comparison'] for sample in before_damage), timeline
+    assert all(sample['hp'] == 6 for sample in before_damage) and not attacked['comparison'], timeline
+    assert attacked['exchangeIndex'] == '1' and ready['hp'] == 3 and ready['caption'] == '3', timeline
+    assert ready['at'] - attacked['at'] >= 900, timeline
+    return {'receipt': first_hit, 'timeline': timeline, 'comparison': dice_comparison, 'nextAttack': resumed}
 
 
 def wait_for_own_attack(page, battle, defense):

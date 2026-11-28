@@ -1,9 +1,9 @@
 import { BATTLE_CARD_ART } from './battle-card.js';
 import { playQuestBattleEffect } from './bgm.js';
+import { sweepQuestTableCards } from './quest-battle-move.js';
 import { questDiceEye } from './quest-dice-roll.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const sweepEase = 'linear(0, 0.35158, 0.57955, 0.72737, 0.82322, 0.88537, 0.92567, 0.95181, 0.96875, 0.97974, 0.98686, 0.99148, 0.99448, 0.99642, 0.99768, 0.99849, 1)';
 
 function append(parent, tag, id, className) {
   const node = document.createElement(tag);
@@ -37,11 +37,13 @@ function presentation(exchange, distance) {
 
 export function createQuestBattleExchange(battle, {
   signal, isCurrent, assets, status, hands, move, combatControls, showTable, showPhase, cutIn, startTimer, updateHp,
-  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll, playFeats, playHit, playAttackPose, onSettled,
+  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll, playFeats, playHit, getHitSignal, playAttackPose, onSettled,
 }) {
   const root = layer(battle, 'quest-battle-exchange', 26, 'quest-battle-exchange');
   const points = layer(root, 'quest-battle-combat-points', 0, 'quest-battle-combat-points');
   const rollArt = loadDiceArt();
+  let damageLabel;
+  void rollArt.then(art => { damageLabel = art?.damage?.label; }, () => {});
   let receipt;
   let shown;
   let stopTimer;
@@ -53,7 +55,7 @@ export function createQuestBattleExchange(battle, {
   let featInsertion;
   let rolled = false;
   let hitCount = 0;
-  let hitTask = Promise.resolve();
+  let hpGate = Promise.resolve();
   let diceSettled = Promise.resolve();
   let pointsKey;
   let resultFinished;
@@ -204,33 +206,8 @@ export function createQuestBattleExchange(battle, {
 
   async function sweepPlayedCards(reveal) {
     root.dataset.sweepState = 'moving';
-    const sides = [
-      [hands.playerTable, reveal.playerCards, false],
-      [hands.opponentTable, reveal.opponentCards, reveal.opponentLocked],
-    ];
-    for (const [table, cards, locked] of sides) {
-      if (!live()) return;
-      const ids = new Set(cards.map(({ id }) => String(id)));
-      const spent = Array.from(table.children).filter(node =>
-        node.classList.contains('quest-battle-reveal-card') &&
-        (locked ? node.dataset.locked === 'true' : ids.has(node.dataset.cardId))).slice(0, cards.length);
-      await Promise.all(spent.map(async (card, index) => {
-        const x = 40 - Number.parseFloat(card.style.left);
-        const y = 105 - Number.parseFloat(card.style.top);
-        if (!reduced() && Number.isFinite(x) && Number.isFinite(y)) {
-          const stagger = (index + 1) * 40;
-          card.dataset.sweep = 'discard';
-          void wait(stagger * .7, signal).then(() => { if (live()) playQuestBattleEffect('deal', signal); });
-          await animate(card, [{ translate: '0 0' }, { translate: `${x}px ${y}px` }], 200 / 1.7, signal, stagger / 1.7, sweepEase);
-        } else if (live()) playQuestBattleEffect('deal', signal);
-        if (live()) card.remove();
-      }));
-      if (live()) table.dataset.count = String(table.children.length);
-    }
-    if (live()) {
-      hands.opponentTable.setAttribute('aria-label', `對手已放置 ${hands.opponentTable.children.length} 張牌`);
-      root.dataset.sweepState = 'settled';
-    }
+    await sweepQuestTableCards(hands, reveal, { signal, isCurrent: live, animate, wait });
+    if (live()) root.dataset.sweepState = 'settled';
   }
 
   async function showDice(exchange) {
@@ -256,6 +233,37 @@ export function createQuestBattleExchange(battle, {
     ]);
   }
 
+  async function damageCaption(hit, x, hitSignal) {
+    const number = append(root, 'span', undefined, 'quest-battle-damage-number');
+    const parts = [number];
+    try {
+      number.setAttribute('aria-hidden', 'true');
+      number.textContent = String(hit.damage);
+      place(number, x - 240, 139, 250, 120);
+      if (damageLabel) {
+        const marker = sprite(root, { ...damageLabel, x: x + 23, y: 216 }, BATTLE_CARD_ART);
+        if (marker) parts.push(marker);
+      }
+      await Promise.all(parts.map(node =>
+        animate(node, [{ opacity: 0, scale: 4 }, { opacity: 1, scale: 1 }], 250, hitSignal, 300)));
+      await wait(2200, hitSignal);
+      if (hitSignal.aborted) return;
+      await Promise.all(parts.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 220, hitSignal)));
+    } finally {
+      for (const part of parts) part.remove();
+    }
+  }
+
+  function showDamage(hit, distance, hitSignal) {
+    if (!hitSignal || hitSignal.aborted) return;
+    playQuestBattleEffect(distance === 1 ? 'slash' : 'bullet', hitSignal);
+    if (reduced()) return;
+    const x = (hit.player ? [288, 184, 80, 184] : [472, 576, 680, 576])[distance - 1];
+    if (Number.isFinite(x)) void damageCaption(hit, x, hitSignal).catch(() => {});
+    if (playHit) void Promise.resolve().then(() => !hitSignal.aborted
+      && playHit({ hit, distance, battle, signal: hitSignal })).catch(() => {});
+  }
+
   function displayHits(exchange, distance) {
     const pending = exchange.damage.slice(hitCount);
     hitCount = exchange.damage.length;
@@ -278,7 +286,8 @@ export function createQuestBattleExchange(battle, {
     const hits = pending.map(hit => {
       const side = hit.player ? 'player' : 'opponent';
       if (Number.isInteger(health[side])) health[side] = Math.max(0, health[side] - hit.damage);
-      return { hit, hp: { ...health } };
+      const hitSignal = hit.damage > 0 ? getHitSignal(side) : null;
+      return { hit, hp: { ...health }, hitSignal };
     });
     for (const side of ['player', 'opponent']) {
       const absolute = exchange.hitPoints[side];
@@ -288,42 +297,40 @@ export function createQuestBattleExchange(battle, {
     }
     if (pending.length || !Object.is(previous.player, health.player) || !Object.is(previous.opponent, health.opponent)) {
       const confirmedHp = { ...health };
-      hitTask = hitTask.then(async () => {
-        await diceSettled;
+      const beforeHp = rolled ? diceSettled : Promise.all([sweepTask, featInsertion]);
+      hpGate = hpGate.then(async () => {
+        await beforeHp;
         if (!live()) return;
         if (!hits.length) {
           await updateHp(confirmedHp);
           return;
         }
-        for (const [index, { hit, hp }] of hits.entries()) {
-          const targetHp = index === hits.length - 1 ? confirmedHp : hp;
-          if (hit.damage <= 0) {
-            if (live()) await updateHp(targetHp);
-            continue;
-          }
-          const label = (await rollArt)?.damage?.label;
+        for (const [index, { hit, hp, hitSignal }] of hits.entries()) {
           if (!live()) return;
-          playQuestBattleEffect(distance === 1 ? 'slash' : 'bullet', signal);
-          const x = (hit.player ? [288, 184, 80, 184] : [472, 576, 680, 576])[distance - 1];
-          const marker = label && sprite(root, { ...label, x: x + 23, y: 216 }, BATTLE_CARD_ART);
-          const number = append(root, 'span', undefined, 'quest-battle-damage-number');
-          number.setAttribute('aria-hidden', 'true');
-          number.textContent = String(hit.damage);
-          place(number, x - 240, 139, 250, 120);
-          const parts = [marker, number].filter(Boolean);
-          const caption = async () => {
-            if (!reduced()) {
-              await Promise.all(parts.map(node => animate(node, [{ opacity: 0, scale: 4 }, { opacity: 1, scale: 1 }], 250, signal, 300)));
-              if (live()) await wait(2200, signal);
-              if (live()) await Promise.all(parts.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 220, signal)));
-            }
-            for (const part of parts) part.remove();
-          };
-          const effect = playHit && Promise.resolve().then(() => live() && playHit({ hit, distance, battle, signal })).catch(() => false);
-          await Promise.all([caption(), updateHp(targetHp), effect]);
+          const targetHp = index === hits.length - 1 ? confirmedHp : hp;
+          if (hit.damage > 0) {
+            void Promise.resolve().then(() => showDamage(hit, distance, hitSignal)).catch(() => {});
+          }
+          await updateHp(targetHp);
+          if (hit.damage > 0) await wait(1000, signal);
         }
       });
     }
+  }
+
+  async function settle(exchange) {
+    let queuedHp;
+    do {
+      queuedHp = hpGate;
+      await Promise.all([diceSettled, queuedHp, sweepTask, featInsertion, cutInExit]);
+    } while (live() && queuedHp !== hpGate);
+    if (!live()) return;
+    const result = summary(exchange);
+    result.dataset.state = exchange.phase;
+    result.dataset.boundary = exchange.boundary;
+    hands.playerTable.hidden = true;
+    hands.opponentTable.hidden = true;
+    onSettled?.(exchange);
   }
 
   function update(state) {
@@ -354,15 +361,7 @@ export function createQuestBattleExchange(battle, {
     displayHits(exchange, distance);
     if ((exchange.phase === 'terminal' || exchange.phase === 'complete') && exchange.boundary && !resultFinished) {
       resultFinished = true;
-      void Promise.all([diceSettled, hitTask, sweepTask, featInsertion, cutInExit]).then(() => {
-        if (!live()) return;
-        const result = summary(exchange);
-        result.dataset.state = exchange.phase;
-        result.dataset.boundary = exchange.boundary;
-        hands.playerTable.hidden = true;
-        hands.opponentTable.hidden = true;
-        onSettled?.(exchange);
-      });
+      void settle(exchange);
     }
     if (exchange.duelFinish) summary(exchange).dataset.duelResult = String(exchange.duelFinish.result);
     if (exchange.questFinish) summary(exchange).dataset.questResult = String(exchange.questFinish.result);

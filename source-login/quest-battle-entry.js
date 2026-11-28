@@ -3,7 +3,9 @@ import { BATTLE_CARD_ART, battleCardControls, battleCharacterReverse, battleExch
 import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
 import { createQuestFeatPlayback } from './quest-battle-feat.js';
-import { animateInitialDeckCount, createCoveredOpponentCards, createQuestBattleMove } from './quest-battle-move.js';
+import {
+  animateInitialDeckCount, createCoveredOpponentCards, createQuestBattleMove, sweepQuestTableCards,
+} from './quest-battle-move.js';
 import { mountQuestDuelResult } from './quest-battle-result.js';
 import { playQuestDiceRoll } from './quest-dice-roll.js';
 import { playQuestAttackPose, playQuestHitEffect } from './quest-hit-effect.js';
@@ -403,6 +405,44 @@ function inspectCharacter(parent, definition, id, damage, signal) {
     flipping = false;
   });
   return { canvas, ready };
+}
+
+function createDamageScopes(standees, signal, activeRoster) {
+  const scopes = new Map();
+  function target(side) {
+    const actor = standees.querySelector(`.quest-battle-stand[data-side="${side}"]`);
+    const roster = activeRoster()?.[side];
+    const index = roster?.activeIndex;
+    if (!actor || (roster && roster.cards[index]?.cardId !== Number(actor.dataset.cardId))) return null;
+    return { actor, index };
+  }
+  function clear() {
+    for (const scope of scopes.values()) scope.controller.abort();
+    scopes.clear();
+  }
+  function sync() {
+    for (const [side, scope] of scopes) {
+      const current = target(side);
+      if (current?.actor === scope.actor && current.index === scope.index) continue;
+      scope.controller.abort();
+      scopes.delete(side);
+    }
+  }
+  return {
+    get(side) {
+      sync();
+      if (signal.aborted) return null;
+      const current = target(side);
+      if (!current) return null;
+      if (!scopes.has(side)) {
+        const controller = new AbortController();
+        scopes.set(side, { ...current, controller, signal: AbortSignal.any([signal, controller.signal]) });
+      }
+      return scopes.get(side).signal;
+    },
+    sync,
+    clear,
+  };
 }
 
 function renderHealth(layerNode, assets, encounter, definitions, signal) {
@@ -1146,6 +1186,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   let duelResult;
   let resultStatus;
   const featPlayback = createQuestFeatPlayback(battle, { signal, isCurrent, onSound: onBattleSound, wait });
+  const damageScopes = createDamageScopes(standees, signal, () => latest?.roster);
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
 
   async function updateHp(hitPoints) {
@@ -1191,6 +1232,9 @@ async function renderBattleHud(battle, sourceAvatar, {
     await Promise.all([revealMoveCards(hands, result, signal), featPlayback.play(latest.feats?.used, visibleTurn, null)]);
     if (signal.aborted || !isCurrent()) return;
     await showMoveArrows(battle, hud.movePresentation, result, signal);
+    if (signal.aborted || !isCurrent()) return;
+    battle.dataset.moveResult = 'sweeping';
+    await sweepQuestTableCards(hands, result, { signal, isCurrent, animate, wait });
     if (signal.aborted || !isCurrent()) return;
     range?.remove();
     range = sprite(main, hud.range?.[rangeNames[result.distance - 1]]);
@@ -1258,7 +1302,7 @@ async function renderBattleHud(battle, sourceAvatar, {
         startTimer: onTimeout => startMoveTimer(main, hud.time, signal, onTimeout, true),
         loadDiceArt: () => battleExchangeArt(signal), playDiceRoll: playQuestDiceRoll,
         playFeats: exchange => featPlayback.play(latest.feats?.used, exchange.turn, key),
-        playHit: playQuestHitEffect, playAttackPose: playQuestAttackPose,
+        playHit: playQuestHitEffect, getHitSignal: damageScopes.get, playAttackPose: playQuestAttackPose,
         onSettled() {
           if (combatView !== active) return;
           active.settled = true;
@@ -1319,6 +1363,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     move.setCombatRole(undefined);
     if (!reduced()) await wait(1500, signal);
     if (signal.aborted || !isCurrent()) return;
+    damageScopes.clear();
     const pieces = [...battleChrome, hands.root];
     for (const node of pieces) node.inert = true;
     await Promise.all(pieces.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 500 / 1.7, signal)));
@@ -1484,6 +1529,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   function receive(next) {
     if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
     latest = next.adventure.battle;
+    damageScopes.sync();
     featPlayback.preload(latest.feats?.used);
     skills?.update(latest.feats);
     if (battle.dataset.moveResult === 'settled') void featPlayback.play(latest.feats?.used, visibleTurn, null);
