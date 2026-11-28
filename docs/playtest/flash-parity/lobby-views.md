@@ -49,6 +49,7 @@
 
 - `btn_e` 是整頁 `ItemView`。繁中 `item_inventory_ch.swf` 置於 `(0,0)`，`item_panel`／`item_base` 支援分類、列表、卡格及操作。道具／身體／衣服／飾品，預設第一頁。道具列表 `(24,104)`、部件數 `(449,630)`，共用 `PL_AVATAR_QUEST`。入退場 tween 約 470.6ms，入場程式在 join 之後才掛主容器，不能直接據該值推斷每層可見順序。 [ItemView.as](../../../app/client/src/view/ItemView.as#L74) · [ItemView.as](../../../app/client/src/view/ItemView.as#L220) · [ItemInventoryImage.as](../../../app/client/src/view/image/item/ItemInventoryImage.as#L23) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L55)
 - **待移植。** 整頁先驗原版進場、四個外層分類、真實庫存及返回大廳。固定繁中道具頁內部為虛擬人物、任務、對戰、突擊、特殊。原版道具格每頁 5×3，子分類與翻頁用 `item_panel_ch` 的命名按鈕。道具沿用已認證的實體庫存；外觀頁還需從 `SC6`／`SC4` 保留全部實體部件、裝備狀態、期限及容量。裝備、消耗和服務警告各有後續原版操作驗收。[原版素材與座標盤點](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/source-audit.md) · [登入庫存欄位](../../../app/server/src/protocol/command/datacommand.rb#L187)
+- **Flash 實跑。** 從大廳原大型 `btn_e` 進整頁道具，經黑色過場進場。切四個外層分頁再按 `(736,16)` 返回大廳。入口實測送出 Lobby `CS17` 和 `CS25(0)`。全程保留既有 Lobby 與 Data，隔離角色的實體道具、六件外觀及付款列一致。Ruffle 的同一個音訊 context 持續運作。[四個完整畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/original-four-tabs.png) · [原版進出證據](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/README.md)
 
 ### 右側道具速查
 
