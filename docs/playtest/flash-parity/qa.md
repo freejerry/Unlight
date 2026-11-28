@@ -157,6 +157,8 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 敗北案例使用 `--quest-terminal defeat`。保存任務 1 的既有傷勢 `[6,0,0]`，在原始角色卡 21 的 7 HP 中保留 1 HP。用原版空移動桌、後退與不出牌的攻防，讓 Ruby 依當場骰點決定結果。遭擊倒後核對 `SC41=1`、同一持有項移除、`SC24=1`、敗北圖及地圖的任務失敗面板，並查 SQLite 的歸檔與牌組狀態。[原版隔離資料準備及和局模型](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/README.md)
 
+繁中 Flash 對照使用同一張 1 HP 起始角色卡，保留實戰骰點。等結果與報酬完整出現再點 `(657,616)`，在任務失敗面板點 `(233,292)`，關閉後以 `(735,15)` Back 結束。截取兩個面板、原任務地圖及大廳，對照確認前後 SQLite 快照和原版混音。[原版瀏覽器證據](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/wire.json) · [混音比對](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/audio-samples.json)
+
 ### 重跑末格寶箱與區域解鎖
 
 沿用上節的持有任務 3、魔女山谷通關數 3、單張起始卡及同一組 Ruby 服務，改用 `--quest-complete-q3`。照當場原始手牌打完兩場。第二場勝利後放行 `SC19` 的累積遮罩 18 及 `SC13` 的實體卡，暫緩同一條 Quest 的真 `SC25`。Ruby 此時已保存獎勵，畫面仍需維持結果、未開放 OK 與未切換區域。接續交付同場回覆，核對正確卡號、兩次傷勢回覆、通關數和旗標、刪除及任務結果。

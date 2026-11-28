@@ -117,7 +117,7 @@
 
 ### 後續驗收
 
-1. 落日大蝙蝠已實跑勝利與新版敗北的兩次 OK 及返回。接續繁中 Flash 敗北畫面對照及兩版和局，核對結果圖、音效、報酬、兩次確認及任務歸檔。和局使用自己的戰鬥結果圖，地圖結算使用任務失敗圖。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
+1. 落日大蝙蝠的勝利與敗北已實跑繁中 Flash 及新版的兩次 OK 和返回。接續兩版和局，核對結果圖、音效、報酬、兩次確認及任務歸檔。和局使用自己的戰鬥結果圖，地圖結算使用任務失敗圖。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
 2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 核對有獎勵骰的終局，依實際 Ruby 獎勵流程驗證高低選擇、取消、重試及獎勵交接。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
 4. q3 大蝙蝠之群已完成首區頭目固定蝙蝠卡寶箱、通關與區域切換。接續 q4 山丘矮人（slot1 空地→4 戰鬥）與 q32 紫色泥沼澤2（首格固定 30 Gem，下一格戰鬥）。核對同一 Quest、同一持有 ID、原牌組鎖、傷勢及已清格。另選單卡與真正兩卡可換角牌組。保存畫面、聲音時序及 Ruby 存檔查核。
@@ -259,7 +259,16 @@
 - 原版以雙方隊伍總 HP 判定結果。現役角色倒下且沒有存活後備時結束。雙方仍存活時沿用 18 回合上限，總 HP 相同則回傳 `SC41` 的和局值 `2`。任務控制器使用真實對局結果保存通關日誌，並以任務失敗 `SC24=1` 關閉敗北與和局的持有列，釋放牌組。[原版回合與結束條件](../../../app/server/src/rule/event/multi_duel_event.rb#L43) · [原版總 HP 比較](../../../app/server/src/rule/multi_duel.rb#L531) · [任務失敗處理](../../../app/server/src/controller/quest_controller.rb#L674)
 - 敗北及和局各有原始 Lose／Draw 圖，沿用 `ulse15.mp3`。第一次 OK 按戰鬥結算退場至任務地圖，地圖顯示任務失敗面板。第二次 OK 恢復地圖操作。驗收分別記錄 Ruby 對局結果、實收獎勵、畫面、原持有列歸檔狀態 5 及牌組解鎖。[原版結果和聲音](../../../app/client/src/view/scene/game/QuestResultScene.as#L92) · [原版任務失敗圖和確認](../../../app/client/src/view/image/quest/QuestClearPanel.as#L65) · [任務歸檔狀態](../../../app/server/src/model/avatar_quest_inventory.rb#L55)
 - 原版 Ruby 離線模型以固定亂數及虛擬時鐘重跑。落日大蝙蝠的敗北起始為 1 HP，第一回合由原版 CPU 擲骰擊倒。另一個種子完整進行 18 回合，雙方保留 1 HP，原版自然到期判和 `2`。模型證據記錄判定規則與使用的前置傷勢，和局的實際瀏覽器畫面與任務回覆另待驗。[原版模型條件與完整紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/README.md) · [18 回合和局](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/q1-draw-trace.json)
+- 繁中 Flash 自然發牌及擲骰，原版 CPU 在首回合擊倒同為 1 HP 的角色，Ruby 回 `SC41=1`、3 Gem、2 Exp、同一持有列的 `SC22`、`SC24=1`。實際點 `(657,616)` 和 `(233,292)` 依序確認 Lose 及任務失敗，前後 SQLite 快照相同。地圖維持 0/3、AP 4/5、牌組解鎖。最後 `(735,15)` Back 才送唯一 `CS2`，再回大廳。原版混音與 MP3 的比對結果為敗北音 0.966、返回任務曲 1.000、回大廳曲 1.000。[原版點擊與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/wire.json) · [原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/relay-wire.json) · [原版返回大廳](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/15-original-lobby-after-back.png) · [混音比對](/workspace/shared/unlight-web-port/flash-parity/quest-next-terrain-original/q1-loss-verified/audio-samples.json)
 - 新版在同樣既有傷勢 6 的角色上，第一回合實際從 1 HP 歸零。收到原版 `SC41=1`、3 Gem、2 Exp、同一持有 ID 的 `SC22` 及 `SC24=1`。依序確認 Lose 和任務失敗後，區域維持 0/3，牌組解鎖，地圖 Back 的原 Quest 正常關閉。四條登入連線保留。[敗北結算](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-07-one-hp-defeat.png) · [任務失敗](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-08-quest-failed.png) · [返回地圖](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-09-defeat-restored-map.png) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-native-next-land-wire.json)
+- 並排可見原版空任務清單左下方約 `(464,232)` 有捲軸把手，新版尚缺；空清單及多筆任務的捲動與命中需併入地圖回歸。敗北結果的原版截圖為 OK 懸停，新版截圖為一般狀態。[敗北並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q1-lose-comparison.png) · [空清單及任務失敗並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q1-quest-failed-comparison.png)
+
+### 下一批非戰鬥地形
+
+| 路徑 | 已核對的來源及待驗動作 |
+| --- | --- |
+| 山丘矮人 | 首格「森林小道」在 `(225,125)` 點擊。Ruby 依序回 `SC128`、同一持有列的 `SC19` 遮罩 2。棋子從 `(224,76)` 移到 `(224,140)`，約 529 ms，沿用任務曲，操作暫停 1,200 ms 後開放下格。直接滑入再點 `(225,204)` 的「通往集落之路1」。下格用 `SC128`、`SC37`、`SC40` 進到 stage 2，`SC37` 提供傷勢。補道路底圖、循環遠景、森林侏儒 1001 及 `bgm002.mp3`。驗收固定舞台、同 Quest、同牌組鎖及兩格間的指標和輸入。[任務資料](../../../app/server/data/csv/tcn/Quests.csv#L5) · [原版地形點擊](../../../app/client/src/view/scene/quest/QuestLandClip.as#L271) · [原版棋子](../../../app/client/src/view/scene/quest/QuestCharaClip.as#L139) · [遠景](../../../app/client/src/view/image/game/FarBG.as#L118) |
+| 紫色泥沼澤2 | 首格「寂靜之丘」先到達、清格並收到 Gem 絕對餘額，再由 `SC25` 確認寶物 `50001` 的 `[5,1,30]`。ActionScript 延遲 1,500 ms 交付寶箱，沿用滑入、翻牌與 `ulse23.mp3`。正面用原始 Gem 卡框與 `item_a_a001.swf`，顯示 `GET GEM!!` 及 `30 Gem`。寶箱 OK 後可選格 3 大蛙 1007／stage 3 或格 5 森林侏儒 1001／stage 2。驗收暫緩回覆、單次本機確認、兩個地標和真實下一格入場，保存餘額及持有列證據。[任務資料](../../../app/server/data/csv/tcn/Quests.csv#L33) · [固定 30 Gem](../../../app/server/data/csv/ja/TreasureDatas.csv#L989) · [原版寶箱延遲](../../../app/client/src/net/server/QuestServer.as#L758) · [Gem 卡面](../../../app/client/src/view/scene/common/GemCardClip.as#L87) |
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 
