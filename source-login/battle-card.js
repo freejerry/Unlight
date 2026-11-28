@@ -65,7 +65,7 @@ function skillCondition(condition) {
 }
 
 /** Localized source feat requirements, effect, and reverse-side description. */
-export function formatBattleSkill(skill) {
+export function formatBattleSkill(skill, cardCondition) {
   if (typeof skill?.caption !== 'string' || !skill.caption.startsWith('[')) return null;
   const source = skill.caption
     .replaceAll('__CONDITION__', () => skillCondition(skill.condition ?? ''))
@@ -79,7 +79,8 @@ export function formatBattleSkill(skill) {
     end += 1;
   }
   if (depth) return null;
-  const [phase, range, cards] = source.slice(1, end - 1).split(':');
+  const [phase, range, baseCards] = source.slice(1, end - 1).split(':');
+  const cards = cardCondition ?? baseCards;
   const [effect, ...story] = source.slice(end).split('|');
   const requirements = [
     ['階段', phase.replace(/攻撃/g, '攻擊').replace(/防御/g, '防禦')],

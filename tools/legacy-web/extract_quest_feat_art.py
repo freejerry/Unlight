@@ -42,6 +42,17 @@ FEATS = {
         "sha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
         "frames": 56, "childStops": {},
     },
+    "i-choose-you": {
+        "ids": [1262], "name": "I Choose You", "file": "public/image/cutinchara64_skl02.swf",
+        "sha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+        "frames": 51, "childStops": {29: 9},
+    },
+    "trouble-craft": {
+        "ids": [1264], "name": "創贈麻煩", "file": "public/image/cutinchara64_skl03.swf",
+        "sha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+        "frames": 52, "childStops": {},
+        "renderLimits": {"heap_mib": 40, "rss_budget_kib": 120 * 1024},
+    },
 }
 WIDTH, HEIGHT = 760, 680
 VISIBLE_STAGE_WIDTH = 780
@@ -132,11 +143,11 @@ def available_cgroup_memory():
         return None
 
 
-def render_frames(ffdec, movie, destination):
+def render_frames(ffdec, movie, destination, *, heap_mib=24, rss_budget_kib=RSS_BUDGET_KIB):
     # A single interpreter worker avoids the Java JIT and GUI memory overhead.
     # Feed no ABC to FFDec. It rasterizes original SWF display-list primitives.
     command = [
-        "java", "-Xint", "-Xms6m", "-Xmx24m", "-Xss192k", "-XX:MaxMetaspaceSize=18m",
+        "java", "-Xint", "-Xms6m", f"-Xmx{heap_mib}m", "-Xss192k", "-XX:MaxMetaspaceSize=18m",
         "-XX:CompressedClassSpaceSize=6m", "-XX:ReservedCodeCacheSize=3m",
         "-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC", "-Djava.awt.headless=true",
         f"-Duser.home={destination}", "-jar", str(ffdec), "-onerror", "abort",
@@ -148,7 +159,7 @@ def render_frames(ffdec, movie, destination):
             deadline = monotonic() + 240
             while process.poll() is None:
                 spare = available_cgroup_memory()
-                if rss_kib(getpid()) + rss_kib(process.pid) > RSS_BUDGET_KIB or (
+                if rss_kib(getpid()) + rss_kib(process.pid) > rss_budget_kib or (
                     spare is not None and spare < CGROUP_MARGIN_BYTES
                 ) or monotonic() > deadline:
                     process.kill()
@@ -217,10 +228,11 @@ def extract(assets, output, ffdec, clip=None):
         scratch = Path(directory)
         exports = {}
         for key in (clip,) if clip else FEATS:
+            feat = FEATS[key]
             movie = scratch / f"{key}.swf"
-            movie.write_bytes(export_movie(assets / FEATS[key]["file"], FEATS[key]))
+            movie.write_bytes(export_movie(assets / feat["file"], feat))
             exports[key] = scratch / key
-            render_frames(ffdec, movie, exports[key])
+            render_frames(ffdec, movie, exports[key], **feat.get("renderLimits", {}))
         output.mkdir(parents=True, exist_ok=True)
         collect_frames(output, exports, index)
 

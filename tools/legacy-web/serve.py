@@ -35,6 +35,7 @@ SERVER_CSV = ROOT.parents[1] / "app/server/data/csv"
 MAX_QUEST_IDS = 127
 MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
 MAX_QUEST_CHARACTER_CARD_IDS = 6  # Two rosters have at most three slots each.
+MAX_QUEST_FEAT_IDS = 8  # Four visible slots per side.
 MAX_DECK_CHARACTER_CARD_IDS = 64
 CHARACTER_CARD_KIND = 0  # CC_KIND_CHARA
 REBORN_CHARACTER_CARD_KIND = 8  # CC_KIND_REBORN_CHARA
@@ -343,11 +344,9 @@ def native_quest_character_card_catalog():
         return {int(row["id"]): int(row["hp"]) for row in DictReader(source)}
 
 
-def native_deck_character_card_catalog():
-    with (SERVER_CSV / "ja/Charactors.csv").open(encoding="utf-8-sig", newline="") as source:
-        characters = {int(row["id"]): row for row in DictReader(source)}
-
-    # CharaCard#feats_id uses FeatInventory order. Feat.as derives the type from the caption phase.
+@lru_cache(maxsize=1)
+def native_quest_feat_catalog():
+    # Feat.as derives the type from the caption phase.
     phase_types = {"攻撃": "atk", "防御": "deff", "移動": "mov"}
     feats = {}
     with (SERVER_CSV / "ja/Feats.csv").open(encoding="utf-8-sig", newline="") as source:
@@ -358,6 +357,7 @@ def native_deck_character_card_catalog():
             feat_id = int(row["id"])
             feats[feat_id] = {
                 "id": feat_id,
+                "featNo": int(row["feat_no"]),
                 "name": name,
                 "kind": phase_types.get(phase, "atk"),
                 "caption": caption,
@@ -365,6 +365,15 @@ def native_deck_character_card_catalog():
                 "power": int(row["pow"]),
                 "effectImage": row["effect_image"],
             }
+    return feats
+
+
+def native_deck_character_card_catalog():
+    with (SERVER_CSV / "ja/Charactors.csv").open(encoding="utf-8-sig", newline="") as source:
+        characters = {int(row["id"]): row for row in DictReader(source)}
+
+    # CharaCard#feats_id uses FeatInventory order.
+    feats = native_quest_feat_catalog()
     skills = {}
     with (SERVER_CSV / "ja/FeatInventories.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in sorted(DictReader(source), key=lambda row: int(row["id"])):
@@ -832,6 +841,9 @@ def create_app(
         character_hp = {}
         with suppress(OSError):
             character_hp = native_quest_character_card_catalog()
+        quest_feats = None
+        with suppress(OSError):
+            quest_feats = native_quest_feat_catalog()
         deck_characters = None
         with suppress(OSError):
             deck_characters = native_deck_character_card_catalog()
@@ -915,11 +927,28 @@ def create_app(
                 headers=headers,
             )
 
+        async def quest_feat_catalog(request):
+            headers = {"Cache-Control": "no-store"}
+            query = request.query.getall("ids", [])
+            if len(query) != 1:
+                raise web.HTTPBadRequest(text="Pass one comma-separated list of feat IDs.", headers=headers)
+            values = query[0].split(",", MAX_QUEST_FEAT_IDS)
+            if len(values) > MAX_QUEST_FEAT_IDS or any(
+                not value.isascii() or not value.isdecimal() or len(value) > 10
+                or not 0 < int(value) <= 2**31 - 1 for value in values
+            ):
+                raise web.HTTPBadRequest(text="Pass up to eight positive feat IDs.", headers=headers)
+            if quest_feats is None:
+                raise web.HTTPServiceUnavailable(text="Quest feat metadata is unavailable.", headers=headers)
+            ids = dict.fromkeys(map(int, values))
+            return web.json_response({"feats": [quest_feats[feat_id] for feat_id in ids if feat_id in quest_feats]}, headers=headers)
+
         app.router.add_get("/api/services", services)
         app.router.add_get("/api/assets", assets_info)
         app.router.add_get("/api/quest-catalog", quest_catalog)
         app.router.add_get("/api/action-card-catalog", action_card_catalog)
         app.router.add_get("/api/quest-character-cards", quest_character_cards)
+        app.router.add_get("/api/quest-feat-catalog", quest_feat_catalog)
         app.router.add_get("/api/avatar-starter-catalog", avatar_starter_catalog)
         app.router.add_get("/api/deck-character-catalog", deck_character_catalog)
         return app

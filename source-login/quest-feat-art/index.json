@@ -1503,6 +1503,605 @@
       "source": "public/image/cutinchara01_skl02.swf",
       "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
       "sourceChildStops": {}
+    },
+    "1262": {
+      "name": "I Choose You",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        null,
+        {
+          "file": "i-choose-you-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "i-choose-you-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "i-choose-you-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "i-choose-you-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-25.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-26.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-28.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-31.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-32.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-33.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-34.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-35.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-36.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-37.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "i-choose-you-38.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceChildStops": {
+        "29": 9
+      }
+    },
+    "1264": {
+      "name": "創贈麻煩",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        null,
+        {
+          "file": "trouble-craft-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "trouble-craft-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "trouble-craft-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "trouble-craft-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-25.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-26.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-31.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-32.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-34.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-36.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-32.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-41.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-42.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-43.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-44.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "trouble-craft-45.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceChildStops": {}
     }
   },
   "provenance": {
@@ -2261,6 +2860,426 @@
       "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
       "sourceFrame": 37,
       "sha256": "0d9991d624e3d45554109f3f335fe86a67acd122cdb5dee393efd0a1c9af58a9"
+    },
+    "i-choose-you-03.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 3,
+      "sha256": "8110df7a47097aa0de94edad2c9ed098d81f9d896a722d333391ef23b6346e7b"
+    },
+    "i-choose-you-04.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 4,
+      "sha256": "bd4736b1003504930e464c716ff596584e4fa5c62ef87c11501ef00b6c26d031"
+    },
+    "i-choose-you-05.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 5,
+      "sha256": "85d3858f645daa60d9a5864d97b39d703339b78ddc5d6f37243bfc4350347b31"
+    },
+    "i-choose-you-06.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 6,
+      "sha256": "5ff9b7216cec512a22aa31fa6ebac584028fa8795b2cd8abbcb45894553a9f66"
+    },
+    "i-choose-you-07.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 7,
+      "sha256": "d3a0a597df8ac96599b10284c1c9cc6c6403a1a798af170495bc42bde3868969"
+    },
+    "i-choose-you-08.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 8,
+      "sha256": "1398c2db47af02db19f0456e1c9a764ebb1df6c2feedd82e70d2fb48f6db5981"
+    },
+    "i-choose-you-09.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 9,
+      "sha256": "cdb759ff8003d2cd8d599e308d004526cd949c3722915320c8293bf72ce92f8c"
+    },
+    "i-choose-you-10.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 10,
+      "sha256": "9fe59679149cabe0cc9b15190bd89c7b058ab1b07079aac31408c48b104823f2"
+    },
+    "i-choose-you-11.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 11,
+      "sha256": "cad490097f64a8cdb90b5c44a3469129de4c4e033345553f6d5c4c0d0699d03f"
+    },
+    "i-choose-you-12.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 12,
+      "sha256": "61f8f6dc5fa035c44875fb84f50cc57cdec0b7ac7ed52ae3618d8e366ec55712"
+    },
+    "i-choose-you-13.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 13,
+      "sha256": "c42ff7fc472fa66f79a563e0ca7698abf193f4f9c23bb8a62ba2b1c359664cce"
+    },
+    "i-choose-you-14.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 14,
+      "sha256": "9c5e8bd7e54f3ab77bc60abee3360204a3d9e79358775f242e99377864b90761"
+    },
+    "i-choose-you-15.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 15,
+      "sha256": "399fcf9148bcefc548b1a4796fdec2b44c5601c9793a0c0ea41075d08e94a183"
+    },
+    "i-choose-you-16.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 16,
+      "sha256": "1cabd8b9f709dd885a52431741b65f284b64429c63ad7b7ca74696ad76d8da20"
+    },
+    "i-choose-you-18.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 18,
+      "sha256": "e4d60cebf1b9f52c1953dd523264f7361c2d7ba451526a6c324e8f949c2199e6"
+    },
+    "i-choose-you-19.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 19,
+      "sha256": "03f49057598e44db1c7ae9c1e03696ae54c4f4a84b762c397c20f99e8cc0a7e4"
+    },
+    "i-choose-you-20.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 20,
+      "sha256": "30dc05a42f050f51bc19a9b39eb19fe537c769b35cc04bac24f023644208c422"
+    },
+    "i-choose-you-21.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 21,
+      "sha256": "a5602ac5a8b1c3ed5d54bd62c7c07866e654c17a8b62bc968b16e7230d20ad2d"
+    },
+    "i-choose-you-22.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 22,
+      "sha256": "5b5dab4c743ca80e8170135914fa38efa82ff4f5022ab8f4f9a55130b675841f"
+    },
+    "i-choose-you-23.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 23,
+      "sha256": "04c6b00873d37dcd6c0965b0f37678293733e65836364f9da4f075e684f83664"
+    },
+    "i-choose-you-24.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 24,
+      "sha256": "7ace66c3109a161ff13640e8a3eb2e768e97adb70342c3a678472bf3c999c6c5"
+    },
+    "i-choose-you-25.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 25,
+      "sha256": "4af00612008a7de2a6caba29272e3439d77ddf8b80f3978c895413f43476c977"
+    },
+    "i-choose-you-26.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 26,
+      "sha256": "f6fe0f865e2f4faefc287ce2908d88233b1d3461080f0dee60f39ce94d9f8940"
+    },
+    "i-choose-you-27.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 27,
+      "sha256": "d500df94012c0176179e07b004d508e795eb9c06ea84639c05e4422033884e39"
+    },
+    "i-choose-you-28.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 28,
+      "sha256": "89e466dd6e29099fc42ef72f2f4338b89ae219c7db4aaa398e22e98130adf273"
+    },
+    "i-choose-you-29.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 29,
+      "sha256": "bcc4d891dfd98bd318b74db00158c9f465b2d235acfa8c70ae78a86832e6048a"
+    },
+    "i-choose-you-30.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 30,
+      "sha256": "003ee228d0227548a392fc9d1ae6ea9316a2eb98d4552d5f24f69d06d5ba29e5"
+    },
+    "i-choose-you-31.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 31,
+      "sha256": "f41ecd12c18c3fa7389c61cef8aff23d381918a238f1fa14f53ed18b7dc3eeca"
+    },
+    "i-choose-you-32.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 32,
+      "sha256": "ca2914f5cb0484c6a9206d2bf9581226f7f6fe5ad89d6b2e4d394cadb18398b1"
+    },
+    "i-choose-you-33.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 33,
+      "sha256": "010c62663170e1b380cec9b0f9a51fc8af4bc934710f7cef5df4acc1a97bab88"
+    },
+    "i-choose-you-34.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 34,
+      "sha256": "400230d36200554f0e16a0eec1a23b7d99dfe027a61fd7a5f5ba471e97cc7aea"
+    },
+    "i-choose-you-35.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 35,
+      "sha256": "ff8c24b1d792ce683715a2eaf933bd73b4f5c2aa00bee1aa9a60c4359ea63b30"
+    },
+    "i-choose-you-36.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 36,
+      "sha256": "d7f10fb3a9db68550616e736270eb8ee96c3c2897d0351a4c97eb2d027b71185"
+    },
+    "i-choose-you-37.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 37,
+      "sha256": "eb00ec283d7a7206e80269eb11a705481a5729b43963b509aacb15aa41e8c300"
+    },
+    "i-choose-you-38.png": {
+      "source": "public/image/cutinchara64_skl02.swf",
+      "sourceSha256": "8cc8fd50f386f91c43a4913faacbb1799e812c2324d4fdf8fe63fc1f6bc2270c",
+      "sourceFrame": 38,
+      "sha256": "3a50e1477a4aa8a3b17daa1d831764c156a1c155ab1e87834ff77df189df48c5"
+    },
+    "trouble-craft-03.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 3,
+      "sha256": "8110df7a47097aa0de94edad2c9ed098d81f9d896a722d333391ef23b6346e7b"
+    },
+    "trouble-craft-04.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 4,
+      "sha256": "bd4736b1003504930e464c716ff596584e4fa5c62ef87c11501ef00b6c26d031"
+    },
+    "trouble-craft-05.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 5,
+      "sha256": "85d3858f645daa60d9a5864d97b39d703339b78ddc5d6f37243bfc4350347b31"
+    },
+    "trouble-craft-06.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 6,
+      "sha256": "de5450cbfada5a75fe9650b560c8ab050494725b12f4c64e74b896a55a0c09c2"
+    },
+    "trouble-craft-07.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 7,
+      "sha256": "dcdbab7e7f6695961ef2a7c2cacb4d5afb03286f1781b155a00689db8debbbe9"
+    },
+    "trouble-craft-08.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 8,
+      "sha256": "4bf511ffd58b70029a0924b9c381f127f7f7630dcae1c57254407f4186a765bc"
+    },
+    "trouble-craft-09.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 9,
+      "sha256": "c74d7fdf7bf56e6dfffa8557e99a13ea5da06e989bd3ebd5ce6a95b363313624"
+    },
+    "trouble-craft-10.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 10,
+      "sha256": "b05f6e4153b4ec4812dca0e6659aa6d140df47c61c3b62e8e7db5a9b7021b02c"
+    },
+    "trouble-craft-11.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 11,
+      "sha256": "6e37ca6e7a7630c7c23d36a381846acf153bf098f898fec1323fdbe76b2a6feb"
+    },
+    "trouble-craft-12.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 12,
+      "sha256": "fd0c0e348f2ec25891a887a804c9bff10c03b9c8e75b08ae8ec649712a23b2b5"
+    },
+    "trouble-craft-13.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 13,
+      "sha256": "d0a1f79040fffa3df11acf545b3aaf22702c2a2bf6949d65be4c060c8c3067e2"
+    },
+    "trouble-craft-14.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 14,
+      "sha256": "1f75ad93c80e7b6f6ef668398e6cac128edf646d3a317a4196892d06702246f5"
+    },
+    "trouble-craft-15.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 15,
+      "sha256": "8498cab13c993b45fa13d3b4da3d9c2be62703ccc985deaf20e43d390898cf2c"
+    },
+    "trouble-craft-16.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 16,
+      "sha256": "adf93e8797216ccb5281d98017c4fb098b84baced66328e459970bae72aa0e5e"
+    },
+    "trouble-craft-18.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 18,
+      "sha256": "71f20e7dbaac4ced0146ff6f04dc80f03ae5e7725ab9945180ff970f84a59d21"
+    },
+    "trouble-craft-19.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 19,
+      "sha256": "c7097c64151587a3c9236f91828334f00e36626938ebaba5792948752ac3ceaa"
+    },
+    "trouble-craft-20.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 20,
+      "sha256": "111912e667ff177fb6261a8333c443fb19997ebe59b91b6c1ceb1cb4fd469615"
+    },
+    "trouble-craft-21.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 21,
+      "sha256": "875103df6c1899c5e7531f9fb0d8a3bc1bbab40b24b09294ad5eb17f9dc57516"
+    },
+    "trouble-craft-22.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 22,
+      "sha256": "003987357ae4f8ffbb422147d74bcbecbd24cf3c1a6063eee9c24aae6cb558e4"
+    },
+    "trouble-craft-23.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 23,
+      "sha256": "3f32546c506c2fc655de9e8339a09664e5593f060edad7eb222c8ae0234986bd"
+    },
+    "trouble-craft-24.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 24,
+      "sha256": "8d1c8537dd371f29591be87831f2f609ebc3f3b4a600aacbf8a09b32952a33cc"
+    },
+    "trouble-craft-25.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 25,
+      "sha256": "446633f26f38518bebc9e75e1d787073f3b5ce58a19d27dbe322c727ca84e6c8"
+    },
+    "trouble-craft-26.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 26,
+      "sha256": "72b1a61366693249f108d91a268470d6391e64fcfbd2ad0d7f1a8bebd761e019"
+    },
+    "trouble-craft-27.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 27,
+      "sha256": "3394b917227ff5acb64e0bd2978eac299977c77570114dd88b8d54d2cfdc0d06"
+    },
+    "trouble-craft-29.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 29,
+      "sha256": "348808b97b41b713aa0aafcaa826296a46ea7b0aa2e25208cc8f1a9234687139"
+    },
+    "trouble-craft-30.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 30,
+      "sha256": "8265742e38364dd62218d48401598bb3df0a83d0e464c97f91b8f3634d532620"
+    },
+    "trouble-craft-31.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 31,
+      "sha256": "42849f576487a25568691160f143b464176031925c26be4f2bef24f5628f9228"
+    },
+    "trouble-craft-32.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 32,
+      "sha256": "cea9a7cad76271c17f7a599d3e4daa5b5f3e3380beb280d6e1ecdaf0daffc258"
+    },
+    "trouble-craft-34.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 34,
+      "sha256": "e5085acde4663764a92f58c0430898538f6aa0a888237a6920f9a53cdb87a084"
+    },
+    "trouble-craft-36.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 36,
+      "sha256": "dff93e77f729f892d4540fae6fef580b42e9655e397ebf677b71f19252a1c760"
+    },
+    "trouble-craft-41.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 41,
+      "sha256": "22b22231661ca1651b702ce5c8b342f85c73d44550bb119648e591cace71d29f"
+    },
+    "trouble-craft-42.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 42,
+      "sha256": "97e1d106d896a546fda9a0c52aaede7cbbac5f4d280ff11b9bef1b250a0f80a4"
+    },
+    "trouble-craft-43.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 43,
+      "sha256": "d5d66acda2604c2252e0727defc01f50da134442d6abb8749a5ffc701d29c33b"
+    },
+    "trouble-craft-44.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 44,
+      "sha256": "a948916746fab701008cf91915b57124d4c200a38832f57e48142fc721cfd58b"
+    },
+    "trouble-craft-45.png": {
+      "source": "public/image/cutinchara64_skl03.swf",
+      "sourceSha256": "0959e55b929576574d637dfaad4e3e3c405c50f88398907de606dd29e8f584f6",
+      "sourceFrame": 45,
+      "sha256": "7919e34e2a4679109325d7fa58bc74b730e7c2e3bb9a33fed4cdeb856bc30b3c"
     }
   }
 }

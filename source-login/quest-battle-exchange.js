@@ -323,13 +323,20 @@ export function createQuestBattleExchange(battle, {
     }
   }
 
-  async function settle(exchange) {
+  async function whenPresented() {
+    if (root.dataset.presentation !== 'settled') root.dataset.presentation = 'settling';
     let queuedHp;
     do {
       queuedHp = hpGate;
       await Promise.all([diceSettled, queuedHp, tableCloseTask, featInsertion, cutInExit]);
     } while (live() && queuedHp !== hpGate);
-    if (!live()) return;
+    if (!live()) return false;
+    root.dataset.presentation = 'settled';
+    return true;
+  }
+
+  async function settle(exchange) {
+    if (!await whenPresented()) return;
     const result = summary(exchange);
     result.dataset.state = exchange.phase;
     result.dataset.boundary = exchange.boundary;
@@ -341,6 +348,7 @@ export function createQuestBattleExchange(battle, {
   function update(state) {
     const exchange = state?.exchange;
     if (!exchange || !live()) return;
+    root.dataset.exchangeKey = exchange.key ?? `${exchange.turn}:${exchange.index}`;
     battle.dataset.exchangeIndex = String(exchange.index);
     battle.dataset.exchangePhase = exchange.phase;
     if (exchange.playerAttacks !== null) battle.dataset.playerAttacks = String(exchange.playerAttacks);
@@ -380,6 +388,7 @@ export function createQuestBattleExchange(battle, {
 
   return {
     update,
+    whenPresented,
     archive(turn, index) {
       visible = false;
       stopTimer?.();

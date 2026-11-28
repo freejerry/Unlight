@@ -970,7 +970,7 @@ function renderChatDecoration(battle, chat) {
   return decoration;
 }
 
-function renderSkills(battle, skills, player, foe) {
+function renderSkills(battle, skills, player, foe, { signal, definitions } = {}) {
   if (!skills?.base) return;
   const strip = layer(battle, 'quest-battle-skills', 5, 'quest-battle-skills');
   const detailLayer = layer(battle, 'quest-battle-skill-detail-layer', 31);
@@ -979,6 +979,16 @@ function renderSkills(battle, skills, player, foe) {
   detail.setAttribute('role', 'tooltip');
   detail.setAttribute('aria-hidden', 'true');
   detailLayer.append(detail);
+  const byId = new Map();
+  for (const card of definitions?.values() ?? [player, foe]) {
+    for (const skill of card?.skills ?? []) byId.set(skill.id, skill);
+  }
+  const requests = new Map();
+  const rows = { player: [], opponent: [] };
+  const defaults = { player, opponent: foe };
+  let roster;
+  let replacementRoster;
+  let ready = new Set();
   let activeLabel;
   strip.addEventListener('keydown', event => {
     if (event.key === 'Escape' && activeLabel) hideDetails(activeLabel);
@@ -1015,49 +1025,143 @@ function renderSkills(battle, skills, player, foe) {
     detail.replaceChildren(heading('[條件]'), list, effect);
     detail.setAttribute('aria-hidden', 'false');
   }
-  const label = skills.labelOffset;
-  for (const [side, card, position] of [['player', player, skills.player], ['opponent', foe, skills.foe]]) {
-    for (const [index, skill] of (card?.skills ?? []).entries()) {
-      const { name, kind, id } = skill;
-      const art = skills.types[kind];
-      if (!art) continue;
-      const x = position.x + position.step * index;
-      const y = position.y;
-      for (const part of [skills.base, art]) sprite(strip, { ...part, x: x + part.x, y: y + part.y });
-      const nameLabel = document.createElement('span');
-      nameLabel.className = 'quest-battle-skill-name';
-      nameLabel.dataset.side = side;
-      if (Number.isInteger(id)) nameLabel.dataset.skillId = String(id);
-      nameLabel.dataset.ready = 'false';
-      nameLabel.textContent = name;
-      const labelX = x + label.x;
-      const labelY = y + label.y;
-      place(nameLabel, labelX, labelY, label.width, label.height);
-      const data = formatBattleSkill(skill);
-      if (data) {
-        nameLabel.tabIndex = 0;
-        const own = side === 'player';
-        const show = () => showDetails(nameLabel, data, labelX - (own ? 12 : 5), labelY + (own ? 0 : 26), side, id);
-        nameLabel.addEventListener('pointerenter', show);
-        nameLabel.addEventListener('pointerleave', () => {
-          if (!nameLabel.matches(':focus-visible')) hideDetails(nameLabel);
-        });
-        nameLabel.addEventListener('focus', () => {
-          if (nameLabel.matches(':focus-visible')) show();
-        });
-        nameLabel.addEventListener('blur', () => {
-          if (!nameLabel.matches(':hover')) hideDetails(nameLabel);
-        });
+  function addRow(side, index) {
+    const position = side === 'player' ? skills.player : skills.foe;
+    const x = position.x + position.step * index;
+    const y = position.y;
+    const base = sprite(strip, { ...skills.base, x: x + skills.base.x, y: y + skills.base.y });
+    const phase = new Image();
+    phase.alt = '';
+    const name = document.createElement('span');
+    name.className = 'quest-battle-skill-name';
+    name.dataset.side = side;
+    name.dataset.featIndex = String(index);
+    const label = skills.labelOffset;
+    const labelX = x + label.x;
+    const labelY = y + label.y;
+    place(name, labelX, labelY, label.width, label.height);
+    const row = { base, phase, name, x, y };
+    const own = side === 'player';
+    const show = () => {
+      if (row.caption) showDetails(name, row.caption, labelX - (own ? 12 : 5),
+        labelY + (own ? 0 : 26), side, row.definition.id);
+    };
+    name.addEventListener('pointerenter', show);
+    name.addEventListener('pointerleave', () => {
+      if (!name.matches(':focus-visible')) hideDetails(name);
+    });
+    name.addEventListener('focus', () => {
+      if (name.matches(':focus-visible')) show();
+    });
+    name.addEventListener('blur', () => {
+      if (!name.matches(':hover')) hideDetails(name);
+    });
+    strip.append(phase, name);
+    return row;
+  }
+
+  function requestDefinition(featId) {
+    if (requests.has(featId) || signal?.aborted) return;
+    requests.set(featId, 'loading');
+    const deadline = AbortSignal.timeout(5000);
+    void fetch(`/api/quest-feat-catalog?ids=${featId}`, {
+      redirect: 'error', signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
+    }).then(async response => {
+      if (!response.ok) return;
+      const { feats } = await response.json();
+      const definition = feats?.find(item => item.id === featId && Number.isInteger(item.featNo));
+      if (definition && !signal?.aborted) byId.set(featId, definition);
+    }).catch(() => {}).finally(() => {
+      requests.set(featId, 'unavailable');
+      if (!signal?.aborted) paint();
+    });
+  }
+
+  function paint() {
+    for (const side of ['player', 'opponent']) {
+      const current = roster?.[side];
+      const index = current?.activeIndex ?? 0;
+      const actor = current?.cards?.find(card => card.index === index);
+      const replacementActor = replacementRoster?.[side]?.cards?.find(card => card.index === index && card.cardId === actor?.cardId);
+      const fallback = defaults[side];
+      const card = current ? definitions?.get(actor?.cardId) ?? (actor?.cardId === fallback?.id ? fallback : null) : fallback;
+      const count = Math.min(4, card?.skills?.length ?? 0);
+      for (let slot = 0; slot < Math.max(count, rows[side].length); slot += 1) {
+        const row = rows[side][slot] ??= addRow(side, slot);
+        const baseSkill = slot < count ? card.skills[slot] : undefined;
+        const replacement = baseSkill && replacementActor?.featReplacements?.[slot];
+        const featId = replacement?.featId ?? baseSkill?.id;
+        const original = replacement ? byId.get(featId) : baseSkill;
+        const matches = !replacement || original?.featNo === replacement.featNo;
+        const definition = matches ? original : undefined;
+        if (replacement && !definition && !Number.isInteger(original?.featNo)) requestDefinition(featId);
+        const marker = definition && skills.types[definition.kind];
+        const key = `${index}:${card?.id}:${replacement?.featId}:${replacement?.featNo}`;
+        if (row.key !== key || row.definition !== definition) {
+          hideDetails(row.name);
+          row.key = key;
+          row.definition = definition;
+          // Only a new rendered skill refreshes the source caption cache. SC120 changes the canonical card separately.
+          const cardCondition = definition && definition.id === baseSkill.id
+            ? rewrittenCardCondition(actor?.featConditions?.[slot]) : undefined;
+          row.caption = formatBattleSkill(definition, cardCondition);
+          row.name.textContent = definition?.name ?? '';
+          if (definition) row.name.dataset.skillKind = definition.kind;
+          else delete row.name.dataset.skillKind;
+          if (row.caption) row.name.tabIndex = 0;
+          else row.name.removeAttribute('tabindex');
+          if (marker) {
+            row.phase.src = new URL(marker.file, art);
+            place(row.phase, row.x + marker.x, row.y + marker.y, marker.width, marker.height);
+          }
+        }
+        row.base.hidden = !baseSkill;
+        row.phase.hidden = !marker;
+        row.name.hidden = !marker;
+        row.name.dataset.rosterIndex = String(index);
+        row.name.dataset.definitionState = definition ? 'ready' : requests.get(featId) ?? 'unavailable';
+        if (Number.isInteger(featId)) row.name.dataset.skillId = String(featId);
+        else delete row.name.dataset.skillId;
+        row.name.dataset.ready = String(side === 'player' && Boolean(definition) && ready.has(featId));
       }
-      strip.append(nameLabel);
     }
   }
-  return { strip, detailLayer, update(feats) {
-    const ready = new Set(feats?.readyIds);
-    for (const label of strip.querySelectorAll('[data-skill-id][data-side="player"]')) {
-      label.dataset.ready = String(ready.has(Number(label.dataset.skillId)));
-    }
+  paint();
+  return { strip, detailLayer, update(feats, parties, presentedReplacements = parties) {
+    ready = new Set(feats?.readyIds);
+    roster = parties;
+    replacementRoster = presentedReplacements;
+    paint();
   } };
+}
+
+function createSkillPresentation(skills) {
+  const queued = [];
+  let feats;
+  let roster;
+  let presented = null;
+  const paint = () => skills?.update(feats, roster, presented);
+  return {
+    observe(next, exchange) {
+      const { roster: nextRoster } = next;
+      const changed = ['player', 'opponent'].some(side => nextRoster?.[side]?.cards?.some(card =>
+        card.featReplacements !== roster?.[side]?.cards?.[card.index]?.featReplacements));
+      ({ feats, roster } = next);
+      if (changed) {
+        const after = exchange?.cards ? exchange.key : queued.at(-1)?.after;
+        if (after) queued.push({ after, roster });
+        else presented = roster;
+      }
+      paint();
+    },
+    waiting(after) { return queued[0]?.after === after; },
+    release(after) {
+      while (queued[0]?.after === after) {
+        presented = queued.shift().roster;
+        paint();
+      }
+    },
+  };
 }
 
 function showMoveCutIns(battle, manifest, encounter, signal, onlySide, stands) {
@@ -1203,7 +1307,9 @@ async function renderBattleHud(battle, sourceAvatar, {
   cloneAvatar(avatar, sourceAvatar, 590, 473);
   const main = layer(battle, 'quest-battle-hud', 14, 'quest-battle-hud');
   const player = encounter.playerCardIds[0];
-  const skills = renderSkills(battle, hud.skills, definitions.get(player), definitions.get(encounter.opponentCardIds[0]));
+  const skills = renderSkills(battle, hud.skills, definitions.get(player), definitions.get(encounter.opponentCardIds[0]),
+    { signal, definitions });
+  const skillPresentation = createSkillPresentation(skills);
   const chat = renderChatDecoration(battle, hud.chat);
   const updateHealth = renderHealth(main, assets, encounter, definitions, signal);
   const healthIndicators = [
@@ -1404,7 +1510,15 @@ async function renderBattleHud(battle, sourceAvatar, {
       covered.draw(null, 0, false);
       move.beginCombat(key);
     }
-    combatView.view.update({ ...latest, exchange: source, result: observedMoves.get(source.turn) ?? latest.result });
+    const active = combatView;
+    active.view.update({ ...latest, exchange: source, result: observedMoves.get(source.turn) ?? latest.result });
+    if (!active.settled && !active.waitingForSkills && skillPresentation.waiting(active.key)) {
+      active.waitingForSkills = true;
+      void active.view.whenPresented().then(presented => {
+        active.waitingForSkills = false;
+        if (presented && combatView === active && !signal.aborted && isCurrent()) skillPresentation.release(active.key);
+      });
+    }
   }
 
   function archiveCombat() {
@@ -1537,6 +1651,7 @@ async function renderBattleHud(battle, sourceAvatar, {
       const source = observedExchanges.get(active.key);
       updateCombat(source);
       if (!active.settled) return;
+      skillPresentation.release(active.key);
       if (source?.boundary === 'terminal' && outcome?.duel) {
         terminalTask = presentDuelResult();
         return;
@@ -1608,7 +1723,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     activeFace.updateConditions(latest.roster?.player?.cards?.[0]);
     damageScopes.sync();
     featPlayback.preload(latest.feats?.used);
-    skills?.update(latest.feats);
+    skillPresentation.observe(latest, latest.exchange ?? (combatView && latest.exchangeHistory?.at(-1)));
     if (battle.dataset.moveResult === 'settled') void featPlayback.play(latest.feats?.used, visibleTurn, null);
     const moveTurn = latest.ready?.turn ?? latest.turn;
     if (latest.result && Number.isInteger(moveTurn) && !observedMoves.has(moveTurn)) observedMoves.set(moveTurn, latest.result);

@@ -189,6 +189,21 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case eased-condition \
 
 原版 Flash 使用相同角色、裝備、牌序與移動操作，保存首回合回覆、卡背和進入防禦的實際紀錄。完整防禦出牌與技能特寫取自新版實跑。 [原版合成模型](../../../app/server/src/model/avatar.rb#L482) · [原版卡背處理](../../../app/client/src/view/scene/game/DuelCharaCards.as#L382) · [原版茨林規則](../../../app/server/src/model/chara_card.rb#L4504)
 
+### 重跑格雷高爾的技能交換
+
+在隔離角色完成教學，以原版角色取得和牌組操作將格雷高爾 #635 放在 Deck 1 首位，保留原版事件牌。用 `quest_map_clear(5)` 開啟無名之丘，用搜尋種子 29 執行原版 `get_quest(6, 0)`。確認取得 Q82、AP 3。以 Deck 1 進首格，確認場地 3、毒蛙 #1008 及無預設傷勢。只在這個隔離角色的 `MultiDuel` 初始化前設戰鬥種子 32。
+
+三回合都選停留。第一回合先空桌防禦，再用 #9、#4、#42 的正向牌面攻擊。確認兩個真實技能發動及非致死傷害。第二回合防禦用 #2 的反向牌面和正向事件牌 #457，第三回合防禦用正向事件牌 #458，這兩回合的己方攻擊皆空桌確認。第一回合結束時依序驗我方槽 3 得到「噴毒」、敵方槽 0 得到「創贈麻煩」，第二回合保留交換，第三回合結束時依序驗敵方與我方復原。每次另對照技能列、滑入內容及玩家角色卡背。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case feat-replacement \
+  --port 4397 --database "$proof_dir/feat-replacement-ruby/app/server/data/game_dev2.db" \
+  --user questgregor --password-file "$proof_dir/questgregor-password" \
+  --screens "$proof_dir/feat-replacement-native"
+```
+
+瀏覽器驗收會逐筆轉交原始 `SC109`。先讓第一筆進入畫面佇列，暫緩第二筆和後續 `SC60`，核對原技能名在動畫和扣血期間仍可見。等指定一方更新後才放行餘下回覆，最後核對兩方技能、卡背和第四回合。`SC110` 特寫取樣需包含各自按原版素材順序顯示的多張畫格，並確認兩次 `ulse13` 各對應一筆真實發動。固定繁中 SWF 已重跑至交換後的第二回合 Draw，第三回合還原請對照同一組原版 Ruby 模型紀錄。 [原版技能列](../../../app/client/src/view/scene/game/FeatInfo.as#L715) · [原版技能規則](../../../app/server/src/model/chara_card.rb#L21773)
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。

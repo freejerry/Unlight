@@ -3,7 +3,7 @@
 import argparse
 import json
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -29,6 +29,10 @@ def observe_battle_receipts(page, origin):
           if (!gate || wire.receiving !== gate.peer) return receive(body);
           const command = ((body[0] ^ (gate.key?.[0] ?? 0)) << 8)
             | (body[1] ^ (gate.key?.[gate.key.length > 1 ? 1 : 0] ?? 0));
+          if (!gate.frames.length && command === gate.stopBefore && gate.skip > 0) {
+            gate.skip--;
+            return receive(body);
+          }
           if (gate.frames.length || command === gate.stopBefore) {
             gate.frames.push({command, deliver: () => dispatch(body, receive)});
           } else receive(body);
@@ -38,12 +42,13 @@ def observe_battle_receipts(page, origin):
       export function readReply(body) {
         const reply = read(body);
         const trace = window.qaQuestWire?.receiving;
-        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,51,52,53,54,55,56,61,62,65,66,67,68,69,83,107,108,110,115,120].includes(reply.command)) return reply;
+        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,51,52,53,54,55,56,60,61,62,65,66,67,68,69,73,83,107,108,109,110,115,120].includes(reply.command)) return reply;
         captured.add(body);
         const audit = read(body);
         const values = reply.command === 40 && body.byteLength === 7 ? [audit.byte(), audit.byte(), audit.byte()]
           : [107,108].includes(reply.command) && body.byteLength === 6 ? [audit.int()]
           : [83,110,115].includes(reply.command) && body.byteLength === 7 ? [audit.byte(), audit.int()]
+          : reply.command === 109 && body.byteLength === 19 ? [audit.byte(), audit.int(), audit.int(), audit.int(), audit.int()]
           : reply.command === 120 && body.byteLength >= 15 ? [audit.byte(), audit.int(), audit.int(), audit.string(4096, true)]
           : [67,68,69].includes(reply.command) && body.byteLength === 3 ? [audit.byte()] : [];
         (trace.battleAudit ??= []).push([reply.command, body.byteLength, ...values, performance.now()]);
@@ -52,13 +57,13 @@ def observe_battle_receipts(page, origin):
     """))
 
 
-def defer_battle_frames(page, stop_before):
-    assert page.evaluate("""stopBefore => {
+def defer_battle_frames(page, stop_before, *, skip=0):
+    assert page.evaluate("""({stopBefore, skip}) => {
       const wire = window.qaQuestWire;
       const {peer, key} = wire.actionHold;
-      wire.battleFrameHold = {peer, key, stopBefore, frames: []};
+      wire.battleFrameHold = {peer, key, stopBefore, skip, frames: []};
       return wire.endActionHold(true);
-    }""", stop_before) > 0
+    }""", {'stopBefore': stop_before, 'skip': skip}) > 0
 
 
 def release_battle_frames(page, *, next_gate=None):
@@ -73,12 +78,15 @@ def release_battle_frames(page, *, next_gate=None):
 
 def observe_battle_motion(page):
     page.evaluate("""() => {
-      const evidence = window.qaBattleMotion = {deals: {}, backs: {}, sweeps: {}, moveSweeps: {}, standing: [], stages: [], health: []};
+      const evidence = window.qaBattleMotion = {
+        deals: {}, backs: {}, sweeps: {}, moveSweeps: {}, standing: [], stages: [], health: [], featSlots: [], featFrames: {},
+      };
       const identities = new WeakMap();
       const bounds = ['x', 'y', 'width', 'height'];
       let serial = 0;
       let phaseKey;
       let healthKey;
+      let featKey;
       let lastStanding = 0;
       function box(node, boundsOrigin) {
         const rect = node.getBoundingClientRect();
@@ -111,7 +119,8 @@ def observe_battle_motion(page):
           const distance = battle.dataset.distance === undefined ? null : Number(battle.dataset.distance);
           const diceNode = battle.querySelector('#quest-battle-dice-roll');
           const dice = diceNode && (diceNode.dataset.state || 'mounted');
-          const sweep = battle.querySelector('#quest-battle-exchange')?.dataset.sweepState;
+          const exchange = battle.querySelector('#quest-battle-exchange');
+          const sweep = exchange?.dataset.sweepState;
           const result = battle.querySelector('#quest-battle-result')?.dataset.state;
           const key = [phase, exchangePhase, exchangeIndex, moveResult, intro, burn, outcomeState, turn, dice, sweep, result, distance].join(':');
           if (key !== phaseKey) {
@@ -130,6 +139,33 @@ def observe_battle_motion(page):
             if (state !== healthKey) {
               evidence.health.push({at: now, exchangeIndex, dice, comparison, caption, hp, attackReady});
               healthKey = state;
+            }
+          }
+          if (battle.querySelector('#quest-battle-player-character[data-card-id="635"]') && exchange?.dataset.exchangeKey) {
+            const exchangeKey = exchange.dataset.exchangeKey;
+            const presentation = exchange.dataset.presentation ?? null;
+            const audit = window.qaQuestWire.sockets.at(-1)?.battleAudit ?? [];
+            const received = audit.filter(([command]) => command === 109).length;
+            const slots = [['player', 3], ['opponent', 0]].map(([side, slot]) =>
+              Number(battle.querySelector('.quest-battle-skill-name[data-side="' + side + '"][data-feat-index="' + slot + '"]')?.dataset.skillId) || null);
+            const clips = [];
+            for (const clip of battle.querySelectorAll('.quest-battle-feat')) {
+              const image = clip.querySelector('img');
+              if (!painted(image)) continue;
+              const {activatedSkillId, featSequence, side} = clip.dataset;
+              clips.push(Number(activatedSkillId));
+              const samples = evidence.featFrames[activatedSkillId] ??= [];
+              const file = (image.currentSrc || image.src).split('/').at(-1);
+              if (samples.at(-1)?.file !== file || samples.at(-1)?.sequence !== featSequence) {
+                samples.push({at: now, file, sequence: featSequence, side, exchangeKey});
+              }
+            }
+            const hp = ['player', 'opponent'].map(side => Number(battle.querySelector('#quest-battle-' + side + '-hp')?.dataset.hp));
+            const comparison = [...exchange.querySelectorAll('#quest-battle-dice-symbols img')].some(painted);
+            const state = JSON.stringify([exchangeKey, presentation, received, slots, clips, Boolean(dice), comparison, hp]);
+            if (state !== featKey) {
+              evidence.featSlots.push({at: now, exchangeKey, presentation, received, slots, clips, dice: Boolean(dice), comparison, hp});
+              featKey = state;
             }
           }
           if (phase === 'draw') {
@@ -233,10 +269,12 @@ def enter_battle(page, origin, database, user, password, directory, quest_id, *,
         page.locator('#lobby-quest-load').click()
         qa.screen(stage, 'quest-map')
         expect(page.locator('#quest-map-view')).to_have_attribute('data-state', 'ready', timeout=qa.TIMEOUT)
+        if quest_id == 82:
+            expect(page.locator('#quest-map-view')).to_have_attribute('data-map-id', '6')
 
     if owned:
         detail, _ = qa.start_preowned_quest(page, database, player_id, quest, [deck[0][:3] + (1,)],
-                                           ap_cost=4 if quest_id == 568 else 0)
+                                           ap_cost={82: 2, 568: 4}.get(quest_id, 0))
     else:
         inventory_id = quest[0]
         start_offset = len(qa.read_movement_trace(page)['replies'])
@@ -256,7 +294,7 @@ def enter_battle(page, origin, database, user, password, directory, quest_id, *,
         expect(detail).to_have_attribute('data-progress', '2', timeout=qa.TIMEOUT)
         entering = detail.locator('button.quest-map-detail-land[data-slot="4"]')
     else:
-        assert quest_id in (1, 568)
+        assert quest_id in (1, 82, 568)
         entering = first_land
     page.emulate_media(reduced_motion='no-preference')
     observe_battle_motion(page)
@@ -619,20 +657,24 @@ def wait_for_own_attack(page, battle, defense):
     assert [51, 3, 1] in qa.read_movement_trace(page)['replies']
 
 
-def observe_feat_sound(page):
-    page.evaluate("""() => {
+def observe_feat_sound(page, *, associate_skill=False):
+    page.evaluate("""associate => {
       const playback = window.qaStarterSkillPlayback = [];
       const play = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function (...args) {
         const result = play.apply(this, args);
         if (this.src.endsWith('/sound/se/ulse13.mp3')) {
           const cue = {at: performance.now(), played: null};
+          if (associate) {
+            const latest = [...document.querySelectorAll('.quest-battle-feat[data-activated-skill-id]')].at(-1);
+            cue.featId = Number(latest?.dataset.activatedSkillId) || null;
+          }
           playback.push(cue);
           void result.then(() => { cue.played = true; }, () => { cue.played = false; });
         }
         return result;
       };
-    }""")
+    }""", associate_skill)
 
 
 def confirm_feat_sound(page, trace, feat):
@@ -900,6 +942,220 @@ def play_eased_thorn(page, stage, battle, directory):
             'counterDamage': damage, 'cue': confirm_feat_sound(page, trace, 7)}
 
 
+def check_gregor_feat_slots(page, battle, pair, *, captions=True):
+    names = {123: '噴毒', 1264: '創贈麻煩'}
+    effects = {123: '中毒', 1264: '對自身造成1點直接傷害'}
+    for (side, slot), feat in zip((('player', 3), ('opponent', 0)), pair, strict=True):
+        row = battle.locator(f'.quest-battle-skill-name[data-side="{side}"][data-roster-index="0"][data-feat-index="{slot}"]')
+        expect(row).to_have_attribute('data-skill-id', str(feat))
+        expect(row).to_have_attribute('data-definition-state', 'ready')
+        expect(row).to_have_text(names[feat])
+        if not captions:
+            continue
+        row.hover()
+        tooltip = battle.locator(f'#quest-battle-skill-detail[data-side="{side}"][data-skill-id="{feat}"]')
+        expect(tooltip).to_have_attribute('aria-hidden', 'false')
+        expect(tooltip).to_contain_text(effects[feat])
+        page.mouse.move(770, 340)
+        expect(tooltip).to_have_attribute('aria-hidden', 'true')
+    expect(battle.locator('.quest-battle-skill-name[data-side="player"][data-feat-index="2"]')).to_have_text('I Choose You')
+
+
+def check_gregor_original_reverse(page, stage, battle, directory):
+    card = battle.locator('#quest-battle-player-character[data-card-id="635"]')
+    flip = card.locator('.quest-battle-character-flip')
+    before = sent_quest_actions(page)
+    expect(battle.locator('.quest-battle-skill-name[data-side="player"][data-feat-index="3"]')).to_have_text('噴毒')
+    expect(card).to_have_attribute('data-face', 'front')
+    flip.click(position={'x': 84, 'y': 180})
+    expect(card).to_have_attribute('data-face', 'back')
+    expect(flip).to_be_enabled()
+    canonical = card.locator('.quest-battle-character-feat[data-feat-index="3"][data-feat-id="1264"]')
+    expect(canonical).to_have_text('創贈麻煩')
+    canonical.click()
+    expect(canonical).to_have_attribute('aria-pressed', 'true')
+    proof = snapshot(page, stage, directory, '01-q82-borrowed-hud-and-authored-reverse-card')
+    flip.press('Enter')
+    expect(card).to_have_attribute('data-face', 'front')
+    expect(flip).to_be_enabled()
+    assert sent_quest_actions(page) == before
+    return proof
+
+
+def place_gregor_cards(page, battle, cards, *, attack):
+    hand = battle.locator(f'{HAND} .quest-battle-hand-card')
+    commands = []
+    for card, up in cards:
+        index = hand.evaluate_all('nodes => nodes.map(node => Number(node.dataset.cardId))').index(card)
+        row = hand.and_(battle.locator(f'[data-card-id="{card}"]'))
+        orientation = str(up).lower()
+        if row.get_attribute('data-up') != orientation:
+            rotate = row.locator('.quest-battle-card-rotate')
+            expect(rotate).to_be_enabled()
+            rotate.press('Enter')
+            expect(row).to_have_attribute('data-up', orientation)
+            assert [63, 10, 1, 0, index, card, int(up)] in qa.read_movement_trace(page)['replies']
+        row.locator('.quest-battle-card-primary').click(position={'x': 27, 'y': 18})
+        expect(battle.locator(f'#quest-battle-player-table [data-card-id="{card}"][data-zone="combat"]')).to_have_attribute('data-up', orientation)
+        commands.append([28 if attack else 30, card, index if attack else 0, int(up)])
+    return commands
+
+
+def gregor_feat_receipts(page):
+    return [item[:-1] for item in qa.read_movement_trace(page)['battleAudit'] if item[0] == 109]
+
+
+def check_gregor_cast_frames(page):
+    assert page.evaluate("matchMedia('(prefers-reduced-motion: no-preference)').matches")
+    manifest = page.request.get(urljoin(page.url, '/source-login/quest-feat-art/index.json'))
+    assert manifest.ok
+    source = manifest.json()['feats']
+    recorded = page.evaluate('window.qaBattleMotion.featFrames')
+    assert set(recorded) == {'1262', '1264'}, recorded
+    for feat, samples in recorded.items():
+        track = source[feat]
+        assert track['framesPerSecond'] == 24, track['framesPerSecond']
+        expected = [frame['file'] for frame in track['frames'] if frame]
+        assert len({sample['file'] for sample in samples}) >= 3, samples
+        assert samples[-1]['at'] - samples[0]['at'] >= 300, samples
+        assert len({sample['sequence'] for sample in samples}) == 1, samples
+        assert all(sample['side'] == 'player' and sample['exchangeKey'] == '1:2' for sample in samples), samples
+        last = -1
+        for sample in samples:
+            last = expected.index(sample['file'], last + 1)
+    return recorded
+
+
+def check_gregor_feat_pair(page, stage, battle, directory, turn, expected, prior, interim, settled, *, activated=False):
+    done = battle.locator('button[data-combat-command="done"]')
+    start = gregor_feat_receipts(page)
+    exchange_key = f'{turn}:2'
+    exchange = battle.locator(f'#quest-battle-exchange[data-exchange-key="{exchange_key}"]')
+    qa.hold_movement_reply(page, 33, done.click, before=[109])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 109
+        assert gregor_feat_receipts(page) == start
+        check_gregor_feat_slots(page, battle, prior, captions=False)
+        before = snapshot(page, stage, directory, f'01-q82-turn-{turn}-before-first-feat-receipt')
+    finally:
+        defer_battle_frames(page, 109, skip=1)
+    try:
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 109', timeout=qa.TIMEOUT)
+        assert gregor_feat_receipts(page) == [*start, expected[0]]
+        if activated:
+            casts = []
+            for feat, name in ((1262, 'i-choose-you'), (1264, 'trouble-craft')):
+                cut_in = battle.locator(f'.quest-battle-feat[data-side="player"][data-activated-skill-id="{feat}"] img:visible').first
+                expect(cut_in).to_be_visible(timeout=qa.TIMEOUT)
+                assert cut_in.evaluate('(image, name) => image.complete && image.naturalWidth > 0 && image.src.includes(name + "-")', name)
+                casts.append(snapshot(page, stage, directory, f'01-q82-original-{name}-cut-in'))
+        expect(exchange).to_have_attribute('data-presentation', 'settled', timeout=qa.TIMEOUT)
+        check_gregor_feat_slots(page, battle, interim)
+        assert qa.read_movement_trace(page)['replies'].count([60, 4, 1, 2]) == turn - 1
+        half = snapshot(page, stage, directory, f'01-q82-turn-{turn}-one-side-confirmed')
+        observed = page.evaluate('window.qaBattleMotion.featSlots')
+        first_only = [frame for frame in observed if frame['exchangeKey'] == exchange_key and frame['received'] == len(start) + 1]
+        held_label = next(frame for frame in first_only if frame['slots'] == list(interim))
+        assert held_label['presentation'] == 'settled', first_only
+        assert not held_label['clips'] and not held_label['dice'] and not held_label['comparison'], held_label
+        assert all(frame['slots'] == list(prior) for frame in first_only if frame['presentation'] != 'settled'), first_only
+        if activated:
+            assert held_label['hp'] == [10, 4], held_label
+            assert any(frame['presentation'] == 'settling' and (frame['clips'] or frame['dice'] or frame['comparison'])
+                       for frame in first_only), first_only
+    finally:
+        release_battle_frames(page)
+    page.wait_for_function("""count => window.qaQuestWire.sockets.at(-1).battleAudit
+      .filter(([command]) => command === 109).length === count""", arg=len(start) + 2, timeout=qa.TIMEOUT)
+    assert gregor_feat_receipts(page) == [*start, *expected]
+    check_gregor_feat_slots(page, battle, settled)
+    after = snapshot(page, stage, directory, f'01-q82-turn-{turn}-both-sides-confirmed')
+    evidence = {'receipts': expected, 'before': before, 'oneSide': half, 'bothSides': after,
+                'firstReceiptPresentation': first_only}
+    if activated:
+        evidence['activation'], evidence['troubleCraft'] = casts
+    return evidence
+
+
+def play_feat_replacement(page, stage, battle, directory):
+    original = (1264, 123)
+    changed = (123, 1264)
+    replacement = [[109, 19, 1, 0, 3, 123, 14], [109, 19, 0, 0, 0, 1264, 371]]
+    restoration = [[109, 19, 0, 0, 0, 123, 14], [109, 19, 1, 0, 3, 1264, 371]]
+    done = battle.locator('button[data-combat-command="done"]')
+    skill = battle.locator('.quest-battle-skill-name[data-side="player"][data-skill-id="1262"]')
+    check_gregor_feat_slots(page, battle, original)
+    observe_feat_sound(page, associate_skill=True)
+    evidence = {'initial': snapshot(page, stage, directory, '01-q82-original-skill-slots')}
+    commands = []
+    for turn, defense, attack in (
+        (1, (), ((9, True), (4, True), (42, True))),
+        (2, ((2, False), (457, True)), ()),
+        (3, ((458, True),), ()),
+    ):
+        if turn == 2:
+            expect(battle).to_have_attribute('data-ready-turn', '2', timeout=qa.TIMEOUT)
+            expect(battle).to_have_attribute('data-phase', 'move', timeout=qa.TIMEOUT)
+            evidence['authoredReverse'] = check_gregor_original_reverse(page, stage, battle, directory)
+        if turn > 1:
+            qa.check_terminal_movement(page, stage, directory, turn, direction=0)
+        expect(battle).to_have_attribute('data-turn', str(turn))
+        expect(battle).to_have_attribute('data-exchange-index', '1', timeout=qa.TIMEOUT)
+        expect(battle).to_have_attribute('data-exchange-phase', 'defense', timeout=qa.TIMEOUT)
+        commands.extend(place_gregor_cards(page, battle, defense, attack=False))
+        done.click()
+        commands.append([34, '', ''])
+        expect(battle).to_have_attribute('data-exchange-index', '2', timeout=qa.TIMEOUT)
+        expect(battle).to_have_attribute('data-exchange-phase', 'attack', timeout=qa.TIMEOUT)
+        commands.extend(place_gregor_cards(page, battle, attack, attack=True))
+        if turn == 1:
+            expect(skill).to_have_attribute('data-ready', 'true')
+            trace = qa.read_movement_trace(page)
+            assert [op for op in trace['battleAudit'] if op[:-1] == [107, 6, 1262]]
+            evidence['replaced'] = check_gregor_feat_pair(
+                page, stage, battle, directory, turn, replacement, original, (123, 123), changed, activated=True)
+            trace = qa.read_movement_trace(page)
+            used = [item for item in trace['battleAudit'] if item[0] == 110]
+            assert [item[:-1] for item in used] == [[110, 7, 1, 1262], [110, 7, 1, 1264]], used
+            page.wait_for_function("""() => window.qaStarterSkillPlayback.length >= 2
+              && window.qaStarterSkillPlayback.every(cue => cue.played)""", timeout=qa.TIMEOUT)
+            cues = page.evaluate('window.qaStarterSkillPlayback')
+            assert [cue['featId'] for cue in cues] == [1262, 1264], cues
+            assert all(cue['at'] >= item[-1] for cue, item in zip(cues, used, strict=True)), (cues, used)
+            evidence['castCues'] = cues
+            evidence['castFrames'] = check_gregor_cast_frames(page)
+            damage = [packet for packet in trace['replies'] if packet[0] == 73]
+            assert damage == [[73, 8, 1, 1, 1], [73, 8, 0, 1, 0]], damage
+            expect(battle.locator('#quest-battle-opponent-hp')).to_have_attribute('data-hp', '4', timeout=qa.TIMEOUT)
+            evidence['triggerDamage'] = damage
+        elif turn == 2:
+            done.click()
+            expect(battle).to_have_attribute('data-ready-turn', '3', timeout=qa.TIMEOUT)
+            assert gregor_feat_receipts(page) == replacement
+            check_gregor_feat_slots(page, battle, changed)
+            evidence['retained'] = snapshot(page, stage, directory, '01-q82-no-unconfirmed-restore-on-turn-two')
+        else:
+            evidence['restored'] = check_gregor_feat_pair(
+                page, stage, battle, directory, turn, restoration, changed, (123, 123), original)
+        commands.append([33, '', ''])
+    expect(battle).to_have_attribute('data-ready-turn', '4', timeout=qa.TIMEOUT)
+    expect(battle).to_have_attribute('data-phase', 'move', timeout=qa.TIMEOUT)
+    expect(battle.locator('#quest-battle-player-hp')).to_have_attribute('data-hp', '8')
+    expect(battle.locator('#quest-battle-opponent-hp')).to_have_attribute('data-hp', '2')
+    check_gregor_feat_slots(page, battle, original)
+    trace = qa.read_movement_trace(page)
+    assert gregor_feat_receipts(page) == replacement + restoration
+    assert page.evaluate('window.qaStarterSkillPlayback') == evidence['castCues']
+    assert trace['combat'] == commands, trace['combat']
+    assert [packet for packet in trace['movement'] if packet[0] in (23, 26)] == [[23, 0], [26, '', '']] * 3
+    assert [packet[0] for packet in trace['replies'] if packet[0] == 109 or packet == [60, 4, 1, 2]] == [
+        109, 109, 60, 60, 109, 109, 60,
+    ]
+    assert [packet[2] for packet in trace['replies'] if packet[0] == 43] == [1, 2, 3, 4]
+    evidence['complete'] = snapshot(page, stage, directory, '01-q82-restored-through-real-fourth-draw')
+    return evidence
+
+
 def verify_terminal(page, stage, directory, live, quest_id, quest):
     result = page.locator('#quest-battle-result')
     result_ok = result.locator('#quest-battle-result-ok')
@@ -945,6 +1201,7 @@ def check_battle(page, args, plan):
     player_card = plan['cardId']
     quest_id = plan['questId']
     eased = args.case == 'eased-condition'
+    replacement = args.case == 'feat-replacement'
     stage, battle, live, errors, avatar_id, quest, deck = enter_battle(
         page, origin, args.database, args.user, args.password_file.read_text().rstrip('\r\n'), args.screens, quest_id,
         hold_condition=eased)
@@ -965,19 +1222,28 @@ def check_battle(page, args, plan):
             evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
         if 'openingActions' in plan:
             assert [row[0] for row in evidence['2-and-6']['hand'] if row[2] == 'action'] == plan['openingActions']
-        evidence['5-and-7'] = check_attention_controls(page, stage, battle, args.screens,
-                                                       player_card, plan['skillId'], plan['skillName'])
+        if replacement:
+            qa.music(page, 'quest-duel', 'bgm003.mp3')
+            encounter, = [packet for packet in qa.read_movement_trace(page)['replies'] if packet[0] == 37]
+            assert encounter[4:] == ['635', '1008', 3, 0, 0, 0, 0, 0, 0], encounter
+            evidence['encounter'] = encounter
+        else:
+            evidence['5-and-7'] = check_attention_controls(page, stage, battle, args.screens,
+                                                           player_card, plan['skillId'], plan['skillName'])
         evidence['4'] = play_movement(page, stage, battle, args.screens, plan['direction'], plan.get('movementCards', []))
         move = evidence['4']['receipt']
         assert move[2] in (0, 1) and move[3] == plan['range'], move
         if plan.get('playerFirst') is not None:
             assert bool(move[2]) is plan['playerFirst'], move
-        if not move[2]:
+        if not move[2] and not replacement:
             if args.case == 'presentation':
                 evidence['3-and-8'] = check_enemy_first(page, stage, battle, args.screens, plan.get('defense', []))
             else:
                 wait_for_own_attack(page, battle, plan.get('defense', []))
-        if eased:
+        if replacement:
+            evidence['1'] = play_feat_replacement(page, stage, battle, args.screens)
+            assert len(live) == 5 and all(not socket.is_closed() for socket in live), live
+        elif eased:
             evidence['1'] = play_eased_thorn(page, stage, battle, args.screens)
         elif args.case == 'counter-guard':
             evidence['1'] = play_counter_guard(page, stage, battle, args.screens)
@@ -1010,12 +1276,18 @@ def main():
     parser.add_argument('--password-file', type=Path, required=True)
     parser.add_argument('--screens', required=True, type=Path)
     parser.add_argument('--chromium', default='/usr/bin/chromium')
-    parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition'), default='presentation')
+    parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition', 'feat-replacement'),
+                        default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
     if (args.case == 'skill') != (args.plan is not None):
         parser.error('--case skill and its original --plan must be used together')
-    if args.case == 'eased-condition':
+    if args.case == 'feat-replacement':
+        plan = {
+            'questId': 82, 'cardId': 635, 'direction': 0, 'openingActions': [9, 29, 4, 42, 47],
+            'playerFirst': False, 'range': 2, 'wins': False,
+        }
+    elif args.case == 'eased-condition':
         plan = {
             'questId': 1, 'cardId': 3, 'skillId': 7, 'skillName': '茨林', 'direction': -1,
             'openingActions': [27, 2, 60, 45, 32], 'movementCards': [[45, False]],
@@ -1038,7 +1310,8 @@ def main():
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=['--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
         try:
-            page = browser.new_page(viewport={'width': 780, 'height': 680}, device_scale_factor=1, reduced_motion='reduce')
+            reduced_motion = 'no-preference' if args.case == 'feat-replacement' else 'reduce'
+            page = browser.new_page(viewport={'width': 780, 'height': 680}, device_scale_factor=1, reduced_motion=reduced_motion)
             check_battle(page, args, plan)
         finally:
             browser.close()
