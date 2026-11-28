@@ -265,9 +265,10 @@ def observe_quest_wire(page):
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
                             queued: [], buffer: new Uint8Array(), key: null }};
       }};
-      wire.endActionHold = (deliver) => {{
+      wire.endActionHold = (deliver, nextCommand = null) => {{
         const {{ queued }} = wire.actionHold;
         wire.actionHold = null;
+        if (nextCommand !== null) wire.holdAction(nextCommand);
         if (deliver) for (const receive of queued) receive();
         return queued.length;
       }};
@@ -1096,7 +1097,7 @@ def check_opponent_backs(page, initial_count, *, since=0):
     }""", arg={"initial": initial_count, "since": since}, timeout=TIMEOUT)
 
 
-def check_quest_opening(page, stage, directory, *, drop_reply):
+def check_quest_opening(page, stage, directory, *, drop_reply, starting_hp=7):
     battle = page.locator("#quest-map-battle")
     hand = battle.locator(".quest-battle-hand-card")
     opponent_hand = page.locator("#quest-battle-opponent-hand")
@@ -1139,11 +1140,11 @@ def check_quest_opening(page, stage, directory, *, drop_reply):
     assert opponent_hand.locator("canvas").evaluate_all("""backs => backs.every((card, index) => index === 0
       || card.getBoundingClientRect().x < backs[index - 1].getBoundingClientRect().x)""")
     assert opponent_hand.locator("[data-card-id]").count() == 0
-    for side, hp in (("player", "7"), ("opponent", "1")):
+    for side, hp, maximum in (("player", starting_hp, 7), ("opponent", 1, 1)):
         gauge = page.locator(f"#quest-battle-{side}-hp")
-        expect(gauge).to_have_attribute("data-hp", hp)
-        expect(gauge).to_have_attribute("data-max", hp)
-        expect(gauge).to_have_text(f"{hp}/{hp}")
+        expect(gauge).to_have_attribute("data-hp", str(hp))
+        expect(gauge).to_have_attribute("data-max", str(maximum))
+        expect(gauge).to_have_text(f"{hp}/{maximum}")
     expect(page.locator("#quest-battle-turn")).to_have_text("1")
     timer = page.locator("#quest-battle-move-time")
     expect(timer).to_have_attribute("data-duration-ms", "60000")
@@ -1196,8 +1197,8 @@ def hold_movement_reply(page, command, activate, *, through=None, before=None):
     page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
 
 
-def release_movement_reply(page):
-    assert page.evaluate("window.qaQuestWire.endActionHold(true)") > 0
+def release_movement_reply(page, *, next_command=None):
+    assert page.evaluate("next => window.qaQuestWire.endActionHold(true, next)", next_command) > 0
 
 
 def read_movement_trace(page):
@@ -1795,21 +1796,21 @@ def check_quest_next_turn(page, stage, directory, initial_hand):
     return actions, [[23, 1]]
 
 
-def check_terminal_movement(page, stage, directory, turn):
+def check_terminal_movement(page, stage, directory, turn, *, retreat=False):
     battle = page.locator("#quest-map-battle")
     expect(battle).to_have_attribute("data-ready-turn", str(turn), timeout=TIMEOUT)
     expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
     since = len(read_movement_trace(page)["replies"])
-    stay = battle.locator('button[data-move-command="stay"]')
-    stay.click()
-    expect(battle).to_have_attribute("data-direction", "0")
+    choice, direction = ("back", 1) if retreat else ("stay", 0)
+    battle.locator(f'button[data-move-command="{choice}"]').click()
+    expect(battle).to_have_attribute("data-direction", str(direction))
     battle.locator('button[data-move-command="done"]').click()
     expect(battle).to_have_attribute("data-move-result", "settled", timeout=TIMEOUT)
     replies = read_movement_trace(page)["replies"][since:]
     (move,) = [packet for packet in replies if packet[0] == 48]
-    assert move[4] == [] and [60, 4, 1, 0] in replies, move
+    assert move[4] == [] and [60, 4, 1, direction] in replies, move
     capture(stage, directory, f"25-{turn}-terminal-authentic-move.png")
-    return [[23, 0], [26, "", ""]]
+    return [[23, direction], [26, "", ""]]
 
 
 def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_attack):
@@ -1851,12 +1852,12 @@ def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_a
     return actions, placed
 
 
-def play_terminal_combat(page, stage, directory):
+def play_terminal_combat(page, stage, directory, *, completion=24, defeat=False):
     battle = page.locator("#quest-map-battle")
     done = battle.locator('button[data-combat-command="done"]')
     actions = []
     for turn in range(1, 4):
-        actions.extend(check_terminal_movement(page, stage, directory, turn))
+        actions.extend(check_terminal_movement(page, stage, directory, turn, retreat=defeat))
         move = [packet for packet in read_movement_trace(page)["replies"] if packet[0] == 48][-1]
         attack_type = 1 if move[3] == 1 else 2
         for index, following in ((1, 51), (2, 46)):
@@ -1869,17 +1870,17 @@ def play_terminal_combat(page, stage, directory):
             role = "attack" if player_attacks else "defense"
             expect(battle).to_have_attribute("data-exchange-index", str(index), timeout=TIMEOUT)
             expect(battle).to_have_attribute("data-exchange-phase", role, timeout=TIMEOUT)
-            card_actions, placed = place_terminal_cards(page, battle, attack_type, player_attacks,
-                                                        reserve_attack=not player_attacks and index == 1)
+            card_actions, placed = ([], []) if defeat else place_terminal_cards(
+                page, battle, attack_type, player_attacks, reserve_attack=not player_attacks and index == 1)
             actions.extend(card_actions)
             capture(stage, directory, f"26-{turn}-{index}-terminal-{role}.png")
             command = 33 if player_attacks else 34
-            hold_movement_reply(page, command, done.click, before=[24, following])
+            hold_movement_reply(page, command, done.click, before=[completion, following])
             actions.append([command, "", ""])
             trace = read_movement_trace(page)
             last_reveal = [payload for payload in trace["replies"] if payload[0] == 55][-1]
             assert last_reveal[2] == placed, (last_reveal, placed)
-            if page.evaluate("window.qaQuestWire.actionHold.blocked") == 24:
+            if page.evaluate("window.qaQuestWire.actionHold.blocked") == completion:
                 return actions, trace, turn
             release_movement_reply(page)
     outcomes = [packet for packet in trace["replies"] if packet[0] in (51, 56, 73)]
@@ -1931,7 +1932,7 @@ def check_terminal_storage(database, player_id, inventory_id, deck, before, card
     return duel, actual
 
 
-def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel, profile, starting_level, held):
+def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel, profile, starting_level, held, *, starting_hp=7):
     battle = page.locator("#quest-map-battle")
     result = battle.locator("#quest-battle-result")
     settle_status = battle.locator("#quest-battle-settlement-status")
@@ -1958,7 +1959,7 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
         expect(awards.locator(f'[data-award="{field}"]')).to_have_attribute("data-value", str(value))
     expect(result.locator("#quest-battle-result-level")).to_be_hidden()
     health = [packet for packet in held["replies"] if packet[0] in (73, 74, 79)]
-    check_combat_hp(battle, {"player": 7, "opponent": 1}, health)
+    check_combat_hp(battle, {"player": starting_hp, "opponent": 1}, health)
     expect(duel_ok).to_be_disabled()
     expect(settlement).to_have_count(0)
     expect(back).to_be_hidden()
@@ -2014,14 +2015,7 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
     assert [packet for packet in trace["sent"] if packet[0] != 3] == [packet for packet in held["sent"] if packet[0] != 3]
 
 
-def check_quest_start(page, origin, database, name, password, directory, fault, *, next_turn=False, terminal=None):
-    ((player_id, flags),) = player(database, name)
-    (profile,) = avatar(database, player_id)
-    avatar_id = profile[0]
-    original_deck = quest_deck(database, avatar_id)
-    original_parts = equipped_parts(database, avatar_id)
-    assert flags == 0 and profile[5:7] == (5, 5) and not quest_inventory(database, avatar_id)
-    assert len(original_deck) == 1 and original_deck[0][1:] == (STARTER_CARD, 0, 0)
+def open_quest_fixture(page, origin, player_id, name, password):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
@@ -2036,6 +2030,18 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
     screen(stage, "lobby")
     close_lobby_news(page, stage, None)
     active_session_traffic(sockets, live, 0, player_id)
+    return stage, live, errors
+
+
+def check_quest_start(page, origin, database, name, password, directory, fault, *, next_turn=False, terminal=None):
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    avatar_id = profile[0]
+    original_deck = quest_deck(database, avatar_id)
+    original_parts = equipped_parts(database, avatar_id)
+    assert flags == 0 and profile[5:7] == (5, 5) and not quest_inventory(database, avatar_id)
+    assert len(original_deck) == 1 and original_deck[0][1:] == (STARTER_CARD, 0, 0)
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
     (profile,) = avatar(database, player_id)
     core = live[:4]
     quest = search_first_quest(page, stage, directory, database, avatar_id)
@@ -2245,6 +2251,181 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
     assert not errors, errors
     if directory is not None:
         (directory / "16-quest-start-wire.json").write_text(json.dumps(trace, indent=2) + "\n")
+
+
+def check_next_quest_land(page, stage, directory, database, quest, avatar_id, locked, held):
+    inventory_id = quest[0]
+    view = page.locator("#quest-map-view")
+    detail = page.locator("#quest-map-detail")
+    battle = page.locator("#quest-map-battle")
+    slot4 = detail.locator('button.quest-map-detail-land[data-slot="4"][data-land-id="210"]')
+    duel_ok = battle.locator("#quest-battle-result-ok")
+    result = battle.locator("#quest-battle-result")
+    prior = held["replies"]
+    (duel,) = [packet for packet in prior if packet[0] == 41]
+    assert duel[2] == 0 and duel[-1] == 0, f"Actual q3 first fight ended with {duel}"
+    finish = prior[prior.index(duel):]
+    assert [packet for packet in finish if packet[0] == 19] == [[19, 10, inventory_id, 2]]
+    assert not any(packet[0] in (20, 22, 24) for packet in finish), finish
+    expect(result).to_have_attribute("data-result", "0", timeout=TIMEOUT)
+    expect(result).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(duel_ok).to_be_disabled()
+    expect(slot4).to_have_count(0)
+    expect(page.locator("#quest-map-settlement")).to_have_count(0)
+    capture(stage, directory, "31-q3-result-before-damage-proof.png")
+
+    release_movement_reply(page, next_command=3)
+    page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+    fenced = read_movement_trace(page)
+    suffix = fenced["replies"][len(prior):]
+    (damage,) = [packet[4:] for packet in suffix if packet[:4] == [20, 7, 1, 2]]
+    assert fenced["sent"][len(held["sent"]):] == [[3, 5]] and not any(packet[0] == 3 for packet in suffix)
+    expect(duel_ok).to_be_disabled()
+    expect(slot4).to_have_count(0)
+    expect(page.locator("#quest-map-settlement")).to_have_count(0)
+    capture(stage, directory, "32-q3-result-before-original-pong.png")
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-outcome-state", "land-cleared", timeout=TIMEOUT)
+    expect(duel_ok).to_be_enabled()
+    assert [3, 2] in read_movement_trace(page)["replies"][len(fenced["replies"]):]
+    duel_ok.click()
+    expect(battle).to_have_count(0)
+    expect(view).to_have_attribute("data-adventure-state", "between-lands", timeout=TIMEOUT)
+    expect(detail).to_have_attribute("data-inventory-id", str(inventory_id))
+    expect(detail).to_have_attribute("data-quest-status", "2")
+    expect(detail).to_have_attribute("data-progress", "2")
+    expect(detail.locator('#quest-map-detail-pawn[data-slot="1"] img')).to_be_visible()
+    expect(detail.locator('span.quest-map-detail-land[data-slot="1"][data-cleared="true"]')).to_be_visible()
+    expect(slot4).to_be_enabled()
+    expect(detail.locator("button.quest-map-detail-land")).to_have_count(1)
+    for selector in ("#quest-map-back", "#quest-map-detail-back", "#quest-map-deck-previous", "#quest-map-deck-next"):
+        expect(page.locator(selector)).to_be_hidden()
+    expect(page.locator("#quest-map-settlement")).to_have_count(0)
+    assert quest_inventory(database, avatar_id) == [quest[:2] + (2, quest[3], 2, 1, *damage)]
+    assert quest_deck(database, avatar_id) == locked
+    assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [(0, 3)]
+    assert query(database, "SELECT id FROM quest_clear_logs WHERE avatar_id = ?", avatar_id) == []
+    capture(stage, directory, "33-q3-retained-detail.png")
+    music(page, "quest", "ulbgm03.mp3")
+    before_next = read_movement_trace(page)
+    assert [p for p in before_next["sent"] if p[0] != 3] == [p for p in held["sent"] if p[0] != 3]
+
+    page.emulate_media(reduced_motion="no-preference")
+    hold_movement_reply(page, 16, slot4.click, through=37)
+    receiving = read_movement_trace(page)["replies"][len(before_next["replies"]):]
+    arrivals = [packet for packet in receiving if packet[0] in (128, 37, 40)]
+    assert [packet[0] for packet in arrivals] == [128, 37] and arrivals[0] == [128, 3, 4]
+    assert arrivals[1][2:] == [-1, "CPU", "21", "1004", 11, *damage, 0, 0, 0], arrivals
+    expect(battle).to_have_count(0)
+    assert read_movement_trace(page)["readySends"] == [["settled", "complete"]]
+    capture(stage, directory, "34-q3-second-encounter-withheld.png")
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-stage", "11", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-land-slot", "4")
+    expect(battle).to_have_attribute("data-encounter-key", f"{inventory_id}:4")
+    expect(battle).to_have_attribute("data-burn", "settled", timeout=TIMEOUT)
+    music(page, "quest-duel", "bgm000.mp3")
+    assert page.evaluate("window.qaFirstDuel !== document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
+    assert page.locator('audio[src$="/bgm010.mp3"]').count() == 0
+    capture(stage, directory, "35-q3-original-second-opening.png")
+    expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-turn", "1")
+    expect(battle.locator("#quest-battle-player-hp")).to_have_attribute("data-hp", str(7 - damage[0]))
+    expect(battle.locator("#quest-battle-opponent-hp")).to_have_attribute("data-hp", "1")
+    expect(battle.locator('[id^="quest-battle-exchange-history-"]')).to_have_count(0)
+    trace = read_movement_trace(page)
+    assert trace["readySends"] == [["settled", "complete"]] * 2
+    opening = [packet for packet in trace["replies"][len(before_next["replies"]):] if 43 <= packet[0] <= 46]
+    assert [packet[0] for packet in opening] == [43, 44, 45, 46] and opening[0] == [43, 3, 1], opening
+    new_hand = [[card, bool((mask >> index) & 1), kind]
+                for kind, (_, _, cards, mask, _) in zip(("action", "event"), opening[1:3])
+                for index, card in enumerate(cards)]
+    check_dealt_cards(battle.locator("#quest-battle-player-hand .quest-battle-hand-card"), new_hand)
+    assert trace["actions"] == [[13, inventory_id, 1], [16, inventory_id, 1, 1], [16, inventory_id, 1, 4]]
+    assert [packet for packet in trace["sent"][len(before_next["sent"]):] if packet[0] != 3] == [[16, 11], [22, 5]]
+    assert not any(packet[0] in (22, 24) for packet in trace["replies"])
+    assert quest_inventory(database, avatar_id) == [quest[:2] + (2, quest[3], 2, 1, *damage)]
+    assert quest_deck(database, avatar_id) == locked
+    capture(stage, directory, "36-q3-original-second-move.png")
+
+
+def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land):
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    avatar_id = profile[0]
+    (quest,) = quest_inventory(database, avatar_id)
+    quest_id, initial_damage = (3, 0) if continue_land else (1, 6)
+    assert flags == 0 and quest[1:3] == (quest_id, 0) and quest[4:] == (0, 1, initial_damage, 0, 0), quest
+    assert profile[5:7] == (4, 5)
+    assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [
+        (0, 3 if continue_land else 0),
+    ]
+    deck = quest_deck(database, avatar_id)
+    assert len(deck) == 1 and deck[0][1:] == (STARTER_CARD, 0, 0)
+    locked = [deck[0][:3] + (1,)]
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
+    page.locator("#lobby-quest-load").click()
+    screen(stage, "quest-map")
+    expect(page.locator("#quest-map-view")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    inventory_id = quest[0]
+    if continue_land:
+        response = page.request.get(f"{origin}/api/quest-catalog?id=3&map=1")
+        assert response.ok
+        (source,) = response.json()["quests"]
+        assert [(row["slot"], row["id"], row["nextSlots"], row["stage"], row["eventNo"]) for row in source["positions"]] == [
+            (1, 201, [4], 11, 0), (4, 210, [], 11, 0),
+        ]
+    row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"][data-quest-id="{quest_id}"]')
+    row.locator(".quest-map-row-open").click()
+    detail = page.locator("#quest-map-detail")
+    expect(detail).to_have_attribute("data-quest-status", "1", timeout=TIMEOUT)
+    before = avatar(database, player_id)[0]
+    start = detail.locator('[data-quest-command="start"]')
+    start.click()
+    expect(detail).to_have_attribute("data-quest-status", "2", timeout=TIMEOUT)
+    started = quest[:2] + (2, quest[3], 0, 1, initial_damage, 0, 0)
+    wait_quest_start_lock(page, database, avatar_id, started, locked)
+    before = before[:5] + (before[5] - int(continue_land),) + before[6:]
+    assert avatar(database, player_id) == [before]
+    first = detail.locator('button.quest-map-detail-land[data-slot="1"][data-land-id="201"]')
+    expect(first).to_be_enabled()
+    page.emulate_media(reduced_motion="no-preference")
+    observe_quest_opening_audio(page)
+    page.evaluate("window.qaQuestWire.holdAction(22, {through: 45})")
+    first.click()
+    check_quest_opening(page, stage, directory, drop_reply=False, starting_hp=7 - initial_damage)
+    page.evaluate("window.qaFirstDuel = document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
+    encounter = read_movement_trace(page)["replies"]
+    states = [packet for packet in encounter if packet[0] in (4, 17)]
+    assert states == [[17, 11, inventory_id, 1, quest_id], [4, 10, before[5]], [17, 11, inventory_id, 2, quest_id]], states
+    assert next(packet for packet in encounter if packet[0] == 37)[2:] == [
+        -1, "CPU", "21", "1004", 11, initial_damage, 0, 0, 0, 0, 0,
+    ]
+    page.emulate_media(reduced_motion="reduce")
+    cards_before = owned_character_cards(database, avatar_id)
+    actions, held, _ = play_terminal_combat(page, stage, directory, completion=20 if continue_land else 24, defeat=not continue_land)
+    if continue_land:
+        check_next_quest_land(page, stage, directory, database, quest, avatar_id, locked, held)
+    else:
+        duel, after = check_terminal_storage(database, player_id, inventory_id, deck, before, cards_before, held["replies"])
+        assert duel[2] == 1 and any(packet[0] == 73 and packet[2] == 1 and packet[3] > 0 for packet in held["replies"])
+        check_terminal_presentation(page, stage, directory, "defeat", inventory_id, duel, after, before[2], held, starting_hp=1)
+        page.locator("#quest-map-back").click()
+        screen(stage, "lobby")
+
+    trace = read_movement_trace(page)
+    assert len(live) == 5 and not trace["overlaps"]
+    assert all(not peer.is_closed() for peer in live[:4])
+    assert trace["close"] == (None if continue_land else [1000, True])
+    assert trace["confirms"] == [[inventory_id, 1]]
+    assert [packet[0] for packet in trace["sent"] if packet[0] not in (0, 1, 3)] == [
+        12, 13, 16, 22, *(command for command, *_ in actions), *([16, 22] if continue_land else [2]),
+    ]
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
+    assert not errors, errors
+    if directory is not None:
+        (directory / "37-quest-wire.json").write_text(json.dumps(trace, indent=2) + "\n")
 
 
 def check_button_hover(page, button):
@@ -2832,7 +3013,9 @@ def main():
                         help="Withhold the genuine reply to one original request through its timeout")
     parser.add_argument("--quest-next-turn", action="store_true",
                         help="Hold the genuine role switch and next Move through two exchanges on the same Quest")
-    parser.add_argument("--quest-terminal", choices=("return", "late"),
+    parser.add_argument("--quest-next-land", action="store_true",
+                        help="Use an owned q3 fixture to verify both encounters on the retained original Quest")
+    parser.add_argument("--quest-terminal", choices=("return", "late", "defeat"),
                         help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
@@ -2847,6 +3030,8 @@ def main():
         parser.error("--quest-next-turn requires --quest-start-user without --quest-start-fault")
     if args.quest_terminal and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn):
         parser.error("--quest-terminal requires --quest-start-user and its own case")
+    if args.quest_next_land and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn or args.quest_terminal):
+        parser.error("--quest-next-land requires --quest-start-user and its own case")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -2867,6 +3052,12 @@ def main():
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
+                elif args.quest_next_land or args.quest_terminal == "defeat":
+                    check_preowned_quest(page, origin, args.database, args.quest_start_user,
+                                         args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
+                                         continue_land=args.quest_next_land)
+                    mode = "authorized next land" if args.quest_next_land else "one-HP defeat"
+                    print(f"Real retained Quest passed ({mode}).")
                 else:
                     check_quest_start(page, origin, args.database, args.quest_start_user,
                                       args.quest_start_password_file.read_text().rstrip("\r\n"),

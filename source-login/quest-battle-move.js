@@ -41,7 +41,7 @@ function displaced(node, frames, signal) {
   void animation.finished.catch(() => {}).finally(() => signal.removeEventListener('abort', cancel));
 }
 
-export function createQuestBattleMove({ battle, scene, hud, hands, controls, combatControls, status, multi, signal, isCurrent }) {
+export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands, controls, combatControls, status, multi, signal, isCurrent }) {
   const cards = new Map();
   const buttons = new Map();
   let definitions = new Map();
@@ -105,7 +105,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
     try {
       const args = value === undefined ? [] : [value];
       const scope = combat ? { exchangeKey } : { moveTurn: turn };
-      const next = await scene[operation](...args, { signal, ...scope });
+      const next = await scene[operation](...args, { signal, encounterKey, ...scope });
       if (!live()) return;
       update(next ?? scene.snapshot.adventure?.battle);
       const ownCard = cards.get(value);

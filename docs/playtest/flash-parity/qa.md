@@ -149,6 +149,14 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 原版使用繁中 SWF `2a375905`，在 780×680、DPR 1 啟動隔離 Ruby `ee38622`。依原版實際手牌打到普通任務終局，分別點擊 `(657,616)`、`(233,308)` 和 `(735,15)`。三處各保存指標、畫面和時間，結算前及兩次 OK 後以唯讀 SQLite 核對同一筆任務。原版 Web Audio 混音以 `check_quest_mix.py` 的取樣比對原始 MP3，新版另記錄實際播放事件及音軌交接。[原版操作紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/wire.json) · [原版音訊取樣](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/audio-samples.json) · [新版完整動畫試玩](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-wire.json)
 
+### 重跑下一格與敗北
+
+用兩位全新隔離角色及上一節的參數。下一格案例預置魔女山谷三次通關，透過原版 `get_quest(1,0)` 取得任務 3。使用 `--quest-next-land`，起始 4/5 AP，玩家以真實手牌取得首戰勝利。先暫緩 `SC20`，再暫緩同一條 Quest 的 Pong。確認結果可見，但第一個 OK 仍停用。放行後保存同一任務詳情、棋子、已清位置 1 與可進位置 4。下一格先放行 `SC128` 與 `SC37`，確認傷勢和位置，待實際 `SC40` 才顯示第二場開場。核對兩場各一次 Ready、原任務曲交接、同一條連線及無額外 AP 扣款。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py)
+
+升級案例用原版模型保存 Lv1／9 Exp，保留一張基礎 7 HP 的角色卡與既有傷勢 1。用完整動畫跑到首勝後第一次 OK，讀回來源 Lobby `SC17`、`SC18` 及畫面 AP，核對 SQLite，再進 slot 4。實跑的 25 Exp 把角色升至 Lv3，AP 6/6，另核對原場景與音軌交接。[原版 AP 回覆及存檔](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-intermediate-wire.json) · [第二戰封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-multiland-wire.json)
+
+敗北案例使用 `--quest-terminal defeat`。保存任務 1 的既有傷勢 `[6,0,0]`，在原始角色卡 21 的 7 HP 中保留 1 HP。用原版空移動桌、後退與不出牌的攻防，讓 Ruby 依當場骰點決定結果。遭擊倒後核對 `SC41=1`、同一持有項移除、`SC24=1`、敗北圖及地圖的任務失敗面板，並查 SQLite 的歸檔與牌組狀態。[原版隔離資料準備及和局模型](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/README.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

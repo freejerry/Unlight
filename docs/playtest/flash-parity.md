@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合，以及落日大蝙蝠勝利、報酬、任務結算和返回。**部分**戰鬥 HUD。 | 接續敗北／和局的兩版實跑、換角、技能及多地形任務。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群第一戰勝利後接續第二格。**部分**戰鬥 HUD 與寶箱。 | 接續實機和局、第二格固定寶箱及最終通關、換角和其他地形。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -112,3 +112,9 @@
 
 - 原版與新版均用原始 Ruby 完成落日大蝙蝠勝利、戰鬥 OK、任務結算 OK 及地圖 Back。新版沿用原始 Win 圖、角色動作、報酬框、升級動畫及兩處按鈕圖。兩次確認維持同一條 Quest，直到地圖 Back 才關閉。SQLite 驗證報酬、任務歸檔、區域進度 1/3 和牌組解鎖。另有原版 Lv2 升級畫面及正常新版播放紀錄。[勝利並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/duel-result-comparison.png) · [任務結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-clear-comparison.png) · [返回地圖並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-map-comparison.png) · [原版升級](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/11-original-duel-reward.png) · [新版音訊和封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-wire.json)
 - 正常案例及真 `SC24` 逾時案例各有實跑。正常回覆啟用返回，頁面使用 Ruby 的實際報酬及任務進度。逾時時保留勝利結果和最後可確認的狀態。敗北、和局與獎勵骰的實機分支在矩陣繼續驗證。[正常及逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-native-terminal-wire.json) · [逐項規格](flash-parity/quest-pve.md#單格任務的勝敗報酬與返回) · [重跑終局](flash-parity/qa.md#重跑單格任務終局)
+
+### 第一戰後的下一格及敗北
+
+- 原版與新版實跑大蝙蝠之群，第一戰勝利後一次 OK 回到原任務詳情，再由同一 Quest 進到第二格。兩版實測都確認 3 點損傷、同一牌組及持有 ID。兩戰皆用舞台 11 的原版戰鬥曲，中間返回任務曲。新版第二戰進入 Move，生命為 4/7。[同一任務地圖並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q3-retained-detail-comparison.png) · [第二戰開場並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q3-second-opening-comparison.png) · [逐項來源](flash-parity/quest-pve.md#非終點獲勝後接續下一格)
+- 完整動畫的升級案例在同一詳情驗到原 Lobby 的實際 AP 回覆及 AP 6/6。較早的 Lobby 回覆不會蓋掉較新的 Quest AP，既有 Lobby 刷新節奏也已回歸。[升級後畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-03-same-detail-after-ok.png) · [原版 AP 封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-intermediate-wire.json)
+- 新版真實敗北後依序顯示 Lose 及任務失敗，SQLite 核對獎勵、原持有列歸檔及牌組解鎖。原版另以完整 18 回合在 Ruby 模型中判和，瀏覽器和局待驗。[敗北畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-07-one-hp-defeat.png) · [任務失敗畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-08-quest-failed.png) · [真實封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-native-next-land-wire.json) · [原版模型](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/README.md)

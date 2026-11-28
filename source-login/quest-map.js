@@ -18,6 +18,7 @@ const pickerPositions = [[64, 128], [144, 128], [224, 128], [304, 128], [64, 208
 const detailStatuses = new Set([0, 1, 2, 6]);
 const detailColumns = [88, 184, 280];
 const detailRows = [100, 180, 260, 340, 420];
+const bossLandEvent = 1;
 const outerPassFrames = [0, 0, 0, 2, 0, 1, 3, 4];
 const centerPassFrames = [0, 0, 0, 3, 0, 1, 10, 5, 0, 2, 8, 6, 9, 4, 11, 7];
 const searchRejections = new Map([
@@ -346,7 +347,7 @@ function detailPathFrames(left, center, right) {
   return [outerPassFrames[leftBits], centerPassFrames[centerBits], outerPassFrames[rightBits]];
 }
 
-function appendTerrainArt(parent, assets, land, x, y, enabled = false) {
+function appendTerrainArt(parent, assets, land, x, y, enabled = false, cleared = false) {
   const states = assets.terrain?.[land.stage];
   const terrain = enabled ? states?.up : states?.dis;
   appendDetailArt(parent, terrain, x, y)?.classList.add('quest-map-terrain-up');
@@ -363,6 +364,7 @@ function appendTerrainArt(parent, assets, land, x, y, enabled = false) {
     }
     appendDetailArt(parent, over, x, y)?.classList.add('quest-map-terrain-over');
   }
+  if (cleared) return terrain;
   if (land.enemyId > 0) {
     appendDetailArt(parent, assets.events[land.treasureType === 7 ? 'enemy_hl' : 'enemy'], x, y);
     if (land.treasureType > 0) appendDetailArt(parent, assets.subEvents[assets.subEventByTreasure[land.treasureType]], x, y);
@@ -372,7 +374,7 @@ function appendTerrainArt(parent, assets, land, x, y, enabled = false) {
   return terrain;
 }
 
-function paintDetailRoute(route, positions, assets, setHover, reachableSlot, enterLand) {
+function paintDetailRoute(route, positions, assets, setHover, reachableSlots, progress, enterLand) {
   route.replaceChildren();
   if (!Array.isArray(positions) || !assets) return;
   const bySlot = new Map(positions.map(land => [land.slot, land]));
@@ -396,16 +398,18 @@ function paintDetailRoute(route, positions, assets, setHover, reachableSlot, ent
     const goal = slot >= 12 || nextMask === 0;
     const cell = document.createElement('div');
     cell.className = 'quest-map-terrain-cell';
+    const cleared = (progress & (1 << slot)) !== 0;
     route.append(cell);
     appendDetailArt(cell, assets.bases?.[goal ? 5 : 2], x, y);
-    const enabled = slot === reachableSlot && !!assets.terrain?.[land.stage]?.up;
-    const terrain = appendTerrainArt(cell, assets, land, x + 40, y + 56, enabled);
+    const enabled = !cleared && reachableSlots.has(slot) && !!assets.terrain?.[land.stage]?.up;
+    const terrain = appendTerrainArt(cell, assets, land, x + 40, y + 56, enabled, cleared);
     if (!terrain) continue;
 
     const hit = document.createElement(enabled ? 'button' : 'span');
     hit.className = 'quest-map-detail-land';
     hit.dataset.slot = String(slot);
     hit.dataset.landId = String(id);
+    hit.dataset.cleared = String(cleared);
     hit.tabIndex = 0;
     if (enabled) {
       hit.type = 'button';
@@ -413,7 +417,8 @@ function paintDetailRoute(route, positions, assets, setHover, reachableSlot, ent
     } else {
       hit.setAttribute('role', 'img');
     }
-    hit.setAttribute('aria-label', land.name || `地形 ${id}`);
+    const name = land.name || `地形 ${id}`;
+    hit.setAttribute('aria-label', cleared ? `${name}，已通過` : name);
     if (land.caption) hit.setAttribute('aria-description', land.caption);
     const [offsetX, offsetY, width, height] = (enabled ? assets.terrain[land.stage].hit : assets.terrain[land.stage].disabledHit)
       ?? [terrain.x, terrain.y, terrain.width, terrain.height];
@@ -445,7 +450,7 @@ function setupQuestDetails(view, {
   const notice = get('#quest-map-detail-status');
   let assets;
   let battleAssets;
-  let preparedStage;
+  const preparedStages = new Map();
   let selectedId;
   let acknowledging;
   let starting = false;
@@ -484,6 +489,7 @@ function setupQuestDetails(view, {
     delete detail.dataset.inventoryId;
     delete detail.dataset.questStatus;
     delete detail.dataset.confirmationState;
+    delete detail.dataset.progress;
     setHover(null);
     route.replaceChildren();
     const row = get(`#quest-map-inventory > li[data-inventory-id="${closed}"]`);
@@ -512,18 +518,19 @@ function setupQuestDetails(view, {
     });
   }
 
-  function readyBattleStage(firstLand) {
-    if (!(firstLand?.enemyId > 0) || !assets?.terrain?.[firstLand.stage]?.hit ||
-        !battleAssets?.transition || !battleAssets.stages?.[firstLand.stage]?.layers?.length) return false;
-    if (preparedStage?.id !== firstLand.stage) {
-      const stage = preparedStage = { id: firstLand.stage, ready: false };
-      void prepareQuestBattleStage(battleAssets.stages[stage.id].layers).then(ready => {
-        if (signal.aborted || preparedStage !== stage) return;
+  function readyBattleStage(land) {
+    const layers = battleAssets?.stages?.[land?.stage]?.layers;
+    if (!(land?.enemyId > 0) || !assets?.terrain?.[land.stage]?.hit || !battleAssets?.transition || !layers?.length) return false;
+    if (!preparedStages.has(land.stage)) {
+      const stage = { ready: false };
+      preparedStages.set(land.stage, stage);
+      void prepareQuestBattleStage(layers).then(ready => {
+        if (signal.aborted) return;
         stage.ready = ready;
         refresh();
       });
     }
-    return preparedStage.ready;
+    return preparedStages.get(land.stage).ready;
   }
 
   function refresh() {
@@ -540,7 +547,7 @@ function setupQuestDetails(view, {
     }
     const definition = definitions.get(row.questId);
     const firstLand = definition?.firstLand;
-    const stageReady = readyBattleStage(firstLand);
+    const firstReady = readyBattleStage(firstLand);
     detail.dataset.inventoryId = String(row.inventoryId);
     detail.dataset.questStatus = String(row.status);
     detail.dataset.confirmationState = row.confirmationState ?? (acknowledging === row.inventoryId ? 'busy' : 'ready');
@@ -561,49 +568,74 @@ function setupQuestDetails(view, {
         (command === 'present' && Number.isInteger(energy) && definition?.ap > energy);
       if (command === 'start') {
         const emptyDeck = selectedDeck && !selectedDeck.cards.some(card => card.position === 0);
-        button.disabled = !scene?.start || !stageReady || ![0, 1, 6].includes(row.status) || !!adventure || starting ||
+        button.disabled = !scene?.start || !firstReady || ![0, 1, 6].includes(row.status) || !!adventure || starting ||
           searchState === 'busy' || deckSelectionState !== 'ready' || detail.dataset.confirmationState !== 'ready' ||
           (startState !== 'ready' && !(emptyDeck && startState === 'unavailable'));
       }
     }
     const ownAdventure = adventure?.inventoryId === selectedId ? adventure : null;
-    const reachableSlot = ownAdventure?.state === 'started' && stageReady ? firstLand.slot : null;
-    if (rendered?.definition !== definition || rendered?.assets !== assets || rendered?.reachableSlot !== reachableSlot) {
-      rendered = { definition, assets, reachableSlot };
+    const positions = definition?.positions;
+    const progress = ownAdventure?.progress ?? null;
+    if (Number.isInteger(progress)) detail.dataset.progress = String(progress);
+    else delete detail.dataset.progress;
+    const reachableSlots = new Set();
+    if (ownAdventure?.state === 'started' && firstReady) reachableSlots.add(firstLand.slot);
+    if (ownAdventure?.state === 'between-lands') {
+      for (const next of ownAdventure.nextLands ?? []) {
+        const land = positions?.find(({ slot, id, stage }) => slot === next.slot && id === next.id && stage === next.stage);
+        if (readyBattleStage(land)) reachableSlots.add(land.slot);
+      }
+    }
+    const reachableKey = [...reachableSlots].join(',');
+    if (rendered?.definition !== definition || rendered?.assets !== assets || rendered?.reachableKey !== reachableKey || rendered?.progress !== progress) {
+      rendered = { definition, assets, reachableKey, reachableSlots, progress };
       setHover(null);
-      paintDetailRoute(route, definition?.positions, assets, setHover, reachableSlot, enterLand);
+      paintDetailRoute(route, positions, assets, setHover, reachableSlots, progress, enterLand);
     }
     drawPawn(ownAdventure, selectedDeck, firstLand);
-    if (!activeBattle && stageReady && ownAdventure?.state === 'encounter' && ownAdventure.encounter) {
+    if (!activeBattle && ownAdventure?.state === 'encounter' && ownAdventure.encounter) {
       const { encounter } = ownAdventure;
-      const layers = battleAssets.stages[encounter.stage]?.layers;
-      if (layers?.length && encounter.stage === firstLand.stage) {
+      const land = positions?.find(({ slot, stage }) => slot === ownAdventure.slot && stage === encounter.stage);
+      if (readyBattleStage(land)) {
+        const { layers } = battleAssets.stages[encounter.stage];
         const lifetime = activeBattle = new AbortController();
         const battleSignal = AbortSignal.any([lifetime.signal, signal]);
         const board = get('.quest-map-board');
         const settlementArt = getCatalog(`${resultArt}index.json`, null, battleSignal).catch(() => null);
         void mountQuestBattleEntry(view, board, {
-          encounter, layers, assets: battleAssets, signal: battleSignal, scene, loadCards,
+          encounter, landSlot: ownAdventure.slot, layers, assets: battleAssets, signal: battleSignal, scene, loadCards,
           isCurrent: () => current().adventure?.encounter === encounter && current().adventure.state === 'encounter',
           onEncounter: stage => onEncounter?.({
-            stage, isBoss: definition.kind === 2,
+            stage, isBoss: land.eventNo === bossLandEvent,
           }),
           onBattleFinish, onBattleSound,
           async returnToMap() {
-            const assets = await settlementArt;
             if (battleSignal.aborted || activeBattle !== lifetime || view.inert) return false;
-            const settlement = await scene.returnFromBattle({ signal: battleSignal });
-            if (battleSignal.aborted || activeBattle !== lifetime || !settlement?.canReturn || !settlement.quest) return false;
+            const restoreFocus = document.activeElement?.matches(':focus-visible');
+            const settlement = await scene.returnFromBattle({ signal: battleSignal, encounterKey: encounter.key });
+            if (battleSignal.aborted || activeBattle !== lifetime || !settlement?.canReturn) return false;
+            const continuing = settlement.state === 'land-cleared' && current().adventure?.state === 'between-lands'
+              && current().adventure.inventoryId === settlement.inventoryId;
+            if (!continuing && !settlement.quest) return false;
+            const assets = continuing ? null : await settlementArt;
+            if (battleSignal.aborted || activeBattle !== lifetime) return false;
             lifetime.abort();
             activeBattle = undefined;
             get('#quest-map-battle')?.remove();
+            board.style.maskImage = '';
+            board.hidden = false;
+            onBattleReturn?.();
+            if (continuing) {
+              setHover(null);
+              board.inert = false;
+              refresh();
+              if (restoreFocus) route.querySelector('button.quest-map-detail-land')?.focus({ preventScroll: true });
+              return true;
+            }
             pawn.hidden = true;
             pawn.replaceChildren();
             pawnCard = pawnOrigin = undefined;
             close(false);
-            board.style.maskImage = '';
-            board.hidden = false;
-            onBattleReturn?.();
             showQuestSettlement(view, settlement, assets, signal, () => {
               board.inert = false;
               get('#quest-map-back').focus({ preventScroll: true });
@@ -645,7 +677,7 @@ function setupQuestDetails(view, {
   }
 
   async function enterLand(slot) {
-    if (!scene?.enterLand || entering || rendered?.reachableSlot !== slot || signal.aborted || view.inert) return;
+    if (!scene?.enterLand || entering || activeBattle || !rendered?.reachableSlots.has(slot) || signal.aborted || view.inert) return;
     entering = true;
     try {
       await scene.enterLand(slot);

@@ -220,6 +220,7 @@ def native_quest_catalog():
                 treasure_id = int(row.get("treasure_no"))
                 event_id = int(row.get("event_no"))
                 if all(0 <= value <= 0x7fffffff for value in (treasure_id, event_id)):
+                    contents["eventNo"] = event_id
                     # QuestLand#treasure_genre uses the master type and falls back to the stored ID.
                     contents["treasureType"] = treasure_types.get(treasure_id, treasure_id)
                     contents["emptyTerrain"] = (enemy_id, treasure_id, event_id) == (0, 0, 0)

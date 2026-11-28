@@ -812,7 +812,8 @@ async function renderBattleHud(battle, sourceAvatar, {
   const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
   status.setAttribute('role', 'status');
   status.tabIndex = -1;
-  const move = createQuestBattleMove({ battle, scene, hud, hands, controls, combatControls, status, multi: encounter.duel.multi, signal, isCurrent });
+  const move = createQuestBattleMove({ battle, scene, encounterKey: encounter.key, hud, hands, controls, combatControls, status,
+    multi: encounter.duel.multi, signal, isCurrent });
   void battleCardControls(signal).then(move.installCardArt);
   const distance = encounter.duel.distance;
   battle.dataset.distance = String(distance);
@@ -997,9 +998,8 @@ async function renderBattleHud(battle, sourceAvatar, {
       'awaiting-settlement': '正在等待任務結算確認。',
       uncertain: '無法確認任務結算。',
       'bonus-pending': '正在等待獎勵結算。',
-      'land-cleared': '此任務仍有後續地形。',
     }[outcome.state] ?? '';
-    resultStatus.className = ['uncertain', 'bonus-pending', 'land-cleared'].includes(outcome.state) ? 'quest-battle-status' : 'sr-only';
+    resultStatus.className = ['uncertain', 'bonus-pending'].includes(outcome.state) ? 'quest-battle-status' : 'sr-only';
   }
 
   async function presentDuelResult() {
@@ -1188,13 +1188,13 @@ async function renderBattleHud(battle, sourceAvatar, {
   battle.dataset.intro = 'complete';
   paint('preparing');
   scene.subscribe(receive, { signal });
-  void scene.readyBattle({ signal }).then(() => receive(scene.snapshot)).catch(() => {
+  void scene.readyBattle({ signal, encounterKey: encounter.key }).then(() => receive(scene.snapshot)).catch(() => {
     if (!signal.aborted && isCurrent()) paint('uncertain');
   });
 }
 
 export async function mountQuestBattleEntry(view, board, {
-  encounter, layers, assets, signal, scene, loadCards, isCurrent, onEncounter, onBattleFinish, onBattleSound, returnToMap,
+  encounter, landSlot, layers, assets, signal, scene, loadCards, isCurrent, onEncounter, onBattleFinish, onBattleSound, returnToMap,
 }) {
   const { transition: timing } = assets;
   const delay = timing.delayAfterDetermineMs - (performance.now() - encounter.receivedAt);
@@ -1204,6 +1204,8 @@ export async function mountQuestBattleEntry(view, board, {
   const battle = document.createElement('section');
   battle.id = 'quest-map-battle';
   battle.dataset.stage = String(encounter.stage);
+  if (Number.isInteger(landSlot)) battle.dataset.landSlot = String(landSlot);
+  if (encounter.key) battle.dataset.encounterKey = encounter.key;
   battle.dataset.phase = 'opening';
   battle.setAttribute('aria-labelledby', 'quest-map-battle-title');
   const title = document.createElement('h2');

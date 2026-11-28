@@ -59,6 +59,9 @@ const LOBBY_PONG = 35;
 const LOBBY_REFRESH_AVATAR = 17;
 const LOBBY_ENERGY_REPLY = 17;
 const LOBBY_ENERGY_MAX_REPLY = 18;
+const LOBBY_LEVEL_REPLY = 22;
+const LOBBY_DECK_EXP_REPLY = 23;
+const LOBBY_DECK_LEVEL_REPLY = 24;
 const LOBBY_GEMS_REPLY = 25;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
 const LOBBY_REFRESH_INTERVAL = 2000;
@@ -393,6 +396,7 @@ class SessionSocket {
 
 function observeLobbyAvatar(reply, publish) {
   let patch;
+  let marker;
   try {
     switch (reply.command) {
       case LOBBY_ENERGY_REPLY: {
@@ -418,6 +422,13 @@ function observeLobbyAvatar(reply, publish) {
         if (freeDuelCount >= 0 && freeDuelCount <= 3) patch = { freeDuelCount };
         break;
       }
+      case LOBBY_LEVEL_REPLY:
+      case LOBBY_DECK_EXP_REPLY:
+      case LOBBY_DECK_LEVEL_REPLY: {
+        const value = reply.int();
+        if (value >= 0) marker = value;
+        break;
+      }
       default:
         return false;
     }
@@ -426,7 +437,7 @@ function observeLobbyAvatar(reply, publish) {
     // A malformed optional status update does not affect the other Lobby replies.
     return true;
   }
-  if (patch) publish(patch);
+  if (patch || marker !== undefined) publish(patch, reply.command, marker);
   return true;
 }
 
@@ -997,7 +1008,7 @@ async function sendQuestStart(socket, signal, selected, deckIndex, markDispatche
 }
 
 async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter,
-  { emptyTerrain = false, fixedGemTreasure = null, firstLand, onArrival } = {}) {
+  { emptyTerrain = false, fixedGemTreasure = null, firstLand, expectBattle = false, onArrival } = {}) {
   const peaceful = emptyTerrain || fixedGemTreasure !== null;
   const terminal = firstLand?.nextMask === 0;
   let arrived = false;
@@ -1049,7 +1060,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           case QUEST_PROGRESS_REPLY: {
             const update = readQuestProgressReply(reply);
             if (update.inventoryId !== inventoryId) break;
-            if (!arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
+            if (expectBattle || !arrived || encounter || deleted || (update.progress & (1 << slot)) === 0) {
               throw new SessionError('protocol');
             }
             if ((peaceful || firstLand) && (progress !== null || update.progress !== (1 << slot))) {
@@ -1219,6 +1230,7 @@ function questSceneAdventureSnapshot(current, operation) {
     progress: current.run.progress, encounter: current.encounter ?? null, finish: current.finish ?? null,
     emptyTerrain: current.emptyTerrain === true, fixedGemTreasure: current.fixedGemTreasure ?? null,
     battle: current.state === 'encounter' ? current.battle.sceneSnapshot(operation) : null,
+    ...(current.state === 'between-lands' ? { nextLands: current.battle.outcome.nextLands } : {}),
   });
 }
 
@@ -1247,6 +1259,15 @@ function nextBattleLands(positions, slot, progress) {
     .map((next) => positions.get(next))
     .filter((next) => next.enemyId !== null)
     .map(({ slot, id, name, caption, enemyId }) => ({ slot, id, name, caption, enemyId }));
+}
+
+function nextSceneBattleLands(positions, slot, progress) {
+  const mask = positions?.get(slot)?.nextMask;
+  return Object.freeze(nextBattleLands(positions, slot, progress).flatMap((land) => {
+    const { stage, nextMask } = positions.get(land.slot);
+    const allowed = mask & (1 << (2 - land.slot % 3)); // Original column mask is top 4, middle 2, bottom 1.
+    return allowed && stage !== null && nextMask !== null ? [Object.freeze({ ...land, stage })] : [];
+  }));
 }
 
 function observeNonCombatTerrain(socket, { inventoryId, deckIndex }, { progress, fixedGemTreasure }, onUncertain) {
@@ -1285,7 +1306,7 @@ function questRoster(cardIds, damage) {
   };
 }
 
-function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange) {
+function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange, continuation) {
   let phase = 'encounter';
   let turn = null;
   let startDistance = null;
@@ -1313,6 +1334,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   let outcomeState = null;
   let outcomeReceipt = null;
   let outcomeDeadline;
+  let landFence;
+  let outcomeNextLands = Object.freeze([]);
   let questFinish = null;
   let questDeleted = false;
   let settlement = null;
@@ -1853,13 +1876,15 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     return Object.freeze({
       inventoryId, questId, state: outcomeState, duel: outcomeDuel,
       quest: questFinish && Object.freeze({ ...questFinish }), receipt: outcomeReceipt,
-      canReturn: outcomeState === 'settled',
+      canReturn: outcomeState === 'settled' || (outcomeState === 'land-cleared' && outcomeNextLands.length > 0),
+      nextLands: outcomeNextLands,
     });
   }
 
   function failQuestOutcome() {
     clearTimeout(outcomeDeadline);
     outcomeState = 'uncertain';
+    outcomeNextLands = Object.freeze([]);
     if (!duelFinish) uncertain();
     publishBattlePhase(true);
   }
@@ -1873,6 +1898,37 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       phase = 'terminal';
       pending?.reject(new SessionError('quest-battle-unavailable'));
     } else uncertain();
+  }
+
+  function hasNextLand() {
+    return continuation && run.positions?.get(slot)?.nextMask > 0;
+  }
+
+  function expectsLandContinuation() {
+    return hasNextLand() && duelFinish?.result === 0 && !duelFinish.bonus;
+  }
+
+  function confirmLandProgress() {
+    if (landFence) return;
+    const signal = catalogRequests.signal;
+    landFence = Promise.resolve().then(async () => {
+      if (signal.aborted || outcomeState !== 'awaiting-settlement' || questDeleted || questFinish) return;
+      await continuation.fence(signal);
+      if (signal.aborted || outcomeState !== 'awaiting-settlement' || questDeleted || questFinish) return;
+      if (settlementMap.questFlag !== null || settlementMap.questClearNum !== null) return;
+      const damage = Object.freeze(arrivedDamage.slice());
+      const receipt = continuation.reconcile({
+        kind: 'land-progress', inventoryId, questId, deckIndex, damage,
+        avatar: { ...settlementAvatar }, map: { ...settlementMap, progress }, cards: [...awards.values()],
+      });
+      run.progress = progress;
+      run.damage = damage;
+      clearTimeout(outcomeDeadline);
+      outcomeReceipt = freezeQuestReceipt(receipt);
+      outcomeNextLands = nextSceneBattleLands(run.positions, slot, progress);
+      outcomeState = 'land-cleared';
+      publishBattlePhase(true);
+    }).catch(() => { if (!signal.aborted) failQuestOutcome(); });
   }
 
   function nextLands() {
@@ -1901,6 +1957,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   function receiveSettlement(reply) {
     if (settlement || outcomeState === 'uncertain') return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
+      if (duelFinish && hasNextLand()) {
+        const duplicate = readQuestDuelFinishReply(reply, { awards: true });
+        if (Object.entries(duplicate).some(([field, value]) => outcomeDuel[field] !== value)) failQuestOutcome();
+      }
       if (!duelFinish) {
         if (onStateChange) {
           outcomeDuel = Object.freeze(readQuestDuelFinishReply(reply, { awards: true }));
@@ -1917,7 +1977,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     switch (reply.command) {
       case QUEST_DELETED_REPLY:
         if (readQuestDeletedReply(reply) === inventoryId) {
-          if (onStateChange && !duelFinish) return failQuestOutcome();
+          if (onStateChange && (!duelFinish || outcomeState === 'land-cleared')) return failQuestOutcome();
           questDeleted = true;
         }
         break;
@@ -1938,23 +1998,33 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
       case QUEST_PROGRESS_REPLY: {
         const update = readQuestProgressReply(reply);
-        if (update.inventoryId === inventoryId && duelFinish?.result === 0 && (previousProgress & (1 << slot)) === 0
-            && update.progress === (previousProgress | (1 << slot))) {
+        if (update.inventoryId !== inventoryId) break;
+        const expected = duelFinish?.result === 0 && (previousProgress & (1 << slot)) === 0
+          && update.progress === (previousProgress | (1 << slot));
+        if (hasNextLand() && (!duelFinish || (expectsLandContinuation() && !expected))) {
+          return failQuestOutcome();
+        }
+        if (expected) {
           progress ??= update.progress;
-          run.progress = progress;
+          if (!expectsLandContinuation()) run.progress = progress;
         }
         break;
       }
       case QUEST_DECK_STATE_REPLY: {
         const update = readQuestDeckStateReply(reply);
+        if (update.deckIndex !== deckIndex) break;
+        if (hasNextLand() && !duelFinish) return failQuestOutcome();
+        if (expectsLandContinuation() && !questDeleted && !questFinish) {
+          if (progress === null || update.status !== QUEST_IN_PROGRESS || update.damage.some((damage) => damage < 0)
+              || (arrivedDamage && !sameValues(arrivedDamage, update.damage))) return failQuestOutcome();
+          arrivedDamage ??= update.damage;
+          confirmLandProgress();
+          break;
+        }
         // This packet has no inventory ID; correlate only after this land's own progress.
-        if (progress !== null && !questDeleted && update.deckIndex === deckIndex && update.status === QUEST_IN_PROGRESS) {
+        if (progress !== null && !questDeleted && update.status === QUEST_IN_PROGRESS) {
           arrivedDamage ??= update.damage;
           run.damage = arrivedDamage;
-          if (outcomeState === 'awaiting-settlement' && run.positions?.get(slot)?.nextMask > 0) {
-            clearTimeout(outcomeDeadline);
-            outcomeState = 'land-cleared';
-          }
           queueMicrotask(() => { if (routeReceiptReady()) loadRoute(); });
         }
         break;
@@ -2095,6 +2165,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           || (sceneCombat?.exchange === exchange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_FINISH_REPLY));
         return;
       }
+      if (expectsLandContinuation() && reply.command === QUEST_ERROR_REPLY) {
+        readQuestErrorReply(reply);
+        failQuestOutcome();
+        return;
+      }
       if (phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return;
       if (reply.command === QUEST_MOVE_SUBMITTED_REPLY) {
         receiveMoveSubmission(reply);
@@ -2231,7 +2306,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
     } catch {
       if (onStateChange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_DELETED_REPLY
-          || reply.command === QUEST_FINISH_REPLY)) failQuestOutcome();
+          || reply.command === QUEST_FINISH_REPLY || (hasNextLand() && (reply.command === QUEST_PROGRESS_REPLY
+            || reply.command === QUEST_DECK_STATE_REPLY || reply.command === QUEST_ERROR_REPLY)))) failQuestOutcome();
       else uncertain();
     } finally {
       publishBattlePhase(combatChanged);
@@ -2376,6 +2452,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       });
       return Object.freeze({
         phase, turn, startDistance: startDistance ?? encounter.duel.distance, moveStartedAt,
+        encounterKey: `${inventoryId}:${slot}`,
         moveDurationMs: QUEST_MOVE_WAIT, opponentHandCount: opponentHeldCount, opponentMoveCount, direction,
         operation, moveSubmitted, movePoints: phase === 'uncertain' ? null : movePoints,
         ready: ready && Object.freeze({ turn: ready.turn, action: freezeRefill(ready.action), event: freezeRefill(ready.event) }),
@@ -2432,11 +2509,12 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         action.controller.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
         await action.task.catch(() => {});
       }
+      await landFence;
     },
   };
 }
 
-function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar) {
+function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar, lobbyStartupComplete) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const data = channels.find(({ port }) => port === DATA_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
@@ -2444,6 +2522,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let confirmedAvatar = null;
   let registrationLobbyPatch = null;
   let lastLobbyRefresh = -Infinity;
+  let lobbyStartupPending = Boolean(initialData.avatar && !lobbyStartupComplete);
+  let lobbyRefresh;
+  let ordinaryRefreshBacklog = 0;
+  let queuedEnergyRefresh;
+  let verifiedLobbyCap;
   const avatarSubscriptions = new Set();
   let profileRequest;
   let deckEditState;
@@ -2475,9 +2558,85 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     }
   }
 
-  attachLobbyAvatar((patch) => {
+  function trackLobbyRefresh(scene) {
+    const request = { scene, revision: scene?.energyRevision, stage: 'energy' };
+    request.timeout = setTimeout(() => { request.expired = true; }, TIMEOUT);
+    lobbyRefresh = request;
+  }
+
+  function sendLobbyRefresh(scene) {
+    try {
+      auth.assertOpen();
+      lobby.socket.send(LOBBY_REFRESH_AVATAR, []);
+      lastLobbyRefresh = performance.now();
+      if (lobbyRefresh) ordinaryRefreshBacklog += 1;
+      else trackLobbyRefresh(scene);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function canRefreshSceneEnergy(scene) {
+    return scene && scene === questScene && scene.state === 'open' && scene.energyRefreshDue && !profileRequest
+      && !questRequest && !questReturn && initialData?.avatar;
+  }
+
+  function recordLobbyRefresh(patch, command, marker) {
+    if (lobbyStartupPending) {
+      if (command === LOBBY_DECK_LEVEL_REPLY) lobbyStartupPending = false;
+      return;
+    }
+    const request = lobbyRefresh;
+    if (!request) return;
+    if (command === LOBBY_ENERGY_REPLY && request.stage !== 'energy') request.expired = true;
+    if (request.stage === 'energy') {
+      if (command === LOBBY_ENERGY_REPLY) request.energy = patch;
+      if (command === LOBBY_FREE_DUEL_COUNT_REPLY && request.energy) request.stage = 'profile';
+      return;
+    }
+    if (request.stage === 'profile') {
+      if (command === LOBBY_ENERGY_MAX_REPLY) request.energyMax = patch.energyMax;
+      if (command === LOBBY_LEVEL_REPLY) request.level = marker;
+      if (command === LOBBY_DECK_EXP_REPLY) request.stage = 'tail';
+      return;
+    }
+    if (command !== LOBBY_DECK_LEVEL_REPLY) return;
+    clearTimeout(request.timeout);
+    lobbyRefresh = undefined;
+    if (!request.expired && request.energyMax !== undefined && request.level !== undefined) {
+      verifiedLobbyCap = { level: request.level, energyMax: request.energyMax };
+    }
+    const { scene } = request;
+    if (!request.expired && canRefreshSceneEnergy(scene) && request.revision === scene.energyRevision &&
+        (request.level === undefined || request.level === initialData.avatar.level)) {
+      const avatar = initialData.avatar;
+      Object.assign(avatar, request.energy);
+      if (request.energyMax !== undefined) avatar.energyMax = request.energyMax;
+      scene.energyRefreshDue = false;
+      publishAvatar();
+      publishQuestScene(scene);
+    }
+    if (ordinaryRefreshBacklog) {
+      ordinaryRefreshBacklog -= 1;
+      trackLobbyRefresh();
+    } else if (queuedEnergyRefresh) {
+      const queued = queuedEnergyRefresh;
+      queuedEnergyRefresh = undefined;
+      if (canRefreshSceneEnergy(queued)) sendLobbyRefresh(queued);
+    }
+  }
+
+  function ownQuestEnergy(scene) {
+    scene.energyOwned = true;
+    scene.energyRevision = (scene.energyRevision ?? 0) + 1;
+    scene.energyRefreshDue = false;
+  }
+
+  attachLobbyAvatar((patch, command, marker) => {
     if (!initialData) return;
-    if (questScene?.energyOwned && Object.hasOwn(patch, 'energy')) return;
+    recordLobbyRefresh(patch, command, marker);
+    if (!patch || (questScene?.energyOwned && (command === LOBBY_ENERGY_REPLY || command === LOBBY_ENERGY_MAX_REPLY))) return;
     const avatar = initialData.avatar;
     if (avatar) {
       if (Object.entries(patch).every(([field, value]) => avatar[field] === value)) return;
@@ -2494,6 +2653,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   function stop(reason) {
     if (!closing) {
       clearInterval(timer);
+      clearTimeout(lobbyRefresh?.timeout);
+      lobbyRefresh = queuedEnergyRefresh = undefined;
+      ordinaryRefreshBacklog = 0;
       initialData = null;
       questData = null;
       confirmedAvatar = null;
@@ -2643,7 +2805,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function maintainQuestScene() {
     const scene = questScene;
-    if (scene?.state !== 'open' || scene.heartbeat || scene.operation) return;
+    if (scene?.state !== 'open' || scene.heartbeat || scene.operation || scene.landFence) return;
     const { socket } = scene.channel;
     scene.heartbeat = socket.ask(3, [], [3], { allowOther: true }).then((pong) => pong.done()).catch((error) => {
       if (scene.state !== 'open') return;
@@ -2651,6 +2813,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       scene.failure = error.kind === 'timeout' ? 'expired' : 'network';
       return socket.close();
     }).finally(() => { scene.heartbeat = null; });
+  }
+
+  async function fenceQuestSceneLand(scene, signal) {
+    const fence = Promise.resolve().then(async () => {
+      if (scene.heartbeat) await bounded(scene.heartbeat, signal);
+      if (questScene !== scene || scene.state !== 'open') throw new SessionError('network');
+      await finishQuestObservation(scene.channel.socket, signal);
+    });
+    scene.landFence = fence;
+    try {
+      await fence;
+    } finally {
+      if (scene.landFence === fence) scene.landFence = null;
+    }
   }
 
   function disposeQuestSceneOperations(scene, reason) {
@@ -2857,7 +3033,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       try {
         const result = await sendQuestStart(socket, questSignal, selected, deck.index, () => {
           questStartUncertain = true;
-          scene.energyOwned = true;
+          ownQuestEnergy(scene);
         });
         questSignal.throwIfAborted();
         socket.assertOpen();
@@ -2880,17 +3056,29 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     if (scene.operation) throw new SessionError('busy');
     const current = scene.adventure;
     if (current?.state === 'uncertain') throw new SessionError('quest-land-uncertain');
-    if (current?.state !== 'started' || !Number.isInteger(slot) || slot < 0 || slot > 2) {
+    const continuing = current?.state === 'between-lands';
+    if (!validQuestSlot(slot) || (!continuing && (current?.state !== 'started' || slot > 2))) {
       throw new SessionError('quest-land-unavailable');
     }
-    const { selected, run } = current;
+    const { selected, state: previousState, battle: previousBattle } = current;
     return runQuestSceneOperation(scene, 'land', signal, async (socket, questSignal) => {
-      const catalogSignal = AbortSignal.any([questSignal, AbortSignal.timeout(3500)]);
-      run.positions = await readQuestRoute(selected.questId, catalogSignal).catch(() => null);
-      questSignal.throwIfAborted();
-      const first = [2, 1, 0].find((candidate) => run.positions?.has(candidate));
-      const firstLand = run.positions?.get(first);
-      if (first !== slot || firstLand.stage === null || firstLand.nextMask === null) {
+      const priorRun = current.run;
+      let run = priorRun;
+      let firstLand;
+      if (continuing) {
+        const outcome = previousBattle.outcome;
+        if (current.state !== 'between-lands' || outcome?.state !== 'land-cleared'
+            || !outcome.nextLands.some((land) => land.slot === slot)) throw new SessionError('quest-land-unavailable');
+        run = { ...questRun(), positions: priorRun.positions, progress: priorRun.progress, damage: priorRun.damage };
+        firstLand = run.positions.get(slot);
+      } else {
+        const catalogSignal = AbortSignal.any([questSignal, AbortSignal.timeout(3500)]);
+        run.positions = await readQuestRoute(selected.questId, catalogSignal).catch(() => null);
+        questSignal.throwIfAborted();
+        const first = [2, 1, 0].find((candidate) => run.positions?.has(candidate));
+        if (first === slot) firstLand = run.positions.get(first);
+      }
+      if (!firstLand || firstLand.stage === null || firstLand.nextMask === null) {
         throw new SessionError('quest-land-unavailable');
       }
 
@@ -2901,16 +3089,27 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           current.state = 'entering';
           publishQuestScene(scene);
         }, (encounter) => {
-          if (!sameValues(current.deck.cards.map(({ cardId }) => cardId), encounter.playerCardIds)) {
+          if (!sameValues(current.deck.cards.map(({ cardId }) => cardId), encounter.playerCardIds)
+              || (continuing && !sameValues(run.damage, encounter.playerDamage))) {
             throw new SessionError('protocol');
           }
           current.battle = observeQuestBattle(socket, selected, slot, encounter, run, (receipt) => {
             const settlement = reconcileQuestSettlement(selected, receipt);
             if (initialData) publishAvatar();
             return settlement;
-          }, () => publishQuestScene(scene));
+          }, () => {
+            if (current.state === 'between-lands' && current.battle.outcome?.state !== 'land-cleared') {
+              scene.lastOutcome = current.battle.outcome;
+              current.state = 'uncertain';
+            }
+            publishQuestScene(scene);
+          }, {
+            fence: (signal) => fenceQuestSceneLand(scene, signal),
+            reconcile: (receipt) => reconcileSceneLandProgress(scene, current, receipt),
+          });
+          void previousBattle?.stop('closed');
         }, {
-          firstLand, emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
+          firstLand, expectBattle: continuing, emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
           onArrival() {
             current.slot = slot;
             publishQuestScene(scene);
@@ -2919,12 +3118,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         questSignal.throwIfAborted();
         socket.assertOpen();
         if (result.rejection !== undefined) {
-          current.state = result.deleted ? 'uncertain' : 'started';
+          current.state = result.deleted ? 'uncertain' : previousState;
           if (result.deleted) questData.rows = questData.rows.filter(({ inventoryId }) => inventoryId !== selected.inventoryId);
           throw new SessionError('quest-land-rejected', result.rejection);
         }
-        current.encounter = result.encounter ? freezeQuestEncounter(result.encounter) : null;
-        run.progress = result.progress;
+        current.encounter = result.encounter ? freezeQuestEncounter({ ...result.encounter, key: `${selected.inventoryId}:${slot}` }) : null;
+        current.run = run;
+        if (continuing) scene.lastOutcome = null;
+        if (result.progress !== null) run.progress = result.progress;
         current.emptyTerrain = result.emptyTerrain;
         if (result.fixedGemTreasure) current.fixedGemTreasure = Object.freeze(result.fixedGemTreasure);
         if (result.finish) {
@@ -2951,6 +3152,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           ...(current.emptyTerrain ? { emptyTerrain: true } : {}),
           ...(current.fixedGemTreasure ? { fixedGemTreasure: current.fixedGemTreasure } : {}) };
       } catch (error) {
+        if (continuing && current.battle === previousBattle && current.state !== 'finished') previousBattle.resume();
         if (dispatched && error.kind !== 'quest-land-rejected') {
           current.state = 'uncertain';
           throw new SessionError('quest-land-uncertain');
@@ -2960,11 +3162,15 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     });
   }
 
-  async function runQuestSceneBattle(scene, kind, signal, act, phaseKey) {
+  function matchesEncounter(current, key) {
+    return current?.state === 'encounter' && (key === undefined ? current.slot < 3 : current.encounter?.key === key);
+  }
+
+  async function runQuestSceneBattle(scene, kind, signal, act, phaseKey, encounterKey) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (questScene !== scene || scene.state !== 'open') throw new SessionError('network');
     const { adventure } = scene;
-    if (adventure?.state !== 'encounter') throw new SessionError('quest-battle-unavailable');
+    if (!matchesEncounter(adventure, encounterKey)) throw new SessionError('quest-battle-unavailable');
     const combat = kind.startsWith('combat-');
     const expected = phaseKey === undefined ? (combat ? '1:1' : 1) : phaseKey;
     const matches = (battle) => kind === 'ready' || expected === (combat ? battle.exchange?.key : battle.ready?.turn);
@@ -2972,7 +3178,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const deadline = kind === 'commit' ? QUEST_MOVE_WAIT + 2 * TIMEOUT
       : kind === 'combat-commit' ? 2 * QUEST_COMBAT_WAIT + 7 * TIMEOUT : TIMEOUT;
     await runQuestSceneOperation(scene, `battle-${kind}`, signal, async (socket, questSignal) => {
-      if (!matches(scene.snapshot.adventure.battle)) throw new SessionError('quest-battle-unavailable');
+      if (scene.adventure !== adventure || !matchesEncounter(adventure, encounterKey)
+          || !matches(scene.snapshot.adventure.battle)) throw new SessionError('quest-battle-unavailable');
       await act(adventure.battle, questSignal);
       questSignal.throwIfAborted();
       socket.assertOpen();
@@ -2984,15 +3191,24 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return scene.snapshot.adventure.battle;
   }
 
-  async function returnFromQuestSceneBattle(scene, signal) {
+  async function returnFromQuestSceneBattle(scene, signal, encounterKey) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
     const current = scene.adventure;
     if (scene.operation || current?.battle?.busy) throw new SessionError('busy');
     const outcome = current?.battle?.outcome;
     if (outcome?.state === 'uncertain') throw new SessionError('quest-return-uncertain');
-    if (!outcome?.canReturn || current.state !== 'encounter') throw new SessionError('quest-return-unavailable');
+    if (!outcome?.canReturn || !matchesEncounter(current, encounterKey)) throw new SessionError('quest-return-unavailable');
     scene.channel.socket.assertOpen();
+    const { energy, energyMax } = initialData.avatar;
+    scene.energyRefreshDue = scene.energyOwned && (energy === null || energyMax === null);
+    if (outcome.state === 'land-cleared') {
+      current.state = 'between-lands';
+      current.encounter = null;
+      scene.lastOutcome = outcome;
+      publishQuestScene(scene);
+      return outcome;
+    }
     const stopBattle = current.battle.stop('closed');
     scene.adventure = null;
     scene.lastOutcome = outcome;
@@ -3052,7 +3268,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       try {
         const result = await sendQuestSearch(socket, questSignal, mapId, timerIndex, known, () => {
           searchUncertain = true;
-          scene.energyOwned = true;
+          ownQuestEnergy(scene);
         });
         questSignal.throwIfAborted();
         if (result.rejection !== undefined) {
@@ -3102,16 +3318,19 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return nextBattleLands(current.run.positions, current.slot, current.run.progress);
   }
 
-  function reconcileQuestSettlement(selected, receipt) {
+  function reconcileQuestRewards(receipt) {
     const avatar = initialData?.avatar;
     const deltas = { exp: null, gems: null, level: null };
-    let deckRestored = null;
-    if (!questData || !avatar) return { ...receipt, deltas, deckRestored };
+    if (!avatar) return deltas;
 
-    if (receipt.avatar.level !== null && receipt.avatar.level !== avatar.level) {
+    const leveled = receipt.avatar.level !== null && receipt.avatar.level !== avatar.level;
+    if (questScene?.energyOwned && (leveled || receipt.avatar.energy !== null)) ownQuestEnergy(questScene);
+    if (leveled) {
       // check_level_up can refill and raise the AP cap without sending an AP update.
       avatar.energy = null;
-      avatar.energyMax = null;
+      avatar.energyRemainingSeconds = null;
+      avatar.energyReceivedAt = null;
+      avatar.energyMax = verifiedLobbyCap?.level === receipt.avatar.level ? verifiedLobbyCap.energyMax : null;
     }
     for (const field of Object.keys(deltas)) {
       const absolute = receipt.avatar[field];
@@ -3120,6 +3339,27 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       avatar[field] = absolute;
     }
     if (receipt.avatar.energy !== null) avatar.energy = receipt.avatar.energy;
+    return deltas;
+  }
+
+  function reconcileSceneLandProgress(scene, current, receipt) {
+    const row = questData?.rows.find(({ inventoryId }) => inventoryId === receipt.inventoryId);
+    const deck = initialData?.deckChoices?.find(({ index }) => index === receipt.deckIndex);
+    if (questScene !== scene || scene.adventure !== current || current.state !== 'encounter'
+        || row?.status !== QUEST_IN_PROGRESS || row.questId !== receipt.questId || row.deckIndex !== receipt.deckIndex
+        || deck?.status !== 1 || boundQuestDecks.get(receipt.inventoryId)?.index !== receipt.deckIndex) {
+      throw new SessionError('protocol');
+    }
+    const deltas = reconcileQuestRewards(receipt);
+    publishAvatar();
+    return { ...receipt, deltas, deckRestored: null };
+  }
+
+  function reconcileQuestSettlement(selected, receipt) {
+    const avatar = initialData?.avatar;
+    const deltas = reconcileQuestRewards(receipt);
+    let deckRestored = null;
+    if (!questData || !avatar) return { ...receipt, deltas, deckRestored };
     for (const field of ['questFlag', 'questClearNum']) {
       if (receipt.map[field] !== null) questData[field] = receipt.map[field];
     }
@@ -3166,16 +3406,15 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     get initialData() { return initialData; },
     refreshLobbyAvatar() {
       const now = performance.now();
-      if (!initialData?.avatar || profileRequest || questRequest || questReturn || questScene?.energyOwned
-          || now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
-      try {
-        auth.assertOpen();
-        lobby.socket.send(LOBBY_REFRESH_AVATAR, []);
-        lastLobbyRefresh = now;
-        return true;
-      } catch {
+      if (!initialData?.avatar || profileRequest || questRequest || questReturn) return false;
+      if (questScene?.energyOwned) {
+        if (!canRefreshSceneEnergy(questScene)) return false;
+        if (!lobbyRefresh) return sendLobbyRefresh(questScene);
+        if (!lobbyRefresh.scene) queuedEnergyRefresh = questScene;
         return false;
       }
+      if (now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
+      return sendLobbyRefresh();
     },
     subscribeAvatar(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
@@ -3399,40 +3638,41 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             selectDeck: (delta, { signal } = {}) => selectQuestSceneDeck(scene, delta, signal),
             start: (inventoryId, { signal } = {}) => startQuestScene(scene, inventoryId, signal),
             enterLand: (slot, { signal } = {}) => enterQuestSceneLand(scene, slot, signal),
-            readyBattle: ({ signal } = {}) => runQuestSceneBattle(scene, 'ready', signal, (battle, active) => battle.ready(active)),
-            async chooseMove(direction, { signal, moveTurn } = {}) {
+            readyBattle: ({ signal, encounterKey } = {}) => runQuestSceneBattle(scene, 'ready', signal,
+              (battle, active) => battle.ready(active), undefined, encounterKey),
+            async chooseMove(direction, { signal, moveTurn, encounterKey } = {}) {
               if (!Number.isInteger(direction) || direction < -1 || direction > 1) throw new SessionError('protocol');
-              return runQuestSceneBattle(scene, 'direction', signal, (battle, active) => battle.choose(direction, active), moveTurn);
+              return runQuestSceneBattle(scene, 'direction', signal, (battle, active) => battle.choose(direction, active), moveTurn, encounterKey);
             },
-            async rotateMoveCard(cardId, { signal, moveTurn } = {}) {
+            async rotateMoveCard(cardId, { signal, moveTurn, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'rotate', signal, (battle, active) => battle.rotateMoveCard(cardId, active), moveTurn);
+              return runQuestSceneBattle(scene, 'rotate', signal, (battle, active) => battle.rotateMoveCard(cardId, active), moveTurn, encounterKey);
             },
-            async addMoveCard(cardId, { signal, moveTurn } = {}) {
+            async addMoveCard(cardId, { signal, moveTurn, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'add', signal, (battle, active) => battle.addCard(cardId, undefined, active), moveTurn);
+              return runQuestSceneBattle(scene, 'add', signal, (battle, active) => battle.addCard(cardId, undefined, active), moveTurn, encounterKey);
             },
-            async removeMoveCard(cardId, { signal, moveTurn } = {}) {
+            async removeMoveCard(cardId, { signal, moveTurn, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'remove', signal, (battle, active) => battle.removeCard(cardId, active), moveTurn);
+              return runQuestSceneBattle(scene, 'remove', signal, (battle, active) => battle.removeCard(cardId, active), moveTurn, encounterKey);
             },
-            commitMove: ({ signal, moveTurn } = {}) => runQuestSceneBattle(scene, 'commit', signal,
-              (battle, active) => battle.commit(active), moveTurn),
-            async addBattleCard(cardId, { signal, exchangeKey } = {}) {
+            commitMove: ({ signal, moveTurn, encounterKey } = {}) => runQuestSceneBattle(scene, 'commit', signal,
+              (battle, active) => battle.commit(active), moveTurn, encounterKey),
+            async addBattleCard(cardId, { signal, exchangeKey, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'combat-add', signal, (battle, active) => battle.addBattleCard(cardId, undefined, active), exchangeKey);
+              return runQuestSceneBattle(scene, 'combat-add', signal, (battle, active) => battle.addBattleCard(cardId, undefined, active), exchangeKey, encounterKey);
             },
-            async removeBattleCard(cardId, { signal, exchangeKey } = {}) {
+            async removeBattleCard(cardId, { signal, exchangeKey, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'combat-remove', signal, (battle, active) => battle.removeBattleCard(cardId, active), exchangeKey);
+              return runQuestSceneBattle(scene, 'combat-remove', signal, (battle, active) => battle.removeBattleCard(cardId, active), exchangeKey, encounterKey);
             },
-            async rotateBattleCard(cardId, { signal, exchangeKey } = {}) {
+            async rotateBattleCard(cardId, { signal, exchangeKey, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');
-              return runQuestSceneBattle(scene, 'combat-rotate', signal, (battle, active) => battle.rotateBattleCard(cardId, active), exchangeKey);
+              return runQuestSceneBattle(scene, 'combat-rotate', signal, (battle, active) => battle.rotateBattleCard(cardId, active), exchangeKey, encounterKey);
             },
-            commitBattle: ({ signal, exchangeKey } = {}) => runQuestSceneBattle(scene, 'combat-commit', signal,
-              (battle, active) => battle.commitBattle(active), exchangeKey),
-            returnFromBattle: ({ signal } = {}) => returnFromQuestSceneBattle(scene, signal),
+            commitBattle: ({ signal, exchangeKey, encounterKey } = {}) => runQuestSceneBattle(scene, 'combat-commit', signal,
+              (battle, active) => battle.commitBattle(active), exchangeKey, encounterKey),
+            returnFromBattle: ({ signal, encounterKey } = {}) => returnFromQuestSceneBattle(scene, signal, encounterKey),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then(async (reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');
@@ -3841,7 +4081,11 @@ export async function startSession(username, password, { signal, onAuthenticated
   let sessionKeyBytes;
   const channels = [];
   const startupAvatarPatch = {};
-  let publishLobbyAvatar = (patch) => Object.assign(startupAvatarPatch, patch);
+  let lobbyStartupComplete = false;
+  let publishLobbyAvatar = (patch, command) => {
+    Object.assign(startupAvatarPatch, patch);
+    if (command === LOBBY_DECK_LEVEL_REPLY) lobbyStartupComplete = true;
+  };
   const startup = new AbortController();
   const startupSignal = startup.signal;
   const rejectStartup = (error) => startup.abort(error);
@@ -3911,7 +4155,7 @@ export async function startSession(username, password, { signal, onAuthenticated
     if (initialData.avatar) Object.assign(initialData.avatar, startupAvatarPatch);
     return activeSession(auth, channels, playerId, sessionKeyBytes, initialData, (receiver) => {
       publishLobbyAvatar = receiver;
-    });
+    }, lobbyStartupComplete);
   } catch (error) {
     finishStartup();
     sessionKeyBytes?.fill(0);
