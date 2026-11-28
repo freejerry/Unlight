@@ -981,6 +981,246 @@
       "sourceChildStops": {
         "20": 4
       }
+    },
+    "100": {
+      "name": "攻防抗衡",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        {
+          "file": "counter-guard-02.png",
+          "x": 31,
+          "y": 0,
+          "width": 447,
+          "height": 242
+        },
+        {
+          "file": "counter-guard-03.png",
+          "x": 31,
+          "y": 0,
+          "width": 476,
+          "height": 466
+        },
+        {
+          "file": "counter-guard-04.png",
+          "x": 31,
+          "y": 0,
+          "width": 501,
+          "height": 663
+        },
+        {
+          "file": "counter-guard-05.png",
+          "x": 31,
+          "y": 0,
+          "width": 511,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-06.png",
+          "x": 31,
+          "y": 0,
+          "width": 511,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-07.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-08.png",
+          "x": 31,
+          "y": 0,
+          "width": 511,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-09.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-10.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-11.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-12.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-13.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-14.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-15.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-16.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-17.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-18.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-18.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-20.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-15.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-22.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-23.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-24.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-25.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-26.png",
+          "x": 30,
+          "y": 0,
+          "width": 512,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-27.png",
+          "x": 103,
+          "y": 0,
+          "width": 366,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-28.png",
+          "x": 160,
+          "y": 0,
+          "width": 253,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-29.png",
+          "x": 200,
+          "y": 0,
+          "width": 172,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-30.png",
+          "x": 225,
+          "y": 0,
+          "width": 123,
+          "height": 680
+        },
+        {
+          "file": "counter-guard-31.png",
+          "x": 233,
+          "y": 0,
+          "width": 107,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceChildStops": {},
+      "sourceCanvas": [
+        944,
+        704
+      ]
     }
   },
   "provenance": {
@@ -1355,6 +1595,174 @@
       "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
       "sourceFrame": 29,
       "sha256": "cc46aa07590041db1bf31c95fe4a40ead3846b5a339624bcde5399f0bdd859bb"
+    },
+    "counter-guard-02.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 2,
+      "sha256": "07ff0b8f6a863b4e90e8263499b0d5705a6fa0dacd4af66b35aa757f97f99e9d"
+    },
+    "counter-guard-03.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 3,
+      "sha256": "cef558768555656c2537077ead1b3e8f7a9f644c79b3ee49d3c2402891492dc2"
+    },
+    "counter-guard-04.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 4,
+      "sha256": "d1a6471e65398d16a9e808da496978870b4118312dfb2f1c1967f28f7436ae3f"
+    },
+    "counter-guard-05.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 5,
+      "sha256": "a566141e0c17d091daefdd4ea290c0dc63b88bf3351d6c6e17d4e393c5432f1b"
+    },
+    "counter-guard-06.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 6,
+      "sha256": "1f4fc9965c93169be067fd61452f0929bdd9454512c939b112396d5224ed2adc"
+    },
+    "counter-guard-07.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 7,
+      "sha256": "41b2f15fe4aeac5791f4833ee3724abd89690b28732c9e5abff6673c02ce49e2"
+    },
+    "counter-guard-08.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 8,
+      "sha256": "90fc75cde69f9014716b1781a0d2bcb9d795628ad2f641880fd3f8ce91cd7124"
+    },
+    "counter-guard-09.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 9,
+      "sha256": "a6d0673ce06ebc0cf2ca10c8a96b6e787e342381bc13fd52c069e5ba28e7b73b"
+    },
+    "counter-guard-10.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 10,
+      "sha256": "956da5a1196befe2b14598482f42ccf574251a9010c159d3a4b0835dc5d77ef2"
+    },
+    "counter-guard-11.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 11,
+      "sha256": "533f700ebe3af8500dfd7e2f760f53113caa93887ff0a34a409432786ebe8793"
+    },
+    "counter-guard-12.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 12,
+      "sha256": "8cbfad0653e700f71aa3406924d41c38db74fd7649b28347f613c24fe007ec54"
+    },
+    "counter-guard-13.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 13,
+      "sha256": "e23e43799ed888d1ac3c73e7e2d5b71e4685255a3eb5263e6ceba75581b48077"
+    },
+    "counter-guard-14.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 14,
+      "sha256": "22b61e07d79e81988fcbf93e49d7c8ddef73118fde44fd2b4d3341dcca7ac6e6"
+    },
+    "counter-guard-15.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 15,
+      "sha256": "9cd020d9401a3f4b181e25bec4f05a0414e32db768ca32dcf2314581f715f44e"
+    },
+    "counter-guard-16.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 16,
+      "sha256": "7d4dd166d913b8642564445d84ce5363197e635f3f8fb6c4f49ec0c9dab871d4"
+    },
+    "counter-guard-17.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 17,
+      "sha256": "c763fa58610e06d9a82ea50a504f722781862e30c3ba11ac7bda4935608bbf2c"
+    },
+    "counter-guard-18.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 18,
+      "sha256": "90ceea710a721145093fc410cb0cf2fe5e39ee0c702f08f825c93e2410428293"
+    },
+    "counter-guard-20.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 20,
+      "sha256": "d2636aa3c28bce27e8180456a18eed072ba25939480ebcc68805b3afa5265f84"
+    },
+    "counter-guard-22.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 22,
+      "sha256": "91ef6610fff43cbd5a89cd5bb43acc047c3fce0aed83e447f924f222120bd27a"
+    },
+    "counter-guard-23.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 23,
+      "sha256": "c89b9f00be84d7f6acdc67bdce1cfe825c36bddf539b70f4380b454544ef8ae2"
+    },
+    "counter-guard-24.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 24,
+      "sha256": "362199fc482c8322b67b30589a0ec927adf186fd32cfc2f88020074048d62159"
+    },
+    "counter-guard-25.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 25,
+      "sha256": "b67c0ea045acbdd79c4bb7cdbc17a150cb942912aa1d6e9d33af478e4dbda7dd"
+    },
+    "counter-guard-26.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 26,
+      "sha256": "1bc14b911d09fa28e3f4700cea18160e7c3cc8672573a47c516c0a7c47dc9f33"
+    },
+    "counter-guard-27.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 27,
+      "sha256": "80768a9181213a5231d3ea7739f2cdde3e0ec516c643b3cb1b82af917246f725"
+    },
+    "counter-guard-28.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 28,
+      "sha256": "92c1ecf02b56db187ecbd6b59336ac5ad7423c3464891e410561e7af1cc7e0d9"
+    },
+    "counter-guard-29.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 29,
+      "sha256": "a694304f7c21c1f036c43dd67e206744ee7413920d5085e0e12fb0e02234c0a5"
+    },
+    "counter-guard-30.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 30,
+      "sha256": "12b41d19750754d321eb7d168545f7ac3af1cafe50a60e00924a6cc6b89ba7f5"
+    },
+    "counter-guard-31.png": {
+      "source": "public/image/cutinchara09_skl01.swf",
+      "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+      "sourceFrame": 31,
+      "sha256": "1f1d60f6434eba43db3a6e4f98b87a0a02c99375daa7a5a98d62380c4a223e91"
     }
   }
 }

@@ -159,6 +159,21 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case skill \
 
 兩個案例都保留 780×680 PNG、實際封包及瀏覽器逐幀資料於各自的 `--screens` 目錄。Playwright 只暫緩與轉交 Ruby 的原始回覆。隔離環境的隨機種子用於重跑相同牌序。 [逐項來源與動畫順序](battle-regressions.md) · [瀏覽器腳本](../../../tools/legacy-web/check_source_battle.py)
 
+### 重跑馬庫斯的攻防抗衡
+
+使用已完成教學的隔離測試角色。以原版 `Avatar.regist` 建立起始牌組，再用 `get_chara_card(82)` 取得馬庫斯 Lv2，透過 `update_chara_card_deck` 將起始牌收進收藏冊、馬庫斯移到 Deck 1。保留原版事件牌。以任務 1、舞台 11、對手 `[1004]`、無傷勢和隔離角色的 `MultiDuel` 初始種子 9 重跑。
+
+選擇停留，將 #45 翻成移動 2 放上桌，確認原版回覆維持中距離及我方先攻。空桌通過首組攻擊。第二組防禦翻 #2 和 #32 的防 1 放上桌，送一次 OK。蝙蝠以原版剩餘槍牌進行攻擊。驗收暫緩原始 `SC83`，確認鎖定操作而保留牌桌與 `SC82` 亮牌標記。放行 `SC83` 和 `SC110`，另暫緩 `SC55`，確認點數、技能與共同揭牌的邊界。放行後核對真實特寫及攻守各自的骰數。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case counter-guard \
+  --port 4397 --database "$proof_dir/counter-guard-ruby/app/server/data/game_dev2.db" \
+  --user questmarkus --password-file "$proof_dir/questmarkus-password" \
+  --screens "$proof_dir/counter-guard-native"
+```
+
+規則與發動仍由原版 Ruby 執行。原版 Flash 可用同一組隔離配置，依相同方向、牌面、桌面及 OK 順序操作，保留使用的 SWF 雜湊、實際回覆和 780×680 畫面。相同牌序若改為向前到近距離，蝙蝠當回合第二組會空桌攻擊。攻防抗衡仍發動，雙方骰數為 0。 [原版點數處理](../../../app/client/src/net/server/QuestServer.as#L1540) · [原版技能規則](../../../app/server/src/model/chara_card.rb#L5709) · [原版近距離畫面與紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-counter-guard-live/original/near/wire.json)
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。

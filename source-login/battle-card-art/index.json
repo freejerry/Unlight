@@ -2477,6 +2477,171 @@
         ],
         "settledFrame": 14
       }
+    },
+    "82": {
+      "shadow": {
+        "file": "stand-82-shadow.png",
+        "x": -58,
+        "y": -2,
+        "width": 134,
+        "height": 42
+      },
+      "stand": {
+        "file": "stand-82-stand.png",
+        "x": -58,
+        "y": -205,
+        "width": 134,
+        "height": 209
+      },
+      "opening": {
+        "file": "stand-82-opening.png",
+        "x": -156,
+        "y": -459,
+        "width": 422,
+        "height": 460,
+        "origin": [
+          380.0,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            576.0
+          ],
+          [
+            0.9998932,
+            1.0,
+            -534.7,
+            576.0
+          ],
+          [
+            0.99990845,
+            1.0,
+            -475.7,
+            576.0
+          ],
+          [
+            0.9999237,
+            1.0,
+            -422.9,
+            576.0
+          ],
+          [
+            0.99993896,
+            1.0,
+            -376.25,
+            576.0
+          ],
+          [
+            0.9999542,
+            1.0,
+            -335.85,
+            576.0
+          ],
+          [
+            0.9999695,
+            1.0,
+            -301.65,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -273.65,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -251.9,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -236.45,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -227.1,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -265.8,
+            576.0
+          ],
+          [
+            0.9999695,
+            1.0,
+            -307.55,
+            576.0
+          ],
+          [
+            0.9999542,
+            1.0,
+            -349.35,
+            576.0
+          ],
+          [
+            0.99993896,
+            1.0,
+            -391.1,
+            576.0
+          ],
+          [
+            0.9999237,
+            1.0,
+            -432.9,
+            576.0
+          ],
+          [
+            0.99990845,
+            1.0,
+            -474.65,
+            576.0
+          ],
+          [
+            0.9998932,
+            1.0,
+            -516.45,
+            576.0
+          ],
+          [
+            0.9998779,
+            1.0,
+            -558.2,
+            576.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            576.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
     }
   },
   "actionFrames": {
@@ -4021,6 +4186,27 @@
       "source": "public/image/standchara/standmon017_01.swf",
       "sourceSha256": "1c45b58505ec493aa092c29c84861d1104d14751da09f5e822a4d7ec4ba9b2c8",
       "sha256": "ea098e531e53c305cad8759c463e3b3676965ab016f4001a7aee0628fcc5578f",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-82-shadow.png": {
+      "source": "public/image/standchara/standchara09.swf",
+      "sourceSha256": "d3804c5827ee973399f6f2a5b7d3d055b3396ec0387d302e78bc99dde117d41f",
+      "sha256": "d24784a205cfa9b26b0898e5f499668e59e40c9671d9425ec44b2c00cdff827f",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-82-stand.png": {
+      "source": "public/image/standchara/standchara09.swf",
+      "sourceSha256": "d3804c5827ee973399f6f2a5b7d3d055b3396ec0387d302e78bc99dde117d41f",
+      "sha256": "edf9d6fa650c41ad56e826b4865b3909d2ecc4acf97bbfebaed45fcb57a21abf",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-82-opening.png": {
+      "source": "public/image/standchara/standchara09.swf",
+      "sourceSha256": "d3804c5827ee973399f6f2a5b7d3d055b3396ec0387d302e78bc99dde117d41f",
+      "sha256": "a0364c60813fe16216df4748e66b5a3f02101c0e13128453200b62e97fb41477",
       "sourceInstance": "up",
       "sourceShape": 2
     }

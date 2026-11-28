@@ -90,6 +90,7 @@ export const QUEST_BATTLE_CARD_ADD_REPLY = 65;
 export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
 export const QUEST_CHARA_CHANGE_REPLY = 72;
 export const QUEST_DAMAGE_REPLY = 73;
+export const QUEST_POINT_REWRITE_REPLY = 83;
 const QUEST_FEAT_SEALED_REPLY = 81;
 const QUEST_FEAT_ON_REPLY = 107;
 const QUEST_FEAT_OFF_REPLY = 108;
@@ -679,6 +680,14 @@ export function readQuestFeatReply(reply) {
   if (featId <= 0) throw new Error('Invalid quest feat ID.');
   const kind = used ? 'used' : (reply.command === QUEST_FEAT_ON_REPLY ? 'on' : 'off');
   return { kind, player, featId };
+}
+
+export function readQuestPointRewriteReply(reply) {
+  if (reply.command !== QUEST_POINT_REWRITE_REPLY) throw new Error('Unexpected quest point rewrite reply.');
+  const player = readDuelBoolean(reply);
+  const value = reply.int();
+  reply.done();
+  return { player, value };
 }
 
 export function readQuestMoveCardReply(reply) {

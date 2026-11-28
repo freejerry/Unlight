@@ -51,7 +51,7 @@ export function createQuestBattleExchange(battle, {
   let cutInExit;
   let seenReveal = false;
   let revealTask = Promise.resolve();
-  let sweepTask;
+  let tableCloseTask;
   let featInsertion;
   let rolled = false;
   let hitCount = 0;
@@ -134,7 +134,6 @@ export function createQuestBattleExchange(battle, {
       }
     }
     if (activeInput && next.role !== shown?.role) playQuestBattleEffect('phase', signal);
-    paintPoints(exchange, next.role !== 'result');
     shown = next;
   }
 
@@ -210,10 +209,16 @@ export function createQuestBattleExchange(battle, {
     if (live()) root.dataset.sweepState = 'settled';
   }
 
+  async function closeBattlePoints() {
+    if (!live() || !points.children.length) return;
+    await animate(points, [{ opacity: 1 }, { opacity: 0 }], 200, signal);
+    if (live()) points.replaceChildren();
+  }
+
   async function showDice(exchange) {
     showDiceReceipt(exchange);
     const { playerAttacks, attackDice, defenceDice } = exchange.dice;
-    await Promise.all([sweepTask, featInsertion]);
+    await Promise.all([tableCloseTask, featInsertion]);
     if (!live() || !attackDice.length || !defenceDice.length) return;
     if (playAttackPose) {
       void Promise.resolve().then(() => live() && playAttackPose({ battle, playerAttacks, signal })).catch(() => false);
@@ -297,7 +302,7 @@ export function createQuestBattleExchange(battle, {
     }
     if (pending.length || !Object.is(previous.player, health.player) || !Object.is(previous.opponent, health.opponent)) {
       const confirmedHp = { ...health };
-      const beforeHp = rolled ? diceSettled : Promise.all([sweepTask, featInsertion]);
+      const beforeHp = rolled ? diceSettled : Promise.all([tableCloseTask, featInsertion]);
       hpGate = hpGate.then(async () => {
         await beforeHp;
         if (!live()) return;
@@ -322,7 +327,7 @@ export function createQuestBattleExchange(battle, {
     let queuedHp;
     do {
       queuedHp = hpGate;
-      await Promise.all([diceSettled, queuedHp, sweepTask, featInsertion, cutInExit]);
+      await Promise.all([diceSettled, queuedHp, tableCloseTask, featInsertion, cutInExit]);
     } while (live() && queuedHp !== hpGate);
     if (!live()) return;
     const result = summary(exchange);
@@ -340,7 +345,13 @@ export function createQuestBattleExchange(battle, {
     battle.dataset.exchangePhase = exchange.phase;
     if (exchange.playerAttacks !== null) battle.dataset.playerAttacks = String(exchange.playerAttacks);
     const distance = state.result?.distance ?? Number(battle.dataset.distance);
+    const hadPointTray = Boolean(shown && shown.role !== 'result');
     paintRole(exchange, distance);
+    if (!seenReveal) {
+      // SC54 freezes input. Confirmed points remain live until SC55 starts the ordered table close.
+      const showPoints = (shown && shown.role !== 'result') || (exchange.cards && hadPointTray);
+      paintPoints(exchange, showPoints);
+    }
     if (Number.isSafeInteger(exchange.opponentTableCount) && !seenReveal && !exchange.cards) {
       drawOpponent(exchange.opponentTableCount);
     }
@@ -349,7 +360,7 @@ export function createQuestBattleExchange(battle, {
       seenReveal = true;
       root.dataset.revealStage = 'final';
       revealTask = Promise.resolve().then(() => live() && revealCards(exchange.cards));
-      sweepTask = revealTask.then(() => live() && sweepPlayedCards(exchange.cards));
+      tableCloseTask = revealTask.then(() => live() && sweepPlayedCards(exchange.cards)).then(closeBattlePoints);
     }
     if (exchange.cards && playFeats && state.feats?.used?.length) {
       featInsertion = revealTask.then(() => live() && playFeats(exchange));

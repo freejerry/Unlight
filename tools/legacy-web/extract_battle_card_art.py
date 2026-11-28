@@ -19,6 +19,7 @@ STANDS = {
     "1": ("public/image/standchara/standchara01.swf", "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d"),
     "21": ("public/image/standchara/standchara03.swf", "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f"),
     "31": ("public/image/standchara/standchara04.swf", "08e4852fae9b535e48d64cd8f1947bc827c92ccb24b1cba60b2fc692ef591d56"),
+    "82": ("public/image/standchara/standchara09.swf", "d3804c5827ee973399f6f2a5b7d3d055b3396ec0387d302e78bc99dde117d41f"),
     "101": ("public/image/standchara/standchara11.swf", "4f5c75140959ab31e0ed94f2633fac47b619475fa39367b452addbbdcc4bf6c2"),
     "111": ("public/image/standchara/standchara12.swf", "834bb986487b05085ee91a90d36a260701027527c6383382ffd2e7b64ca85ad1"),
     "1004": ("public/image/standchara/standmon002_00.swf", "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e"),

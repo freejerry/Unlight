@@ -8,6 +8,7 @@ python3 -B tools/legacy-web/extract_quest_feat_art.py ASSETS OUTPUT \
 import argparse
 from hashlib import sha256
 import json
+from os import getpid
 from pathlib import Path
 from struct import pack, unpack_from
 from subprocess import Popen
@@ -31,8 +32,14 @@ FEATS = {
         "sha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
         "frames": 48, "childStops": {20: 4},
     },
+    "counter-guard": {
+        "ids": [100], "name": "攻防抗衡", "file": "public/image/cutinchara09_skl01.swf",
+        "sha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
+        "frames": 46, "childStops": {}, "sourceCanvas": (944, 704),
+    },
 }
 WIDTH, HEIGHT = 760, 680
+VISIBLE_STAGE_WIDTH = 780
 FPS = 24
 RSS_BUDGET_KIB = 96 * 1024
 CGROUP_MARGIN_BYTES = 160_000_000
@@ -130,8 +137,6 @@ def render_frames(ffdec, movie, destination):
         f"-Duser.home={destination}", "-jar", str(ffdec), "-onerror", "abort",
         "-format", "frame:png", "-export", "frame", str(destination), str(movie),
     ]
-    from os import getpid
-
     destination.mkdir()
     with (destination.parent / f"{movie.stem}.log").open("w+") as log:
         with Popen(command, stdout=log, stderr=log) as process:
@@ -149,18 +154,24 @@ def render_frames(ffdec, movie, destination):
                 raise RuntimeError(log.read().strip())
 
 
-def collect_frames(output, exports):
+def collect_frames(output, exports, index):
     from PIL import Image
     from extract_quest_detail_art import png_bytes
 
-    definitions, provenance = {}, {}
-    for key, feat in FEATS.items():
+    definitions, provenance = index["feats"], index["provenance"]
+    for key, frames_dir in exports.items():
+        feat = FEATS[key]
+        source_canvas = feat.get("sourceCanvas", (WIDTH, HEIGHT))
         frames, files = [], {}
         for number in range(1, feat["frames"] + 1):
-            with Image.open(exports[key] / f"{number}.png") as original:
+            with Image.open(frames_dir / f"{number}.png") as original:
                 image = original.convert("RGBA")
-            if image.size != (WIDTH, HEIGHT):
+            if image.size != source_canvas:
                 raise ValueError(f"Unexpected original stage crop for {key} frame {number}")
+            # The Loader displays only the battle viewport, while the other
+            # side still mirrors around Unlight.WIDTH (760px) in FeatImage.as.
+            if image.width > VISIBLE_STAGE_WIDTH or image.height > HEIGHT:
+                image = image.crop((0, 0, VISIBLE_STAGE_WIDTH, HEIGHT))
             bounds = image.getbbox()
             if bounds is None:
                 frames.append(None)
@@ -180,26 +191,33 @@ def collect_frames(output, exports):
             raise ValueError(f"Unexpected original final frame for {key}")
         data = {"name": feat["name"], "framesPerSecond": FPS, "frames": frames, "holdLast": False,
                 "source": feat["file"], "sourceSha256": feat["sha256"], "sourceChildStops": feat["childStops"]}
+        if "sourceCanvas" in feat:
+            data["sourceCanvas"] = list(source_canvas)
         definitions.update((id, data) for id in feat["ids"])
-    index = {"assetRevision": REVISION, "renderer": "JPEXS FFDec 26.6.0", "rendererSha256": FFDEC_SHA256,
-             "stage": [WIDTH, HEIGHT], "depth": 33, "otherMirrorX": WIDTH, "cue": "/public/sound/se/ulse13.mp3",
-             "feats": definitions, "provenance": provenance}
     (output / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
-def extract(assets, output, ffdec):
+def extract(assets, output, ffdec, clip=None):
     if sha256(ffdec.read_bytes()).hexdigest() != FFDEC_SHA256:
         raise ValueError("Expected the pinned JPEXS FFDec 26.6.0 renderer")
+    index = {"assetRevision": REVISION, "renderer": "JPEXS FFDec 26.6.0", "rendererSha256": FFDEC_SHA256,
+             "stage": [WIDTH, HEIGHT], "depth": 33, "otherMirrorX": WIDTH, "cue": "/public/sound/se/ulse13.mp3",
+             "feats": {}, "provenance": {}}
+    if clip:
+        previous = json.loads((output / "index.json").read_text(encoding="utf8"))
+        if any(previous[key] != value for key, value in index.items() if key not in ("feats", "provenance")):
+            raise ValueError("Feat art manifest uses different source or stage settings")
+        index = previous
     with TemporaryDirectory(prefix="unlight-feat-render-") as directory:
         scratch = Path(directory)
         exports = {}
-        for key, feat in FEATS.items():
+        for key in (clip,) if clip else FEATS:
             movie = scratch / f"{key}.swf"
-            movie.write_bytes(export_movie(assets / feat["file"], feat))
+            movie.write_bytes(export_movie(assets / FEATS[key]["file"], FEATS[key]))
             exports[key] = scratch / key
             render_frames(ffdec, movie, exports[key])
         output.mkdir(parents=True, exist_ok=True)
-        collect_frames(output, exports)
+        collect_frames(output, exports, index)
 
 
 def main():
@@ -207,8 +225,9 @@ def main():
     parser.add_argument("assets", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--ffdec", type=Path, required=True)
+    parser.add_argument("--clip", choices=FEATS, help="refresh only this cut-in in an existing output")
     args = parser.parse_args()
-    extract(args.assets, args.output, args.ffdec)
+    extract(args.assets, args.output, args.ffdec, args.clip)
 
 
 if __name__ == "__main__":

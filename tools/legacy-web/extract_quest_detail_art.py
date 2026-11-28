@@ -102,6 +102,7 @@ SOURCE_DIGESTS = {
     "standchara01_f": "da50c2905bf55ff8603de47f0305959d37c32104a57682d337836696adf97424",
     "standchara03_f": "0acbabbd8ce9f3483893cdad1c0961dcab3dd54cd548c5bcc47ec84cc98be881",
     "standchara04_f": "ff548ffac53b20005c5fd69372e5d32c1c4c74fb0bbdf8916480ca0476df98df",
+    "standchara09_f": "b8782c9a2b14117422e2b5f59cad455321a6071276c4036b05122eb525a7af65",
     "standchara11_f": "fe03d041aa5442d51c61c8a40a81a0debdd92a49ce9c3001957a9c1ca3476e7a",
     "standchara12_f": "22ed984b92efc0a0cba84e6b667300d7b4e5f5083f31fc433f1e8b2cfcf9b36f",
     "standmon001_00_f": "6358207e01180f6b35ba118dbd611ae4813ae7ac8af7162c7d71bae543ab9152",
@@ -123,6 +124,7 @@ BATTLE_SOURCE_DIRS = {
 }
 MOVE_FACE_SOURCES = {
     "1": "standchara01_f", "21": "standchara03_f", "31": "standchara04_f",
+    "82": "standchara09_f",
     "101": "standchara11_f", "111": "standchara12_f", "1004": "standmon002_00_f",
     "1001": "standmon001_00_f", "1007": "standmon003_00_f",
     "1079": "standmon028_00_f", "94": "standchara10_f",
