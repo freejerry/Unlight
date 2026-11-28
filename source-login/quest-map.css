@@ -23,7 +23,7 @@
   mask-repeat: no-repeat;
 }
 
-#quest-map-battle { z-index: 1; width: 760px; overflow: hidden; }
+#quest-map-battle { z-index: 1; width: 760px; overflow: clip; }
 :is(#quest-map-battle, .quest-battle-layer) > img {
   position: absolute;
   pointer-events: none;
@@ -70,8 +70,46 @@
   white-space: nowrap;
 }
 .quest-battle-hands ol { inset: 0; margin: 0; padding: 0; list-style: none; }
-.quest-battle-hand-card, .quest-battle-dealt-back { width: 56px; height: 86px; margin: -43px 0 0 -28px; }
-.quest-battle-hand-card > canvas { width: 100%; height: 100%; }
+.quest-battle-hand-card, .quest-battle-dealt-back {
+  position: absolute;
+  width: 56px;
+  height: 86px;
+  margin: -43px 0 0 -28px;
+}
+.quest-battle-hand-card canvas { inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.quest-battle-card-primary { inset: 0; width: 100%; height: 100%; }
+.quest-battle-layer :is([data-move-command], .quest-battle-card-primary, .quest-battle-card-rotate):not(:disabled) {
+  pointer-events: auto;
+}
+.quest-battle-layer button[aria-disabled="false"] { cursor: pointer; }
+.quest-battle-layer button:focus-visible { outline: 2px solid #ffdf9c; outline-offset: -2px; }
+.quest-battle-control-art { position: absolute; pointer-events: none; }
+.quest-battle-control-art:not(.quest-battle-art-up, .quest-battle-card-arrow) { visibility: hidden; }
+.quest-battle-layer button:disabled:has(.quest-battle-art-disabled) .quest-battle-art-up,
+.quest-battle-layer button[aria-disabled="false"]:is(:hover, :focus-visible):has(.quest-battle-art-over) .quest-battle-art-up,
+.quest-battle-layer button[aria-disabled="false"]:active:has(.quest-battle-art-down) :is(.quest-battle-art-up, .quest-battle-art-over) {
+  visibility: hidden;
+}
+.quest-battle-layer button:disabled .quest-battle-art-disabled,
+.quest-battle-layer button[aria-disabled="false"]:is(:hover, :focus-visible) .quest-battle-art-over,
+.quest-battle-layer button[aria-disabled="false"]:active .quest-battle-art-down { visibility: visible; }
+.quest-battle-card-rotate, .quest-battle-card-hint { opacity: 0; }
+.quest-battle-card-hint { position: absolute; inset: 0; pointer-events: none; }
+.quest-battle-hand-card:is(:hover, :focus-within):has(.quest-battle-card-primary[aria-disabled="false"]) :is(.quest-battle-card-rotate, .quest-battle-card-hint) {
+  opacity: 1;
+}
+.quest-battle-hand-card[data-zone="table"] :is(.quest-battle-card-rotate, .quest-battle-card-hint) { transform: rotate(180deg); }
+.quest-battle-hand-card[data-zone="hand"][data-move-hint="true"]:not(:hover, :focus-within):has(.quest-battle-card-primary[aria-disabled="false"]) .quest-battle-card-hint {
+  opacity: .8;
+  animation: quest-battle-arrow-idle .8s infinite alternate ease-in-out;
+}
+@keyframes quest-battle-arrow-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-battle-hand-card[data-move-hint="true"] .quest-battle-card-hint { animation: none !important; }
+}
 .quest-battle-status {
   width: 404px;
   padding: 6px 10px;

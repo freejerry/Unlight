@@ -111,10 +111,10 @@ def check_scene_music_fade(page, scene):
     started, steps = page.evaluate("scene => [window.qaSceneMusic[scene].started, window.qaSceneMusic[scene].steps]", scene)
     assert [round(step["volume"], 2) for step in steps] == [round(step / 20, 2) for step in range(10, -1, -1)], steps
     assert not any(step["paused"] for step in steps[:-1]), steps
-    # Source schedules the first gain change at 200ms and the last at 2000ms.
+    # The source starts a two-second fade. Chromium can deliver volumechange callbacks
+    # late during stage decoding, so measure against the scene transition instead.
     duration = steps[-1]["at"] - started
     assert 1800 <= duration <= 2800, (started, steps)
-    assert 1650 <= steps[-1]["at"] - steps[1]["at"] <= 2600, steps
     assert steps[-1]["time"] - steps[0]["time"] >= 1.3, steps
     return duration
 
@@ -155,6 +155,19 @@ def observe_session_codec(page, origin):
         fields.done();
         return [ids === '' ? [] : ids.split(',').map(Number), mask, opponentCount];
       }
+      function movementResultFields(body) {
+        const fields = read(body);
+        const initiative = fields.byte();
+        const distance = fields.byte();
+        const cards = () => {
+          const ids = fields.string(4096, true);
+          const faces = fields.string(4096, true);
+          return ids === '' ? [] : ids.split(',').map((id, index) => [Number(id), faces.split(',')[index] === 'true']);
+        };
+        const result = [initiative, distance, cards(), cards(), fields.byte(), fields.byte(), fields.byte(), fields.byte()];
+        fields.done();
+        return result;
+      }
       export function encodeCommand(command, fields, key) {
         const frame = encode(command, fields, key);
         const isRefresh = command === 17 && fields?.length === 0;
@@ -165,7 +178,9 @@ def observe_session_codec(page, origin):
         const deck = command === 12 && fields?.length === 1 ? fields[0] : null;
         const action = [13, 16].includes(command) && fields
           ? [command, fields[0], ...fields.slice(1).map(field => field.value)] : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action});
+        const movement = [23, 24, 25, 26, 32].includes(command)
+          ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement});
         return frame;
       }
       export function readReply(body) {
@@ -185,8 +200,13 @@ def observe_session_codec(page, origin):
             : reply.command === 40 && body.byteLength === 7 ? [...body.slice(2)]
             : reply.command === 43 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : (reply.command === 44 || reply.command === 45) && body.byteLength >= 11 ? refillFields(body)
+            : reply.command === 48 && body.byteLength >= 24 ? movementResultFields(body)
+            : reply.command === 60 && body.byteLength === 4 ? [bytes.getInt8(2), bytes.getInt8(3)]
             : (reply.command === 61 || reply.command === 62) && body.byteLength === 8
             ? [bytes.getInt8(2), bytes.getInt8(3), bytes.getInt32(4)]
+            : reply.command === 63 && body.byteLength === 10
+            ? [bytes.getInt8(2), bytes.getInt8(3), bytes.getInt8(4), bytes.getInt32(5), bytes.getInt8(9)]
+            : reply.command === 67 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : reply.command === 6 && body.byteLength >= 19
             ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
           replies.push([reply.command, body.byteLength, ...data]);
@@ -216,17 +236,18 @@ def observe_quest_wire(page):
           if (service === '/socket/12002') this.lobbyTrace = wire.lobby;
           if (service !== {QUEST_PORT!r}) return;
           const overlaps = wire.sockets.some(socket => !socket.close);
-          const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], replies: [], close: null, held: false, overlaps }};
+          const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], movement: [], replies: [], close: null, held: false, overlaps }};
           wire.sockets.push(trace);
           this.addEventListener('close', event => {{ trace.close = [event.code, event.wasClean]; }});
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
           if (this.questTrace) {{
-            const {{ command, confirm, action }} = encoded;
+            const {{ command, confirm, action, movement }} = encoded;
             this.questTrace.sent.push([command, frame.byteLength]);
             if (confirm) this.questTrace.confirms.push(confirm);
             if (action) this.questTrace.actions.push(action);
+            if (movement) this.questTrace.movement.push(movement);
             if (command === 22) {{
               const battle = document.querySelector('#quest-map-battle');
               (this.questTrace.readySends ??= []).push([battle?.dataset.burn, battle?.dataset.intro]);
@@ -969,22 +990,27 @@ def observe_quest_opening_audio(page):
       trace.openingEffects = [];
       HTMLMediaElement.prototype.play = function () {
         const file = this.src.split('/').at(-1);
-        if (!/^ulse(?:05_[ab]|06|12)\\.mp3$/.test(file)) return play.call(this);
+        if (!/^ulse(?:05_[ab]|06|08|12|28|29)\\.mp3$/.test(file)) return play.call(this);
         const phase = document.getElementById('quest-map-battle')?.dataset.phase;
         return play.call(this).then(() => { trace.openingEffects.push([file, phase]); });
       };
     }""")
 
 
-def check_dealt_cards(hand, expected_hand):
+def action_card_definitions():
     source = Path(__file__).resolve().parents[2] / "app/server/data/csv/tcn/ActionCards.csv"
     with source.open(encoding="utf-8-sig", newline="") as csv_file:
-        definitions = {int(row["id"]): row for row in DictReader(csv_file)}
+        return {int(row["id"]): row for row in DictReader(csv_file)}
+
+
+def check_dealt_cards(hand, expected_hand):
+    definitions = action_card_definitions()
     expect(hand).to_have_count(len(expected_hand))
     assert hand.evaluate_all("""cards => cards.map(({dataset}) =>
       [Number(dataset.cardId), dataset.up === 'true', dataset.kind])""") == expected_hand
+    # Read layout order independently of the original transfer tween from table to hand.
     assert hand.evaluate_all("""cards => cards.every((card, index) => index === 0
-      || card.getBoundingClientRect().x > cards[index - 1].getBoundingClientRect().x)""")
+      || card.offsetLeft > cards[index - 1].offsetLeft)""")
     for index, (card_id, up, kind) in enumerate(expected_hand):
         definition = definitions[card_id]
         name = "事件牌" if kind == "event" else "行動牌"
@@ -1076,10 +1102,12 @@ def check_quest_opening(page, stage, directory, *, drop_reply):
     assert 0 < start <= 60
     page.wait_for_function("""initial => +document.getElementById('quest-battle-move-time').value < initial""",
                            arg=start, timeout=TIMEOUT)
-    buttons = page.locator("#quest-battle-move-controls button[data-move-command]:visible")
-    assert buttons.evaluate_all("buttons => buttons.map(({dataset, disabled}) => [dataset.moveCommand, disabled])") == [
-        [command, True] for command in ("back", "stay", "change", "forward", "done")
+    buttons = page.locator("#quest-battle-move-controls button[data-move-command]")
+    assert buttons.evaluate_all("""buttons => buttons.map(button =>
+      [button.dataset.moveCommand, button.getAttribute('aria-disabled')])""") == [
+        [command, str(command == "change").lower()] for command in ("back", "stay", "change", "forward", "done")
     ]
+    expect(page.locator("#quest-battle-move-controls button[data-move-command]:visible")).to_have_count(5)
     page.wait_for_function("""expected => {
       const effects = window.qaQuestWire.sockets.at(-1).openingEffects;
       return effects.some(([file, phase]) => file === 'ulse12.mp3' && phase === 'move')
@@ -1101,8 +1129,197 @@ def check_quest_opening(page, stage, directory, *, drop_reply):
     music(page, "quest-duel", "bgm000.mp3")
     wait_quest_art(page)
     capture(stage, directory, "17c-first-move.png")
-    first_card = hand.first.bounding_box()
-    page.mouse.click(first_card["x"] + first_card["width"] / 2, first_card["y"] + first_card["height"] / 2)
+    return expected_hand
+
+
+def hold_movement_reply(page, command, activate, *, through=None):
+    page.evaluate("""({command, through}) => window.qaQuestWire.holdAction(command, {through})""",
+                  {"command": command, "through": through})
+    activate()
+    page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+
+
+def release_movement_reply(page):
+    assert page.evaluate("window.qaQuestWire.endActionHold(true)") > 0
+
+
+def read_movement_trace(page):
+    return page.evaluate("window.qaQuestWire.sockets.at(-1)")
+
+
+def check_movement_effects(page, *, rotations, transfers):
+    page.wait_for_function("""({rotations, transfers}) => {
+      const effects = window.qaQuestWire.sockets.at(-1).openingEffects;
+      return effects.filter(([file]) => file === 'ulse08.mp3').length >= rotations
+        && effects.filter(([file, phase]) => file === 'ulse06.mp3' && phase !== 'draw').length >= transfers;
+    }""", arg={"rotations": rotations, "transfers": transfers}, timeout=TIMEOUT)
+    effects = read_movement_trace(page)["openingEffects"]
+    assert sum(file == "ulse08.mp3" for file, _ in effects) == rotations, effects
+    assert sum(file == "ulse06.mp3" and phase != "draw" for file, phase in effects) == transfers, effects
+
+
+def check_quest_movement(page, stage, directory, initial_hand, *, drop_reply):
+    battle = page.locator("#quest-map-battle")
+    hand_region = battle.locator("#quest-battle-player-hand")
+    hand = hand_region.locator(".quest-battle-hand-card")
+    table = battle.locator("#quest-battle-player-table")
+    result = battle.locator("#quest-battle-move-result")
+    forward = battle.locator('button[data-move-command="forward"]')
+    commit = battle.locator('button[data-move-command="done"]')
+    definitions = action_card_definitions()
+    candidates = [(index, row) for index, row in enumerate(initial_hand) if row[2] == "action"]
+    assert candidates
+    movement_cards = [candidate for candidate in candidates
+                      if definitions[candidate[1][0]]["u_type" if candidate[1][1] else "b_type"] == "4"]
+    different_faces = [candidate for candidate in candidates
+                       if definitions[candidate[1][0]]["u_type"] != definitions[candidate[1][0]]["b_type"]]
+    index, (card_id, initial_face, kind) = (movement_cards or different_faces or candidates)[0]
+    hand_card = hand_region.locator(f'.quest-battle-hand-card[data-card-id="{card_id}"]')
+    placed_card = table.locator(f'[data-card-id="{card_id}"]')
+    rotate = hand_card.locator(".quest-battle-card-rotate")
+    add = hand_card.locator(".quest-battle-card-primary")
+    body_hit = {"x": 27, "y": 18}
+    flipped = not initial_face
+    movement = []
+    page.evaluate("window.qaMovementMusic = document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
+
+    direction_before = battle.get_attribute("data-direction")
+    hold_movement_reply(page, 23, forward.click)
+    movement.append([23, -1])
+    assert battle.get_attribute("data-direction") == direction_before
+    expect(forward).to_be_visible()
+    expect(commit).to_be_disabled()
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-direction", "-1")
+    expect(forward).to_be_hidden()
+    expect(battle.locator("#quest-battle-move-controls button[data-move-command]:visible")).to_have_count(4)
+    assert [60, 4, 1, -1] in read_movement_trace(page)["replies"]
+
+    expect(rotate).to_be_enabled()
+    hold_movement_reply(page, 32, lambda: rotate.press("Enter"))
+    movement.append([32, card_id, 0, index, int(flipped)])
+    expect(hand_card).to_have_attribute("data-up", str(initial_face).lower())
+    release_movement_reply(page)
+    expect(hand_card).to_have_attribute("data-up", str(flipped).lower())
+    assert [63, 10, 1, 0, index, card_id, int(flipped)] in read_movement_trace(page)["replies"]
+    rotated_hand = initial_hand.copy()
+    rotated_hand[index] = [card_id, flipped, kind]
+    check_dealt_cards(hand, rotated_hand)
+    capture(stage, directory, "18a-direction-and-rotation.png")
+
+    add_bounds = add.bounding_box()
+    hold_movement_reply(page, 24, lambda: add.click(position=body_hit))
+    movement.append([24, card_id, index, int(flipped)])
+    expect(hand_card).to_be_visible()
+    expect(placed_card).to_have_count(0)
+    expect(commit).to_be_disabled()
+    page.mouse.click(add_bounds["x"] + body_hit["x"], add_bounds["y"] + body_hit["y"])
+    assert read_movement_trace(page)["movement"] == movement
+    if drop_reply:
+        expect(battle).to_have_attribute("data-phase", "uncertain", timeout=TIMEOUT)
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-phase", "uncertain")
+        expect(hand_card).to_be_visible()
+        expect(placed_card).to_have_count(0)
+        expect(commit).to_be_disabled()
+        page.mouse.click(add_bounds["x"] + body_hit["x"], add_bounds["y"] + body_hit["y"])
+        assert read_movement_trace(page)["movement"] == movement
+        assert [61, 8, 1, index, card_id] in read_movement_trace(page)["replies"]
+        check_movement_effects(page, rotations=1, transfers=0)
+        capture(stage, directory, "18b-movement-reply-uncertain.png")
+        return movement
+
+    release_movement_reply(page)
+    expect(placed_card).to_be_visible()
+    expect(hand_card).to_have_count(0)
+    expect(placed_card).to_have_attribute("data-up", str(flipped).lower())
+    assert [61, 8, 1, index, card_id] in read_movement_trace(page)["replies"]
+    capture(stage, directory, "18b-owned-card-on-table.png")
+
+    table_rotate = placed_card.locator(".quest-battle-card-rotate")
+    expect(table_rotate).to_be_enabled()
+    table_rotate.press("Enter")
+    movement.append([32, card_id, 1, 0, int(initial_face)])
+    expect(placed_card).to_have_attribute("data-up", str(initial_face).lower())
+    assert [63, 10, 1, 1, 0, card_id, int(initial_face)] in read_movement_trace(page)["replies"]
+
+    retract = placed_card.locator(".quest-battle-card-primary")
+    hold_movement_reply(page, 25, lambda: retract.click(position=body_hit))
+    movement.append([25, card_id, 0])
+    expect(placed_card).to_be_visible()
+    expect(hand_card).to_have_count(0)
+    release_movement_reply(page)
+    expect(hand_card).to_be_visible()
+    expect(placed_card).to_have_count(0)
+    assert [62, 8, 1, 0, card_id] in read_movement_trace(page)["replies"]
+    returned_hand = [row for row in initial_hand if row[0] != card_id] + [[card_id, initial_face, kind]]
+    check_dealt_cards(hand, returned_hand)
+    scroll_offsets = page.evaluate("""() => ['#stage', '#quest-map-view', '#quest-map-battle'].map(selector => {
+      const view = document.querySelector(selector);
+      return [view.scrollLeft, view.scrollTop];
+    })""")
+    assert scroll_offsets == [[0, 0], [0, 0], [0, 0]], scroll_offsets
+    capture(stage, directory, "18c-owned-card-returned.png")
+
+    add.click(position=body_hit)
+    movement.append([24, card_id, len(initial_hand) - 1, int(initial_face)])
+    expect(placed_card).to_be_visible()
+    capture(stage, directory, "18d-move-ready-to-submit.png")
+    hold_movement_reply(page, 26, commit.click, through=47)
+    movement.append([26, "", ""])
+    expect(result).to_be_hidden()
+    expect(commit).to_be_disabled()
+    prior = read_movement_trace(page)["replies"]
+    assert [reply for reply in prior if reply[0] in (47, 48)] == [[47, 2]]
+    release_movement_reply(page)
+    expect(result).to_have_count(1, timeout=TIMEOUT)
+    trace = read_movement_trace(page)
+    resolution = [reply for reply in trace["replies"] if reply[0] in (47, 48)]
+    assert [reply[0] for reply in resolution] == [47, 48], resolution
+    _, _, initiative, distance, own_cards, foe_cards, own_power, foe_power, own_locked, foe_locked = resolution[1]
+    assert own_cards == [[card_id, initial_face]], resolution
+    outcome = {"distance": distance, "player-initiative": bool(initiative), "player-power": own_power,
+               "opponent-power": foe_power, "player-locked": bool(own_locked), "opponent-locked": bool(foe_locked)}
+    for key, value in outcome.items():
+        expect(result).to_have_attribute(f"data-{key}", str(value).lower())
+    expect(result).to_have_text(("近距離", "中距離", "遠距離", "距離不明")[distance - 1]
+                               + ("，我方先攻" if initiative else "，對手先攻"))
+    for rows, known, locked, top in ((table, own_cards, own_locked, 346),
+                                     (battle.locator("#quest-battle-opponent-table"), foe_cards, foe_locked, 84)):
+        revealed = rows.locator(".quest-battle-reveal-card")
+        expect(revealed).to_have_count(len(known))
+        if not locked:
+            assert revealed.evaluate_all("""cards => cards.map(({dataset}) =>
+                 [Number(dataset.cardId), dataset.up === 'true'])""") == known
+        expect(revealed.locator("canvas")).to_have_count(len(known))
+        geometry = revealed.evaluate_all("""async cards => {
+          await Promise.allSettled(cards.flatMap(card =>
+            card.querySelector('canvas').getAnimations().map(animation => animation.finished)));
+          return cards.map(card => {
+            const stage = card.closest('#quest-map-battle').getBoundingClientRect();
+            return [card, card.querySelector('canvas')].map(node => {
+              const box = node.getBoundingClientRect();
+              return [box.width, box.height, box.top - stage.top];
+            });
+          });
+        }""")
+        assert geometry == [[[56, 86, top], [56, 86, top]]] * len(known), geometry
+    expect(battle.locator("#quest-battle-move-time")).to_have_count(0)
+    assert all(not node.is_enabled() for node in battle.locator("button[data-move-command]").all())
+    check_movement_effects(page, rotations=2, transfers=3)
+    if directory is not None:
+        stage.screenshot(path=directory / "18e-confirmed-movement-result.png", scale="css")
+    expect(battle).to_have_attribute("data-move-result", "settled", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-distance", str(distance))
+    expect(battle).to_have_attribute("data-initiative", "player" if initiative else "opponent")
+    effects = read_movement_trace(page)["openingEffects"]
+    assert [file for file, _ in effects if file in {"ulse28.mp3", "ulse29.mp3"}] == [
+        "ulse28.mp3" if foe_locked else "ulse29.mp3"
+    ] * len(foe_cards), effects
+    music(page, "quest-duel", "bgm000.mp3")
+    assert page.evaluate("window.qaMovementMusic === document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
+    capture(stage, directory, "18f-movement-settled.png")
+    return movement
 
 
 def check_quest_start(page, origin, database, name, password, directory, fault):
@@ -1185,6 +1402,7 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     wait_quest_start_lock(page, database, avatar_id, started, locked)
     assert avatar(database, player_id) == [updated]
     capture(stage, directory, "16b-start-before-reply.png")
+    expected_movement = []
 
     if fault == "start":
         expect(view).to_have_attribute("data-start-state", "uncertain", timeout=TIMEOUT)
@@ -1242,7 +1460,9 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
             expect(portrait).to_have_css("transform-origin", "0px 0px")
             if directory is not None:
                 stage.screenshot(path=directory / "16f-character-intro.png", scale="css")
-            check_quest_opening(page, stage, directory, drop_reply=fault == "ready")
+            initial_hand = check_quest_opening(page, stage, directory, drop_reply=fault == "ready")
+            if initial_hand is not None:
+                expected_movement = check_quest_movement(page, stage, directory, initial_hand, drop_reply=fault == "move")
 
     if fault:
         if page.locator("#login-alert").is_visible():
@@ -1261,13 +1481,19 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     assert [reply[0] for reply in encounter] == expected_encounter, encounter
     if encounter:
         assert encounter[0] == [128, 3, 1] and encounter[1][2:] == [-1, "CPU", "21", "1004", 11, *([0] * 6)]
-    if fault in (None, "ready"):
+    if fault in (None, "ready", "move"):
         assert len(encounter[2]) == 7 and encounter[2][1] == 7 and encounter[2][-2:] == [2, 1]
         ready = [reply for reply in trace["replies"] if 43 <= reply[0] <= 46]
         assert [reply[0] for reply in ready] == [43, 44, 45, 46] and ready[-1] == [46, 2], ready
         assert len(trace["readySends"]) == 1
+    assert trace["movement"] == expected_movement, trace["movement"]
+    movement_sizes = {23: 6, 24: 11, 25: 10, 26: 9, 32: 12}
+    assert [packet for packet in trace["sent"] if packet[0] in movement_sizes] == [
+        [command, movement_sizes[command]] for command, *_ in expected_movement
+    ]
     assert [command for command, _ in trace["sent"] if command not in {0, 1, 3}] == [
-        5, 12, *(command for command, *_ in actions), *([22] if fault in (None, "ready") else []),
+        5, 12, *(command for command, *_ in actions), *([22] if fault in (None, "ready", "move") else []),
+        *(command for command, *_ in expected_movement),
     ]
     assert [packet for packet in trace["sent"] if packet[0] in {13, 16}] == [
         [command, 10 if command == 13 else 11] for command, *_ in actions
@@ -1866,11 +2092,11 @@ def main():
     fixture = parser.add_mutually_exclusive_group()
     fixture.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
     fixture.add_argument("--quest-user", help="Only check Quest entry and cancel for a disposable discovered/pending fixture")
-    fixture.add_argument("--quest-start-user", help="Check start through first Movement for a disposable empty Quest fixture")
+    fixture.add_argument("--quest-start-user", help="Check start and first Movement result for a disposable empty Quest fixture")
     parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
     parser.add_argument("--quest-password-file", type=Path, help="Private password file for --quest-user")
     parser.add_argument("--quest-start-password-file", type=Path, help="Private password file for --quest-start-user")
-    parser.add_argument("--quest-start-fault", choices=("start", "land", "ready"),
+    parser.add_argument("--quest-start-fault", choices=("start", "land", "ready", "move"),
                         help="Withhold the genuine reply to one original request through its timeout")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
@@ -1905,8 +2131,8 @@ def main():
                     check_quest_start(page, origin, args.database, args.quest_start_user,
                                       args.quest_start_password_file.read_text().rstrip("\r\n"),
                                       args.screens, args.quest_start_fault)
-                    mode = args.quest_start_fault or "first Movement"
-                    print(f"Real Quest start and opening passed ({mode}).")
+                    mode = args.quest_start_fault or "first Movement result"
+                    print(f"Real Quest start and movement passed ({mode}).")
                 return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):
                 directory = args.screens / f"avatar-{number}" if args.screens is not None else None

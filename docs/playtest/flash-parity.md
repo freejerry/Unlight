@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告及落日大蝙蝠的首戰開場、抽牌與第一個移動畫面。**部分**首戰 HUD 與移動。 | 用原版實跑核對方向、卡片放置和收回、旋轉、確認、超時及移動結果。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、抽牌、首次移動與結算。**部分**戰鬥 HUD。 | 從實際先手和距離接上攻防階段，另驗換角與技能。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -91,4 +91,9 @@
 ### 首戰開場、抽牌與移動畫面
 
 - 繁中 Flash 和固定舞台實跑落日大蝙蝠。開場用來源上下幕、VS 姓名框、角色、已裝備的虛擬人物及卡面。開場結束後沿用同一條 Quest 送一次無參數 Ready。玩家與敵方 HP 分別是 7/7、1/1，並顯示同場中距離、原始階段素材、60 秒畫面倒數、`bgm000.mp3`、Draw／Move 音和發牌聲。[開場並排](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/intro-comparison.png) · [Draw 並排](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/draw-comparison.png) · [移動畫面並排](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/move-comparison.png)
-- 真實 Ruby 回覆逐張核對己方五張行動牌和一張事件牌的 ID、順序與朝向。本方與原版各自實跑，牌面及 CPU 放置張數會隨該場資料變動。收到遮蔽的 CPU `SC61` 後，新版把一張匿名牌背移至桌面。暫緩及遲到的 `SC46` 測例驗證等待期間與逾時後的畫面，同一局僅發一次 Ready。移動、出牌及確認仍待接入。[原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/wire.json) · [新版獨立驗收封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/root-opening-wire.json) · [分項差異與下一段](flash-parity/quest-pve.md#首戰開場抽牌與移動階段)
+- 真實 Ruby 回覆逐張核對己方五張行動牌和一張事件牌的 ID、順序與朝向。本方與原版各自實跑，牌面及 CPU 放置張數會隨該場資料變動。收到遮蔽的 CPU `SC61` 後，新版把一張匿名牌背移至桌面。暫緩及遲到的 `SC46` 測例驗證等待期間與逾時後的畫面，同一局僅發一次 Ready。[原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/wire.json) · [新版獨立驗收封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/root-opening-wire.json) · [分項差異](flash-parity/quest-pve.md#首戰開場抽牌與移動階段)
+
+### 首回合玩家移動及結果
+
+- 固定舞台已接上方向、手牌和桌面牌的旋轉、放置、收回、重新放置及一次完成命令。原版方向、牌面和實際落點依 Ruby 各自回覆更新。原畫面 60 秒倒數自然到期時也只送一次完成。按 OK 後遇到實際回覆延遲及出牌遺失的案例已分別驗證，保留同一條 Quest 與最後確認狀態。[方向滑入並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/direction-hover-comparison.png) · [出牌並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/card-on-table-comparison.png) · [新版自然逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-wire.json)
+- 由 `SC47` 關閉輸入，待 `SC48` 才翻牌及顯示距離和先手。兩版保留各場真正抽到的牌並以原版尺寸比對。新版實跑另核對鍵盤聚焦過程舞台固定、雙方 56×86 卡牌、階段音、切入肖像及距離箭頭。換角、攻防、戰鬥日誌與結算期間的計時條交接待接入。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [原版抵銷箭頭](/workspace/shared/unlight-web-port/flash-parity/quest-movement-original/final/07-move-result-original.png) · [逐項驗證](flash-parity/quest-pve.md#首回合移動操作與結果)

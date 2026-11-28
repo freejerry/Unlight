@@ -89,13 +89,25 @@ SOURCE_DIGESTS = {
     "op_name": "124e52af274046f3830d6499f72db87390ade8fe3a7c91d7de761f9206c15694",
     "chat_base": "44b00703d2ae7ffb6d9c10eb655d3dbf95070509cbb35e0509dfb3be25cb947b",
     "skill_base": "00a20be5b6ef005c8d2b734296f769f2c002acda3e942ad6e788cc38c66c9d6a",
+    "avatar_ch": "bd27e6476cd9ba96467a367880c8701db8743a29a6594d5e20d36157f2b69d58",
+    "arrow_move": "3625dd0e19b5fc282d3b0943cfff306a580615acc594f68100430494e1109e4d",
+    "standchara01_f": "da50c2905bf55ff8603de47f0305959d37c32104a57682d337836696adf97424",
+    "standchara03_f": "0acbabbd8ce9f3483893cdad1c0961dcab3dd54cd548c5bcc47ec84cc98be881",
+    "standchara04_f": "ff548ffac53b20005c5fd69372e5d32c1c4c74fb0bbdf8916480ca0476df98df",
+    "standchara11_f": "fe03d041aa5442d51c61c8a40a81a0debdd92a49ce9c3001957a9c1ca3476e7a",
+    "standchara12_f": "22ed984b92efc0a0cba84e6b667300d7b4e5f5083f31fc433f1e8b2cfcf9b36f",
+    "standmon002_00_f": "c43e7eeb9d71a86279fe796f9a2e1884ab564998c8440908a1c13065e363813f",
 }
 BATTLE_SOURCE_DIRS = {
     "bg_btl11a": "bg", "bg_btl11a_book": "bg",
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
-                     "chat_base", "skill_base"), "game"),
+                     "chat_base", "skill_base", "avatar_ch", "arrow_move"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
     **dict.fromkeys(("move_f_ch", "move_b_ch", "move_s_ch", "move_c_ch"), ""),
+}
+MOVE_FACE_SOURCES = {
+    "1": "standchara01_f", "21": "standchara03_f", "31": "standchara04_f",
+    "101": "standchara11_f", "111": "standchara12_f", "1004": "standmon002_00_f",
 }
 
 # Source vector order in MapStageImage.as. Stages 8, 9 and 12 use the lake SWF.
@@ -248,7 +260,9 @@ class Primitive:
 
 class Movie:
     def __init__(self, asset_root, name, swfdump):
-        self.path = QUEST_DIR.parent / BATTLE_SOURCE_DIRS.get(name, "quest") / f"{name}.swf"
+        directory = (Path("public/image/standchara") if name in MOVE_FACE_SOURCES.values()
+                     else QUEST_DIR.parent / BATTLE_SOURCE_DIRS.get(name, "quest"))
+        self.path = directory / f"{name}.swf"
         self.source = source = asset_root / self.path
         self.digest = sha256(source.read_bytes()).hexdigest()
         if self.digest != SOURCE_DIGESTS[name]:
@@ -372,9 +386,11 @@ class Movie:
                 pieces.extend(self.shape(shape, translation(placement["matrix"])))
         return pieces, shapes
 
-    def shape(self, shape, offset):
+    def shape(self, shape, offset, ratio=0):
         name = kind(shape)
         if name == "DefineMorphShape":
+            if shape.find(f"{NS}fillstyle").get("type") == "0":
+                return [solid_morph(shape, offset, ratio)]
             return [morph_start(shape, offset)]
         if name not in ("DefineShape", "DefineShape2", "DefineShape3", "DefineShape4"):
             raise ValueError(f"Unsupported detail shape {name}")
@@ -517,6 +533,39 @@ def gradient_path(path, style, dx, dy):
 
 def hex_alpha(color):
     return int(color[7:9], 16) / 255 if len(color) == 9 else 1
+
+
+def solid_morph(shape, offset, ratio):
+    """The TimeBase warning changes color with identical start/end outlines."""
+    start, end = (shape.find(f"{NS}{edge}") for edge in ("start", "end"))
+    coords = ("dx", "dy", "cdx", "cdy")
+    start_edges = [(kind(edge), [edge.get(axis) for axis in coords]) for edge in start]
+    end_edges = [(kind(edge), [edge.get(axis) for axis in coords]) for edge in end]
+    if start_edges != end_edges:
+        raise ValueError("Unsupported solid morph with moving edges")
+    fill = shape.find(f"{NS}fillstyle")
+    colors = [bytes.fromhex(fill.attrib[f"{edge}Color"][1:]) for edge in ("start", "end")]
+    color = "#" + bytes(round(a + (b - a) * ratio / 65535) for a, b in zip(*colors, strict=True)).hex()
+    outline = ElementTree.Element("outline")
+    ElementTree.SubElement(outline, f"{NS}fillstyle")
+    outline.extend(start)
+    ((_, path),) = shape_paths(outline)
+    dx, dy = offset
+    x0, y0, x1, y1 = bounds({"bounds": shape.attrib["startBounds"]})
+    return Primitive((x0 + dx, y0 + dy, x1 + dx, y1 + dy), color_path(path, color, dx, dy))
+
+
+def clip_path(symbol, ratio, matrix):
+    if kind(symbol) == "DefineMorphShape":
+        # The localized distance indicators use axis-aligned rectangular reveals.
+        if any([kind(edge) for edge in symbol.find(f"{NS}{side}")] != ["styleChange", *(["line"] * 4)]
+               for side in ("start", "end")):
+            raise ValueError("Unsupported distance mask outline")
+        start = bounds({"bounds": symbol.attrib["startBounds"]})
+        end = bounds({"bounds": symbol.attrib["endBounds"]})
+        x0, y0, x1, y1 = (a + (b - a) * ratio / 65535 for a, b in zip(start, end, strict=True))
+        return f'<rect x="{x0}" y="{y0}" width="{x1 - x0}" height="{y1 - y0}" transform="matrix({matrix})"/>'
+    return "".join(f'<path d="{path}" transform="matrix({matrix})"/>' for _, path in shape_paths(symbol))
 
 
 def morph_start(shape, offset):
@@ -691,7 +740,7 @@ def authored_primitives(source, placements):
             clip = None
         if "clipDepth" in part:
             svg_matrix = " ".join(str(value) for value in swf_affine(part["matrix"]))
-            paths = "".join(f'<path d="{path}" transform="matrix({svg_matrix})"/>' for _, path in shape_paths(symbol))
+            paths = clip_path(symbol, int(part.get("ratio", 0)), svg_matrix)
             name = f"mask-{source.original_id(part)}-{depth}"
             clip = (int(part["clipDepth"]), name,
                     f'<defs><clipPath id="{name}" clipPathUnits="userSpaceOnUse">{paths}</clipPath></defs>')
@@ -711,7 +760,7 @@ def authored_primitives(source, placements):
         elif symbol_kind == "DefineText" and all(hex_alpha(text.attrib["color"]) == 0 for text in symbol):
             continue
         else:
-            originals = source.shape(symbol, (0, 0))
+            originals = source.shape(symbol, (0, 0), int(part.get("ratio", 0)))
             shapes.append(source.original_id(part))
         transformed_parts = placed_primitives(originals, part["matrix"])
         if "cxform" in part:
@@ -879,6 +928,74 @@ def extract(asset_root, art, swfdump):
             "labelOffset": {"x": 12, "y": 2, "width": 130, "height": 30},
         }
 
+    def battle_button(source, filename, placement, *, layers=None):
+        symbol = source.symbol(placement)
+        records = {state: [part.attrib for part in symbol if kind(part) == "buttonRecord"
+                           and state in part.attrib["states"].split(",")]
+                   for state in ("up", "over", "down", "hitTest")}
+        art = dict(layers or ())
+        for state in ("up", "over", "down"):
+            if state == "down" and records[state] == records["over"]:
+                art[state] = art["over"]
+            elif state not in art:
+                art[state] = battle_art(source, f"{filename}-{state}", [placement | {"buttonState": state}],
+                                        sourceInstance=placement.get("name"), sourceState=state)
+        footprint, _ = authored_primitives(source, [placement | {"buttonState": "hitTest"}])
+        x0 = min(part.bounds[0] for part in footprint)
+        y0 = min(part.bounds[1] for part in footprint)
+        x1 = max(part.bounds[2] for part in footprint)
+        y1 = max(part.bounds[3] for part in footprint)
+        art["hit"] = [x0 / TWIPS, y0 / TWIPS, (x1 - x0) / TWIPS, (y1 - y0) / TWIPS]
+        return art
+
+    def move_presentation():
+        avatar = movie("avatar_ch")
+        _, avatar_root = next(timeline(avatar.root))
+        # AvatarBase hides watch UI and the raid score in an ordinary Quest duel.
+        (avatar_layer,) = [placement for placement in avatar_root if int(placement["depth"]) == 1]
+        avatar_base = battle_art(avatar, "avatar-base", [avatar_layer], sourceDepth=1)
+
+        arrow = movie("arrow_move")
+        arrow_child = arrow.instance("arrow_right")
+        arrows = {
+            side: battle_art(arrow, f"move-result-{side}", [arrow_child | {"matrix": matrix}],
+                             crop=(0, 0, 800, 1060), sourceInstance="arrow_right", sourceLabel="normal")
+            for side, matrix in (("right", "t400,500"), ("left", "s-1.0,1.0 t400,500"))
+        }
+
+        faces = {}
+        for card_id, name in MOVE_FACE_SOURCES.items():
+            source = movie(name)
+            face = source.instance("face")
+            pivot = [value / TWIPS for value in translation(face["matrix"])]
+            frame_data = list(timeline(source.symbol(face)))
+            assert len(frame_data) == 23 and frame_data[0][0] == "face_in" and frame_data[12][0] == "face_out"
+            (_, (first,)) = frame_data[0]
+            layer = battle_art(source, f"move-face-{card_id}", [first | {"matrix": "t0,0"}],
+                               sourceInstance="face", spriteId=source.original_id(face), sourceLabel="face_in")
+            positions = []
+            for _, contents in frame_data:
+                if not contents:
+                    positions.append(None)
+                    continue
+                (placed,) = contents
+                if placed["idref"] != first["idref"]:
+                    raise ValueError(f"Unexpected replacement of a move cut-in bitmap in {source.path}")
+                x, y = translation(placed["matrix"])
+                positions.append({"x": x / TWIPS, "y": y / TWIPS})
+            faces[card_id] = {"image": layer, "pivot": pivot, "enter": positions[:12], "exit": positions[12:],
+                              "framesPerSecond": QUEST_STAGE_FRAME_RATE}
+        return {
+            "avatarBase": dict(avatar_base, depth=11), "avatarOrigin": [590, 473],
+            "cutIns": faces,
+            "arrows": arrows,
+            "arrowLayout": {"playerX": 162, "foeX": 598, "y": 260, "step": 20,
+                            "staggerMs": 100, "showMs": 200, "holdMs": 800, "hideMs": 200,
+                            "cancelTargetX": 380},
+            "distance": {"playerX": [288, 184, 80, 184], "foeX": [472, 576, 680, 576], "y": 416,
+                         "durationMs": 300, "easing": "quadratic-in"},
+        }
+
     def battle_hud():
         phase = movie("phase")
         phase_frames = list(timeline(phase.root))
@@ -910,9 +1027,17 @@ def extract(asset_root, art, swfdump):
         middle = range_movie.instance("middle") | {"spriteFrame": 17}
         range_art = battle_art(range_movie, "range-middle", [middle], 17, sourceInstance="middle",
                                spriteId=range_movie.original_id(middle))
+        ranges = {"middle": range_art}
+        for name, frame in (("short", 21), ("long", 17), ("hiding", 17)):
+            placement = range_movie.instance(name) | {"spriteFrame": frame}
+            ranges[name] = battle_art(range_movie, f"range-{name}", [placement], frame,
+                                      sourceInstance=name, spriteId=range_movie.original_id(placement))
 
         timer = movie("time_base")
-        time_base = battle_art(timer, "time-base", [timer.instance("time_base")], sourceInstance="time_base")
+        timer_shell = timer.instance("time_base")
+        time_base = battle_art(timer, "time-base", [timer_shell], sourceInstance="time_base")
+        time_warning = [battle_art(timer, f"time-warning-{frame:02}", [timer_shell | {"spriteFrame": frame}],
+                                   frame, sourceInstance="time_base", sourceLabel="warning") for frame in range(2, 30)]
         life = movie("life_base")
         _, contents = next(timeline(life.root))
         health_base = battle_art(life, "health-base", contents)
@@ -935,6 +1060,7 @@ def extract(asset_root, art, swfdump):
             **{state: battle_art(done_movie, f"done-{state}", [done_button | {"buttonState": state}],
                                   sourceInstance="button_ok", sourceState=state) for state in ("up", "over")},
         }
+        done = battle_button(done_movie, "done", done_button, layers=done)
         buttons = {}
         for direction, key, x1, x3 in (("forward", "f", 412, 440), ("back", "b", 300, 272),
                                        ("stay", "s", 356, 328), ("change", "c", -1000, 384)):
@@ -946,18 +1072,20 @@ def extract(asset_root, art, swfdump):
                 "disabled": battle_art(source, f"button-{direction}-disabled", [disabled], 2, sourceState="disabled"),
                 "x1v1": x1, "x3v3": x3, "y": 258,
             }
+            buttons[direction] = battle_button(source, f"button-{direction}", enabled, layers=buttons[direction])
         return {
             "phase": {key: assets["frames"][-1] for key, assets in phase_animation.items()},
             "phaseAnimation": phase_animation,
             "phaseSound": "/public/sound/se/ulse12.mp3",
             "turn": {"1": turn_one},
             "table": tables,
-            "range": {"middle": range_art},
+            "range": ranges,
             "time": {
                 "base": time_base, "durationMs": 60000,
                 "gauges": [{"x": x, "y": 338, "width": 353, "height": 2, "direction": direction}
                            for x, direction in ((355, -1), (405, 1))],
                 "colors": ["#64ff32", "#ffcd32", "#ff0000"], "colorStops": [0, 0.6, 0.9], "warningAt": 0.33,
+                "warning": {"frames": time_warning, "framesPerSecond": QUEST_STAGE_FRAME_RATE, "loop": True},
             },
             "health": {
                 "base": health_base,
@@ -970,6 +1098,7 @@ def extract(asset_root, art, swfdump):
             "hand": {"base": hand_base, "slot": hand_slot},
             "done": done,
             "moveButtons": buttons,
+            "movePresentation": move_presentation(),
             "chat": chat_art(),
             "skills": skill_art(),
             "bonus": {"initial": 0, "x": 10, "y": 150, "width": 170, "height": 100,

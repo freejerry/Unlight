@@ -6665,6 +6665,69 @@
       "height": 58,
       "sha256": "207afeb0be4046beefabfee3c90ae43a1745098eb224264f400a7f40d23ff127"
     },
+    "quest-battle-range-short.png": {
+      "source": "data/image/game/range_ch.swf",
+      "sourceSha256": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
+      "sourceFrame": 21,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "short",
+      "spriteId": 7,
+      "x": 294.55,
+      "y": 183.0,
+      "width": 171,
+      "height": 57,
+      "sha256": "9423d738c8f58383f93c1e107e75e7010c024736115f29a65f694ed5644644fe"
+    },
+    "quest-battle-range-long.png": {
+      "source": "data/image/game/range_ch.swf",
+      "sourceSha256": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
+      "sourceFrame": 17,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        14,
+        15,
+        17
+      ],
+      "bitmapIds": [
+        16
+      ],
+      "sourceInstance": "long",
+      "spriteId": 19,
+      "x": 119.5,
+      "y": 183.45,
+      "width": 521,
+      "height": 58,
+      "sha256": "dc6b1d35e4145e77d4a090738b5964ae12a03c9b1a5f814b233e89202edd13c9"
+    },
+    "quest-battle-range-hiding.png": {
+      "source": "data/image/game/range_ch.swf",
+      "sourceSha256": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
+      "sourceFrame": 17,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        20,
+        21,
+        23
+      ],
+      "bitmapIds": [
+        22
+      ],
+      "sourceInstance": "hiding",
+      "spriteId": 25,
+      "x": 316.0,
+      "y": 170.0,
+      "width": 128,
+      "height": 48,
+      "sha256": "bdf47054c7616b20d8c355acc0fb6e0716dbcbea827239d2009b0a17000adf24"
+    },
     "quest-battle-time-base.png": {
       "source": "data/image/game/time_base.swf",
       "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
@@ -6684,6 +6747,594 @@
       "width": 760,
       "height": 9,
       "sha256": "2f63d7357954cd8a377f30a8ae4963cf635fe87f4c5cff5f5245923086d129ae"
+    },
+    "quest-battle-time-warning-02.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 2,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "2f63d7357954cd8a377f30a8ae4963cf635fe87f4c5cff5f5245923086d129ae"
+    },
+    "quest-battle-time-warning-03.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 3,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "d15211d0ae37dee88f0ea38968b2a2158fda39d8907c2713b399adee6a9fa84a"
+    },
+    "quest-battle-time-warning-04.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 4,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "a1da54c338ed5f05eb0263e50d8a928055f8f0de18422b9673565e9ecd33e0a9"
+    },
+    "quest-battle-time-warning-05.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 5,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "fe4258b06350df0f2d3c967e823eedf771cecaebcfce1d0a2f0d476f2108908e"
+    },
+    "quest-battle-time-warning-06.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 6,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "fc7fe89953bf8590baa6595f955f4abd392e7d00d714a1789b381723c3b1f33a"
+    },
+    "quest-battle-time-warning-07.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "5728e3fde1ac51288d04b97c752cfbb4d7181d0b06a334400392232fc535f8da"
+    },
+    "quest-battle-time-warning-08.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 8,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "e982556940e16250feca5863e84496f9d243166b70aa27316d469a50fd6dbb61"
+    },
+    "quest-battle-time-warning-09.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 9,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "42422a69600e470dce1909fada30747b5bb2f6f1ca4570c4f35ac515069d24bb"
+    },
+    "quest-battle-time-warning-10.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 10,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "b58c61f6439fe8d6a7bfa069ecfeb986797ab363fd0c7ba7bd6bfbb304490ad0"
+    },
+    "quest-battle-time-warning-11.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 11,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "c2759a9233d40faaf5f0d17bf9d7bb90e9aea839dda509edc4536472e5187755"
+    },
+    "quest-battle-time-warning-12.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 12,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "baffddc0f7490772cdc2e8c434804e23569f5aab115a1f8f08de864b158cb0e5"
+    },
+    "quest-battle-time-warning-13.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 13,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "aae90d9d26627f4978b09e2ab9d84907d9c41466cb55e55877497e25658d8761"
+    },
+    "quest-battle-time-warning-14.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 14,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        7,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "5c0826714236edca1f904a1dc38aef0865f38df25644acaa5444f34a70951db5"
+    },
+    "quest-battle-time-warning-15.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 15,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        7,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "5c0826714236edca1f904a1dc38aef0865f38df25644acaa5444f34a70951db5"
+    },
+    "quest-battle-time-warning-16.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 16,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        7,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "5c0826714236edca1f904a1dc38aef0865f38df25644acaa5444f34a70951db5"
+    },
+    "quest-battle-time-warning-17.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 17,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "5c0826714236edca1f904a1dc38aef0865f38df25644acaa5444f34a70951db5"
+    },
+    "quest-battle-time-warning-18.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 18,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "92399662c8d3f2e2788efb787e1dd9992dccb83e02a89bb1334f961fc2d28ada"
+    },
+    "quest-battle-time-warning-19.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 19,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "ecea2ea4a9683cab03c3133848cb23f3be89eaab9eaac2a8d5fcaf1702bb0644"
+    },
+    "quest-battle-time-warning-20.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 20,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "dcf5a8c04b1446dbfa8d677c4baa9ac4700af6a509b200400e6b9d864c96371f"
+    },
+    "quest-battle-time-warning-21.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 21,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "7935486f183fc86aef0d410c305b9b4397db26bf837d38ec1835f347954e0b85"
+    },
+    "quest-battle-time-warning-22.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 22,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "aae8ac928a5ccdf8beca0804a3ada7b086a1de4df7ba8129e482314d393b01f8"
+    },
+    "quest-battle-time-warning-23.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 23,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "dc6758b4bf178528cdb62bced078dc44d0f3ea5e5b82cba4d8b8ea44bf5c866f"
+    },
+    "quest-battle-time-warning-24.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 24,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "16b7b8ac967845604996e0214259c845630efef203aea0a7028db589c82a3a5f"
+    },
+    "quest-battle-time-warning-25.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 25,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "383f0c7ecb6e2809478794bc07ea66fbd5030facbae702dd9d13ac3a1cee4171"
+    },
+    "quest-battle-time-warning-26.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 26,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "28c52b58a699bbd19845c98fbd2f278d1c3adad565356db848a7472fba8148a8"
+    },
+    "quest-battle-time-warning-27.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 27,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "c3352e6e99d9c4c2e3526f383c33f651f726b3356d7d0397b444a3a77515f4de"
+    },
+    "quest-battle-time-warning-28.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 28,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "b1fac69c4dcb05a30d0f0e27c8d7c44a84b9bb5d5eb58d82f32900f53f7a2c5f"
+    },
+    "quest-battle-time-warning-29.png": {
+      "source": "data/image/game/time_base.swf",
+      "sourceSha256": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+      "sourceFrame": 29,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        8,
+        2,
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "time_base",
+      "sourceLabel": "warning",
+      "x": 0.0,
+      "y": 335.0,
+      "width": 760,
+      "height": 9,
+      "sha256": "e90ec2a4b748eaf6acec88e26275a0b5b429debd47b381af6a86c1d92f902af7"
     },
     "quest-battle-health-base.png": {
       "source": "data/image/game/life_base.swf",
@@ -7080,6 +7731,182 @@
       "width": 44,
       "height": 38,
       "sha256": "349f09aa106dbf322add259051e9933f774e89bc591eba03dc51ff96d25c50ef"
+    },
+    "quest-battle-avatar-base.png": {
+      "source": "data/image/game/avatar_ch.swf",
+      "sourceSha256": "bd27e6476cd9ba96467a367880c8701db8743a29a6594d5e20d36157f2b69d58",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceDepth": 1,
+      "x": 504.0,
+      "y": 560.0,
+      "width": 256,
+      "height": 96,
+      "sha256": "9d26c330b36adc0327bcc660d59edff05a53d3b8b004792f33194948de0da631"
+    },
+    "quest-battle-move-result-right.png": {
+      "source": "data/image/game/arrow_move.swf",
+      "sourceSha256": "3625dd0e19b5fc282d3b0943cfff306a580615acc594f68100430494e1109e4d",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "arrow_right",
+      "sourceLabel": "normal",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 53,
+      "sha256": "c1aef40d2c11e5aa23cf05ac5142e786693de3b7a6373b6b774208f52752b81f"
+    },
+    "quest-battle-move-result-left.png": {
+      "source": "data/image/game/arrow_move.swf",
+      "sourceSha256": "3625dd0e19b5fc282d3b0943cfff306a580615acc594f68100430494e1109e4d",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "arrow_right",
+      "sourceLabel": "normal",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 40,
+      "height": 53,
+      "sha256": "c1251b5b15127864c34daf692e62f09c6e4f9508d38d290b2c905e4f6cb6425f"
+    },
+    "quest-battle-move-face-1.png": {
+      "source": "public/image/standchara/standchara01_f.swf",
+      "sourceSha256": "da50c2905bf55ff8603de47f0305959d37c32104a57682d337836696adf97424",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "a309a7302ec93b27226322fb4594ead2bbe5e7e95b6e7029e5b7d0cf601194b4"
+    },
+    "quest-battle-move-face-21.png": {
+      "source": "public/image/standchara/standchara03_f.swf",
+      "sourceSha256": "0acbabbd8ce9f3483893cdad1c0961dcab3dd54cd548c5bcc47ec84cc98be881",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "ee020c2b31ea3f05fab0dd54e6605bb7b1f2924d7facc80efa91b8aee2f00a33"
+    },
+    "quest-battle-move-face-31.png": {
+      "source": "public/image/standchara/standchara04_f.swf",
+      "sourceSha256": "ff548ffac53b20005c5fd69372e5d32c1c4c74fb0bbdf8916480ca0476df98df",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "1ee0470b67cedcff21d01d0725511d9acfd09658d39604c129d84e61c7dc21a3"
+    },
+    "quest-battle-move-face-101.png": {
+      "source": "public/image/standchara/standchara11_f.swf",
+      "sourceSha256": "fe03d041aa5442d51c61c8a40a81a0debdd92a49ce9c3001957a9c1ca3476e7a",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "76e2c1ad72f14a03ab67396e05cc8839fdb13ad07f43710d0bcf4ea25de57db0"
+    },
+    "quest-battle-move-face-111.png": {
+      "source": "public/image/standchara/standchara12_f.swf",
+      "sourceSha256": "22ed984b92efc0a0cba84e6b667300d7b4e5f5083f31fc433f1e8b2cfcf9b36f",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "36eeb6da88c49a604286495a40e1c112809d7654cca4d3f17c7b60661460ef52"
+    },
+    "quest-battle-move-face-1004.png": {
+      "source": "public/image/standchara/standmon002_00_f.swf",
+      "sourceSha256": "c43e7eeb9d71a86279fe796f9a2e1884ab564998c8440908a1c13065e363813f",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceInstance": "face",
+      "spriteId": 3,
+      "sourceLabel": "face_in",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 248,
+      "height": 80,
+      "sha256": "508d194d8dba8c365096cd5ef0a053b924b3c864e5d61080dfff5e95283259c4"
     },
     "quest-battle-chat-base.png": {
       "source": "data/image/game/chat_base.swf",
@@ -10021,6 +10848,27 @@
           "y": 182.95,
           "width": 332,
           "height": 58
+        },
+        "short": {
+          "file": "quest-battle-range-short.png",
+          "x": 294.55,
+          "y": 183.0,
+          "width": 171,
+          "height": 57
+        },
+        "long": {
+          "file": "quest-battle-range-long.png",
+          "x": 119.5,
+          "y": 183.45,
+          "width": 521,
+          "height": 58
+        },
+        "hiding": {
+          "file": "quest-battle-range-hiding.png",
+          "x": 316.0,
+          "y": 170.0,
+          "width": 128,
+          "height": 48
         }
       },
       "time": {
@@ -10058,7 +10906,209 @@
           0.6,
           0.9
         ],
-        "warningAt": 0.33
+        "warningAt": 0.33,
+        "warning": {
+          "frames": [
+            {
+              "file": "quest-battle-time-warning-02.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-03.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-04.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-05.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-06.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-07.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-08.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-09.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-10.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-11.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-12.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-13.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-14.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-15.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-16.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-17.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-18.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-19.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-20.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-21.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-22.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-23.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-24.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-25.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-26.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-27.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-28.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            },
+            {
+              "file": "quest-battle-time-warning-29.png",
+              "x": 0.0,
+              "y": 335.0,
+              "width": 760,
+              "height": 9
+            }
+          ],
+          "framesPerSecond": 40.8,
+          "loop": true
+        }
       },
       "health": {
         "base": {
@@ -10139,7 +11189,20 @@
           "y": 574.0,
           "width": 56,
           "height": 56
-        }
+        },
+        "down": {
+          "file": "quest-battle-done-over.png",
+          "x": 540.0,
+          "y": 574.0,
+          "width": 56,
+          "height": 56
+        },
+        "hit": [
+          540.5,
+          574.5,
+          55.5,
+          55.5
+        ]
       },
       "moveButtons": {
         "forward": {
@@ -10166,7 +11229,20 @@
           },
           "x1v1": 412,
           "x3v3": 440,
-          "y": 258
+          "y": 258,
+          "down": {
+            "file": "quest-battle-button-forward-over.png",
+            "x": -8.0,
+            "y": -49.0,
+            "width": 64,
+            "height": 121
+          },
+          "hit": [
+            0.0,
+            0.0,
+            48.0,
+            54.0
+          ]
         },
         "back": {
           "up": {
@@ -10192,7 +11268,20 @@
           },
           "x1v1": 300,
           "x3v3": 272,
-          "y": 258
+          "y": 258,
+          "down": {
+            "file": "quest-battle-button-back-over.png",
+            "x": -8.0,
+            "y": -49.0,
+            "width": 64,
+            "height": 121
+          },
+          "hit": [
+            0.0,
+            0.0,
+            48.0,
+            54.0
+          ]
         },
         "stay": {
           "up": {
@@ -10218,7 +11307,20 @@
           },
           "x1v1": 356,
           "x3v3": 328,
-          "y": 258
+          "y": 258,
+          "down": {
+            "file": "quest-battle-button-stay-over.png",
+            "x": -8.0,
+            "y": -49.0,
+            "width": 64,
+            "height": 121
+          },
+          "hit": [
+            0.0,
+            0.0,
+            48.0,
+            54.0
+          ]
         },
         "change": {
           "up": {
@@ -10244,7 +11346,722 @@
           },
           "x1v1": -1000,
           "x3v3": 384,
-          "y": 258
+          "y": 258,
+          "down": {
+            "file": "quest-battle-button-change-over.png",
+            "x": -8.0,
+            "y": -49.0,
+            "width": 64,
+            "height": 121
+          },
+          "hit": [
+            0.0,
+            0.0,
+            48.0,
+            54.0
+          ]
+        }
+      },
+      "movePresentation": {
+        "avatarBase": {
+          "file": "quest-battle-avatar-base.png",
+          "x": 504.0,
+          "y": 560.0,
+          "width": 256,
+          "height": 96,
+          "depth": 11
+        },
+        "avatarOrigin": [
+          590,
+          473
+        ],
+        "cutIns": {
+          "1": {
+            "image": {
+              "file": "quest-battle-move-face-1.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              {
+                "x": -584.95,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.45,
+                "y": -80.0
+              },
+              {
+                "x": -453.8,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.8,
+                "y": -80.0
+              },
+              {
+                "x": -545.35,
+                "y": -80.0
+              },
+              {
+                "x": -572.9,
+                "y": -80.0
+              },
+              {
+                "x": -600.45,
+                "y": -80.0
+              },
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          },
+          "21": {
+            "image": {
+              "file": "quest-battle-move-face-21.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              {
+                "x": -584.95,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.45,
+                "y": -80.0
+              },
+              {
+                "x": -453.8,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.8,
+                "y": -80.0
+              },
+              {
+                "x": -545.35,
+                "y": -80.0
+              },
+              {
+                "x": -572.9,
+                "y": -80.0
+              },
+              {
+                "x": -600.45,
+                "y": -80.0
+              },
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          },
+          "31": {
+            "image": {
+              "file": "quest-battle-move-face-31.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              {
+                "x": -584.95,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.45,
+                "y": -80.0
+              },
+              {
+                "x": -453.8,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.8,
+                "y": -80.0
+              },
+              {
+                "x": -545.35,
+                "y": -80.0
+              },
+              {
+                "x": -572.9,
+                "y": -80.0
+              },
+              {
+                "x": -600.45,
+                "y": -80.0
+              },
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          },
+          "101": {
+            "image": {
+              "file": "quest-battle-move-face-101.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              {
+                "x": -584.95,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.45,
+                "y": -80.0
+              },
+              {
+                "x": -453.8,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.8,
+                "y": -80.0
+              },
+              {
+                "x": -545.35,
+                "y": -80.0
+              },
+              {
+                "x": -572.9,
+                "y": -80.0
+              },
+              {
+                "x": -600.45,
+                "y": -80.0
+              },
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          },
+          "111": {
+            "image": {
+              "file": "quest-battle-move-face-111.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              {
+                "x": -584.95,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.45,
+                "y": -80.0
+              },
+              {
+                "x": -453.8,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.8,
+                "y": -80.0
+              },
+              {
+                "x": -545.35,
+                "y": -80.0
+              },
+              {
+                "x": -572.9,
+                "y": -80.0
+              },
+              {
+                "x": -600.45,
+                "y": -80.0
+              },
+              {
+                "x": -628.0,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          },
+          "1004": {
+            "image": {
+              "file": "quest-battle-move-face-1004.png",
+              "x": 0.0,
+              "y": 0.0,
+              "width": 248,
+              "height": 80
+            },
+            "pivot": [
+              380.0,
+              336.0
+            ],
+            "enter": [
+              {
+                "x": -627.95,
+                "y": -80.0
+              },
+              {
+                "x": -584.9,
+                "y": -80.0
+              },
+              {
+                "x": -546.0,
+                "y": -80.0
+              },
+              {
+                "x": -511.15,
+                "y": -80.0
+              },
+              {
+                "x": -480.4,
+                "y": -80.0
+              },
+              {
+                "x": -453.75,
+                "y": -80.0
+              },
+              {
+                "x": -431.25,
+                "y": -80.0
+              },
+              {
+                "x": -412.8,
+                "y": -80.0
+              },
+              {
+                "x": -398.45,
+                "y": -80.0
+              },
+              {
+                "x": -388.2,
+                "y": -80.0
+              },
+              {
+                "x": -382.05,
+                "y": -80.0
+              },
+              {
+                "x": -380.0,
+                "y": -80.0
+              }
+            ],
+            "exit": [
+              {
+                "x": -380.0,
+                "y": -80.0
+              },
+              {
+                "x": -407.55,
+                "y": -80.0
+              },
+              {
+                "x": -435.1,
+                "y": -80.0
+              },
+              {
+                "x": -462.65,
+                "y": -80.0
+              },
+              {
+                "x": -490.2,
+                "y": -80.0
+              },
+              {
+                "x": -517.75,
+                "y": -80.0
+              },
+              {
+                "x": -545.3,
+                "y": -80.0
+              },
+              {
+                "x": -572.85,
+                "y": -80.0
+              },
+              {
+                "x": -600.4,
+                "y": -80.0
+              },
+              {
+                "x": -627.95,
+                "y": -80.0
+              },
+              null
+            ],
+            "framesPerSecond": 40.8
+          }
+        },
+        "arrows": {
+          "right": {
+            "file": "quest-battle-move-result-right.png",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 40,
+            "height": 53
+          },
+          "left": {
+            "file": "quest-battle-move-result-left.png",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 40,
+            "height": 53
+          }
+        },
+        "arrowLayout": {
+          "playerX": 162,
+          "foeX": 598,
+          "y": 260,
+          "step": 20,
+          "staggerMs": 100,
+          "showMs": 200,
+          "holdMs": 800,
+          "hideMs": 200,
+          "cancelTargetX": 380
+        },
+        "distance": {
+          "playerX": [
+            288,
+            184,
+            80,
+            184
+          ],
+          "foeX": [
+            472,
+            576,
+            680,
+            576
+          ],
+          "y": 416,
+          "durationMs": 300,
+          "easing": "quadratic-in"
         }
       },
       "chat": {

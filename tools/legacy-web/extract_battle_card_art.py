@@ -8,8 +8,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from extract_character_card_art import DisplayList, REVISION, checked_source, matrix, timeline
-from extract_quest_detail_art import png_bytes, rasterize_svg
+from extract_character_card_art import DisplayList, REVISION, bitmap, checked_source, matrix, timeline
+from extract_quest_detail_art import kind, png_bytes, rasterize_svg
 
 
 STANDS = {
@@ -17,6 +17,7 @@ STANDS = {
     "1004": ("public/image/standchara/standmon002_00.swf", "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e"),
 }
 FRAME = ("data/image/game/acframe.swf", "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9")
+CONTROLS = ("data/image/cardaction.swf", "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220")
 VALUES = {
     "1": ("data/image/game/acswd.swf", "5ff0efceca5172942e75086d7e9afe8fadc93f1e8c6737cfe8c2c4c17fcc558a"),
     "2": ("data/image/game/acbow.swf", "e1067ace938650908ed1928d25b1f221c822570a077f8fd2bf28e2e3df1a6f1c"),
@@ -60,6 +61,46 @@ def atlas(frames, bounds):
     for i, frame in enumerate(frames):
         sprite.paste(positive(frame), (i % columns * w, i // columns * h))
     return sprite, columns
+
+
+def card_controls(movie, save):
+    root = {placement["name"]: placement for placement in movie.frame(movie.movie, 1)}
+
+    def extract(name, placement, x, y, **details):
+        shape = movie.symbols[placement["idref"]]
+        fills = [node for node in shape if kind(node) == "fillstyle"]
+        if kind(shape) != "DefineShape" or len(fills) != 1 or fills[0].get("type") != "67":
+            raise ValueError(f"Unexpected original card control shape: {name}")
+        bitmap_id = fills[0].attrib["idref"]
+        image = bitmap(movie.source, *movie.bitmaps[bitmap_id])
+        # The drawing clips the bitmap to the authored rectangle, one twip shy of its pixel dimensions.
+        actual_bounds = f"{image.width * 20 - 1}x{image.height * 20 - 1}"
+        if shape.get("bounds") != actual_bounds:
+            raise ValueError(f"Unexpected original card control bounds: {name}")
+        file = save(f"control-{name}.png", image, CONTROLS, sourceShape=int(shape.attrib["id"]),
+                    sourceBitmap=int(bitmap_id), **details)
+        return {"file": file, "x": x, "y": y, "width": image.width, "height": image.height}
+
+    button = movie.symbols[root["rotate"]["idref"]]
+    if kind(button) != "DefineButton2" or matrix(root["rotate"]["matrix"]) != matrix(""):
+        raise ValueError("Unexpected original rotate button placement")
+    rotate = {}
+    for record in button:
+        if kind(record) != "buttonRecord":
+            continue
+        states = record.attrib["states"].split(",")
+        x, y = matrix(record.attrib["matrix"])[4:]
+        layer = extract(f"rotate-{states[-1]}", record.attrib, x / 20, y / 20,
+                        sourceInstance="rotate", sourceStates=states)
+        for state in states:
+            rotate["hit" if state == "hitTest" else state] = layer
+    if rotate.keys() != {"up", "over", "down", "hit"}:
+        raise ValueError("Missing original rotate button states")
+
+    arrow = root["arrow"]
+    (shape,) = movie.frame(movie.symbols[arrow["idref"]], 1)
+    x = matrix(arrow["matrix"])[4] / 20
+    return {"rotate": rotate, "arrow": extract("arrow", shape, x, -40, sourceInstance="arrow", sourceFrame=1)}
 
 
 def generate(args):
@@ -129,9 +170,10 @@ def generate(args):
         movie = open_movie(pin)
         first_frame = render(movie, movie.frame(movie.movie, 1), CARD_VIEW, skip=MARKS)
         events[name] = {"file": save(f"{Path(name).stem}.png", first_frame, pin, sourceFrame=1), "frame": 1}
+    controls = card_controls(open_movie(CONTROLS), save)
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "stands": stands, "actionFrames": action_frames,
-             "actionValues": values, "eventValues": events, "provenance": provenance}
+             "actionValues": values, "eventValues": events, "actionControls": controls, "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n")
 
 

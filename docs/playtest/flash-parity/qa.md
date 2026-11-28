@@ -123,6 +123,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 以另一位全新隔離角色加 `--quest-start-fault ready`。保留 `SC43–45`，暫緩 `SC46` 至結果無法確認。之後放行同一份 Ruby 真回覆，檢查仍維持該狀態、未重送 Ready，手牌及計時保持空白。正常與遺失兩例都核對 AP、牌組鎖和同一條 Quest。[原版實跑及封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/README.md) · [自動驗收](../../../tools/legacy-web/check_source_lobby.py)
 
+### 重跑首回合移動
+
+同一組 `--quest-start-user` 指令接續驗首回合。點方向、用鍵盤旋轉手牌、出牌、用鍵盤旋轉桌上牌、收回、依新索引再次出牌並按 OK。依序暫緩並放行 Ruby 真 `SC60`、`SC63`、`SC61`、`SC62`。只在各自成功回覆後更新畫面。確認鍵盤焦點及牌片位移期間舞台的內部捲動維持為零。按 OK 後先放行 `SC47`，待 `SC48` 才顯示實際距離、先手、出牌方向和點數，並核對雙方牌面 56×86 及在桌面的座標。
+
+以另一位全新角色加 `--quest-start-fault move`。在 Ruby 接受出牌後先擋住本方 `SC61`，確認桌面維持先前狀態。直到結果無法確認後才放行遲到的原始封包，核對畫面、重送次數、同一條 Quest 和 SQLite 的任務狀態。驗原版逾時則自首回合開始完整等待畫面 60 秒，核對沒有任何指標動作也只發送一次 `CS26`。[實機腳本](../../../tools/legacy-web/check_source_lobby.py)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

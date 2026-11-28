@@ -1,6 +1,7 @@
 import { playQuestBattleEffect } from './bgm.js';
-import { BATTLE_CARD_ART, battleStands, renderActionCard } from './battle-card.js';
+import { BATTLE_CARD_ART, battleCardControls, battleStands, renderActionCard } from './battle-card.js';
 import { renderCharacterCard } from './character-card.js';
+import { createQuestBattleMove } from './quest-battle-move.js';
 
 const art = new URL('./quest-art/', import.meta.url);
 const decodedStages = new WeakMap();
@@ -271,9 +272,9 @@ async function revealHand(hands, ready, signal, { onDeal, onEvent }) {
   const players = entries.map((entry, index) => playerCard(hands.player, entry, index, entries.length));
   const opponents = drawOpponentCards(hands, count, 0, signal);
 
-  void metadata.then(cards => {
+  const faceRendering = metadata.then(cards => {
     if (signal.aborted) return;
-    players.forEach((node, index) => {
+    return Promise.all(players.map(async (node, index) => {
       const entry = entries[index];
       const definition = cards.get(entry.id);
       if (!definition) return;
@@ -283,10 +284,10 @@ async function revealHand(hands, ready, signal, { onDeal, onEvent }) {
         node.dataset.faceValue = String(face.value);
       }
       const canvas = document.createElement('canvas');
-      void renderActionCard(canvas, definition, { signal, reversed: !entry.up }).then(painted => {
-        if (painted && !signal.aborted) node.replaceChildren(canvas);
-      });
-    });
+      if (await renderActionCard(canvas, definition, { signal, reversed: !entry.up }) && !signal.aborted) {
+        node.replaceChildren(canvas);
+      }
+    }));
   });
 
   const deal = (node, i) => {
@@ -315,6 +316,8 @@ async function revealHand(hands, ready, signal, { onDeal, onEvent }) {
     card.hidden = false;
     return animate(card, [{ opacity: 0 }, { opacity: 1 }], 400 / 1.7, signal, 100 / 1.7);
   }));
+  await faceRendering;
+  return metadata;
 }
 
 function assetAt(parent, part, x, y, flip = false) {
@@ -337,7 +340,10 @@ function drawStands(parent, stands, encounter, opening = false) {
     if (!part) continue;
     const [x, y] = opening ? part.origin : [xs[distance - 1], 416];
     const flipOrigin = art => foe ? x - art.width - art.x * 2 : x;
-    if (!opening && pose.shadow) assetAt(parent, pose.shadow, flipOrigin(pose.shadow), y, foe);
+    if (!opening && pose.shadow) {
+      const shadow = assetAt(parent, pose.shadow, flipOrigin(pose.shadow), y, foe);
+      if (shadow) shadow.dataset.side = side;
+    }
     const image = assetAt(parent, part, flipOrigin(part), y, foe);
     if (!image) continue;
     image.dataset.cardId = String(id);
@@ -491,7 +497,7 @@ function gaugeLine(parent, { x, y, width, height, direction }) {
   return line;
 }
 
-function startMoveTimer(parent, time, signal) {
+function startMoveTimer(parent, time, signal, onTimeout) {
   if (!time) return () => {};
   const base = sprite(parent, time.base);
   const meter = output(parent, 'quest-battle-move-time', 'sr-only', 0, 0);
@@ -501,6 +507,7 @@ function startMoveTimer(parent, time, signal) {
   const gauges = time.gauges.map(position => gaugeLine(parent, position));
   const started = performance.now();
   const { colors, colorStops, warningAt } = time;
+  let timerArt = time.base?.file;
   meter.dataset.durationMs = String(time.durationMs);
   let frame;
   function cancel() {
@@ -516,6 +523,16 @@ function startMoveTimer(parent, time, signal) {
     const seconds = String(Math.ceil(remaining / 1000));
     if (meter.value !== seconds) meter.value = seconds;
     meter.dataset.warning = String(ratio < warningAt);
+    if (base && time.warning?.frames.length) {
+      const { frames, framesPerSecond } = time.warning;
+      const warningSince = time.durationMs * (1 - warningAt);
+      const index = Math.floor((now - started - warningSince) * framesPerSecond / 1000);
+      const source = index >= 0 ? frames[reduced() ? 0 : index % frames.length] : time.base;
+      if (source.file !== timerArt) {
+        timerArt = source.file;
+        base.src = new URL(timerArt, art);
+      }
+    }
     const elapsed = 1 - ratio;
     const first = elapsed < colorStops[1] ? 0 : 1;
     const weight = Math.min(100, (elapsed - colorStops[first]) / (colorStops[first + 1] - colorStops[first]) * 100);
@@ -523,7 +540,9 @@ function startMoveTimer(parent, time, signal) {
       line.style.transform = `scaleX(${ratio})`;
       line.style.background = `color-mix(in srgb, ${colors[first]} ${100 - weight}%, ${colors[first + 1]})`;
     }
-    if (remaining > 0 && !signal.aborted) frame = requestAnimationFrame(draw);
+    if (signal.aborted) return;
+    if (remaining > 0) frame = requestAnimationFrame(draw);
+    else onTimeout();
   }
   signal.addEventListener('abort', cancel, { once: true });
   draw(started);
@@ -535,35 +554,17 @@ function createHands(battle) {
   const player = document.createElement('ol');
   player.id = 'quest-battle-player-hand';
   player.setAttribute('aria-label', '我方手牌');
+  const playerTable = document.createElement('ol');
+  playerTable.id = 'quest-battle-player-table';
+  playerTable.setAttribute('aria-label', '我方已放置的牌');
   const opponent = document.createElement('div');
   opponent.id = 'quest-battle-opponent-hand';
   opponent.setAttribute('role', 'img');
   const opponentTable = document.createElement('div');
   opponentTable.id = 'quest-battle-opponent-table';
   opponentTable.setAttribute('role', 'img');
-  hands.append(opponent, opponentTable, player);
-  return { player, opponent, opponentTable };
-}
-
-function readOnlyMoveControls(parent, hud, multi) {
-  const commands = hud.moveButtons;
-  sprite(parent, hud.done?.plate);
-  for (const [key, name] of [['back', '後退一格'], ['stay', '原地待機'], ['change', '更換角色'], ['forward', '前進一格'], ['done', '完成']]) {
-    if (key === 'change' && !multi) continue;
-    const command = key === 'done' ? hud.done : commands?.[key];
-    if (!command?.up) continue;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.disabled = true;
-    button.dataset.moveCommand = key;
-    button.setAttribute('aria-label', name);
-    const { up } = command;
-    const x = key === 'done' ? up.x : command[multi ? 'x3v3' : 'x1v1'] + up.x;
-    const y = key === 'done' ? up.y : command.y + up.y;
-    place(button, x, y, up.width, up.height);
-    sprite(button, { ...up, x: 0, y: 0 });
-    parent.append(button);
-  }
+  hands.append(opponent, opponentTable, playerTable, player);
+  return { player, opponent, opponentTable, playerTable };
 }
 
 function renderChatDecoration(battle, chat) {
@@ -612,6 +613,113 @@ function renderSkills(battle, skills, player, foe) {
   return strip;
 }
 
+function showMoveCutIns(battle, manifest, encounter, signal) {
+  const cutIn = layer(battle, 'quest-battle-cut-ins', 17, 'quest-battle-cut-ins');
+  const poses = [];
+  for (const [id, foe] of [[encounter.playerCardIds[0], false], [encounter.opponentCardIds[0], true]]) {
+    const source = manifest?.cutIns?.[id];
+    if (!source?.image) continue;
+    const actor = sprite(cutIn, source.image);
+    actor.dataset.side = foe ? 'opponent' : 'player';
+    actor.dataset.cardId = String(id);
+    if (foe) actor.style.transform = 'scaleX(-1)';
+    const { image, pivot, framesPerSecond } = source;
+    async function play(frames) {
+      if (!frames?.length) return;
+      const start = performance.now();
+      for (const [i, offset] of (reduced() ? [frames.at(-1)] : frames).entries()) {
+        if (signal.aborted) return;
+        if (i) await wait(i * 1000 / framesPerSecond - (performance.now() - start), signal);
+        if (signal.aborted) return;
+        actor.hidden = !offset;
+        if (!offset) continue;
+        const x = pivot[0] + offset.x + image.x;
+        const y = pivot[1] + offset.y + image.y;
+        place(actor, foe ? 760 - x - image.width : x, y);
+      }
+    }
+    const entered = play(source.enter);
+    poses.push(async () => { await entered; await play(source.exit); });
+  }
+  return async () => { await Promise.all(poses.map(exit => exit())); cutIn.remove(); };
+}
+
+function revealMoveCards(hands, result, signal) {
+  const rows = [
+    [hands.playerTable, result.playerCards, false, 380, 389],
+    [hands.opponentTable, result.opponentCards, result.opponentLocked, 378, 127],
+  ];
+  const definitions = actionCards(rows.flatMap(([, cards, locked]) => locked ? [] : cards.map(card => card.id)), signal);
+  return Promise.all(rows.map(async ([parent, cards, locked, cx, cy], side) => {
+    parent.replaceChildren();
+    parent.dataset.count = String(cards.length);
+    parent.dataset.locked = String(side ? result.opponentLocked : result.playerLocked);
+    const nodes = cards.map(({ id, up }, index) => {
+      const card = document.createElement(side ? 'div' : 'li');
+      card.className = 'quest-battle-hand-card quest-battle-reveal-card';
+      if (!locked) {
+        card.dataset.cardId = String(id);
+        card.dataset.up = String(up);
+      }
+      card.dataset.locked = String(locked);
+      place(card, cx + (index - (cards.length - 1) / 2) * (side ? -60 : 60), cy);
+      card.textContent = locked ? '' : `#${id}`;
+      parent.append(card);
+      return card;
+    });
+    const known = await definitions;
+    for (const [i, card] of nodes.entries()) {
+      if (signal.aborted) return;
+      const { id, up } = cards[i];
+      const canvas = document.createElement('canvas');
+      if (await renderActionCard(canvas, known.get(id), { signal, reversed: !up, back: locked, large: locked, locked }) && !signal.aborted) {
+        card.replaceChildren(canvas);
+        if (side && !locked) void animate(canvas, [{ scale: '.02 1' }, { scale: '1 1' }], 100, signal);
+      }
+      if (side) {
+        playQuestBattleEffect(locked ? 'reveal-locked' : 'reveal', signal);
+        if (!reduced()) await wait(100, signal);
+      }
+    }
+    if (side && nodes.length && !reduced()) await wait(300, signal);
+  }));
+}
+
+function showMoveArrows(battle, assets, result, signal) {
+  const from = assets?.arrows;
+  if (!from || reduced()) return Promise.resolve();
+  const { playerX, foeX, y, step, staggerMs, showMs, holdMs, hideMs, cancelTargetX } = assets.arrowLayout;
+  const graphics = layer(battle, 'quest-battle-move-arrows', 31, 'quest-battle-move-arrows');
+  const pairs = [];
+  const shown = [];
+  for (const [power, x, dx] of [[result.playerPower, playerX, step], [-result.opponentPower, foeX, -step]]) {
+    const source = power > 0 ? from.left : from.right;
+    if (!source) continue;
+    const side = [];
+    for (let i = 0; i < Math.abs(power); i += 1) {
+      const image = sprite(graphics, { ...source, x: x + i * dx + source.x, y: y + source.y });
+      side.push(image);
+      shown.push(animate(image, [{ opacity: 0 }, { opacity: 1 }], showMs, signal, i * staggerMs));
+    }
+    pairs.push(side);
+  }
+  if (!shown.length) { graphics.remove(); return Promise.resolve(); }
+  return Promise.all([wait(holdMs, signal), ...shown]).then(async () => {
+    if (result.playerPower * result.opponentPower < 0 && pairs.length === 2) {
+      const pairsToCancel = Math.min(...pairs.map(side => side.length));
+      const canceled = pairs.flatMap(side => side.slice(-pairsToCancel).reverse());
+      await Promise.all(canceled.map(async (arrow, i) => {
+        const dx = cancelTargetX - Number.parseFloat(arrow.style.left);
+        await animate(arrow, [{ opacity: 1 }, { opacity: 0, translate: `${dx}px 0` }], hideMs, signal, i % pairsToCancel * staggerMs);
+        arrow.remove();
+      }));
+      await wait(holdMs, signal);
+    }
+    await animate(graphics, [{ opacity: 1 }, { opacity: 0 }], hideMs, signal);
+    graphics.remove();
+  });
+}
+
 async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene, definitions, stands, signal, isCurrent }) {
   const { hud } = assets;
   const standees = layer(battle, 'quest-battle-standees', 2);
@@ -627,18 +735,20 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     }
   }
   const avatar = layer(battle, 'quest-battle-avatar-layer', 11);
+  if (hud.movePresentation?.avatarBase) sprite(avatar, { ...hud.movePresentation.avatarBase, depth: undefined });
   cloneAvatar(avatar, sourceAvatar, 590, 473);
   const main = layer(battle, 'quest-battle-hud', 14, 'quest-battle-hud');
   const player = encounter.playerCardIds[0];
   const skills = renderSkills(battle, hud.skills, definitions.get(player), definitions.get(encounter.opponentCardIds[0]));
   const chat = renderChatDecoration(battle, hud.chat);
   renderHealth(main, assets, encounter, definitions);
-  sprite(main, hud.range?.[['short', 'middle', 'long', 'hiding'][encounter.duel.distance - 1]]);
+  const rangeNames = ['short', 'middle', 'long', 'hiding'];
+  let range = sprite(main, hud.range?.[rangeNames[encounter.duel.distance - 1]]);
   const phaseSprites = layer(main, 'quest-battle-phase', 0);
   const table = layer(main, 'quest-battle-table', 1);
   const controls = layer(main, 'quest-battle-move-controls', 2, 'quest-battle-move-controls');
   controls.hidden = true;
-  readOnlyMoveControls(controls, hud, encounter.duel.multi);
+  sprite(controls, hud.done?.plate);
   const turn = output(main, 'quest-battle-turn', 'sr-only', 0, 0);
   turn.setAttribute('aria-label', '回合');
   if (hud.bonus) {
@@ -658,12 +768,58 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   const hands = createHands(battle);
   const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
   status.setAttribute('role', 'status');
+  status.tabIndex = -1;
+  const move = createQuestBattleMove({ battle, scene, hud, hands, controls, status, multi: encounter.duel.multi, signal, isCurrent });
+  void battleCardControls(signal).then(move.installCardArt);
   const distance = encounter.duel.distance;
   battle.dataset.distance = String(distance);
   let confirmedDraw;
   let stopTimer;
   let drawn = false;
   let renderedState;
+  let endCutIns;
+  let presentedMove = false;
+
+  async function presentMove(result) {
+    if (presentedMove) return;
+    presentedMove = true;
+    battle.dataset.moveResult = 'revealing';
+    const receipt = output(main, 'quest-battle-move-result', 'sr-only', 0, 0);
+    receipt.dataset.distance = String(result.distance);
+    receipt.dataset.playerInitiative = String(result.playerInitiative);
+    receipt.dataset.playerPower = String(result.playerPower);
+    receipt.dataset.opponentPower = String(result.opponentPower);
+    receipt.dataset.playerLocked = String(result.playerLocked);
+    receipt.dataset.opponentLocked = String(result.opponentLocked);
+    receipt.value = `${['近距離', '中距離', '遠距離', '距離不明'][result.distance - 1] ?? ''}，${result.playerInitiative ? '我方先攻' : '對手先攻'}`;
+    status.value = receipt.value;
+    await revealMoveCards(hands, result, signal);
+    if (signal.aborted || !isCurrent()) return;
+    await showMoveArrows(battle, hud.movePresentation, result, signal);
+    if (signal.aborted || !isCurrent()) return;
+    range?.remove();
+    range = sprite(main, hud.range?.[rangeNames[result.distance - 1]]);
+    const config = hud.movePresentation?.distance;
+    const anchors = { player: config?.playerX ?? [288, 184, 80, 184], opponent: config?.foeX ?? [472, 576, 680, 576] };
+    const shifts = [];
+    for (const actor of standees.children) {
+      const x = anchors[actor.dataset.side];
+      const delta = x?.[result.distance - 1] - x?.[distance - 1];
+      if (!Number.isFinite(delta) || !delta) continue;
+      actor.style.left = `${Number.parseFloat(actor.style.left) + delta}px`;
+      shifts.push(animate(actor, [{ translate: `${-delta}px 0` }, { translate: '0 0' }], config?.durationMs ?? 300, signal));
+    }
+    battle.dataset.distance = String(result.distance);
+    battle.dataset.initiative = result.playerInitiative ? 'player' : 'opponent';
+    await Promise.all([...shifts, endCutIns?.()]);
+    if (!signal.aborted) {
+      hands.playerTable.hidden = true;
+      hands.opponentTable.hidden = true;
+      controls.hidden = true;
+      showTable('blank');
+      battle.dataset.moveResult = 'settled';
+    }
+  }
 
   function showTable(state) {
     table.replaceChildren();
@@ -678,21 +834,29 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     renderedState = phase;
     battle.dataset.phase = phase;
     status.value = { preparing: '正在等待戰鬥確認。', draw: '抽牌階段', move: '移動階段',
-      uncertain: '無法確認就緒結果。', closed: '戰鬥連線已結束。' }[phase] ?? '';
+      committing: '正在等待移動確認。', settling: '正在結算移動。', moved: '移動已結算。',
+      uncertain: drawn ? '無法確認移動操作。' : '無法確認就緒結果。', closed: '戰鬥連線已結束。' }[phase] ?? '';
     status.className = phase === 'uncertain' ? 'quest-battle-status' : 'sr-only';
-    controls.hidden = phase !== 'move';
+    controls.hidden = !['move', 'committing', 'settling', 'moved'].includes(phase);
     phaseSprites.replaceChildren();
-    const phaseArt = { draw: 'drw', move: 'mov' }[phase];
+    const phaseArt = { draw: 'drw', move: 'mov', committing: 'mov', settling: 'mov', moved: 'mov' }[phase];
     sprite(phaseSprites, hud.phase?.[phaseArt ?? 'blk']);
-    if (phaseArt && hud.phaseAnimation?.[phaseArt]) {
+    if ((phase === 'draw' || (phase === 'move' && !stopTimer)) && hud.phaseAnimation?.[phaseArt]) {
       void runFrames(phaseSprites, hud.phaseAnimation[phaseArt], signal).then(frame => frame?.remove());
     }
-    const tableState = phase === 'move' ? encounter.duel.multi ? 'mov3on3' : 'mov'
+    const showsMove = ['move', 'committing', 'settling', 'moved'].includes(phase);
+    const tableState = showsMove ? encounter.duel.multi ? 'mov3on3' : 'mov'
       : phase === 'draw' ? 'drw_act' : 'blank';
     showTable(tableState);
-    stopTimer?.();
-    stopTimer = phase === 'move' ? startMoveTimer(main, hud.time, signal) : undefined;
-    if (phase === 'draw' || phase === 'move') playQuestBattleEffect('phase', signal);
+    if (!['move', 'committing'].includes(phase)) {
+      stopTimer?.();
+      stopTimer = undefined;
+    } else if (phase === 'move' && !stopTimer) {
+      endCutIns = showMoveCutIns(battle, hud.movePresentation, encounter, signal);
+      stopTimer = startMoveTimer(main, hud.time, signal, move.onTimeout);
+      playQuestBattleEffect('phase', signal);
+    }
+    if (phase === 'draw') playQuestBattleEffect('phase', signal);
   }
 
   function receive(next) {
@@ -710,18 +874,22 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
       void revealHand(hands, confirmedDraw, signal, {
         onDeal() { if (deckSize > 0) deck.value = String(--deckSize); },
         onEvent() { if (renderedState === 'draw') showTable('drw_evt'); },
-      }).then(() => {
+      }).then(metadata => {
+        if (signal.aborted || !isCurrent()) return;
+        move.attach(metadata);
         drawn = true;
         receive(scene.snapshot);
       });
     }
-    if (drawn && result.phase === 'move' && Number.isSafeInteger(result.opponentHandCount) && Number.isSafeInteger(result.opponentMoveCount)) {
+    if (drawn && ['move', 'committing', 'settling'].includes(result.phase) && Number.isSafeInteger(result.opponentHandCount) && Number.isSafeInteger(result.opponentMoveCount)) {
       drawOpponentCards(hands, result.opponentHandCount, result.opponentMoveCount, signal);
     }
+    move.update(result);
     if (Number.isFinite(result.moveStartedAt)) battle.dataset.moveStartedAt = String(result.moveStartedAt);
-    if (result.phase === 'uncertain' || result.phase === 'closed') paint(result.phase);
+    if (['committing', 'settling', 'moved', 'uncertain', 'closed'].includes(result.phase)) paint(result.phase);
     else if (result.phase === 'move' && drawn) paint('move');
     else if (!['encounter', 'preparing', 'move'].includes(result.phase)) paint('waiting');
+    if (result.result && ['moved', 'character-change', 'between-turns'].includes(result.phase)) void presentMove(result.result);
   }
 
   paint('opening');

@@ -66,7 +66,10 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
 }
 SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse06.mp3": "b0655a05ef946fe47671a2bbf67768545ed02a59f084c93d3f951773a57abde0",
+    "public/sound/se/ulse08.mp3": "3140c532a2f6471fd4d3d5cf278077aebd04a691a0837d327652a8e84d6db2d7",
     "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
+    "public/sound/se/ulse28.mp3": "6345735fa4f8686ac3c1bd093e008bcbc5d6308bbf86539c7d055c42f3de0024",
+    "public/sound/se/ulse29.mp3": "78623927f2591f3ff6fe5afac445e7e6c661f485b02638a7bb49f539d3c4052a",
 }
 SOURCE_SCENE_TRACKS = {
     "public/sound/bgm/ulbgm02.mp3": "7ed9b16414f8691f080cc592830f0d120b372bb3aa77f183106a8c7fe6bbfbfd",
@@ -603,7 +606,7 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
-                "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
+                "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js", "quest-battle-move.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):

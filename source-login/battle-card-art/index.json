@@ -407,6 +407,45 @@
       "frame": 1
     }
   },
+  "actionControls": {
+    "rotate": {
+      "up": {
+        "file": "control-rotate-up.png",
+        "x": -10.95,
+        "y": -10.95,
+        "width": 22,
+        "height": 22
+      },
+      "over": {
+        "file": "control-rotate-over.png",
+        "x": -10.95,
+        "y": -10.95,
+        "width": 22,
+        "height": 22
+      },
+      "hit": {
+        "file": "control-rotate-down.png",
+        "x": -10.95,
+        "y": -10.95,
+        "width": 22,
+        "height": 22
+      },
+      "down": {
+        "file": "control-rotate-down.png",
+        "x": -10.95,
+        "y": -10.95,
+        "width": 22,
+        "height": 22
+      }
+    },
+    "arrow": {
+      "file": "control-arrow.png",
+      "x": -8.95,
+      "y": -40,
+      "width": 18,
+      "height": 18
+    }
+  },
   "provenance": {
     "stand-21-shadow.png": {
       "source": "public/image/standchara/standchara03.swf",
@@ -532,6 +571,49 @@
       "source": "public/image/card_event/card_ev_130.swf",
       "sourceSha256": "45d1d30b19d0748256efd6c5599d51e8affb2f4d45a6fd20eef575c1af8d872b",
       "sha256": "f31ad56721642697e3e6a1e0388532f78243f94bc1d7278013f08ec198d895cb",
+      "sourceFrame": 1
+    },
+    "control-rotate-up.png": {
+      "source": "data/image/cardaction.swf",
+      "sourceSha256": "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220",
+      "sha256": "a8c66e1cbbfa16663f6bee02977b58bfa321aed2c52e21583bb62a5c10ed1d47",
+      "sourceShape": 2,
+      "sourceBitmap": 1,
+      "sourceInstance": "rotate",
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "control-rotate-over.png": {
+      "source": "data/image/cardaction.swf",
+      "sourceSha256": "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220",
+      "sha256": "0400bf8116cef5a2ce265f908e79ea27bc44e75aa600f2f7bdb24bba36a90e9c",
+      "sourceShape": 4,
+      "sourceBitmap": 3,
+      "sourceInstance": "rotate",
+      "sourceStates": [
+        "over"
+      ]
+    },
+    "control-rotate-down.png": {
+      "source": "data/image/cardaction.swf",
+      "sourceSha256": "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220",
+      "sha256": "0fd03fd068f73b5ce827ebc3bc6a6e164dda908515bf9438b74542bb8b8d4d86",
+      "sourceShape": 6,
+      "sourceBitmap": 5,
+      "sourceInstance": "rotate",
+      "sourceStates": [
+        "hitTest",
+        "down"
+      ]
+    },
+    "control-arrow.png": {
+      "source": "data/image/cardaction.swf",
+      "sourceSha256": "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220",
+      "sha256": "2918d124a1138ddd6272b107e2713b7fda31d12bdf209d32412a0a52ff87ec8e",
+      "sourceShape": 9,
+      "sourceBitmap": 8,
+      "sourceInstance": "arrow",
       "sourceFrame": 1
     }
   }

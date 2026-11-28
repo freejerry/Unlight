@@ -26,6 +26,17 @@ export async function battleStands(signal) {
   }
 }
 
+/** Original guidance arrow and rotate button, positioned about the authored card centre. */
+export async function battleCardControls(signal) {
+  if (signal?.aborted) return null;
+  try {
+    const { actionControls } = await loadManifest();
+    return signal?.aborted ? null : actionControls ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function loadImage(file) {
   if (typeof file !== 'string' || !/^[a-z0-9_-]+\.png$/.test(file)) throw new Error('Invalid original battle asset path.');
   if (!images.has(file)) {

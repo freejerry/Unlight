@@ -11,6 +11,7 @@ const sceneTracks = {
 const duelTracks = ["000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "000", "000", "010"];
 const questCueFiles = new Map([
   ["deal", "ulse06.mp3"], ["phase", "ulse12.mp3"],
+  ["rotate", "ulse08.mp3"], ["reveal-locked", "ulse28.mp3"], ["reveal", "ulse29.mp3"],
 ]);
 const questCueAudio = new Map();
 const playingQuestCues = new Map();
