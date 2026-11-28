@@ -358,6 +358,25 @@
 
 重擲並排取在新骰點已顯示、High／Low 淡入、道具窗仍開啟的畫格。新版截圖時只暫停這兩個實際淡入動畫，核對道具窗、遮罩和 OK 焦點後恢復播放。完整流程另有未暫停畫格的獨立實跑。兩版使用相同骰眼，骰子停格朝向可隨動畫軌跡變化。[重擲提示並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/clover-transition-comparison.png) · [截圖後繼續驗收的封包](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/transition-capture/quest-high-low-wire.json)
 
+#### 終局獎勵與敗猜後 Exit
+
+q568 的第 5 格也可在真正戰鬥敗北後進入獎勵骰。隔離角色使用 Lv5 古魯瓦爾多，首格種子 1 獲勝，再帶 2 點傷勢進第 5 格。第 5 格種子 3，兩回合前進且空手完成攻防，己方 HP 由 8 變 3、再歸零。原版 `SC41` 仍顯示獎勵骰並發 2 Gem／6 EXP，隨後以 `SC22/24` 歸檔同一實體任務，保存進度 2、清除傷勢、解鎖 Deck 1。歸檔和獎勵各自確認。[原版終局三個 Ruby 測例](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/TERMINAL.md) · [原版敗北歸檔](../../../app/server/src/controller/quest_controller.rb#L678)
+
+| 操作 | 原版順序與結果 |
+| --- | --- |
+| 猜錯後 Exit | Next 後以底骰 `1,6` 猜高，實骰 `1,2` 判失敗。按「結束遊戲」一次發 `CS38`，`SC38` 空卡及候選，`SC126` 回報空獎品、2 Gem／6 EXP、額外 0。保留戰鬥實得，帳戶仍為 142 Gem／226 EXP。 |
+| 沒有額外獎品的轉場 | 等待獎勵回覆後，依序淡出排名、失敗印記，隱藏骰子，並淡出候選與數量。操作按鈕往左滑出，再依序顯示 ITEM、CARD、TOTAL。已開的道具窗留在戰果畫面，回任務時清除。 |
+| 敗北後直接 Get | 同一個終局的首候選為 `260% Gem`。直接 Get 接受原版 `SC10` 的帳戶絕對值 145 Gem，以及 `SC126` 的本場 5 Gem／6 EXP、額外 3 Gem。SQLite 只增加 3 Gem。 |
+| 本機確認與離場 | 戰果的 OK 回地圖並顯示另外一個 Quest Failed 視窗。確認失敗圖的 OK 後地圖才可操作，點 Back 才在同一條 Quest 送 `CS2` 返回大廳。 |
+
+[原版獎勵結束及轉場](../../../app/client/src/view/scene/game/ResultScene.as#L1016) · [原版任務結果](../../../app/client/src/view/QuestView.as#L618) · [原版 Exit 的空獎品](../../../app/server/src/rule/reward.rb#L188)
+
+繁中 Flash 的 Exit 測例在 Quest 關閉前維持 142 Gem／226 EXP。Back 之後，原版大廳的成就檢查才另發成就 31「突破初期地區」的道具與 3000 Gem。Quest 結算、關閉連線與大廳額外成就均用各自的封包與 SQLite 時點核對。[原版任務及大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/terminal-proof.json) · [大廳成就](lobby-views.md)
+
+兩版都從實際登入和任務入口操作。新版 Exit 暫緩真正的 `SC24` 和 `SC126`，分別確認歸檔前不能擲骰、獎勵確認前不能返回。兩版的空獎品結果都保留已開的 Item 窗，按戰果 OK 才轉回地圖並顯示 Quest Failed。第二次 OK 後同一張地圖可操作，Back 只關閉 Quest。兩版此時的任務庫存皆為 0/4，容量標籤字形另行核對。[並排截圖與兩版封包](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/README.md)
+
+新版直接 Get 暫緩 `SC38`，確認 `SC10` 與 `SC126` 先到時，仍須等齊真正領取回覆才顯示總計及開放 OK。SQLite 和客戶端均由 142 增至 145 Gem，EXP 仍為 226，實體庫存不變。操作只發一次 `CS38`。兩次本機 OK 後可按 Back 正常關閉 Quest。[新版直接領取畫面](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/terminal-get/11-verified-bonus-receipt-and-return.png) · [新版直接領取封包與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/terminal-get/quest-high-low-wire.json) · [重跑測例](qa.md#重跑高低獎勵骰)
+
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 
 [原版 Ruffle 首場 PvE 與持久化](../README.md#L21) · [原版倒數](../README.md#L77) · [共用 AP／開始](../README.md#L179) · [第一回合手牌等早期原生測例](../README.md#L239) · [換角及雙戰鬥](../README.md#L313) · [同次登入結算](../README.md#L337) · [新建單卡，真 180 秒](../README.md#L349) · [雙卡續遊](../README.md#L357) · [固定舞台地圖驗收](../../../tools/legacy-web/check_source_lobby.py#L321)

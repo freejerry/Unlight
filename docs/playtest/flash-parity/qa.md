@@ -202,6 +202,8 @@ python3 tools/legacy-web/check_source_lobby.py --port 4389 \
 
 使用 `--quest-high-low item` 可重跑敗猜與道具分支。角色持有兩份幸運四葉草、一份白色石楠1 和一份白色石楠3，Deck 1 使用 Lv5 古魯瓦爾多。限定該隔離角色的第 5 格首次擲骰種子為 3。先猜高再用四葉草，接著猜低、使用不足的石楠1，再用石楠3 領取。腳本依序核對真實 `SC127`、暫緩效果回覆時的「信息」提示、同一連線的沉默拒絕、單次入庫及返回。比對過場時只在截圖前暫停 High／Low 的淡入動畫，截圖後恢復播放。[原版測例準備及規格](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/CONSUMABLES.md) · [兩版完整驗收](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/README.md)
 
+使用 `--quest-high-low terminal-exit` 或 `--quest-high-low terminal-get` 重跑 q568 終局。沿用隊伍、搜尋及首格種子 1，第 5 格對局種子 3，兩回合前進且空手完成防守和攻擊。每個模式用新的隔離角色。先驗 `SC24` 暫緩時無法發獎勵操作，再驗 `SC38` 或 `SC126` 暫緩時的結算畫面，最後核對兩次 OK 為本機操作、Back 經一次 `CS2` 關閉 Quest，以及原有四條服務連線保留。音效依觸發順序留下每個播放請求，同時核對各聲音成功開始播放。[原版終局操作與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/TERMINAL.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

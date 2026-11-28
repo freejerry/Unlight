@@ -1392,7 +1392,7 @@ function sameQuestReward(first, second) {
   return first === second || (first && second && first.genre === second.genre && first.id === second.id && first.amount === second.amount);
 }
 
-function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publish, itemInventory, mapFlag }) {
+function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publish, itemInventory, mapFlag, duel }) {
   let phase = 'loading';
   let round = 0;
   let rank = null;
@@ -1497,7 +1497,7 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
         return true;
       }
       if (claimUpdate) {
-        if (award) throw new SessionError('protocol');
+        if (award || decision?.won === false) throw new SessionError('protocol');
         if (reply.command === QUEST_CHARACTER_AWARD_REPLY) {
           const card = readQuestCharacterAwardReply(reply);
           if (knowsCard(card.inventoryId) || cards.has(card.inventoryId) || cards.size >= MAX_QUEST_ROWS) {
@@ -1559,6 +1559,9 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
         }
         case QUEST_REWARD_FINAL_REPLY:
           if (!sameQuestReward(data.reward, award.reward)) throw new SessionError('protocol');
+          // Original Reward#cancel after a lost guess leaves the duel's base payout untouched.
+          if (decision?.won === false && (data.totalGems !== duel.totalGems || data.totalExp !== duel.totalExp
+              || data.addPoint !== 0)) throw new SessionError('protocol');
           applyClaim({ avatar, cards: [...cards.values(), ...award.inventoryIds.map((inventoryId) => ({ inventoryId, cardId: award.reward.id }))] });
           claim = Object.freeze({ ...data, inventoryIds: award.inventoryIds });
           phase = 'claimed';
@@ -2370,6 +2373,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
               applyClaim: continuation.claimReward,
               itemInventory: continuation.itemInventory,
               mapFlag: continuation.mapBefore.questFlag,
+              duel: outcomeDuel,
               publish: () => publishBattlePhase(true),
             });
           }

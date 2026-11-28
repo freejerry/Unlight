@@ -48,6 +48,8 @@ python3 tools/legacy-web/check_source_login.py --port 4389
 
 「魯比歐那的殘渣1」走過第 1 格後，第 5 格戰果會依 Ruby 的獎勵階段顯示候選、Next、High／Low、Get 與 Exit。畫面使用原始卡框、骰子模型與按鍵、成功、失敗音效。敗猜後可打開原版道具窗，選取幸運四葉草重擲，或使用持有的白色石楠與跳越星補正。領取、使用與返回依同一條 Quest 的實體及階段回覆開放。[高低獎勵骰與道具規格](../docs/playtest/flash-parity/quest-pve.md#高低獎勵骰)
 
+若第 5 格戰鬥敗北，原版 Ruby 先歸檔任務，獎勵骰仍可在同一條 Quest 結算。猜錯後 Exit 保留戰鬥實得，直接 Get 可領候選報酬。戰果和任務失敗視窗各有一個本機 OK，最後在任務地圖按 Back 返回大廳。[終局獎勵與離場驗收](../docs/playtest/flash-parity/quest-pve.md#終局獎勵與敗猜後-exit)
+
 以隔離 Ruby 執行完整驗收，提供該次執行副本的 SQLite 路徑。腳本會建立測試帳號，以唯讀查詢核對角色與起始牌，並測試重開網頁後重新登入大廳。
 
 ```bash

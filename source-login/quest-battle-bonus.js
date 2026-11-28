@@ -388,6 +388,7 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
   const buttons = Object.fromEntries(Object.keys(names).map(key => [key, createButton(controls, key, frame.controls?.[key], act, signal)]));
   const itemPanel = mountRewardItems(board, frame.itemPanel, { launcher: buttons.item,
     onUse: item => void submit('item-use', item.inventoryId), onSound, signal });
+  const failedControls = itemPanel && frame.controls?.item ? ['item', 'exit'] : ['exit'];
   const dice = append(board, 'canvas', 'dice');
   dice.hidden = true;
   dice.setAttribute('role', 'img');
@@ -491,7 +492,6 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
     pendingItemId = inventoryId;
     board.dataset.pending = key;
     display.value = '';
-    if (key === 'exit') void itemPanel?.close({ focus: false });
     if (key === 'high' || key === 'low') {
       selected = key;
       verdict.hidden = true;
@@ -577,6 +577,7 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       genre: String(claim.reward.genre), id: String(claim.reward.id), amount: String(claim.reward.amount),
     });
     claimOutput.value = claim.reward ? cardName(claim.reward) : '未獲得額外獎勵';
+    if (!claim.reward) board.dataset.claimTransition = 'rank';
     await motion(rank, [{ opacity: 1 }, { opacity: 0 }], 200 / resultSpeed, signal);
     rank.hidden = true;
     if (claim.reward) {
@@ -589,17 +590,36 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       if (current) remaining.push(current);
       current = claim.reward ? make(claim.reward) : undefined;
     }
+    const slideOff = nodes => nodes.map(node =>
+      motion(node, [{ transform: 'translateX(0)' }, { transform: 'translateX(-1024px)' }], 200, signal));
+    if (!claim.reward) {
+      // The original empty receipt hides the verdict, finishes the dice, then clears the cards and buttons.
+      board.dataset.claimTransition = 'verdict';
+      if (!verdict.hidden) await motion(verdict, [{ opacity: 1 }, { opacity: 0 }], 200, signal);
+      if (signal.aborted) return;
+      verdict.hidden = dice.hidden = true;
+      board.dataset.claimTransition = 'cards';
+    }
+    async function fadeOut(node, duration) {
+      await motion(node, [{ opacity: 1 }, { opacity: 0 }], duration, signal);
+      if (!signal.aborted) node.hidden = true;
+    }
     await Promise.all([
-      ...remaining.map(({ node, quantity }) => Promise.all([node, quantity].map(layer =>
-        motion(layer, [{ opacity: 1 }, { opacity: 0 }], 500 / 1.7, signal)))),
-      ...[number, dice, verdict, controls].map(layer =>
-        motion(layer, [{ transform: 'translateX(0)' }, { transform: 'translateX(-1024px)' }], 200, signal)),
-      motion(cardFrame, [{ opacity: 1 }, { opacity: 0 }], 500 / resultSpeed, signal),
+      ...remaining.flatMap(({ node, quantity }) => [fadeOut(node, 500 / (claim.reward ? 1.7 : resultSpeed)),
+        fadeOut(quantity, 500 / 1.7)]),
+      ...(claim.reward ? slideOff([number, dice, verdict, controls]) : []),
+      fadeOut(cardFrame, 500 / resultSpeed),
     ]);
     if (signal.aborted) return;
     for (const { node, quantity } of remaining) {
       node.remove();
       quantity.remove();
+    }
+    if (!claim.reward) {
+      board.dataset.claimTransition = 'controls';
+      await Promise.all(slideOff([number, controls]));
+      if (signal.aborted) return;
+      delete board.dataset.claimTransition;
     }
     for (const layer of [number, targets, dice, verdict, controls, cardFrame]) layer.hidden = true;
     if (current) await positionCard(current, 'claimed', 0, 1, signal, 500 / resultSpeed);
@@ -633,7 +653,7 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
     const newItemTarget = itemUse && latest.itemBaseDiceReceived && presentedItem !== itemUse.inventoryId;
     if (Number.isInteger(round)) board.dataset.round = String(round);
     itemPanel?.update(latest.items, latest.canUseItem,
-      !!pending || phase === 'using-item' || newItemTarget || !!board.dataset.itemTransition);
+      !!pending || phase === 'using-item' || phase === 'claiming' || !!claim || newItemTarget || !!board.dataset.itemTransition);
     if (itemUse && reportedItem !== itemUse.inventoryId) {
       reportedItem = itemUse.inventoryId;
       board.dataset.itemInventoryId = String(reportedItem);
@@ -679,14 +699,14 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
     }
     if (decision && !verdictTask) verdictTask = decide(latest);
     if (claim && !claimTask) {
-      state('claiming');
+      state('claiming', claim.reward ? [] : failedControls);
       claimTask = Promise.resolve(verdictTask).then(() => !signal.aborted && finish(claim));
       return;
     }
     if (phase === 'using-item' || pending === 'item-use') {
-      state('using-item', waitingAfterItemDice ? ['high', 'low'] : ['item', 'exit']);
+      state('using-item', waitingAfterItemDice ? ['high', 'low'] : failedControls);
     } else if (phase === 'claiming' || pending === 'get' || pending === 'exit') {
-      state('claiming', [decision?.won === false ? 'exit' : 'get']);
+      state('claiming', decision?.won === false ? failedControls : ['get']);
     } else if (phase === 'rolling' || selected || (verdictTask && !resultReady)) {
       state('rolling', ['high', 'low'].filter(key => key !== selected || selectedArt.hidden));
     } else if (phase === 'opening' || pending === 'next') {
