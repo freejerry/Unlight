@@ -36,8 +36,11 @@ MAX_QUEST_IDS = 127
 MAX_ACTION_CARD_IDS = 64  # One 32-card orientation bitmap for each draw kind.
 MAX_QUEST_CHARACTER_CARD_IDS = 6  # Two rosters have at most three slots each.
 MAX_DECK_CHARACTER_CARD_IDS = 64
+CHARACTER_CARD_KIND = 0  # CC_KIND_CHARA
 REBORN_CHARACTER_CARD_KIND = 8  # CC_KIND_REBORN_CHARA
+EPISODE_CHARACTER_CARD_KIND = 13  # CC_KIND_EPISODE
 REBORN_CHARACTER_ID_OFFSET = 4000  # CHARACTOR_ID_OFFSET_REBORN
+RENAMED_CHARACTER_IDS = {9}  # Avatar::RENAME_CHARACTORS
 # REGIST_PARTS and REGIST_CARDS in app/server/src/constants/constants.rb.
 AVATAR_STARTER_PART_IDS = (1, 2, 3, 5, 6, 7, 10, 11, 12, 15, 16, 17, 24, 25, 26,
                            27, 28, 29, 32, 33, 34, 37, 38, 39)
@@ -182,6 +185,7 @@ def native_quest_catalog():
     treasure_types = {}
     fixed_gem_treasures = {}
     fixed_character_treasures = {}
+    own_card_treasures = {}
     character_cards = {}
     with suppress(OSError):
         character_cards = native_quest_character_card_catalog()
@@ -204,6 +208,9 @@ def native_quest_catalog():
                         fixed_character_treasures[treasure_id] = fixed
                     elif treasure_type == 5:
                         fixed_gem_treasures[treasure_id] = fixed
+                    elif treasure_type == 6 and slot_type == 1 and value == 1:
+                        # TG_OWN_CARD stores a level. Avatar#get_own_card resolves the grant at runtime.
+                        own_card_treasures[treasure_id] = fixed
     land_rows = []
     with suppress(OSError):
         with (SERVER_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
@@ -238,6 +245,8 @@ def native_quest_catalog():
                             contents["fixedBattleGemTreasure"] = gem_treasure
                     if treasure_id in fixed_character_treasures:
                         contents["fixedCharacterTreasure"] = fixed_character_treasures[treasure_id]
+                    if enemy_id > 0 and event_id == 0 and treasure_id in own_card_treasures:
+                        contents["ownCardTreasure"] = own_card_treasures[treasure_id]
     quests = {}
     with (SERVER_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
@@ -322,7 +331,7 @@ def native_quest_character_card_catalog():
 
 def native_deck_character_card_catalog():
     with (SERVER_CSV / "ja/Charactors.csv").open(encoding="utf-8-sig", newline="") as source:
-        parents = {int(row["id"]): int(row["parent_id"] or 0) for row in DictReader(source)}
+        characters = {int(row["id"]): row for row in DictReader(source)}
 
     # CharaCard#feats_id uses FeatInventory order. Feat.as derives the type from the caption phase.
     phase_types = {"攻撃": "atk", "防御": "deff", "移動": "mov"}
@@ -339,34 +348,54 @@ def native_deck_character_card_catalog():
             if feat := feats.get(int(row["feat_id"])):
                 skills.setdefault(int(row["chara_card_id"]), []).append(feat)
 
-    cards = {}
     with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
-        for row in DictReader(source):
-            card_id = int(row["id"])
-            character_id = int(row["charactor_id"])
-            name = row["name_tcn"] or ""
-            if character_id not in parents or not name.strip():
-                continue
-            kind = int(row["kind"])
-            # Match CharaCard#parent_id and #unlight_charactor_id independently.
-            unlight_id = character_id
-            if kind == REBORN_CHARACTER_CARD_KIND and character_id > REBORN_CHARACTER_ID_OFFSET:
-                unlight_id -= REBORN_CHARACTER_ID_OFFSET
-            cards[card_id] = {
-                "id": card_id,
-                "name": name,
-                "abName": row["ab_name_tcn"] or "",
-                "skills": skills.get(card_id, []),
-                "kind": kind,
-                "level": int(row["level"]),
-                "slot": int(row["slot"]),
-                "hp": int(row["hp"]),
-                "ap": int(row["ap"]),
-                "dp": int(row["dp"]),
-                "characterId": character_id,
-                "unlightCharacterId": unlight_id,
-                "parentId": parents[character_id] or character_id,
-            }
+        master_cards = list(DictReader(source))
+
+    level_one_cards = {}
+    for row in master_cards:
+        if int(row["level"]) == 1 and 1 <= int(row["rarity"]) <= 5:
+            key = (int(row["charactor_id"]), row["name_tcn"] or row["name"])
+            level_one_cards.setdefault(key, []).append(int(row["id"]))
+
+    cards = {}
+    for row in master_cards:
+        card_id = int(row["id"])
+        character_id = int(row["charactor_id"])
+        name = row["name_tcn"] or ""
+        if character_id not in characters or not name.strip():
+            continue
+        kind = int(row["kind"])
+        parent_id = int(characters[character_id]["parent_id"] or 0) or character_id
+        # Match CharaCard#parent_id and #unlight_charactor_id independently.
+        unlight_id = character_id
+        if kind == REBORN_CHARACTER_CARD_KIND and character_id > REBORN_CHARACTER_ID_OFFSET:
+            unlight_id -= REBORN_CHARACTER_ID_OFFSET
+        card = {
+            "id": card_id,
+            "name": name,
+            "abName": row["ab_name_tcn"] or "",
+            "skills": skills.get(card_id, []),
+            "kind": kind,
+            "level": int(row["level"]),
+            "slot": int(row["slot"]),
+            "hp": int(row["hp"]),
+            "ap": int(row["ap"]),
+            "dp": int(row["dp"]),
+            "characterId": character_id,
+            "unlightCharacterId": unlight_id,
+            "parentId": parent_id,
+        }
+        if kind in (CHARACTER_CARD_KIND, REBORN_CHARACTER_CARD_KIND, EPISODE_CHARACTER_CARD_KIND):
+            # Avatar#get_own_card uses the vanguard's base character, with one renamed character.
+            base_id = unlight_id if kind in (CHARACTER_CARD_KIND, REBORN_CHARACTER_CARD_KIND) else parent_id
+            own_card_name = name
+            if base_id in RENAMED_CHARACTER_IDS and base_id in characters:
+                base = characters[base_id]
+                own_card_name = base["name_tcn"] or base["name"]
+            matches = level_one_cards.get((base_id, own_card_name), ())
+            if len(matches) == 1:
+                card["ownCardLevel1Id"] = matches[0]
+        cards[card_id] = card
     return cards
 
 

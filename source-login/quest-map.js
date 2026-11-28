@@ -235,19 +235,25 @@ function setupDialog(dialog, view, origin, signal, { slide = false, dismissOnEsc
   };
 }
 
-function showGemReceipt(view, treasure, inventoryId, slot, signal, confirmDismiss, onDismiss) {
+function showTerrainReceipt(view, treasure, card, inventoryId, slot, signal, confirmDismiss, onDismiss) {
   const dialog = document.createElement('dialog');
   dialog.id = 'quest-map-treasure';
   dialog.className = 'quest-map-dialog stage-panel';
+  const isCard = !!treasure.card;
   Object.assign(dialog.dataset, { art: 'unavailable', state: 'ready', treasureId: String(treasure.treasureId),
-    type: '5', slotType: String(treasure.slotType), value: String(treasure.amount), gemBalance: String(treasure.balance),
+    type: String(treasure.type), slotType: String(treasure.slotType), value: String(treasure.value),
     questInventoryId: String(inventoryId), landSlot: String(slot) });
+  if (isCard) Object.assign(dialog.dataset, { cardId: String(treasure.card.cardId), cardInventoryId: String(treasure.card.inventoryId) });
+  else dialog.dataset.gemBalance = String(treasure.balance);
   dialog.setAttribute('aria-labelledby', 'quest-map-treasure-title');
   dialog.innerHTML = `<h2 id="quest-map-treasure-title" class="stage-panel-title">寶箱</h2>
-    <p id="quest-map-treasure-gem"></p><p id="quest-map-treasure-balance"></p>
+    <p id="quest-map-treasure-${isCard ? 'card' : 'gem'}"></p>${isCard ? '' : '<p id="quest-map-treasure-balance"></p>'}
     <button id="quest-map-treasure-ok" type="button" lang="en">OK</button>`;
-  dialog.querySelector('#quest-map-treasure-gem').textContent = `${treasure.amount} Gem`;
-  dialog.querySelector('#quest-map-treasure-balance').textContent = `Gem 餘額 ${treasure.balance}`;
+  if (isCard) dialog.querySelector('#quest-map-treasure-card').textContent = card?.name || `角色卡 ${treasure.card.cardId}`;
+  else {
+    dialog.querySelector('#quest-map-treasure-gem').textContent = `${treasure.amount} Gem`;
+    dialog.querySelector('#quest-map-treasure-balance').textContent = `Gem 餘額 ${treasure.balance}`;
+  }
   view.append(dialog);
   const lifetime = new AbortController();
   const visual = AbortSignal.any([signal, lifetime.signal]);
@@ -603,14 +609,16 @@ function setupQuestDetails(view, {
     return Math.max(0, terrainEventDelay - (performance.now() - adventure.terrainReceivedAt));
   }
 
-  function presentGemTreasure({ treasure, inventoryId, slot, visual, confirm, onDismiss }) {
+  function presentTerrainTreasure({ treasure, inventoryId, slot, visual, confirm, onDismiss }) {
     const artwork = loadResultAssets();
+    const definitions = treasure.card ? loadCards([treasure.value]) : null;
     const elapsed = Number.isFinite(treasure.receivedAt) ? performance.now() - treasure.receivedAt : 0;
     const timer = setTimeout(async () => {
-      const assets = await artwork;
+      const [assets, cards] = await Promise.all([artwork, definitions]);
       if (visual.aborted) return;
+      const card = cards?.get(treasure.value);
       const panel = mountQuestTreasurePanel(view, {
-        treasure, land: { inventoryId, slot }, assets, signal: visual, onSound: onBattleSound,
+        treasure, card, land: { inventoryId, slot }, assets, signal: visual, onSound: onBattleSound,
         async onConfirm() {
           if (visual.aborted || await confirm?.() === false) return false;
           if (onDismiss && !visual.aborted) {
@@ -622,14 +630,15 @@ function setupQuestDetails(view, {
       });
       if (!(await panel.ready.catch(() => false)) && !visual.aborted) {
         panel.dispose();
-        showGemReceipt(view, treasure, inventoryId, slot, visual, confirm, onDismiss);
+        showTerrainReceipt(view, treasure, card, inventoryId, slot, visual, confirm, onDismiss);
       }
     }, Math.max(0, terrainTreasureDelay - elapsed));
     visual.addEventListener('abort', () => clearTimeout(timer), { once: true });
   }
 
   function syncTerrainReward(adventure) {
-    if (adventure?.state !== 'terrain-reward' || !adventure.fixedGemTreasure) {
+    const treasure = adventure?.fixedGemTreasure ?? adventure?.cardTreasure;
+    if (adventure?.state !== 'terrain-reward' || !treasure) {
       if (terrainReward) {
         terrainReward.abort();
         terrainReward = undefined;
@@ -638,7 +647,7 @@ function setupQuestDetails(view, {
       return;
     }
     if (terrainReward || activeBattle || !scene?.confirmTerrainReward) return;
-    const { fixedGemTreasure: treasure, inventoryId, slot } = adventure;
+    const { inventoryId, slot } = adventure;
     const lifetime = terrainReward = new AbortController();
     const visual = AbortSignal.any([signal, lifetime.signal]);
     board.inert = true;
@@ -647,7 +656,7 @@ function setupQuestDetails(view, {
       const hideEvent = setTimeout(refresh, eventTimeLeft);
       visual.addEventListener('abort', () => clearTimeout(hideEvent), { once: true });
     }
-    presentGemTreasure({
+    presentTerrainTreasure({
       treasure, inventoryId, slot, visual,
       async confirm() {
         if (visual.aborted) return false;
@@ -794,7 +803,7 @@ function setupQuestDetails(view, {
               });
             };
             if (gem) {
-              presentGemTreasure({ treasure: gem, inventoryId: settlement.inventoryId, slot: ownAdventure.slot,
+              presentTerrainTreasure({ treasure: gem, inventoryId: settlement.inventoryId, slot: ownAdventure.slot,
                 visual: signal, onDismiss: showClear });
             } else if (cardTreasure) {
               const panel = mountQuestTreasurePanel(view, { treasure: cardTreasure, card: treasureCards.get(cardTreasure.value), assets, signal,
@@ -866,6 +875,8 @@ function setupQuestDetails(view, {
         onAlert?.(error.kind, questRejections.get(error.code) ?? '無法進入此地區', hit);
       } else if (error.kind === 'quest-land-uncertain') {
         onAlert?.(error.kind, '無法確認地形移動結果。', hit);
+      } else if (error.kind === 'quest-reward-unavailable') {
+        onAlert?.(error.kind, '無法確認這個地形的角色卡獎勵。', hit);
       }
     } finally {
       entering = false;

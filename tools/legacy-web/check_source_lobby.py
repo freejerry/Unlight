@@ -47,6 +47,14 @@ PEACEFUL_TERRAINS = {
     "empty": (4, 2, 0, 5, 1, "森林小道", "穩靜的獸道", {4: 101}, 4),
     "gem": (32, 4, 1, 10, 6, "寂靜之丘", "綠影斑駁的小高丘", {3: 304, 5: 104}, 5),
 }
+# One row per turn: action draw, event draw, range, defence faces, and attack faces from the original seed 1 fixture.
+Q32_LEFT_COMBAT = {
+    3: [([18, 2, 14, 9, 50], 260, 3, [(2, False)],
+         [(18, False), (14, False), (9, True), (50, False), (260, True)])],
+    6: [([17, 2, 13, 8, 46], 61, 1, [(2, False)], [(17, True), (13, False), (46, True), (61, True)]),
+        ([50, 12, 43, 29], 62, 1, [], [(50, True), (43, False), (62, True)])],
+    10: [([19, 2, 15, 10, 50], 61, 3, [(2, False)], [(19, False), (10, True), (50, False)])],
+}
 # Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
 LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
@@ -1821,7 +1829,7 @@ def check_terminal_movement(page, stage, directory, turn, *, retreat=False):
     return [[23, direction], [26, "", ""]]
 
 
-def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_attack):
+def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_attack, choices=None):
     hand = battle.locator("#quest-battle-player-hand .quest-battle-hand-card")
     table = battle.locator("#quest-battle-player-table")
     definitions = action_card_definitions()
@@ -1834,16 +1842,21 @@ def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_a
         return int(fields[f"{prefix}_value"]) if int(fields[f"{prefix}_type"]) == kind else 0
 
     current = hand.evaluate_all("cards => cards.map(({dataset}) => [+dataset.cardId, dataset.up === 'true', dataset.kind])")
-    candidates = [(card, up) for card, up, kind in current if kind == "action"]
-    reserved = None
-    if reserve_attack and candidates:
-        reserved = max(candidates, key=lambda entry: max(points(entry[0], face, attack_type) for face in (True, False)))[0]
     kind = attack_type if player_attacks else 3
-    for card, current_face in candidates:
-        face = max((current_face, not current_face), key=lambda choice: points(card, choice, kind))
-        if card == reserved or not points(card, face, kind):
-            continue
+    if choices is None:
+        candidates = [(card, up) for card, up, kind in current if kind == "action"]
+        reserved = None
+        if reserve_attack and candidates:
+            reserved = max(candidates, key=lambda entry: max(points(entry[0], face, attack_type) for face in (True, False)))[0]
+        choices = []
+        for card, up in candidates:
+            face = max((up, not up), key=lambda choice: points(card, choice, kind))
+            if card != reserved and points(card, face, kind):
+                choices.append((card, face))
+    for card, face in choices:
+        assert points(card, face, kind) > 0, (card, face, kind)
         position = next(slot for slot, row in enumerate(current) if row[0] == card)
+        current_face = current[position][1]
         card_row = hand.and_(battle.locator(f'[data-card-id="{card}"]'))
         if face != current_face:
             rotate = card_row.locator(".quest-battle-card-rotate")
@@ -1860,7 +1873,7 @@ def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_a
     return actions, placed
 
 
-def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=False, dwarf_slot=None):
+def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=False, dwarf_slot=None, left_slot=None):
     battle = page.locator("#quest-map-battle")
     done = battle.locator('button[data-combat-command="done"]')
     actions = []
@@ -1870,12 +1883,19 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
         # The opt-in dwarf fixture seeds the original stock deal. Guard its exact observed cards and roles.
         deal = [p for p in opening if p[0] in (44, 45)][-2:]
         assert deal == [[44, 24, [41, 26, 9, 27, 56], 31, 5], [45, 14, [259], 1, 1]], deal
-    opening_hp = combat_health(battle) if dwarf_slot == 10 else None
-    for turn in range(1, 4):
-        actions.extend(check_terminal_movement(page, stage, directory, turn, retreat=defeat or dwarf_slot in (4, 5)))
+    rounds = Q32_LEFT_COMBAT.get(left_slot)
+    opening_hp = combat_health(battle) if 10 in (dwarf_slot, left_slot) else None
+    for turn in range(1, (len(rounds) if rounds else 3) + 1):
+        retreat = defeat or dwarf_slot in (4, 5) or left_slot in (3, 6)
+        actions.extend(check_terminal_movement(page, stage, directory, turn, retreat=retreat))
         move = [packet for packet in read_movement_trace(page)["replies"] if packet[0] == 48][-1]
         if dwarf_slot is not None and turn == 1:
             assert move[2:4] == [False, 1], move
+        if rounds:
+            cards, event, distance, defence, attack = rounds[turn - 1]
+            deal = [p for p in read_movement_trace(page)["replies"] if p[0] in (44, 45)][-2:]
+            assert [p[2:] for p in deal] == [[cards, (1 << len(cards)) - 1, 5], [[event], 1, 1]], deal
+            assert move[2:4] == [False, distance], move
         if opening_hp is not None and turn == 1:
             healing = [p for p in read_movement_trace(page)["replies"][len(opening):] if p[0] == 77]
             assert ([77, 4, 1, 1] in healing) == (opening_hp["player"] < 7), healing
@@ -1889,13 +1909,14 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
             phase = [payload for payload in read_movement_trace(page)["replies"] if payload[0] == 51][-1]
             assert phase in ([51, 3, 0], [51, 3, 1]), phase
             player_attacks = bool(phase[2])
-            if dwarf_slot is not None and turn == 1:
+            if rounds or (dwarf_slot is not None and turn == 1):
                 assert player_attacks == (index == 2), phase
             role = "attack" if player_attacks else "defense"
             expect(battle).to_have_attribute("data-exchange-index", str(index), timeout=TIMEOUT)
             expect(battle).to_have_attribute("data-exchange-phase", role, timeout=TIMEOUT)
             card_actions, placed = ([], []) if defeat or (dwarf_slot is not None and not player_attacks) else place_terminal_cards(
-                page, battle, attack_type, player_attacks, reserve_attack=not player_attacks and index == 1)
+                page, battle, attack_type, player_attacks, reserve_attack=not player_attacks and index == 1,
+                choices=(attack if player_attacks else defence) if rounds else None)
             if dwarf_slot is not None and player_attacks:
                 assert placed == [[41, False], [26, True], [56, True]], placed
             actions.extend(card_actions)
@@ -1907,6 +1928,8 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
             last_reveal = [payload for payload in trace["replies"] if payload[0] == 55][-1]
             assert last_reveal[2] == placed, (last_reveal, placed)
             if page.evaluate("window.qaQuestWire.actionHold.blocked") in completions:
+                if rounds:
+                    assert turn == len(rounds) and index == 2, (left_slot, turn, index)
                 return actions, trace, turn
             release_movement_reply(page)
     outcomes = [packet for packet in trace["replies"] if packet[0] in (51, 56, 73)]
@@ -2602,10 +2625,10 @@ def check_gem_receipt(page, stage, directory, *, inventory_id, slot, amount, bal
     treasure = page.locator("#quest-map-treasure")
     ok = treasure.locator("#quest-map-treasure-ok")
     if capture_back:
-        expect(treasure).to_have_attribute("data-state", "holding", timeout=TIMEOUT)
-        expect(treasure.locator("#quest-map-treasure-back")).to_be_visible()
-        expect(ok).to_be_disabled()
-        capture(stage, directory, "03a-gem-before-flip.png", animations="allow")
+        page.wait_for_function("() => window.qaInitialGemHolding !== undefined", timeout=TIMEOUT)
+        assert page.evaluate("window.qaInitialGemHolding") == {"backVisible": True, "okDisabled": True}
+        if treasure.get_attribute("data-state") == "holding":
+            capture(stage, directory, "03a-gem-before-flip.png", animations="allow")
     expect(treasure).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
     for field, value in (("treasure-id", 50001 if amount == 30 else 50002), ("type", 5), ("slot-type", 1),
                          ("value", amount), ("gem-balance", balance), ("quest-inventory-id", inventory_id),
@@ -2673,7 +2696,7 @@ def check_receipt_ap(page, prefix, profile):
     expect(page.locator(f"#{prefix}-energy")).to_have_text(re.compile(rf"^{energy}(?:/{cap})?$"), timeout=TIMEOUT)
 
 
-def check_q32_result_gate(page, stage, directory, held, encounter, inventory_id, slot, progress, starting_hp):
+def check_q32_result_gate(page, stage, directory, held, encounter, inventory_id, slot, progress, starting_hp, *, foe_hp=3):
     assert page.evaluate("window.qaQuestWire.actionHold.blocked") == 25
     before = held["replies"][len(encounter["replies"]):]
     (duel,) = [p for p in before if p[0] == 41]
@@ -2681,9 +2704,11 @@ def check_q32_result_gate(page, stage, directory, held, encounter, inventory_id,
     (proof,) = [p for p in before if p[0] == 19]
     assert proof == [19, 10, inventory_id, progress | (1 << slot)]
     assert before.index(duel) < before.index(proof)
-    (balance,) = [p[2] for p in before[before.index(proof) + 1:] if p[0] == 10]
-    earlier_gems = [p[2] for p in before[:before.index(proof)] if p[0] == 10]
-    assert earlier_gems and balance == earlier_gems[-1] + 30, before
+    balances = [p[2] for p in before if p[0] == 10]
+    assert balances
+    if slot != 6:
+        assert [p[2] for p in before[before.index(proof) + 1:] if p[0] == 10] == [balances[-1]]
+        assert len(balances) >= 2 and balances[-1] == balances[-2] + 30, before
     assert not any(p[0] in (20, 22, 24, 25) for p in before)
     battle = page.locator("#quest-map-battle")
     result = battle.locator("#quest-battle-result")
@@ -2692,13 +2717,91 @@ def check_q32_result_gate(page, stage, directory, held, encounter, inventory_id,
     expect(result).to_have_attribute("data-result", "0")
     expect(result).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
     expect(result.locator('#quest-battle-result-call[src$="win-10.png"]')).to_be_visible()
-    check_combat_hp(battle, {"player": starting_hp, "opponent": 3}, [p for p in before if p[0] in (73, 74, 77, 79)])
+    check_combat_hp(battle, {"player": starting_hp, "opponent": foe_hp}, [p for p in before if p[0] in (73, 74, 77, 79)])
     expect(ok).to_be_disabled()
     expect(page.locator("#quest-map-detail")).to_have_attribute("data-progress", str(progress))
     for selector in ("#quest-map-treasure", "#quest-map-settlement", "button.quest-map-detail-land"):
         expect(page.locator(selector)).to_have_count(0)
-    capture(stage, directory, f"slot-{slot:02d}-win-awaiting-real-gem-reply.png")
-    return balance, ok
+    reward = "card" if slot == 6 else "gem"
+    capture(stage, directory, f"slot-{slot:02d}-win-awaiting-real-{reward}-reply.png")
+    return balances[-1], ok
+
+
+def check_q32_final_gem(page, stage, directory, database, player_id, quest, deck, damage, *, previous_progress, left=False):
+    inventory_id = quest[0]
+    avatar_id = avatar(database, player_id)[0][0]
+    battle = page.locator("#quest-map-battle")
+    view = page.locator("#quest-map-view")
+    detail = page.locator("#quest-map-detail")
+    active_lands = detail.locator("button.quest-map-detail-land")
+    treasure = page.locator("#quest-map-treasure")
+    clear = page.locator("#quest-map-settlement")
+    gems = page.locator("#quest-map-gems")
+    combat_dir = directory / "slot-10-combat" if directory is not None else None
+    if combat_dir is not None:
+        combat_dir.mkdir(exist_ok=True)
+    expect(view).to_have_attribute("data-adventure-state", "between-lands")
+    expect(active_lands).to_have_count(1)
+    last_land = active_lands.and_(detail.locator('[data-slot="10"][data-land-id="104"]'))
+    check_terrain_hover(page, stage, directory, last_land, "通往集落之路1", "小矮人們的通道", "slot-10-last-battle-hover.png")
+    before_last = read_movement_trace(page)
+    hold_movement_reply(page, 16, last_land.click, through=37)
+    held = read_movement_trace(page)
+    (point, roster) = [p for p in held["replies"][len(before_last["replies"]):] if p[0] != 3]
+    assert point == [128, 3, 10] and roster[2:] == [-1, "CPU", "21", "1001", 2, *damage, 0, 0, 0], roster
+    expect(battle).to_have_count(0)
+    assert held["readySends"] == [["settled", "complete"]] * (2 if left else 1)
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-encounter-key", f"{inventory_id}:10", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-stage", "2")
+    music(page, "quest-duel", "bgm002.mp3")
+    expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
+    expect(battle.locator("#quest-battle-player-hp")).to_have_attribute("data-hp", str(7 - damage[0]))
+    expect(battle.locator("#quest-battle-opponent-hp")).to_have_attribute("data-hp", "3")
+    capture(stage, directory, "slot-10-authoritative-final-move.png" if left else "slot-10-authoritative-second-move.png", animations="allow")
+    final_battle = read_movement_trace(page)
+    final_before = avatar(database, player_id)[0]
+    final_cards = owned_character_cards(database, avatar_id)
+    page.emulate_media(reduced_motion="reduce")
+    final_actions, final_held, _ = play_terminal_combat(page, stage, combat_dir, completions=(25, 24),
+                                                    left_slot=10 if left else None, dwarf_slot=None if left else 10)
+    final_balance, final_ok = check_q32_result_gate(page, stage, directory, final_held, final_battle, inventory_id,
+                                                   10, previous_progress, 7 - damage[0])
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-outcome-state", "settled", timeout=TIMEOUT)
+    expect(final_ok).to_be_enabled()
+    for node in (treasure, clear):
+        expect(node).to_have_count(0)
+    trace = read_movement_trace(page)
+    final_replies = trace["replies"][len(final_battle["replies"]):]
+    assert [p for p in final_replies if p[0] == 25] == [[25, 11, 5, 1, 30]]
+    assert [p for p in final_replies if p[0] == 24] == [[24, 7, 0, inventory_id]]
+    final_duel, final_avatar = check_terminal_storage(database, player_id, inventory_id, deck, final_before, final_cards,
+                                                      final_replies, quest_id=32, land_slot=10, previous_progress=previous_progress, map_flag=3)
+    assert final_duel[9] == (25 if left else 45), final_duel
+    (gem_reply,) = [p for p in final_replies if p[0] == 25]
+    assert [p[2] for p in final_replies[:final_replies.index(gem_reply)] if p[0] == 10][-1] == final_balance
+    page.emulate_media(reduced_motion="no-preference")
+    final_ok.click()
+    expect(battle).to_have_count(0)
+    expect(clear).to_have_count(0)
+    check_gem_receipt(page, stage, directory, inventory_id=inventory_id, slot=10, amount=30, balance=final_balance,
+                      cue_count=4, hud_balance=final_avatar[3])
+    expect(clear).to_have_attribute("open", "")
+    expect(clear).to_have_attribute("data-result", "clear")
+    expect(clear).to_have_attribute("data-inventory-id", str(inventory_id))
+    capture(stage, directory, "quest-32-confirmed-clear.png")
+    clear.locator("#quest-map-settlement-ok").click()
+    expect(clear).to_have_count(0)
+    expect(page.locator("#quest-map-back")).to_be_focused()
+    expect(view).to_have_attribute("data-map-id", "4")
+    expect(page.locator("#quest-map-capacity")).to_have_text("0/4")
+    expect(page.locator("#quest-map-progress")).to_have_text("1/8")
+    expect(gems).to_have_text(str(final_avatar[3]))
+    check_receipt_ap(page, "quest-map", final_avatar)
+    expect(page.locator('#quest-map-deck[data-deck-index="1"] li[data-card-id="21"][data-position="0"]')).to_be_visible()
+    music(page, "quest", "ulbgm03.mp3")
+    return final_actions
 
 
 def check_q32_right_route(page, stage, directory, database, player_id, quest, deck, locked, first_battle, positions):
@@ -2719,10 +2822,8 @@ def check_q32_right_route(page, stage, directory, database, player_id, quest, de
     gems = page.locator("#quest-map-gems")
     page.emulate_media(reduced_motion="reduce")
     first_dir = directory / "slot-05-combat" if directory is not None else None
-    final_dir = directory / "slot-10-combat" if directory is not None else None
-    for target in (first_dir, final_dir):
-        if target is not None:
-            target.mkdir(exist_ok=True)
+    if first_dir is not None:
+        first_dir.mkdir(exist_ok=True)
     first_actions, held, _ = play_terminal_combat(page, stage, first_dir, completions=(25, 24), dwarf_slot=5)
     balance_5, first_ok = check_q32_result_gate(page, stage, directory, held, first_battle, inventory_id, 5, 2, 6)
     release_movement_reply(page, next_command=3)
@@ -2788,66 +2889,8 @@ def check_q32_right_route(page, stage, directory, database, player_id, quest, de
     assert avatar(database, player_id) == [after_first_avatar[:3] + (balance_5 + 50,) + after_first_avatar[4:]]
     assert quest_deck(database, avatar_id) == locked
 
-    expect(view).to_have_attribute("data-adventure-state", "between-lands")
-    expect(active_lands).to_have_count(1)
-    last_land = active_lands.and_(detail.locator('[data-slot="10"][data-land-id="104"]'))
-    check_terrain_hover(page, stage, directory, last_land, "通往集落之路1", "小矮人們的通道", "slot-10-last-battle-hover.png")
-    before_last = read_movement_trace(page)
-    hold_movement_reply(page, 16, last_land.click, through=37)
-    held = read_movement_trace(page)
-    (point, roster) = [p for p in held["replies"][len(before_last["replies"]):] if p[0] != 3]
-    assert point == [128, 3, 10] and roster[2:] == [-1, "CPU", "21", "1001", 2, *damage, 0, 0, 0], roster
-    expect(battle).to_have_count(0)
-    assert held["readySends"] == [["settled", "complete"]]
-    release_movement_reply(page)
-    expect(battle).to_have_attribute("data-encounter-key", f"{inventory_id}:10", timeout=TIMEOUT)
-    expect(battle).to_have_attribute("data-stage", "2")
-    music(page, "quest-duel", "bgm002.mp3")
-    expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
-    expect(battle.locator("#quest-battle-player-hp")).to_have_attribute("data-hp", str(7 - damage[0]))
-    expect(battle.locator("#quest-battle-opponent-hp")).to_have_attribute("data-hp", "3")
-    capture(stage, directory, "slot-10-authoritative-second-move.png", animations="allow")
-    final_battle = read_movement_trace(page)
-    final_before = avatar(database, player_id)[0]
-    final_cards = owned_character_cards(database, avatar_id)
-    page.emulate_media(reduced_motion="reduce")
-    final_actions, final_held, _ = play_terminal_combat(page, stage, final_dir, completions=(25, 24), dwarf_slot=10)
-    final_balance, final_ok = check_q32_result_gate(page, stage, directory, final_held, final_battle, inventory_id,
-                                                   10, 290, 7 - damage[0])
-    release_movement_reply(page)
-    expect(battle).to_have_attribute("data-outcome-state", "settled", timeout=TIMEOUT)
-    expect(final_ok).to_be_enabled()
-    for node in (treasure, clear):
-        expect(node).to_have_count(0)
-    trace = read_movement_trace(page)
-    final_replies = trace["replies"][len(final_battle["replies"]):]
-    assert [p for p in final_replies if p[0] == 25] == [[25, 11, 5, 1, 30]]
-    assert [p for p in final_replies if p[0] == 24] == [[24, 7, 0, inventory_id]]
-    final_duel, final_avatar = check_terminal_storage(database, player_id, inventory_id, deck, final_before, final_cards,
-                                                      final_replies, quest_id=32, land_slot=10, previous_progress=290, map_flag=3)
-    assert final_duel[9] == 45, final_duel
-    (gem_reply,) = [p for p in final_replies if p[0] == 25]
-    assert [p[2] for p in final_replies[:final_replies.index(gem_reply)] if p[0] == 10][-1] == final_balance
-    page.emulate_media(reduced_motion="no-preference")
-    final_ok.click()
-    expect(battle).to_have_count(0)
-    expect(clear).to_have_count(0)
-    check_gem_receipt(page, stage, directory, inventory_id=inventory_id, slot=10, amount=30, balance=final_balance,
-                      cue_count=4, hud_balance=final_avatar[3])
-    expect(clear).to_have_attribute("open", "")
-    expect(clear).to_have_attribute("data-result", "clear")
-    expect(clear).to_have_attribute("data-inventory-id", str(inventory_id))
-    capture(stage, directory, "quest-32-confirmed-clear.png")
-    clear.locator("#quest-map-settlement-ok").click()
-    expect(clear).to_have_count(0)
-    expect(page.locator("#quest-map-back")).to_be_focused()
-    expect(view).to_have_attribute("data-map-id", "4")
-    expect(page.locator("#quest-map-capacity")).to_have_text("0/4")
-    expect(page.locator("#quest-map-progress")).to_have_text("1/8")
-    expect(gems).to_have_text(str(final_avatar[3]))
-    check_receipt_ap(page, "quest-map", final_avatar)
-    expect(page.locator('#quest-map-deck[data-deck-index="1"] li[data-card-id="21"][data-position="0"]')).to_be_visible()
-    music(page, "quest", "ulbgm03.mp3")
+    final_actions = check_q32_final_gem(page, stage, directory, database, player_id, quest, deck, damage,
+                                       previous_progress=290)
     trace = read_movement_trace(page)
     assert trace["actions"] == [[13, inventory_id, 1], *[[16, inventory_id, 1, slot] for slot in (1, 5, 8, 10)]]
     assert trace["readySends"] == [["settled", "complete"]] * 2
@@ -2858,6 +2901,177 @@ def check_q32_right_route(page, stage, directory, database, player_id, quest, de
     ]
     assert sum(sound == "ulse23.mp3" for sound in trace["terrainSounds"]) == 4
     capture(stage, directory, "quest-32-authoritative-world-return.png")
+
+
+def check_q32_left_chest(page, stage, directory, inventory_id, card_inventory_id):
+    treasure = page.locator("#quest-map-treasure")
+    ok = treasure.locator("#quest-map-treasure-ok")
+    expect(treasure).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    for field, value in (("treasure-id", 60001), ("type", 6), ("slot-type", 1), ("value", STARTER_CARD),
+                         ("card-id", STARTER_CARD), ("card-inventory-id", card_inventory_id),
+                         ("quest-inventory-id", inventory_id), ("land-slot", 6)):
+        expect(treasure).to_have_attribute(f"data-{field}", str(value))
+    assert treasure.get_attribute("data-art") is None
+    face = treasure.locator("#quest-map-treasure-card")
+    expect(face).to_be_visible()
+    assert face.evaluate("""canvas => [canvas.width, canvas.height].every(size => size > 0)
+      && canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.some(
+        (value, i) => i % 4 === 3 && value === 255)""")
+    page.wait_for_function("""() => window.qaQuestWire.sockets.at(-1).terrainSounds
+      .filter(file => file === 'ulse23.mp3').length === 3""", timeout=TIMEOUT)
+    expect(ok).to_be_focused()
+    ok.hover()
+    expect(ok.locator('img[src$="quest-ok-over.png"]')).to_be_visible()
+    capture(stage, directory, "slot-06-fresh-binder-card-21.png", animations="allow")
+    sent = [p for p in read_movement_trace(page)["sent"] if p[0] != 3]
+    ok.click()
+    expect(treasure).to_have_count(0)
+    assert [p for p in read_movement_trace(page)["sent"] if p[0] != 3] == sent
+
+
+def check_q32_stage_zero(page, stage, directory, battle):
+    candles = battle.locator(".quest-battle-stage-animation")
+    expect(candles).to_have_count(6, timeout=TIMEOUT)
+    first = candles.first
+    expect(first).to_be_visible()
+    expect(first).to_have_attribute("data-frame", re.compile(r"^(?:[0-9]|[1-3][0-9]|40)$"))
+    original_frame = first.get_attribute("data-frame")
+    expect(first).not_to_have_attribute("data-frame", original_frame, timeout=TIMEOUT)
+    assert candles.evaluate_all("nodes => nodes.every(node => node.dataset.frame === nodes[0].dataset.frame)")
+    geometry = candles.evaluate_all("""nodes => nodes.map(node =>
+      ['left', 'top', 'width', 'height', 'zIndex'].map(field => Number.parseFloat(node.style[field])))""")
+    expected = [[x, 194.40566, 67.19727, 141.59424, 0] for x in (270.40137, 422.40137, 86.40137, 606.40137)]
+    expected.extend([[-80, -8, 224, 472, 3], [616, -8, 224, 472, 3]])
+    assert all(isclose(value, target, abs_tol=0.05) for actual, authored in zip(geometry, expected, strict=True)
+               for value, target in zip(actual, authored, strict=True)), geometry
+    for filename in ("quest-battle-stage00-castle.png", "quest-battle-stage00-barrier.png"):
+        expect(battle.locator(f'img[src$="{filename}"]')).to_be_visible()
+    expect(candles.locator('img[src$="quest-battle-stage00-candle-atlas.png"]')).to_have_count(6)
+    wait_quest_art(page)
+    capture(stage, directory, "slot-06-stage-zero-animated-candles.png", animations="allow")
+
+
+def check_q32_left_route(page, stage, directory, database, player_id, quest, deck, locked, opening, positions):
+    inventory_id = quest[0]
+    avatar_id = avatar(database, player_id)[0][0]
+    assert (positions[3]["id"], positions[3]["stage"], positions[3]["nextSlots"]) == (304, 3, [6])
+    assert (positions[6]["id"], positions[6]["stage"], positions[6]["enemyId"], positions[6]["nextSlots"]) == (10021, 0, 20021, [10])
+    assert (positions[10]["id"], positions[10]["stage"], positions[10]["nextSlots"]) == (104, 2, [])
+    for slot in (3, 10):
+        assert positions[slot]["fixedBattleGemTreasure"] == {"treasureId": 50001, "type": 5, "slotType": 1, "value": 30}
+    assert positions[6]["ownCardTreasure"] == {"treasureId": 60001, "type": 6, "slotType": 1, "value": 1}
+    battle = page.locator("#quest-map-battle")
+    view = page.locator("#quest-map-view")
+    detail = page.locator("#quest-map-detail")
+    treasure = page.locator("#quest-map-treasure")
+    clear = page.locator("#quest-map-settlement")
+    active_lands = detail.locator("button.quest-map-detail-land")
+    actions_by_slot = []
+    progress = 2
+    for slot, next_slot, foe_hp, exp, damage in ((3, 6, 3, 25, [1, 0, 0]), (6, 10, 7, 45, [6, 0, 0])):
+        cards = owned_character_cards(database, avatar_id)
+        combat_dir = directory / f"slot-{slot:02d}-combat" if directory is not None else None
+        if combat_dir is not None:
+            combat_dir.mkdir(exist_ok=True)
+        page.emulate_media(reduced_motion="reduce")
+        actions, held, _ = play_terminal_combat(page, stage, combat_dir, completions=(25, 24), left_slot=slot)
+        actions_by_slot.append(actions)
+        balance, result_ok = check_q32_result_gate(page, stage, directory, held, opening, inventory_id,
+                                                  slot, progress, 6, foe_hp=foe_hp)
+        before_chest = held["replies"][len(opening["replies"]):]
+        (duel,) = [p for p in before_chest if p[0] == 41]
+        assert duel[9] == exp, duel
+        if slot == 6:
+            awards = [(physical, card) for command, _, physical, card in (p for p in before_chest if p[0] == 13)]
+            assert len(awards) == len({physical for physical, _ in awards}), awards
+            (card_inventory_id,) = [physical for physical, card in awards if card == STARTER_CARD]
+            own_award = [13, 10, card_inventory_id, STARTER_CARD]
+            order = before_chest.index(own_award)
+            assert before_chest.index([19, 10, inventory_id, 74]) < order
+            assert (card_inventory_id, STARTER_CARD) not in cards
+            assert owned_character_cards(database, avatar_id) == cards | set(awards)
+            assert query(database, """SELECT d.name, i.chara_card_id FROM card_inventories i
+                JOIN chara_card_decks d ON d.id = i.chara_card_deck_id
+                WHERE d.avatar_id = ? AND i.id = ?""", avatar_id, card_inventory_id) == [("Binder", STARTER_CARD)]
+            card_receipt = {
+                "slot": 6, "inventoryId": card_inventory_id, "cardId": STARTER_CARD, "location": "Binder",
+                "earlierAncillaryAwards": [p[2:] for p in before_chest[:order] if p[0] == 13],
+                "allAwards": awards,
+            }
+        release_movement_reply(page, next_command=3)
+        page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+        fenced = read_movement_trace(page)
+        reward = [6, 1, STARTER_CARD] if slot == 6 else [5, 1, 30]
+        assert fenced["replies"][len(held["replies"]):] == [[25, 11, *reward], [20, 7, 1, 2, *damage]]
+        assert fenced["sent"][len(held["sent"]):] == [[3, 5]]
+        expect(result_ok).to_be_disabled()
+        expect(treasure).to_have_count(0)
+        expect(active_lands).to_have_count(0)
+        capture(stage, directory, f"slot-{slot:02d}-awaiting-same-quest-pong.png")
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-outcome-state", "land-cleared", timeout=TIMEOUT)
+        expect(treasure).to_have_count(0)
+        expect(result_ok).to_be_enabled()
+        sent = [p for p in read_movement_trace(page)["sent"] if p[0] != 3]
+        page.emulate_media(reduced_motion="no-preference")
+        result_ok.click()
+        progress |= 1 << slot
+        expect(view).to_have_attribute("data-adventure-state", "terrain-reward")
+        expect(detail).to_have_attribute("data-progress", str(progress))
+        expect(battle).to_have_count(0)
+        expect(active_lands).to_have_count(0)
+        expect(clear).to_have_count(0)
+        music(page, "quest", "ulbgm03.mp3")
+        after = avatar(database, player_id)[0]
+        assert after[3] == balance
+        if slot == 3:
+            check_gem_receipt(page, stage, directory, inventory_id=inventory_id, slot=slot, amount=30, balance=balance, cue_count=2)
+        else:
+            check_q32_left_chest(page, stage, directory, inventory_id, card_inventory_id)
+            expect(page.locator("#quest-map-gems")).to_have_text(str(balance))
+        assert [p for p in read_movement_trace(page)["sent"] if p[0] != 3] == sent
+        check_receipt_ap(page, "quest-map", after)
+        assert quest_inventory(database, avatar_id) == [quest[:2] + (2, quest[3], progress, 1, *damage)]
+        assert quest_deck(database, avatar_id) == locked
+        expect(view).to_have_attribute("data-adventure-state", "between-lands")
+        expect(active_lands).to_have_count(1)
+        expect(active_lands).to_have_attribute("data-slot", str(next_slot))
+        if slot == 6:
+            break
+        check_terrain_hover(page, stage, directory, active_lands, "黑太子1", "死神纏身的黑暗王子。", "slot-06-black-prince-hover.png")
+        before_battle = read_movement_trace(page)
+        hold_movement_reply(page, 16, active_lands.click, through=37)
+        encounter = read_movement_trace(page)
+        point, roster = [p for p in encounter["replies"][len(before_battle["replies"]):] if p[0] != 3]
+        assert point == [128, 3, 6] and roster[2:] == [-1, "CPU", "21", "21", 0, *damage, 0, 0, 0], roster
+        assert encounter["readySends"] == [["settled", "complete"]]
+        expect(battle).to_have_count(0)
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-encounter-key", f"{inventory_id}:6", timeout=TIMEOUT)
+        expect(battle).to_have_attribute("data-stage", "0")
+        expect(battle).to_have_attribute("data-land-slot", "6")
+        music(page, "quest-duel", "bgm000.mp3")
+        check_q32_stage_zero(page, stage, directory, battle)
+        expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
+        check_combat_hp(battle, {"player": 7 - damage[0], "opponent": 7}, [])
+        capture(stage, directory, "slot-06-authoritative-castle-move.png", animations="allow")
+        opening = read_movement_trace(page)
+
+    final_actions = check_q32_final_gem(page, stage, directory, database, player_id, quest, deck, [6, 0, 0],
+                                       previous_progress=74, left=True)
+    trace = read_movement_trace(page)
+    assert trace["actions"] == [[13, inventory_id, 1], *[[16, inventory_id, 1, slot] for slot in (1, 3, 6, 10)]]
+    assert trace["readySends"] == [["settled", "complete"]] * 3
+    assert [p for p in trace["replies"] if p[0] == 25] == [
+        [25, 11, 5, 1, 30], [25, 11, 5, 1, 30], [25, 11, 6, 1, STARTER_CARD], [25, 11, 5, 1, 30],
+    ]
+    assert [p[0] for p in trace["sent"] if p[0] not in (0, 1, 3)] == [
+        12, 13, 16, *(command for group in (*actions_by_slot, final_actions) for command in (16, 22, *(p[0] for p in group))),
+    ]
+    assert sum(sound == "ulse23.mp3" for sound in trace["terrainSounds"]) == 4
+    assert (card_inventory_id, STARTER_CARD) in owned_character_cards(database, avatar_id)
+    capture(stage, directory, "quest-32-authoritative-world-return.png")
+    return card_receipt
 
 
 def check_peaceful_quest(page, origin, database, name, password, directory, kind, gem_slot, complete):
@@ -2914,7 +3128,7 @@ def check_peaceful_quest(page, origin, database, name, password, directory, kind
     original_progress = detail.get_attribute("data-progress")
     first_box = check_terrain_hover(page, stage, directory, first_button, title, caption, "01-first-land-hover.png")
     music(page, "quest", "ulbgm03.mp3")
-    page.evaluate("""() => {
+    page.evaluate("""observeGemBack => {
       const track = document.querySelector('#stage > audio[data-bgm-scene=quest]');
       window.qaTerrainMusic = {track, start: track.currentTime};
       const trace = window.qaQuestWire.sockets.at(-1);
@@ -2927,7 +3141,20 @@ def check_peaceful_quest(page, origin, database, name, password, directory, kind
         }
         return playback;
       };
-    }""")
+      if (observeGemBack) {
+        const observer = new MutationObserver(() => {
+          const panel = document.querySelector('#quest-map-treasure[data-state=holding]');
+          if (!panel) return;
+          const back = panel.querySelector('#quest-map-treasure-back');
+          window.qaInitialGemHolding = {backVisible: Boolean(back && !back.hidden && back.getClientRects().length),
+            okDisabled: panel.querySelector('#quest-map-treasure-ok')?.disabled === true};
+          observer.disconnect();
+        });
+        observer.observe(document.querySelector('#quest-map-view'), {
+          subtree: true, childList: true, attributes: true, attributeFilter: ['data-state'],
+        });
+      }
+    }""", gem)
     pre_entry = read_movement_trace(page)
     hold_movement_reply(page, 16, first_button.click, before=[25 if gem else 19])
     expect(view).to_have_attribute("data-adventure-state", "entering")
@@ -3036,8 +3263,10 @@ def check_peaceful_quest(page, origin, database, name, password, directory, kind
     assert avatar(database, player_id) == [before[:3] + (before[3] + (30 if gem else 0),) + before[4:]]
     capture(stage, directory, "09-authoritative-battle-move.png", animations="allow")
     if complete:
+        staged_award = None
         if gem:
-            check_q32_right_route(page, stage, directory, database, player_id, quest, deck, locked, trace, positions)
+            route_check = check_q32_left_route if battle_slot == 3 else check_q32_right_route
+            staged_award = route_check(page, stage, directory, database, player_id, quest, deck, locked, trace, positions)
         else:
             check_q4_terminal(page, stage, directory, database, player_id, quest, deck, injury, complete)
         assert all(not peer.is_closed() for peer in live[:4])
@@ -3061,6 +3290,8 @@ def check_peaceful_quest(page, origin, database, name, password, directory, kind
             "archive": dict(zip(("status", "progress", "deckIndex", "hp0", "hp1", "hp2"), archived[0], strict=True)),
             "deckLock": quest_deck(database, avatar_id)[0][-1],
         }
+        if staged_award is not None:
+            trace["physicalCardAward"] = staged_award
         capture(stage, directory, "lobby-after-original-quest-close.png")
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
@@ -3663,7 +3894,7 @@ def main():
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
                         help="Choose the left or right authored q32 battle; defaults to slot 5")
     parser.add_argument("--quest-peaceful-complete", choices=("win", "defeat"),
-                        help="Complete q4 or the right q32 path with a source-seeded disposable dwarf fixture")
+                        help="Complete q4 or either q32 branch with the source-seeded disposable fixture")
     parser.add_argument("--quest-terminal", choices=("return", "late", "defeat"),
                         help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()
@@ -3691,10 +3922,8 @@ def main():
         parser.error("--quest-peaceful-gem-slot requires --quest-peaceful gem")
     if args.quest_peaceful_complete and not args.quest_peaceful:
         parser.error("--quest-peaceful-complete requires --quest-peaceful")
-    if args.quest_peaceful_complete and args.quest_peaceful == "gem" and (
-        args.quest_peaceful_complete != "win" or args.quest_peaceful_gem_slot == 3
-    ):
-        parser.error("Full q32 uses a win on the right path (slot 5)")
+    if args.quest_peaceful_complete == "defeat" and args.quest_peaceful == "gem":
+        parser.error("Full q32 requires --quest-peaceful-complete win")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[

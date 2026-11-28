@@ -14,7 +14,8 @@ const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function prepareQuestBattleStage(layers) {
   if (!decodedStages.has(layers)) {
-    const decoding = Promise.all(layers.map(layer => {
+    const media = new Map(layers.map(layer => [layer.file, layer]));
+    const decoding = Promise.all(Array.from(media.values(), layer => {
       const image = new Image(layer.width, layer.height);
       image.src = new URL(layer.file, art);
       return image.decode();
@@ -148,7 +149,18 @@ function sprite(parent, artLayer, root = art) {
   return image;
 }
 
-function drawStageLayer(battle, source, signal) {
+function drawStageLayer(battle, source, signal, tracks) {
+  if (source.animation) {
+    const { x, y, width, height, depth, animation } = source;
+    const { frameCount, columns, framesPerSecond } = animation;
+    const clip = layer(battle, 'quest-battle-stage-animation', depth);
+    place(clip, x, y, width, height);
+    clip.style.overflow = 'clip';
+    clip.dataset.frame = '0';
+    const sheet = sprite(clip, { file: source.file, x: 0, y: 0, width: columns * width, height: Math.ceil(frameCount / columns) * height });
+    tracks.push({ clip, sheet, width, height, frameCount, columns, framesPerSecond, frame: 0 });
+    return;
+  }
   if (!source.scroll || reduced()) {
     sprite(battle, source);
     return;
@@ -165,6 +177,29 @@ function drawStageLayer(battle, source, signal) {
     { transform: `translateX(${direction * width}px)` },
   ], { duration: 1000 * width / stepsPerSecond, iterations: Infinity, easing: `steps(${width}, end)` });
   signal.addEventListener('abort', () => animation.cancel(), { once: true });
+}
+
+function drawStageLayers(battle, layers, signal) {
+  const tracks = [];
+  for (const source of layers) drawStageLayer(battle, source, signal, tracks);
+  if (!tracks.length || reduced() || signal.aborted) return;
+  const started = performance.now();
+  let animation;
+  function advance(now) {
+    if (signal.aborted) return;
+    for (const track of tracks) {
+      const frame = Math.floor(Math.max(0, now - started) * track.framesPerSecond / 1000) % track.frameCount;
+      if (frame === track.frame) continue;
+      track.frame = frame;
+      track.clip.dataset.frame = String(frame);
+      const x = -(frame % track.columns) * track.width;
+      const y = -Math.floor(frame / track.columns) * track.height;
+      track.sheet.style.transform = `translate(${x}px, ${y}px)`;
+    }
+    animation = requestAnimationFrame(advance);
+  }
+  signal.addEventListener('abort', () => cancelAnimationFrame(animation), { once: true });
+  animation = requestAnimationFrame(advance);
 }
 
 async function animate(node, frames, duration, signal, delay = 0) {
@@ -1248,7 +1283,7 @@ export async function mountQuestBattleEntry(view, board, {
   title.tabIndex = -1;
   title.textContent = '戰鬥開場';
   battle.append(title);
-  for (const source of layers) drawStageLayer(battle, source, signal);
+  drawStageLayers(battle, layers, signal);
   const moveFocus = board.contains(document.activeElement) || document.activeElement === document.body;
   view.append(battle);
   board.inert = true;

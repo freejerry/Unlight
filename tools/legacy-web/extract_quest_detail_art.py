@@ -6,6 +6,7 @@ Use: python3 -B tools/legacy-web/extract_quest_detail_art.py ASSET_ROOT \
 
 Requires Pillow, Cairo and librsvg. Input SWFs are pinned;
 swfdump reads the original tags and timelines without running ActionScript.
+Generate the castle candles with extract_quest_stage0_art.py after this command.
 """
 
 import argparse
@@ -68,7 +69,9 @@ SOURCE_DIGESTS = {
     "unit_chara04": "b2b425125e5897e0c460f49116d60f7a4354389022a44dfe3c75b27bcdf2cb26",
     "unit_chara11": "f6fdb01b3ff95d95d14f7bc650a102b79f7e0bcf150e01c318bedfaae0e939d2",
     "unit_chara12": "7c67cb97b7e14dfac14d5f54039ce786d91ed4266b04dadcdb1c572485675496",
+    "bg_btl00a": "d31ddf773955018d227b9bec7a9b3d40d566e111bde7eef10050792eed1b91b3",
     "bg_btl00a_far": "fc69665706cffedd9ca894d99dfde48a6db2cc0e6de40d4a2a123d54afb32170",
+    "bg_btl00a_book": "34615ce7fe027f31b3ff7f858bcb677d457cc698a47fdf857c48dcc2728187ba",
     "bg_btl02a": "6efa988629c9288fecac1b529d6dba7c58c98a5062e9000bf0e9c6c9597fc927",
     "bg_btl03a": "2a46c9649848ac593073f801fd90bb5a8e3414b77c4e88bd38b90feb8fe25f12",
     "bg_btl11a": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
@@ -105,7 +108,8 @@ SOURCE_DIGESTS = {
     "standmon003_00_f": "63d67d31585cddce6f3582956bf722ad00bd3353afc3d27356d77af09ad31e5a",
 }
 BATTLE_SOURCE_DIRS = {
-    **dict.fromkeys(("bg_btl00a_far", "bg_btl02a", "bg_btl03a", "bg_btl11a", "bg_btl11a_book"), "bg"),
+    **dict.fromkeys(("bg_btl00a", "bg_btl00a_far", "bg_btl00a_book", "bg_btl02a", "bg_btl03a",
+                     "bg_btl11a", "bg_btl11a_book"), "bg"),
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
                      "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
@@ -804,6 +808,10 @@ def extract(asset_root, art, swfdump):
     manifest = json.loads(manifest_path.read_text())
     if manifest["assetRevision"] != REVISION:
         raise ValueError("Quest art manifest uses a different asset revision")
+    # The separate stage 0 tool exports its original radial morph with FFDec.
+    castle = manifest.get("battle", {}).get("stages", {}).get("0")
+    castle_art = {name: layer for name, layer in manifest["layers"].items()
+                  if castle and name.startswith("quest-battle-stage00-")}
     manifest["layers"] = {
         name: layer for name, layer in manifest["layers"].items()
         if not name.startswith(("quest-detail-", "quest-battle-"))
@@ -1304,12 +1312,15 @@ def extract(asset_root, art, swfdump):
         detail["terrain"][str(stage)] = terrains[stem]
 
     manifest["detail"] = detail
+    stages = {
+        "2": {"layers": stage2_battle_layers(), "bgm": "/public/sound/bgm/bgm002.mp3"},
+        "3": {"layers": stage3_battle_layers(), "bgm": "/public/sound/bgm/bgm003.mp3"},
+        "11": {"layers": stage11_battle_layers(), "bgm": "/public/sound/bgm/bgm000.mp3"},
+    }
+    if castle:
+        stages = {"0": castle, **stages}
     manifest["battle"] = {
-        "stages": {
-            "2": {"layers": stage2_battle_layers(), "bgm": "/public/sound/bgm/bgm002.mp3"},
-            "3": {"layers": stage3_battle_layers(), "bgm": "/public/sound/bgm/bgm003.mp3"},
-            "11": {"layers": stage11_battle_layers(), "bgm": "/public/sound/bgm/bgm000.mp3"},
-        },
+        "stages": stages,
         "common": [battle_static_frame()],
         "commonEntry": {"durationMs": 500, "easing": "sine-out"},
         "hud": battle_hud(),
@@ -1323,6 +1334,7 @@ def extract(asset_root, art, swfdump):
             "delayAfterDetermineMs": 1100,
         },
     }
+    manifest["layers"].update(castle_art)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
     count = sum(name.startswith(("quest-detail-", "quest-battle-")) for name in manifest["layers"])
     print(f"Extracted {count} quest detail and battle images.")

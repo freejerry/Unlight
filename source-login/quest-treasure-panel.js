@@ -153,7 +153,7 @@ async function prepareGemFace(face, gem, amount) {
 function rewardKey(treasure, card, land) {
   const positiveInteger = value => Number.isSafeInteger(value) && value > 0;
   if (!positiveInteger(treasure?.treasureId)) return null;
-  if (treasure?.type === 1 && treasure.slotType === 1 && card && treasure.value === card.id
+  if ([1, 6].includes(treasure.type) && treasure.slotType === 1 && card && treasure.value === card.id
       && treasure.card?.cardId === card.id && [card.id, treasure.card.inventoryId].every(positiveInteger)) {
     return `card:${treasure.card.inventoryId}`;
   }
@@ -185,8 +185,8 @@ export function mountQuestTreasurePanel(view, { treasure, card, land, assets, si
   Object.assign(dialog.dataset, { state: 'loading', treasureId: String(treasure.treasureId),
     type: String(isGem ? 5 : treasure.type), value: String(isGem ? treasure.amount : treasure.value) });
   if (treasure.slotType !== undefined) dialog.dataset.slotType = String(treasure.slotType);
-  if (isGem) Object.assign(dialog.dataset, { gemBalance: String(treasure.balance),
-    questInventoryId: String(land.inventoryId), landSlot: String(land.slot) });
+  if (land) Object.assign(dialog.dataset, { questInventoryId: String(land.inventoryId), landSlot: String(land.slot) });
+  if (isGem) dialog.dataset.gemBalance = String(treasure.balance);
   else Object.assign(dialog.dataset, { cardId: String(card.id), cardInventoryId: String(treasure.card.inventoryId) });
   const title = add(dialog, 'h2', 'quest-map-treasure-title');
   title.className = 'sr-only';
@@ -251,7 +251,7 @@ export function mountQuestTreasurePanel(view, { treasure, card, land, assets, si
         put(skin, selected);
       }, { signal: visual });
     }
-    async function confirmGem() {
+    async function confirmReward() {
       let confirmed;
       try { confirmed = await onConfirm(); }
       catch { confirmed = false; }
@@ -268,8 +268,8 @@ export function mountQuestTreasurePanel(view, { treasure, card, land, assets, si
     button.addEventListener('click', () => {
       if (button.disabled || dialog.dataset.state !== 'ready' || visual.aborted) return;
       button.disabled = true;
-      if (isGem) {
-        void confirmGem();
+      if (isGem || treasure.type === 6) {
+        void confirmReward();
         return;
       }
       state.acknowledged.add(key);

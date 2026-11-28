@@ -87,6 +87,8 @@ const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byt
 const QUEST_LAND_SLOTS = 15;
 const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
 const QUEST_CHARACTER_TREASURE_TYPE = 1; // Original TG_CHARA_CARD.
+const QUEST_OWN_CARD_TREASURE_TYPE = 6; // Original TG_OWN_CARD.
+const QUEST_VANGUARD_KINDS = new Set([0, 8, 13]); // Original ordinary, reborn, and episode characters.
 const QUEST_BOSS_KIND = 2; // Original QT_BOSS.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const LAST_ORDINARY_SEARCH_MAP = 36;
@@ -630,26 +632,39 @@ export function canAppendDeckCharacter(card, currentCards) {
     && roster.slice(0, index).every((other) => DECK_CHARACTER_IDENTITIES.every((key) => entry[key] !== other[key])));
 }
 
-async function verifyDeckAppend(cardId, previousCards, signal) {
-  const ids = new Set([cardId, ...previousCards.map((card) => card.cardId)]);
+async function readDeckCharacterCatalog(ids, signal) {
   const params = new URLSearchParams({ ids: [...ids].join(',') });
   try {
     const response = await fetch(`/api/deck-character-catalog?${params}`, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(3500)]),
     });
-    if (!response.ok) return false;
+    if (!response.ok) return null;
     const { cards } = await response.json();
-    if (!Array.isArray(cards) || cards.length !== ids.size) return false;
+    if (!Array.isArray(cards) || cards.length !== ids.size) return null;
     const known = new Map();
     for (const card of cards) {
-      if (!ids.has(card.id) || known.has(card.id)) return false;
+      if (!ids.has(card?.id) || known.has(card.id)) return null;
       known.set(card.id, card);
     }
-    return canAppendDeckCharacter(known.get(cardId), previousCards.map((card) => known.get(card.cardId)));
+    return known;
   } catch {
     signal.throwIfAborted();
-    return false;
+    return null;
   }
+}
+
+async function verifyDeckAppend(cardId, previousCards, signal) {
+  const ids = new Set([cardId, ...previousCards.map((card) => card.cardId)]);
+  const known = await readDeckCharacterCatalog(ids, signal);
+  return Boolean(known && canAppendDeckCharacter(known.get(cardId), previousCards.map((card) => known.get(card.cardId))));
+}
+
+async function readQuestVanguardReward(deck, signal) {
+  const roster = deck.cards.slice().sort((first, second) => first.position - second.position);
+  const known = await readDeckCharacterCatalog(new Set(roster.map(({ cardId }) => cardId)), signal);
+  if (!known || [...known.values()].some(({ kind }) => !Number.isInteger(kind))) return null;
+  const vanguard = roster.map(({ cardId }) => known.get(cardId)).find(({ kind }) => QUEST_VANGUARD_KINDS.has(kind));
+  return validQuestCardId(vanguard?.ownCardLevel1Id) ? vanguard.ownCardLevel1Id : null;
 }
 
 async function submitDeckAppend(socket, { inventoryId, deckIndex, position }, signal, markSent) {
@@ -1194,7 +1209,7 @@ async function readQuestRoute(questId, signal) {
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
   for (const { slot, id, name, caption, stage, nextMask, enemyId, eventNo, emptyTerrain, fixedGemTreasure,
-    fixedBattleGemTreasure, fixedCharacterTreasure, nextSlots } of positions) {
+    fixedBattleGemTreasure, fixedCharacterTreasure, ownCardTreasure, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
@@ -1210,6 +1225,9 @@ async function readQuestRoute(questId, signal) {
         ? verifiedFixedTreasure(fixedBattleGemTreasure, QUEST_GEM_TREASURE_TYPE) : null,
       fixedCharacterTreasure: ordinaryMap && storyNo === 0 && nextMask === 0 && validQuestCardId(enemyId)
         ? verifiedFixedTreasure(fixedCharacterTreasure, QUEST_CHARACTER_TREASURE_TYPE) : null,
+      ownCardTreasure: ordinaryMap && storyNo === 0 && eventNo === 0 && nextMask > 0 && validQuestCardId(enemyId)
+        && ownCardTreasure?.slotType === 1 && ownCardTreasure.value === 1
+        ? verifiedFixedTreasure(ownCardTreasure, QUEST_OWN_CARD_TREASURE_TYPE) : null,
       mapId, questKind: kind, mapClearTarget,
       nextSlots,
     });
@@ -1262,6 +1280,7 @@ function questSceneAdventureSnapshot(current, operation) {
     inventoryId, questId, deckIndex, state: current.state, slot: current.slot,
     progress: current.run.progress, encounter: current.encounter ?? null, finish: current.finish ?? null,
     emptyTerrain: current.emptyTerrain === true, fixedGemTreasure: current.fixedGemTreasure ?? null,
+    ...(current.cardTreasure ? { cardTreasure: current.cardTreasure } : {}),
     ...(current.terrainReceivedAt != null ? { terrainReceivedAt: current.terrainReceivedAt } : {}),
     battle: current.state === 'encounter' ? current.battle.sceneSnapshot(operation) : null,
     ...(current.state === 'between-lands' ? { nextLands: current.nextLands ?? current.battle.outcome.nextLands } : {}),
@@ -1349,9 +1368,10 @@ function questRoster(cardIds, damage) {
 
 function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange, continuation) {
   const land = continuation && run.positions?.get(slot);
-  const fixedCharacterTreasure = land?.fixedCharacterTreasure;
+  const ownCardTreasure = land?.ownCardTreasure && { ...land.ownCardTreasure, value: continuation.ownCardLevel1Id };
+  const characterTreasure = land?.fixedCharacterTreasure ?? ownCardTreasure;
   const fixedBattleGemTreasure = land?.fixedBattleGemTreasure;
-  const fixedTreasure = fixedCharacterTreasure ?? fixedBattleGemTreasure;
+  const fixedTreasure = characterTreasure ?? fixedBattleGemTreasure;
   const treasureMap = fixedTreasure && land.nextMask === 0 ? expectedTreasureMapUpdate(land, continuation.mapBefore) : null;
   let treasureStage = 'progress';
   let treasureCard;
@@ -2106,14 +2126,18 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
       case QUEST_CHARACTER_AWARD_REPLY: {
         const card = readQuestCharacterAwardReply(reply);
-        if (fixedCharacterTreasure && expectsFixedTreasure()) {
+        if (characterTreasure && expectsFixedTreasure()) {
           if (awards.has(card.inventoryId) || continuation.knowsCard(card.inventoryId) || awards.size >= MAX_QUEST_ROWS) {
             return failQuestOutcome();
           }
-          if (card.cardId === fixedCharacterTreasure.value && ['progress', 'award', 'treasure'].includes(treasureStage)) {
-            if (treasureStage !== 'award') return failQuestOutcome();
-            treasureCard = card;
-            treasureStage = 'treasure';
+          if (ownCardTreasure && !['progress', 'award'].includes(treasureStage)) return failQuestOutcome();
+          if (card.cardId === characterTreasure.value) {
+            if (treasureStage === 'award') {
+              treasureCard = card;
+              treasureStage = 'treasure';
+            } else if (treasureStage === 'treasure' || (!ownCardTreasure && treasureStage === 'progress')) {
+              return failQuestOutcome();
+            }
           }
         }
         if (awards.size < MAX_QUEST_ROWS && !awards.has(card.inventoryId)) awards.set(card.inventoryId, card);
@@ -2123,7 +2147,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (!expectsFixedTreasure() || treasureStage !== 'treasure') return failQuestOutcome();
         readMatchingQuestTreasure(reply, fixedTreasure);
         treasure = fixedBattleGemTreasure ? fixedGemReceipt(fixedBattleGemTreasure, treasureBalance)
-          : { ...fixedCharacterTreasure, card: treasureCard };
+          : { ...characterTreasure, card: treasureCard, ...(ownCardTreasure ? { receivedAt: performance.now() } : {}) };
         treasureStage = 'damage';
         break;
       }
@@ -2138,6 +2162,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
             treasureStage = 'treasure';
           } else if (treasureStage !== 'delete' || value <= settlementAvatar.gems) {
             // Terminal achievements may credit further absolute totals after the map updates and before deletion.
+            return failQuestOutcome();
+          }
+        } else if (ownCardTreasure && expectsFixedTreasure() && treasureStage !== 'progress') {
+          // Own Card may grant achievement Gems while the source creates the physical card.
+          if (treasureStage !== 'award' || (settlementAvatar.gems !== null && value <= settlementAvatar.gems)) {
             return failQuestOutcome();
           }
         }
@@ -2665,6 +2694,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let questStartUncertain = false;
   let adventure = null;
   const boundQuestDecks = new Map();
+  const confirmedQuestAwards = new Set();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
 
@@ -3188,7 +3218,6 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const previousObserver = previousBattle ?? current.nonCombatObserver;
     return runQuestSceneOperation(scene, 'land', signal, async (socket, questSignal) => {
       const priorRun = current.run;
-      const earlierAwards = scene.lastOutcome?.receipt?.cards ?? [];
       let run = priorRun;
       let firstLand;
       if (continuing) {
@@ -3207,6 +3236,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       }
       if (!firstLand || firstLand.stage === null || firstLand.nextMask === null) {
         throw new SessionError('quest-land-unavailable');
+      }
+      let ownCardLevel1Id = null;
+      if (firstLand.ownCardTreasure) {
+        if (initialData.selectedDeck?.index !== selected.deckIndex) throw new SessionError('quest-reward-unavailable');
+        ownCardLevel1Id = await readQuestVanguardReward(current.deck, questSignal);
+        questSignal.throwIfAborted();
+        if (current.state !== previousState) throw new SessionError('quest-land-uncertain');
+        if (!ownCardLevel1Id) throw new SessionError('quest-reward-unavailable');
       }
       const previousProgress = run.progress ?? 0;
       const opensPassage = firstLand.nextMask > 0 && Boolean(firstLand.fixedGemTreasure || (!continuing && firstLand.emptyTerrain));
@@ -3240,8 +3277,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           }, {
             fence: (signal) => fenceQuestSceneLand(scene, signal),
             reconcile: (receipt) => reconcileSceneLandProgress(scene, current, receipt),
+            ownCardLevel1Id,
             mapBefore: { questFlag: questData.questFlag, questClearNum: questData.questClearNum },
-            knowsCard: (id) => earlierAwards.some(({ inventoryId }) => inventoryId === id)
+            knowsCard: (id) => confirmedQuestAwards.has(id)
               || initialData?.deckCollection?.binder.some(({ inventoryId }) => inventoryId === id)
               || initialData?.deckChoices?.some(({ cards }) => cards.some(({ inventoryId }) => inventoryId === id)),
           });
@@ -3250,7 +3288,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         }, {
           firstLand, previousProgress, expectBattle: continuing && !opensPassage,
           emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
-          strictTerrain: Boolean(opensPassage || current.nonCombatObserver || current.fixedGemTreasure),
+          strictTerrain: Boolean(opensPassage || current.nonCombatObserver || current.fixedGemTreasure || current.cardTreasure),
           onArrival() {
             current.slot = slot;
             publishQuestScene(scene);
@@ -3269,6 +3307,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (result.progress !== null) run.progress = result.progress;
         current.emptyTerrain = result.emptyTerrain;
         current.fixedGemTreasure = result.fixedGemTreasure ? Object.freeze(result.fixedGemTreasure) : null;
+        current.cardTreasure = null;
         current.terrainReceivedAt = result.terrainReceivedAt;
         current.nextLands = null;
         if (result.finish) {
@@ -3320,7 +3359,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     scene.channel.socket.assertOpen();
     current.state = 'between-lands';
     publishQuestScene(scene);
-    return current.fixedGemTreasure;
+    return current.fixedGemTreasure ?? current.cardTreasure;
   }
 
   function matchesEncounter(current, key) {
@@ -3366,8 +3405,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     if (outcome.state === 'land-cleared') {
       const treasure = outcome.receipt?.treasure;
       current.fixedGemTreasure = treasure?.type === QUEST_GEM_TREASURE_TYPE ? treasure : null;
+      current.cardTreasure = treasure?.type === QUEST_OWN_CARD_TREASURE_TYPE ? treasure : null;
       current.nextLands = outcome.nextLands;
-      current.state = current.fixedGemTreasure ? 'terrain-reward' : 'between-lands';
+      current.state = current.fixedGemTreasure || current.cardTreasure ? 'terrain-reward' : 'between-lands';
       current.encounter = null;
       scene.lastOutcome = outcome;
       publishQuestScene(scene);
@@ -3487,6 +3527,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const deltas = { exp: null, gems: null, level: null };
     if (!avatar) return deltas;
 
+    for (const { inventoryId } of receipt.cards ?? []) confirmedQuestAwards.add(inventoryId);
     const leveled = receipt.avatar.level !== null && receipt.avatar.level !== avatar.level;
     if (questScene?.energyOwned && (leveled || receipt.avatar.energy !== null)) ownQuestEnergy(questScene);
     if (leveled) {

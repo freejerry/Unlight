@@ -179,6 +179,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 右線依次核對格 1、5、8、10 的 30、30、50、30 Gem，使用實際 `SC25` 和各格確認，保留牌組和傷勢。末戰的寶物餘額與可能的成就後總餘額各自核對。暫緩真實 `SC25`、Pong、`SC40` 或末戰 `SC24` 時，分別核對腳本標記的畫面及輸入狀態。最後依序確認戰果、寶箱、通關，在原世界地圖按 Back，確認唯一 `CS2` 只關閉 Quest。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [原版路徑與待驗項](quest-pve.md#道路終局與泥潭後續格)
 
+### 重跑泥潭左線及先鋒卡寶箱
+
+用另一個隔離角色、Deck 1 的卡 21、原版搜尋種子 106 與傷勢 `[1,0,0]` 建立持有任務。只在這個角色的原版 `MultiDuel` 初始化前設種子 1，保留實際 Ruby 計時。沿用 `--quest-start-user` 與對應的密碼檔，以 `--quest-peaceful gem --quest-peaceful-gem-slot 3 --quest-peaceful-complete win` 執行。腳本核對格 3、6、10 的原版發牌、距離與攻守選擇，分別打 1、2、1 回合。[原版戰鬥及存檔](/workspace/shared/unlight-web-port/flash-parity/quest-q32-left-source/seed1-quest32-left.json) · [先鋒選卡查核](/workspace/shared/unlight-web-port/flash-parity/quest-q32-left-source/VANGUARD.md)
+
+舞台 0 檢查城堡和欄杆、6 處燭光原始位置及同步畫格、`bgm000.mp3`。格 6 核對同一持有任務的 `SC19=74`，實體卡 `SC13` 與實際卡號 `SC25 [6,1,21]`，以及後續 `SC20` 和 Pong。確認前讀 SQLite 的 Binder 與原牌組。格 10 先驗六點傷勢與原地回復，再檢查末格寶箱、通關及 Back。保留舞台、寶箱、封包、音效與存檔。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [左線逐項規格](quest-pve.md#泥潭左線與先鋒卡)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)
