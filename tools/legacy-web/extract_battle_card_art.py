@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Extract the pinned q1 standing, opening and first-hand artwork."""
+"""Extract the pinned q1 standing, card and battle dice artwork."""
 
 import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
+from subprocess import check_output
+from tempfile import TemporaryDirectory
+from xml.etree import ElementTree
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 from extract_character_card_art import DisplayList, REVISION, bitmap, checked_source, matrix, timeline
 from extract_quest_detail_art import kind, png_bytes, rasterize_svg
@@ -18,6 +21,20 @@ STANDS = {
 }
 FRAME = ("data/image/game/acframe.swf", "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9")
 CONTROLS = ("data/image/cardaction.swf", "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220")
+DICE_MODEL = ("public/image/dice.dae", "c2d6b5e9544be41661d677fc189584d4f65aba1be1bf6618c49ed2d43fb71240")
+DICE_TEXTURES = {
+    "attack": ("public/image/tex/dice.png", "223b9af344df9d802f32e3a10c63e9e07008d0cf551a22c699ca1c7ab5582439"),
+    "defense": ("public/image/tex/dice_red.png", "159b5a44fb7ca3c5151a020fa05a8dab189994bca8f9e45639ada2e5db60c57e"),
+    "attackSpecial": ("public/image/tex/dice_c.png", "a3473f86b6eb16fcd9fcf662024db9d29a478128c891f4cf929dc532d5041db0"),
+    "defenseSpecial": ("public/image/tex/dice_f.png", "8192e6b832e1dfc733d74420dac5feb1135e379a3688625af09fb58e70d8211b"),
+}
+DICE_RESULT = {
+    "attack": ("data/image/dice_atk.swf", "75fe841271bdee34bfe86817c12d56ca6b7e22bd69c99dca4bf4421dfbbbc73f"),
+    "defense": ("data/image/dice_def.swf", "7c96801ff3e9a51d93bef2c7667a1f0c5440a4837a92f469ef9c6da0fea4ef20"),
+}
+DAMAGE_LABEL = ("data/image/game/text_damage.swf", "2e167ac663df760cdfd2ee7022be0e4ff6b9fbfad32e5c2b09aac0d4f711fcfa")
+# ffdec.jar in the published ffdec_26.6.0.zip release.
+FFDEC_SHA256 = "3f1b1993a8ab34d4910192931236074d2c69db23e23d69cd16848c851b1995c3"
 VALUES = {
     "1": ("data/image/game/acswd.swf", "5ff0efceca5172942e75086d7e9afe8fadc93f1e8c6737cfe8c2c4c17fcc558a"),
     "2": ("data/image/game/acbow.swf", "e1067ace938650908ed1928d25b1f221c822570a077f8fd2bf28e2e3df1a6f1c"),
@@ -103,15 +120,134 @@ def card_controls(movie, save):
     return {"rotate": rotate, "arrow": extract("arrow", shape, x, -40, sourceInstance="arrow", sourceFrame=1)}
 
 
+def dice_mesh(path):
+    ns = {"d": "http://www.collada.org/2005/11/COLLADASchema"}
+    root = ElementTree.parse(path)
+    mesh = root.find("d:library_geometries/d:geometry/d:mesh", ns)
+    faces = mesh.find("d:triangles", ns)
+    if root.findtext("d:asset/d:up_axis", namespaces=ns) != "Z_UP" or faces.attrib["material"] != "_Default":
+        raise ValueError("Unexpected original dice coordinate system or material")
+    inputs = {node.attrib["semantic"]: (node.attrib["source"][1:], int(node.attrib["offset"]))
+              for node in faces.findall("d:input", ns)}
+    if set(inputs) != {"VERTEX", "NORMAL", "TEXCOORD"} or {index for _, index in inputs.values()} != {0, 1, 2}:
+        raise ValueError("Unexpected original dice triangle attributes")
+    vertices = mesh.find("d:vertices/d:input[@semantic='POSITION']", ns)
+    if mesh.find("d:vertices", ns).attrib["id"] != inputs["VERTEX"][0]:
+        raise ValueError("Unexpected original dice vertex reference")
+
+    def read_source(id):
+        value = mesh.find(f"d:source[@id='{id}']", ns)
+        array = value.find("d:float_array", ns)
+        positions = tuple(map(float, array.text.split()))
+        accessor = value.find("d:technique_common/d:accessor", ns)
+        if (accessor.attrib["source"] != f'#{array.attrib["id"]}' or accessor.attrib["stride"] != "3"
+                or len(positions) != int(array.attrib["count"]) or len(positions) % 3):
+            raise ValueError("Unexpected original dice vertex stride")
+        return list(zip(positions[::3], positions[1::3], positions[2::3], strict=True))
+
+    vertices = read_source(vertices.attrib["source"][1:])
+    texture_coords = read_source(inputs["TEXCOORD"][0])
+    indices = list(map(int, faces.findtext("d:p", namespaces=ns).split()))
+    if len(indices) != int(faces.attrib["count"]) * 9:
+        raise ValueError("Invalid original dice triangle count")
+    pairs = {}
+    positions, uv, triangles = [], [], []
+    for offset in range(0, len(indices), 3):
+        key = (indices[offset + inputs["VERTEX"][1]], indices[offset + inputs["TEXCOORD"][1]])
+        if key not in pairs:
+            pairs[key] = len(pairs)
+            positions.extend(vertices[key[0]])
+            uv.extend(texture_coords[key[1]][:2])
+        triangles.append(pairs[key])
+    return {"positions": positions, "uv": uv, "indices": triangles}
+
+
+def dice_result_sprite(movie):
+    instance = movie.frame(movie.movie, 1)[0]
+    (symbol,) = [node for group in movie.movie if kind(group) == "SymbolClass" for node in group
+                 if node.get("className") == instance["idref"]]
+    return instance, movie.symbols[symbol.attrib["idref"]]
+
+
+def dice_success(movie, instance, sprite, role, pin, save):
+    (normal,) = movie.frame(sprite, 1)
+    shape = movie.symbols[normal["idref"]]
+    (fill,) = [node for node in shape if kind(node) == "fillstyle"]
+    if shape.get("bounds") != "1000x1000" or fill.get("matrix") != "s20.0,20.0 t0,0":
+        raise ValueError("Unexpected original normal dice artwork")
+    source = fill.attrib["idref"]
+    image = bitmap(movie.source, *movie.bitmaps[source])
+    if image.size != (50, 50):
+        raise ValueError("Unexpected original normal dice bitmap size")
+    x, y = matrix(instance["matrix"])[4:]
+    file = save(f"dice-result-{role}.png", image, pin, sourceInstance=instance["name"],
+                sourceFrame=1, sourceLabel="normal", sourceBitmap=int(source))
+    return {"file": file, "x": x / 20, "y": y / 20, "width": image.width, "height": image.height}
+
+
+def dice_hit(args, movie, sprite, normal, save):
+    cursor = 1
+    first = None
+    for tag in sprite:
+        if kind(tag) == "FrameLabel" and tag.get("label") == "hit":
+            first = cursor
+        elif kind(tag) == "ShowFrame":
+            cursor += 1
+    last = cursor - 1
+    if first != 8 or last != 22:
+        raise ValueError("Unexpected authored Hit timeline")
+    sprite_id = sprite.attrib["id"]
+    # The nested hit-letter sprite starts at parent frame 10 and stops on its
+    # own frame 12. FFDec's static exporter wraps the child once at parent 22.
+    nested, = [node for node in movie.frame(sprite, 10) if node["idref"] == "21"]
+    if len(list(timeline(movie.symbols[nested["idref"]]))) != 12 or movie.frame(sprite, 21) != movie.frame(sprite, 22):
+        raise ValueError("Unexpected authored Hit hold")
+    last_image = 21
+    with TemporaryDirectory(prefix="unlight-dice-hit-") as directory:
+        check_output([
+            "java", "-Djava.awt.headless=true", f"-Duser.home={directory}", "-jar", args.ffdec,
+            "-onerror", "abort", "-selectid", sprite_id, "-select", f"{sprite_id}:1,{first}-{last_image}",
+            "-format", "sprite:png", "-export", "sprite", directory, movie.source,
+        ])
+        (neutral_path,) = Path(directory).glob("DefineSprite_*/1.png")
+        neutral = Image.open(neutral_path).convert("RGBA")
+        base = Image.open(args.output / normal["file"]).convert("RGBA")
+        left, top, _, _ = neutral.getbbox()
+        base_left, base_top, _, _ = base.getbbox()
+        left, top = left - base_left, top - base_top
+        if ImageChops.difference(neutral.crop((left, top, left + base.width, top + base.height)),
+                                 base).getbbox(alpha_only=False):
+            raise ValueError("Exported dice timeline is misaligned with the original bitmap")
+        frames = []
+        unique = {}
+        for number in range(first, last + 1):
+            image = Image.open(neutral_path.with_name(f"{min(number, last_image)}.png")).convert("RGBA")
+            if image.size != neutral.size:
+                raise ValueError("Inconsistent Hit sprite stage size")
+            key = sha256(image.tobytes()).digest()
+            if key not in unique:
+                unique[key] = save(f"dice-result-hit-{number:02d}.png", image, DICE_RESULT["attack"],
+                                   sourceSprite=int(sprite_id), sourceFrame=number, sourceLabel="hit",
+                                   renderer="JPEXS FFDec 26.6.0", rendererSha256=FFDEC_SHA256)
+            frames.append({"file": unique[key], "x": normal["x"] - left, "y": normal["y"] - top,
+                           "width": image.width, "height": image.height, "sourceFrame": number})
+    return {"framesPerSecond": 24 * 1.7, "frames": frames}
+
+
 def generate(args):
     args.output.mkdir(parents=True, exist_ok=True)
+    if sha256(args.ffdec.read_bytes()).hexdigest() != FFDEC_SHA256:
+        raise ValueError("Expected ffdec.jar from the JPEXS 26.6.0 ZIP release")
     provenance = {}
-    def save(filename, image, pin, **details):
-        data = png_bytes(positive(image))
+
+    def save_bytes(filename, data, pin, **details):
         (args.output / filename).write_bytes(data)
         provenance[filename] = {"source": pin[0], "sourceSha256": pin[1],
                                 "sha256": sha256(data).hexdigest(), **details}
         return filename
+
+    def save(filename, image, pin, **details):
+        return save_bytes(filename, png_bytes(positive(image)), pin, **details)
 
     def open_movie(pin):
         return DisplayList(checked_source(args.assets, pin), args.swfdump)
@@ -171,9 +307,29 @@ def generate(args):
         first_frame = render(movie, movie.frame(movie.movie, 1), CARD_VIEW, skip=MARKS)
         events[name] = {"file": save(f"{Path(name).stem}.png", first_frame, pin, sourceFrame=1), "frame": 1}
     controls = card_controls(open_movie(CONTROLS), save)
+    dice_result = {}
+    for role, pin in DICE_RESULT.items():
+        movie = open_movie(pin)
+        instance, sprite = dice_result_sprite(movie)
+        normal = dice_success(movie, instance, sprite, role, pin, save)
+        dice_result[role] = {"normal": normal}
+        if role == "attack":
+            dice_result[role]["hit"] = dice_hit(args, movie, sprite, normal, save)
+    dice_roll = {
+        "mesh": dice_mesh(checked_source(args.assets, DICE_MODEL)),
+        "source": DICE_MODEL[0], "sourceSha256": DICE_MODEL[1],
+        "textures": {role: save_bytes(f"dice-roll-{role.lower()}.png", checked_source(args.assets, pin).read_bytes(), pin)
+                     for role, pin in DICE_TEXTURES.items()},
+    }
+    movie = open_movie(DAMAGE_LABEL)
+    damage_label = render(movie, movie.frame(movie.movie, 1), (0, 0, 48, 26))
+    damage = {"label": {"file": save("dice-damage-label.png", damage_label, DAMAGE_LABEL, sourceFrame=1),
+                        "x": 0, "y": 0, "width": 48, "height": 26}}
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "stands": stands, "actionFrames": action_frames,
-             "actionValues": values, "eventValues": events, "actionControls": controls, "provenance": provenance}
+             "actionValues": values, "eventValues": events, "actionControls": controls,
+             "exchange": {"diceResult": dice_result, "diceRoll": dice_roll, "damage": damage},
+             "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n")
 
 
@@ -182,4 +338,5 @@ if __name__ == "__main__":
     parser.add_argument("assets", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--swfdump", type=Path, required=True)
+    parser.add_argument("--ffdec", type=Path, required=True, help="ffdec.jar from the JPEXS 26.6.0 ZIP release")
     generate(parser.parse_args())

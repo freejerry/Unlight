@@ -37,6 +37,17 @@ export async function battleCardControls(signal) {
   }
 }
 
+/** Original first-exchange dice and result artwork. */
+export async function battleExchangeArt(signal) {
+  if (signal?.aborted) return null;
+  try {
+    const { exchange } = await loadManifest();
+    return signal?.aborted ? null : exchange ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function loadImage(file) {
   if (typeof file !== 'string' || !/^[a-z0-9_-]+\.png$/.test(file)) throw new Error('Invalid original battle asset path.');
   if (!images.has(file)) {

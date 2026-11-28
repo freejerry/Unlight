@@ -129,6 +129,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 以另一位全新角色加 `--quest-start-fault move`。在 Ruby 接受出牌後先擋住本方 `SC61`，確認桌面維持先前狀態。直到結果無法確認後才放行遲到的原始封包，核對畫面、重送次數、同一條 Quest 和 SQLite 的任務狀態。驗原版逾時則自首回合開始完整等待畫面 60 秒，核對沒有任何指標動作也只發送一次 `CS26`。[實機腳本](../../../tools/legacy-web/check_source_lobby.py)
 
+### 重跑首回合第一組攻防
+
+同一組 `--quest-start-user` 指令會從移動結果繼續。由當次 Ruby 的 `SC51` 和 `SC53` 選擇出牌權。依序放牌、收牌、再次放牌及按 OK，核對物理牌 ID、桌面與手牌索引。保留實際 `SC55` 並暫緩後續 `SC56`，檢查牌已揭露、生命值仍維持原數值。放行後核對實際兩組骰面、原始 WebGL 擲骰、命中聲、傷害和生命值。確認下一個階段的權威回覆已到達，首組操作只送一次。[實機腳本](../../../tools/legacy-web/check_source_lobby.py)
+
+用另一位全新角色加 `--quest-start-fault combat`，在 Ruby 接受出牌後擋住本方 `SC65`。驗證遲到的回覆仍維持結果未確認、桌面和手牌未被提前改動，重按沒有重送，也不會發出成功移牌音。兩場使用同登入的 Quest 連線，並核對 AP、持有任務和牌組鎖。[原版實跑步驟](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/README.md) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-native-first-exchange-wire.json)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

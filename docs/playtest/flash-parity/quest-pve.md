@@ -117,11 +117,17 @@
 
 ### 後續驗收
 
-1. 以首回合實際先手和距離接上攻防。核對 `SC51` 的可操作方、可用牌、兩方鎖定、骰子與扣血，保留同一條 Quest。對照原版的攻擊、防禦及等待版面、動畫和聲音。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版階段切換](../../../app/client/src/view/scene/game/DuelTable.as#L545)
-2. 接續換角與其他回合。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
+1. 從首組攻防的下一筆 `SC51` 接上攻守互換，保留同一條 Quest 與真實手牌、距離、HP 及階段時鐘。接續第二組攻防、下回合的 Draw／Move，以及首場勝敗。以原版實跑核對第二組攻守、命中切入、傷害特效和回合轉場。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版階段切換](../../../app/client/src/view/scene/game/DuelTable.as#L545)
+2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 接續局結果及任務結算，按持有 ID 驗證 `SC24`。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
 4. 首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。
 5. 測試延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。依隔離 Ruby 的 SQLite 查核持久化結果，測試紀錄只保存非敏感資料。早期原版、共享傳輸和暫停分支各自有測例，固定舞台狀態依本分支實跑結果更新。
+
+| 首組之後的狀態 | 下一段原版驗收依據 |
+| --- | --- |
+| 同回合再攻防 | 兩位現役角色仍存活時，Ruby 清空已用桌牌、重置完成狀態並反轉先手。下一筆 `SC51` 開啟同回合第二組。確認時間、可操作方及首組已耗用的牌，第二組骰面和傷害要保存獨立證據。[先手切換](../../../app/server/src/rule/multi_duel.rb#L473) · [階段回覆](../../../app/server/src/controller/duel_controller.rb#L545) |
+| 下一回合 | 第二組結束後先以 `SC60` 重置移動方向，`SC43` 才更新回合數。`SC44/45` 為本回合新補的牌，可能為空。`SC46` 再開放移動。驗收保留跨回合未用手牌、已扣血量和同一條 Quest 的單次 Ready。[方向回覆](../../../app/server/src/controller/duel_controller.rb#L688) · [回合補牌](../../../app/server/src/controller/duel_controller.rb#L446) |
+| 擊倒與終止 | 含存活後備角色時，依 `SC57` 換角，`CS35` 確認後核對本方 `SC72` 和相應 `SC58`。最後一位倒下或到期時，以 `SC41` 顯示戰鬥結果，依匹配持有項目的 `SC24` 處理地圖結算。原版任務會將決鬥和局當作任務敗北，離場另有 1.5 秒等待。分別保存存活、換角、和局及最終勝敗的兩版證據。[死亡換角](../../../app/server/src/rule/event/multi_duel_event.rb#L205) · [任務結算](../../../app/server/src/controller/quest_controller.rb#L608) · [Flash 離場](../../../app/client/src/net/server/QuestServer.as#L750) |
 
 ### 開始與首格的原版觀察
 
@@ -166,7 +172,23 @@
 - 新版獨立指標流程先選前進再選後退。真實牌 9 旋轉後從手牌索引 1 放入桌面 0，收回後從混合手牌索引 5 再放入。按 OK 發一次 `CS26`。`SC48` 確認距離 3、對手先攻、雙方點數 1 與 3。雙方牌面驗證為 56×86，維持原來的桌面區域。同一登入的五條連線、AP 4/5、任務與鎖定牌組均經核對。[新版指標封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-manual-wire.json) · [新版結算畫面](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-manual-03-result.png)
 - 另一場保持畫面原地等待，從觀察到 Move 到發送 `CS26` 約 59.6 秒。一整輪無方向與牌片操作、開始和確認各一次，實際 Ruby 結算距離 1、對手先手。另在真出牌回覆延遲至未確認後才交付的案例，牌留手中，驗證再次點擊也維持同一次出牌命令。[自然逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-wire.json) · [計時警示](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-02-original-countdown-warning.png) · [遲到回覆畫面](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/qa-05-movement-reply-uncertain.png) · [原樣重跑](qa.md#重跑首回合移動)
 
-此段支援單卡落日大蝙蝠的主要移動操作。換角、攻防操作、戰鬥日誌的先手與距離文字、逐牌有效標記與其他事件牌效果待接續。原版移動確認後會短暫保留停止的計時條，新版此時收起，待接上下一階段的 HUD 交接時核對。兩版並排保留各場真正抽到的牌與取樣時點。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [移動素材清單](../../../source-login/quest-art/sources.json) · [卡片原始素材](../../../source-login/battle-card-art/index.json)
+移動涵蓋單卡落日大蝙蝠的主要操作。移動確認後保留停止的計時條，直到 Ruby 開啟下一階段。換角、戰鬥日誌的先手與距離文字、其餘逐牌有效標記及事件牌效果留在後續驗收。兩版並排保留各場真正抽到的牌與取樣時點。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [移動素材清單](../../../source-login/quest-art/sources.json) · [卡片原始素材](../../../source-login/battle-card-art/index.json)
+
+### 首回合第一組攻防
+
+| 階段 | 原版規格 |
+| --- | --- |
+| 攻擊、防禦與等待 | `SC51` 的 `true` 開放本方攻擊，`false` 進入等待。`SC53` 的 `true` 開放本方防禦，`false` 等對手防禦。原版保留移動結算到攻防交接。攻擊桌依距離與霧選近、遠或通用底圖，防禦用藍色桌面。等待交換兩方切入肖像，沒有確認鍵或可操作手牌。攻擊和防禦切換各播 `ulse12.mp3`，等待沿用當時音軌。畫面倒數為 60 秒，啟用中的角色到期使用和 OK 相同的操作。對手回合的倒數只顯示，Ruby 另有 120 秒階段時間。[畫面切換](../../../app/client/src/view/scene/game/DuelTable.as#L545) · [階段音](../../../app/client/src/view/scene/game/PhaseArea.as#L218) · [原版桌面](../../../app/client/src/view/scene/game/DropTable.as#L947) · [伺服器時間](../../../app/server/src/rule/event/multi_duel_event.rb#L153) |
+| 舞台與圖層 | 780×680 舞台中，階段條的防禦片段從 `(388,58)` 顯示。攻防桌上兩列 56×86 牌片分別在 y84 及 y346，壓在距離與時間條對應的區域。左側顯示本方點數、右側顯示對手點數，從 `num_btl_p.swf` 擷取原始數字。`SC82` 更新實際點數與原版所標示的牌。攻守底圖保留半透明混合及原始 50 格時間軸。按鈕中心為 `(568,602)`。原版各時點可見的牌張數依對手動作及揭牌更新。[原版防禦取樣](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/05-original-combat-card-on-table.png) · [原圖、來源雜湊與畫格](../../../source-login/quest-art/sources.json) |
+| 出牌與操作確認 | 本方按卡片在手牌和桌面間移動，中心轉鈕送 `CS32`。攻擊放置／收回用 `CS28/29`，防禦用 `CS30/31`。原版 `CS30` 的索引固定為 0，物理牌 ID 仍是實際所選。成功的本方 `SC65/66` 用物理牌 ID 核對，Ruby 回覆索引固定為 0，收回後依來源追加至手牌。對手通知只改變牌背張數。等待方維持手牌。`CS33/34` 依攻防確認，兩個 UTF 欄位留空。`SC52/54` 各確認該階段的牌，另有雙方鎖牌旗標。`SC55` 確認進入擲骰前的雙方牌面。[出牌索引來源](../../../app/client/src/model/Entrant.as#L322) · [結算與通知格式](../../../app/server/src/protocol/command/questcommand.rb#L787) · [本方手牌與音效](../../../app/client/src/view/scene/game/PlayerHand.as#L217) |
+| 骰子與傷害 | `SC56` 的 bool 表示本方是否攻擊，兩組數字串依序是攻擊與防禦的實際骰值。一般 Ruby 骰值 0–5 經原版 `RollResultEvent` 以 2、3、4、5、6、1 顯示。兩組皆有值時原版才進入擲骰視覺，正常音 `ulse07.mp3` 依每顆骰子間隔 50 ms 啟動。結果標記依顯示骰面與 `DiceResult` 配對。生命和傷害由 `SC73`／`SC79` 決定。攻擊距離 1 的斬擊使用 `ulse09.mp3`，其他距離的槍擊使用 `ulse10_f.mp3`。同一牌組存活時下一筆 `SC51` 表示攻守互換。角色死亡或終局走各自的原版後續。[骰子資料](../../../app/server/src/rule/multi_duel.rb#L445) · [骰面映射](../../../app/client/src/model/events/RollResultEvent.as#L12) · [擲骰原始動畫](../../../app/client/src/view/scene/game/DiceManager.as#L86) · [結果標記](../../../app/client/src/view/scene/game/DiceResult.as#L33) · [傷害特效](../../../app/client/src/view/image/game/StandCharaImage.as#L566) |
+| 擲骰的畫面交接 | 雙方原始 COLLADA 骰子保留本方左側、對手右側的投影。攻擊方用黑骰，防禦方用白骰及各自的特殊貼圖。依原版以 500 ms 彈跳與轉動，各骰錯開 50 ms，最後一顆落定後停留 500 ms，再與原始成功圖示交接。實測 WebGL 繪圖緩衝的左右亮度及貼圖綁定。原版近裁切與動作肖像另有可見差異。[攻守材質選擇](../../../app/client/src/view/scene/game/DuelTable.as#L724) · [彈跳及旋轉](../../../app/client/src/view/image/game/DiceObject.as#L147) · [模型、貼圖和圖示來源](../../../source-login/battle-card-art/index.json) |
+
+- 原版繁中 Flash 首次移動以空桌確認，Ruby 實際移到近距離並由對方先攻。原版等到 `SC53` 開放防禦後，從第三張行動牌送出物理牌 53 的上半面 `DEF1`，`CS30` 索引為 0。防禦點數由 5 變 6，對手攻擊共 15。原版 `CS34` 只送一次，得到 `SC54/55/56`，實際回傳對方 15 顆攻擊骰及本方 6 顆防禦骰。收到本方 `SC73` 扣 4 點，再收到下一次本方先攻 `SC51`。取樣保存防禦、擲骰與骰子抵銷圖示。[原版畫面與封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/README.md) · [原版防禦](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/04-original-combat-role-and-hover.png) · [原版擲骰](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/10-original-first-exchange.png)
+- 另一場繁中原版從登入重新試玩。實際回覆為 8 顆攻擊骰、6 顆防禦骰，`SC73` 扣本方 3 點。原版時間軸最後把生命數字從 7/7 改為 4/7，紅條為 354×4/7 後取整的 202 px，連續兩次畫面擷取一致。開啟本方攻擊時保持回合 1。[原版扣血及攻守互換](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/hp-proof/23-original-hp-changed.png) · [第二場原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/hp-proof/wire.json)
+- 新版正常測例實際進入遠距離防禦。放入物理牌 55、收回、再放入，核對索引及同一條 Quest。暫緩 `SC56` 時仍維持 7/7，放行實際 10 顆攻擊骰與 5 顆防禦骰後，`SC73` 扣 1 點至 6/7。播放 15 次擲骰短音及 1 次遠距離命中音。另一場獨立試玩直接讀取 WebGL 畫素，左側有 8,942 個高亮度像素，右側有 12,310 個低亮度像素，確認材質跟隨攻守。真 `SC65` 延遲案例在超時後只保留一筆放牌指令，沒有提前移牌或播放成功音。[原版與新版防禦並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/defense-table-comparison.png) · [兩次獨立擲骰取樣](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/rolling-dice-comparison.png) · [新版自動驗收封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-native-first-exchange-wire.json) · [獨立試玩與 WebGL 畫素](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/root-verified/root-first-combat-wire.json) · [遲到回覆畫面](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-07-combat-reply-uncertain.png)
+
+兩版在獨立帳號實跑，抽牌、距離及骰值依該場 Ruby 變動。正常瀏覽器流程已驗首次防禦，首次本方攻擊另有傳輸與 WebGL 材質測例，待原版和新版實際試玩。角色攻擊姿態、斬擊、槍擊、血花、戰鬥日誌與同回合的攻守互換操作也列在後續驗收。[重跑第一組攻防](qa.md#重跑首回合第一組攻防)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

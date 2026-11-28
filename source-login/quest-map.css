@@ -78,7 +78,7 @@
 }
 .quest-battle-hand-card canvas { inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .quest-battle-card-primary { inset: 0; width: 100%; height: 100%; }
-.quest-battle-layer :is([data-move-command], .quest-battle-card-primary, .quest-battle-card-rotate):not(:disabled) {
+.quest-battle-layer :is([data-move-command], [data-combat-command], .quest-battle-card-primary, .quest-battle-card-rotate):not(:disabled) {
   pointer-events: auto;
 }
 .quest-battle-layer button[aria-disabled="false"] { cursor: pointer; }
@@ -98,7 +98,7 @@
 .quest-battle-hand-card:is(:hover, :focus-within):has(.quest-battle-card-primary[aria-disabled="false"]) :is(.quest-battle-card-rotate, .quest-battle-card-hint) {
   opacity: 1;
 }
-.quest-battle-hand-card[data-zone="table"] :is(.quest-battle-card-rotate, .quest-battle-card-hint) { transform: rotate(180deg); }
+.quest-battle-hand-card:is([data-zone="table"], [data-zone="combat"]) :is(.quest-battle-card-rotate, .quest-battle-card-hint) { transform: rotate(180deg); }
 .quest-battle-hand-card[data-zone="hand"][data-move-hint="true"]:not(:hover, :focus-within):has(.quest-battle-card-primary[aria-disabled="false"]) .quest-battle-card-hint {
   opacity: .8;
   animation: quest-battle-arrow-idle .8s infinite alternate ease-in-out;
@@ -116,6 +116,24 @@
   color: #fff;
   background: rgb(0 0 0 / 80%);
   text-align: center;
+}
+.quest-battle-table-loop {
+  position: absolute;
+  overflow: clip;
+  pointer-events: none;
+}
+.quest-battle-table-loop > img { position: absolute; }
+.quest-battle-dice-roll { inset: 0; width: 780px; height: 680px; }
+.quest-battle-point-line { position: absolute; inset: 0; }
+.quest-battle-point-line > img { position: absolute; }
+#quest-battle-opponent-points { filter: invert(1); }
+.quest-battle-damage-number {
+  position: absolute;
+  color: #000;
+  font: 120px/120px "Bradley Gratis", Georgia, serif;
+  text-align: right;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  transform-origin: right top;
 }
 
 .quest-map-world,

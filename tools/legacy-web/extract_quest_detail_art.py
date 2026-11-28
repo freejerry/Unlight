@@ -73,6 +73,7 @@ SOURCE_DIGESTS = {
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
     "phase": "036bf094cb3399748e4da1a6d97ff25f44ccccdf0c6ecd7a58ee4ce856bcceda",
     "space": "8a8dcd9442e9eba116d7b2ca9a573e889975bd391107ce7e317e00063e452bf4",
+    "num_btl_p": "abc058c11d47d6c5c4909bf2839780490c1f3482cc180db6db0f9ad5ba4a2f35",
     "range_ch": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
     "time_base": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
     "life_base": "217aa172fbd85e2fb7d64345f6281092936572ca8a7d6bdd3301a9ebe4734fda",
@@ -101,7 +102,7 @@ SOURCE_DIGESTS = {
 BATTLE_SOURCE_DIRS = {
     "bg_btl11a": "bg", "bg_btl11a_book": "bg",
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
-                     "chat_base", "skill_base", "avatar_ch", "arrow_move"), "game"),
+                     "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
     **dict.fromkeys(("move_f_ch", "move_b_ch", "move_s_ch", "move_c_ch"), ""),
 }
@@ -996,19 +997,52 @@ def extract(asset_root, art, swfdump):
                          "durationMs": 300, "easing": "quadratic-in"},
         }
 
+    def table_animation(source, key, placement, frame):
+        frames = [contents for _, contents in timeline(source.symbol(placement))]
+        # The root label stops; its child plays continuously, holding each drawing for two ticks.
+        if len(frames) != 50 or frames[::2] != frames[1::2]:
+            raise ValueError(f"Unexpected combat table animation in {source.path}: {key}")
+        columns, width, height = 5, 760, 80
+        x, y = 0, 256
+        crop = tuple(n * TWIPS for n in (x, y, x + width, y + height))
+        atlas = Image.new("RGBA", (columns * width, columns * height))
+        shape_ids, bitmap_ids, sprite_frames = set(), set(), []
+        for i in range(len(frames) // 2):
+            child_frame = 2 * i + 1
+            pieces, shapes = authored_primitives(source, [placement | {"spriteFrame": child_frame}])
+            image, _, _ = rasterize(pieces, crop)
+            atlas.paste(image, (i % columns * width, i // columns * height))
+            shape_ids.update(shapes)
+            bitmap_ids.update(piece.bitmap_id for piece in pieces if piece.bitmap_id is not None)
+            sprite_frames.append(child_frame)
+        sheet = publish(source, f"quest-battle-table-{key}-atlas.png", png_bytes(atlas),
+                        {"x": x, "y": y, "width": atlas.width, "height": atlas.height}, "stage-atlas", frame,
+                        shapeIds=sorted(shape_ids), bitmapIds=sorted(bitmap_ids), sourceLabel=key,
+                        sourceDepth=1, spriteId=source.original_id(placement), sourceSpriteFrames=sprite_frames)
+        return {"file": sheet["file"], "x": x, "y": y, "width": width, "height": height, "columns": columns,
+                "frameCount": len(sprite_frames), "framesPerSecond": QUEST_STAGE_FRAME_RATE / 2,
+                "loop": True, "layerIndex": 0}
+
     def battle_hud():
         phase = movie("phase")
         phase_frames = list(timeline(phase.root))
         phase_animation = {}
-        for key, start, end in (("blk", 1, 1), ("drw", 2, 13), ("mov", 14, 25)):
+        # Each label plays through its authored MainTimeline stop() frame.
+        phase_sections = (("blk", 1, 1), ("drw", 2, 13), ("mov", 14, 25),
+                          ("atk_a", 26, 37), ("atk_b", 38, 49), ("atk_c", 50, 61),
+                          ("def_a", 62, 73), ("def_b", 74, 85), ("def_c", 86, 96))
+        for key, start, end in phase_sections:
+            if phase_frames[start - 1][0] != key:
+                raise ValueError(f"Unexpected Quest phase label: {key}")
             refs = [battle_art(phase, f"phase-{key}-{frame:02}", phase_frames[frame - 1][1], frame,
                                crop=(2640, 1160, 12560, 1480), sourceLabel=key) for frame in range(start, end + 1)]
             phase_animation[key] = {"frames": refs, "framesPerSecond": QUEST_STAGE_FRAME_RATE}
 
         space = movie("space")
         tables = {}
+        combat_tables = ("atk", "atk_l", "atk_all", "def", "wait_atk", "wait_def")
         for frame, (key, placements) in enumerate(timeline(space.root), 1):
-            if key not in ("blank", "drw_act", "drw_evt", "mov", "mov3on3"):
+            if key not in ("blank", "drw_act", "drw_evt", "mov", "mov3on3", *combat_tables):
                 continue
             layers = []
             for placement in placements:
@@ -1022,6 +1056,10 @@ def extract(asset_root, art, swfdump):
                         raise ValueError("Unsupported Quest table blend mode")
                     layers.append(image)
             tables[key] = {"layers": layers}
+            if key in combat_tables:
+                if placements[0]["depth"] != "1" or layers[0].get("blend"):
+                    raise ValueError(f"Unexpected base depth in Quest combat table: {key}")
+                tables[key]["animation"] = table_animation(space, key, placements[0], frame)
 
         range_movie = movie("range_ch")
         middle = range_movie.instance("middle") | {"spriteFrame": 17}
@@ -1073,6 +1111,9 @@ def extract(asset_root, art, swfdump):
                 "x1v1": x1, "x3v3": x3, "y": 258,
             }
             buttons[direction] = battle_button(source, f"button-{direction}", enabled, layers=buttons[direction])
+        points = movie("num_btl_p")
+        digits = [battle_art(points, f"combat-point-{number}", placements, number + 1)
+                  for number, (_, placements) in enumerate(list(timeline(points.root))[:10])]
         return {
             "phase": {key: assets["frames"][-1] for key, assets in phase_animation.items()},
             "phaseAnimation": phase_animation,
@@ -1099,6 +1140,7 @@ def extract(asset_root, art, swfdump):
             "done": done,
             "moveButtons": buttons,
             "movePresentation": move_presentation(),
+            "combat": {"points": {"digits": digits, "playerX": 219, "foeX": 543, "y": 263, "digitWidth": 40}},
             "chat": chat_art(),
             "skills": skill_art(),
             "bonus": {"initial": 0, "x": 10, "y": 150, "width": 170, "height": 100,

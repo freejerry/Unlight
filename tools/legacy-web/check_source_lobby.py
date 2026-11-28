@@ -155,16 +155,33 @@ def observe_session_codec(page, origin):
         fields.done();
         return [ids === '' ? [] : ids.split(',').map(Number), mask, opponentCount];
       }
+      function playedCards(fields) {
+        const ids = fields.string(4096, true);
+        const faces = fields.string(4096, true).split(',');
+        return ids === '' ? [] : ids.split(',').map((id, index) => [Number(id), faces[index] === 'true']);
+      }
       function movementResultFields(body) {
         const fields = read(body);
         const initiative = fields.byte();
         const distance = fields.byte();
-        const cards = () => {
-          const ids = fields.string(4096, true);
-          const faces = fields.string(4096, true);
-          return ids === '' ? [] : ids.split(',').map((id, index) => [Number(id), faces.split(',')[index] === 'true']);
+        const result = [initiative, distance, playedCards(fields), playedCards(fields),
+                        fields.byte(), fields.byte(), fields.byte(), fields.byte()];
+        fields.done();
+        return result;
+      }
+      function combatCardsFields(body) {
+        const fields = read(body);
+        const result = [playedCards(fields), playedCards(fields), fields.byte(), fields.byte()];
+        fields.done();
+        return result;
+      }
+      function diceFields(body) {
+        const fields = read(body);
+        const dice = () => {
+          const roll = fields.string(4096, true);
+          return roll === '' ? [] : roll.split(',').map(Number);
         };
-        const result = [initiative, distance, cards(), cards(), fields.byte(), fields.byte(), fields.byte(), fields.byte()];
+        const result = [fields.byte(), dice(), dice()];
         fields.done();
         return result;
       }
@@ -180,7 +197,9 @@ def observe_session_codec(page, origin):
           ? [command, fields[0], ...fields.slice(1).map(field => field.value)] : null;
         const movement = [23, 24, 25, 26, 32].includes(command)
           ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement});
+        const combat = [28, 29, 30, 31, 33, 34].includes(command)
+          ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat});
         return frame;
       }
       export function readReply(body) {
@@ -198,15 +217,23 @@ def observe_session_codec(page, origin):
             : reply.command === 128 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : reply.command === 37 && body.byteLength >= 9 ? encounterFields(body)
             : reply.command === 40 && body.byteLength === 7 ? [...body.slice(2)]
+            : reply.command === 41 && body.byteLength === 32 ? [bytes.getInt8(2), bytes.getInt8(31)]
             : reply.command === 43 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : (reply.command === 44 || reply.command === 45) && body.byteLength >= 11 ? refillFields(body)
             : reply.command === 48 && body.byteLength >= 24 ? movementResultFields(body)
+            : [51, 53].includes(reply.command) && body.byteLength === 3 ? [bytes.getInt8(2)]
+            : [52, 54, 55].includes(reply.command) && body.byteLength >= 20 ? combatCardsFields(body)
+            : reply.command === 56 && body.byteLength >= 11 ? diceFields(body)
             : reply.command === 60 && body.byteLength === 4 ? [bytes.getInt8(2), bytes.getInt8(3)]
-            : (reply.command === 61 || reply.command === 62) && body.byteLength === 8
+            : [61, 62, 65, 66].includes(reply.command) && body.byteLength === 8
             ? [bytes.getInt8(2), bytes.getInt8(3), bytes.getInt32(4)]
             : reply.command === 63 && body.byteLength === 10
             ? [bytes.getInt8(2), bytes.getInt8(3), bytes.getInt8(4), bytes.getInt32(5), bytes.getInt8(9)]
-            : reply.command === 67 && body.byteLength === 3 ? [bytes.getInt8(2)]
+            : [67, 68, 69].includes(reply.command) && body.byteLength === 3 ? [bytes.getInt8(2)]
+            : reply.command === 73 && body.byteLength === 8 ? [bytes.getInt8(2), bytes.getInt32(3), bytes.getInt8(7)]
+            : reply.command === 74 && body.byteLength === 12
+            ? [bytes.getInt8(2), bytes.getInt32(3), bytes.getInt32(7), bytes.getInt8(11)]
+            : reply.command === 79 && body.byteLength === 7 ? [bytes.getInt8(2), bytes.getInt32(3)]
             : reply.command === 6 && body.byteLength >= 19
             ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
           replies.push([reply.command, body.byteLength, ...data]);
@@ -236,18 +263,19 @@ def observe_quest_wire(page):
           if (service === '/socket/12002') this.lobbyTrace = wire.lobby;
           if (service !== {QUEST_PORT!r}) return;
           const overlaps = wire.sockets.some(socket => !socket.close);
-          const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], movement: [], replies: [], close: null, held: false, overlaps }};
+          const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], movement: [], combat: [], replies: [], close: null, held: false, overlaps }};
           wire.sockets.push(trace);
           this.addEventListener('close', event => {{ trace.close = [event.code, event.wasClean]; }});
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
           if (this.questTrace) {{
-            const {{ command, confirm, action, movement }} = encoded;
+            const {{ command, confirm, action, movement, combat }} = encoded;
             this.questTrace.sent.push([command, frame.byteLength]);
             if (confirm) this.questTrace.confirms.push(confirm);
             if (action) this.questTrace.actions.push(action);
             if (movement) this.questTrace.movement.push(movement);
+            if (combat) this.questTrace.combat.push(combat);
             if (command === 22) {{
               const battle = document.querySelector('#quest-map-battle');
               (this.questTrace.readySends ??= []).push([battle?.dataset.burn, battle?.dataset.intro]);
@@ -990,8 +1018,9 @@ def observe_quest_opening_audio(page):
       trace.openingEffects = [];
       HTMLMediaElement.prototype.play = function () {
         const file = this.src.split('/').at(-1);
-        if (!/^ulse(?:05_[ab]|06|08|12|28|29)\\.mp3$/.test(file)) return play.call(this);
-        const phase = document.getElementById('quest-map-battle')?.dataset.phase;
+        if (!/^ulse(?:05_[ab]|06|07|08|09|10_f|12|28|29)\\.mp3$/.test(file)) return play.call(this);
+        const view = document.getElementById('quest-map-battle');
+        const phase = view?.dataset.exchangePhase || view?.dataset.phase;
         return play.call(this).then(() => { trace.openingEffects.push([file, phase]); });
       };
     }""")
@@ -1322,6 +1351,264 @@ def check_quest_movement(page, stage, directory, initial_hand, *, drop_reply):
     return movement
 
 
+def combat_health(battle):
+    readings = {}
+    for side in ("player", "opponent"):
+        value = battle.locator(f"#quest-battle-{side}-hp")
+        readings[side] = int(value.get_attribute("data-hp"))
+    return readings
+
+
+def check_combat_hp(battle, before, replies):
+    expected = dict(before)
+    for command, _, player, *values in replies:
+        side = "player" if player else "opponent"
+        if command == 73:
+            expected[side] -= values[0]
+        elif command == 74 and values[0] == 0:
+            expected[side] -= values[1]
+        elif command == 79:
+            expected[side] = values[0]
+    for side, hp in expected.items():
+        expect(battle.locator(f"#quest-battle-{side}-hp")).to_have_attribute("data-hp", str(max(0, hp)))
+
+
+def observe_combat_dice(page):
+    page.evaluate("""() => {
+      const trace = window.qaQuestWire.sockets.at(-1);
+      trace.diceDraws = [];
+      const contexts = new WeakSet();
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+        const gl = getContext.call(this, kind, ...args);
+        if (kind !== 'webgl2' || this.id !== 'quest-battle-dice-roll' || !gl || contexts.has(gl)) return gl;
+        contexts.add(gl);
+        const materials = new WeakMap();
+        const observed = new Set();
+        let bound;
+        let region;
+        function observe(name, record) {
+          const method = gl[name].bind(gl);
+          gl[name] = (...args) => {
+            const result = method(...args);
+            record(args);
+            return result;
+          };
+        }
+        observe('bindTexture', ([target, texture]) => { if (target === gl.TEXTURE_2D) bound = texture; });
+        observe('texImage2D', args => {
+          const image = args.at(-1);
+          if (bound && image instanceof HTMLImageElement) materials.set(bound, image.src.split('/').at(-1));
+        });
+        observe('scissor', args => { region = args; });
+        observe('drawElements', () => {
+          const file = materials.get(bound);
+          if (!region || !file) return;
+          const key = region.join(',') + file;
+          if (observed.has(key)) return;
+          observed.add(key);
+          trace.diceDraws.push([...region, file]);
+        });
+        return gl;
+      };
+    }""")
+
+
+def check_quest_combat(page, stage, directory, initial_hand, *, drop_reply):
+    battle = page.locator("#quest-map-battle")
+    hand = battle.locator("#quest-battle-player-hand")
+    table = battle.locator("#quest-battle-player-table")
+    done = battle.locator('button[data-combat-command="done"]')
+    result = battle.locator("#quest-battle-exchange-result")
+    if not drop_reply:
+        observe_combat_dice(page)
+    page.wait_for_function("""() => window.qaQuestWire.sockets.at(-1).replies
+      .some(([command]) => command === 51)""", timeout=TIMEOUT)
+    trace = read_movement_trace(page)
+    first_attack = next(reply for reply in trace["replies"] if reply[0] == 51)
+    assert first_attack in ([51, 3, 0], [51, 3, 1]), first_attack
+    player_attacks = bool(first_attack[2])
+    expect(battle).to_have_attribute("data-player-attacks", str(player_attacks).lower(), timeout=TIMEOUT)
+    assert not trace["combat"]
+    live_card = hand.locator(".quest-battle-hand-card").first.locator(".quest-battle-card-primary")
+    current_phase = battle.get_attribute("data-exchange-phase")
+    if not player_attacks and current_phase == "awaiting-defense":
+        expect(battle).to_have_attribute("data-combat-role", "waiting")
+        expect(live_card).to_be_disabled()
+        expect(done).to_be_hidden()
+        target = live_card.bounding_box()
+        page.mouse.click(target["x"] + 27, target["y"] + 18)
+        assert not read_movement_trace(page)["combat"]
+        capture(stage, directory, "19a-waiting-for-opponent-attack.png")
+    role = "attack" if player_attacks else "defense"
+    expect(battle).to_have_attribute("data-exchange-phase", role, timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-combat-role", role)
+    expect(done).to_be_enabled()
+    expect(battle.locator("button[data-move-command]:visible")).to_have_count(0)
+    timer = battle.locator("#quest-battle-combat-time")
+    expect(timer).to_have_attribute("data-duration-ms", "60000")
+    moved = next(reply for reply in trace["replies"] if reply[0] == 48)
+    distance = moved[3]
+    played = {card for card, _ in moved[4]}
+    remaining = [row for row in initial_hand if row[0] not in played]
+    check_dealt_cards(hand.locator(".quest-battle-hand-card"), remaining)
+    if not player_attacks:
+        assert [53, 3, 1] in read_movement_trace(page)["replies"]
+    definitions = action_card_definitions()
+    candidates = [(index, row) for index, row in enumerate(remaining) if row[2] == "action"]
+    assert candidates
+    expected_type = "1" if player_attacks and distance == 1 else "2" if player_attacks else "3"
+    matching = [(index, row) for index, row in candidates
+                if definitions[row[0]]["u_type" if row[1] else "b_type"] == expected_type]
+    index, (card_id, up, _) = ([(i, row) for i, row in matching if i > 0] or matching or candidates)[0]
+    hand_card = hand.locator(f'.quest-battle-hand-card[data-card-id="{card_id}"]')
+    placed_card = table.locator(f'[data-card-id="{card_id}"][data-zone="combat"]')
+    add = hand_card.locator(".quest-battle-card-primary")
+    body_hit = {"x": 27, "y": 18}
+    add_opcode, remove_opcode, done_opcode = (28, 29, 33) if player_attacks else (30, 31, 34)
+    # Flash passes the checked physical index for attacking, and a default zero for defense.
+    actions = [[add_opcode, card_id, index if player_attacks else 0, int(up)]]
+    effects_before = read_movement_trace(page)["openingEffects"]
+    capture(stage, directory, "19b-local-combat-phase.png")
+
+    add_bounds = add.bounding_box()
+    hold_movement_reply(page, add_opcode, lambda: add.click(position=body_hit))
+    expect(hand_card).to_be_visible()
+    expect(placed_card).to_have_count(0)
+    expect(done).to_be_disabled()
+    duplicate_hit = (add_bounds["x"] + body_hit["x"], add_bounds["y"] + body_hit["y"])
+    page.mouse.click(*duplicate_hit)
+    assert read_movement_trace(page)["combat"] == actions
+    if drop_reply:
+        expect(battle).to_have_attribute("data-exchange-phase", "uncertain", timeout=TIMEOUT)
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-exchange-phase", "uncertain")
+        expect(hand_card).to_be_visible()
+        expect(placed_card).to_have_count(0)
+        page.mouse.click(*duplicate_hit)
+        trace = read_movement_trace(page)
+        assert trace["combat"] == actions and [65, 8, 1, 0, card_id] in trace["replies"], trace
+        assert sum(file == "ulse06.mp3" for file, _ in trace["openingEffects"]) == sum(
+            file == "ulse06.mp3" for file, _ in effects_before
+        )
+        expect(result).to_have_count(0)
+        capture(stage, directory, "19c-combat-reply-uncertain.png")
+        return actions
+
+    release_movement_reply(page)
+    expect(placed_card).to_be_visible()
+    expect(hand_card).to_have_count(0)
+    expect(placed_card).to_have_attribute("data-up", str(up).lower())
+    assert [65, 8, 1, 0, card_id] in read_movement_trace(page)["replies"]
+    capture(stage, directory, "19c-combat-card-placed.png")
+
+    retract = placed_card.locator(".quest-battle-card-primary")
+    hold_movement_reply(page, remove_opcode, lambda: retract.click(position=body_hit))
+    actions.append([remove_opcode, card_id, 0])
+    expect(placed_card).to_be_visible()
+    expect(hand_card).to_have_count(0)
+    release_movement_reply(page)
+    expect(hand_card).to_be_visible()
+    expect(placed_card).to_have_count(0)
+    assert [66, 8, 1, 0, card_id] in read_movement_trace(page)["replies"]
+    assert hand.locator(".quest-battle-hand-card").last.get_attribute("data-card-id") == str(card_id)
+
+    add.click(position=body_hit)
+    actions.append([add_opcode, card_id, len(remaining) - 1 if player_attacks else 0, int(up)])
+    expect(placed_card).to_be_visible()
+    done_box = done.bounding_box()
+    hold_movement_reply(page, done_opcode, done.click, through=55)
+    actions.append([done_opcode, "", ""])
+    trace = read_movement_trace(page)
+    first_reveal = next(i for i, payload in enumerate(trace["replies"]) if payload[0] == 55)
+    revealed = trace["replies"][first_reveal]
+    assert revealed[2] == [[card_id, up]], revealed
+    phase_receipts = [payload for payload in trace["replies"][:first_reveal + 1] if 51 <= payload[0] <= 55]
+    assert [payload[0] for payload in phase_receipts] == [51, 52, 53, 54, 55], phase_receipts
+    assert phase_receipts[2] == [53, 3, int(not player_attacks)]
+    assert not any(payload[0] == 56 for payload in trace["replies"][first_reveal + 1:])
+    expect(done).to_be_disabled()
+    expect(timer).to_have_count(0)
+    expect(battle.locator("#quest-battle-attack-dice [data-value], #quest-battle-defense-dice [data-value]")).to_have_count(0)
+    hp_before = combat_health(battle)
+    page.mouse.click(done_box["x"] + done_box["width"] / 2, done_box["y"] + done_box["height"] / 2)
+    assert read_movement_trace(page)["combat"] == actions
+    assert combat_health(battle) == hp_before
+    capture(stage, directory, "19d-reveal-before-dice.png")
+
+    assert page.evaluate("""index => {
+      const wire = window.qaQuestWire;
+      return wire.endActionHold(true) > 0 && wire.sockets.at(-1).replies.slice(index + 1)
+        .some(([command]) => command === 56);
+    }""", first_reveal), "Actual SC56 did not arrive inside the held result tail"
+    expect(result).to_have_count(1, timeout=TIMEOUT)
+    expect(result).to_have_attribute("data-player-attacks", str(player_attacks).lower())
+    trace = read_movement_trace(page)
+    after_reveal = trace["replies"][first_reveal + 1:]
+    dice_index = next(i for i, payload in enumerate(after_reveal) if payload[0] == 56)
+    die = after_reveal[dice_index]
+    assert bool(die[2]) is player_attacks, die
+    if die[3] and die[4]:
+        roll = battle.locator('#quest-battle-dice-roll[data-state="settled"]')
+        expect(roll).to_have_attribute("width", "780", timeout=TIMEOUT)
+        expect(roll).to_have_attribute("height", "680")
+        assert roll.evaluate("""canvas => {
+          const gl = canvas.getContext('webgl2');
+          const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+          gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          return pixels.some((channel, index) => index % 4 === 3 && channel !== 0);
+        }""")
+        # Original camera regions stay on their owning side, but the materials follow attack/defense.
+        phases = ("attack", "defense") if player_attacks else ("defense", "attack")
+        actual_draws = sorted(read_movement_trace(page)["diceDraws"])
+        assert actual_draws == [
+            [0, 0, 450, 660, f"dice-roll-{phases[0]}.png"], [120, 20, 660, 660, f"dice-roll-{phases[1]}.png"]
+        ], actual_draws
+        if directory is not None:
+            stage.screenshot(path=directory / "19e-original-dice-roll.png", scale="css")
+    page.wait_for_function("""index => {
+      const replies = window.qaQuestWire.sockets.at(-1).replies.slice(index + 1);
+      const dice = replies.findIndex(([command]) => command === 56);
+      return dice >= 0 && replies.slice(dice + 1).some(([command]) => [41, 43, 49, 51, 57, 59].includes(command));
+    }""", arg=first_reveal, timeout=TIMEOUT)
+    trace = read_movement_trace(page)
+    after_reveal = trace["replies"][first_reveal + 1:]
+    boundary_index = next(i for i in range(dice_index + 1, len(after_reveal))
+                          if after_reveal[i][0] in (41, 43, 49, 51, 57, 59))
+    boundary_command = after_reveal[boundary_index][0]
+    state, boundary = ("terminal", "terminal") if boundary_command == 41 else (
+        "complete", "character-change" if boundary_command in (49, 57) else "next-attack")
+    expect(result).to_have_attribute("data-state", state, timeout=TIMEOUT)
+    expect(result).to_have_attribute("data-boundary", boundary)
+    for side, values in (("attack", die[3]), ("defense", die[4])):
+        spots = battle.locator(f"#quest-battle-{side}-dice [data-value]")
+        expect(spots).to_have_count(len(values), timeout=TIMEOUT)
+        eyes = (2, 3, 4, 5, 6, 1)
+        assert spots.evaluate_all("dice => dice.map(die => [+die.dataset.value, +die.dataset.eye])") == [
+            [value, eyes[value]] for value in values
+        ]
+    first_index = trace["replies"].index(first_attack)
+    health = [payload for payload in trace["replies"][first_index:first_reveal + 1 + boundary_index]
+              if payload[0] in (73, 74, 79)]
+    check_combat_hp(battle, {"player": 7, "opponent": 1}, health)
+    damage_rows = battle.locator("#quest-battle-damage-events li[data-damage]")
+    assert damage_rows.evaluate_all("""rows => rows.map(({dataset}) => [
+      dataset.player === 'true', Number(dataset.damage), dataset.nonHostile === 'true'
+    ])""") == [[bool(payload[2]), payload[3], bool(payload[4])] for payload in health if payload[0] == 73]
+    effects = read_movement_trace(page)["openingEffects"]
+    assert sum(file == "ulse06.mp3" for file, _ in effects) - sum(
+        file == "ulse06.mp3" for file, _ in effects_before
+    ) == 3, effects
+    assert sum(file == "ulse07.mp3" for file, _ in effects) == (len(die[3]) + len(die[4]) if die[3] and die[4] else 0), effects
+    assert [phase for file, phase in effects if file == "ulse12.mp3" and phase not in {"draw", "move"}] == [role], effects
+    if any(payload[0] == 73 and payload[3] > 0 and not payload[4] for payload in health):
+        assert any(file == ("ulse09.mp3" if distance == 1 else "ulse10_f.mp3") for file, _ in effects), effects
+    expect(done).to_be_disabled()
+    assert page.evaluate("window.qaMovementMusic === document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
+    capture(stage, directory, "19f-authoritative-first-exchange.png")
+    return actions
+
+
 def check_quest_start(page, origin, database, name, password, directory, fault):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
@@ -1403,6 +1690,7 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     assert avatar(database, player_id) == [updated]
     capture(stage, directory, "16b-start-before-reply.png")
     expected_movement = []
+    expected_combat = []
 
     if fault == "start":
         expect(view).to_have_attribute("data-start-state", "uncertain", timeout=TIMEOUT)
@@ -1463,6 +1751,10 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
             initial_hand = check_quest_opening(page, stage, directory, drop_reply=fault == "ready")
             if initial_hand is not None:
                 expected_movement = check_quest_movement(page, stage, directory, initial_hand, drop_reply=fault == "move")
+                if fault in (None, "combat"):
+                    assert avatar(database, player_id) == [updated]
+                    assert quest_inventory(database, avatar_id) == [started] and quest_deck(database, avatar_id) == locked
+                    expected_combat = check_quest_combat(page, stage, directory, initial_hand, drop_reply=fault == "combat")
 
     if fault:
         if page.locator("#login-alert").is_visible():
@@ -1473,7 +1765,8 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     assert len(live) == 5 and all(not peer.is_closed() for peer in live) and not trace["overlaps"]
     actions = trace["actions"]
     assert actions == [[13, inventory_id, 1], *([] if fault == "start" else [[16, inventory_id, 1, 1]])]
-    states = [reply for reply in trace["replies"] if reply[0] in (4, 17)]
+    encounter_entry = next((i for i, reply in enumerate(trace["replies"]) if reply[0] == 128), len(trace["replies"]))
+    states = [reply for reply in trace["replies"][:encounter_entry] if reply[0] in (4, 17)]
     assert states[:2] == [[4, 10, 4], [17, 11, inventory_id, 1, 1]]
     assert states[2:] == ([] if fault == "start" else [[4, 10, 4], [17, 11, inventory_id, 2, 1]])
     encounter = [reply for reply in trace["replies"] if reply[0] in (128, 37, 40)]
@@ -1481,7 +1774,8 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     assert [reply[0] for reply in encounter] == expected_encounter, encounter
     if encounter:
         assert encounter[0] == [128, 3, 1] and encounter[1][2:] == [-1, "CPU", "21", "1004", 11, *([0] * 6)]
-    if fault in (None, "ready", "move"):
+    ready_requested = fault in (None, "ready", "move", "combat")
+    if ready_requested:
         assert len(encounter[2]) == 7 and encounter[2][1] == 7 and encounter[2][-2:] == [2, 1]
         ready = [reply for reply in trace["replies"] if 43 <= reply[0] <= 46]
         assert [reply[0] for reply in ready] == [43, 44, 45, 46] and ready[-1] == [46, 2], ready
@@ -1491,15 +1785,22 @@ def check_quest_start(page, origin, database, name, password, directory, fault):
     assert [packet for packet in trace["sent"] if packet[0] in movement_sizes] == [
         [command, movement_sizes[command]] for command, *_ in expected_movement
     ]
+    assert trace["combat"] == expected_combat, trace["combat"]
+    combat_sizes = {28: 11, 29: 10, 30: 11, 31: 10, 33: 9, 34: 9}
+    assert [packet for packet in trace["sent"] if packet[0] in combat_sizes] == [
+        [command, combat_sizes[command]] for command, *_ in expected_combat
+    ]
     assert [command for command, _ in trace["sent"] if command not in {0, 1, 3}] == [
-        5, 12, *(command for command, *_ in actions), *([22] if fault in (None, "ready", "move") else []),
-        *(command for command, *_ in expected_movement),
+        5, 12, *(command for command, *_ in actions), *([22] if ready_requested else []),
+        *(command for command, *_ in expected_movement), *(command for command, *_ in expected_combat),
     ]
     assert [packet for packet in trace["sent"] if packet[0] in {13, 16}] == [
         [command, 10 if command == 13 else 11] for command, *_ in actions
     ]
-    assert avatar(database, player_id) == [updated] and equipped_parts(database, avatar_id) == original_parts
-    assert quest_inventory(database, avatar_id) == [started] and quest_deck(database, avatar_id) == locked
+    assert equipped_parts(database, avatar_id) == original_parts
+    if not any(reply[0] == 41 for reply in trace["replies"]):
+        assert avatar(database, player_id) == [updated]
+        assert quest_inventory(database, avatar_id) == [started] and quest_deck(database, avatar_id) == locked
     if fault == "start":
         if page.locator("#login-alert").is_visible():
             page.locator("#login-alert-ok").press("Enter")
@@ -2092,11 +2393,11 @@ def main():
     fixture = parser.add_mutually_exclusive_group()
     fixture.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
     fixture.add_argument("--quest-user", help="Only check Quest entry and cancel for a disposable discovered/pending fixture")
-    fixture.add_argument("--quest-start-user", help="Check start and first Movement result for a disposable empty Quest fixture")
+    fixture.add_argument("--quest-start-user", help="Check start through first combat exchange for a disposable empty Quest fixture")
     parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
     parser.add_argument("--quest-password-file", type=Path, help="Private password file for --quest-user")
     parser.add_argument("--quest-start-password-file", type=Path, help="Private password file for --quest-start-user")
-    parser.add_argument("--quest-start-fault", choices=("start", "land", "ready", "move"),
+    parser.add_argument("--quest-start-fault", choices=("start", "land", "ready", "move", "combat"),
                         help="Withhold the genuine reply to one original request through its timeout")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
@@ -2131,8 +2432,8 @@ def main():
                     check_quest_start(page, origin, args.database, args.quest_start_user,
                                       args.quest_start_password_file.read_text().rstrip("\r\n"),
                                       args.screens, args.quest_start_fault)
-                    mode = args.quest_start_fault or "first Movement result"
-                    print(f"Real Quest start and movement passed ({mode}).")
+                    mode = args.quest_start_fault or "first combat exchange"
+                    print(f"Real Quest start and combat passed ({mode}).")
                 return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):
                 directory = args.screens / f"avatar-{number}" if args.screens is not None else None

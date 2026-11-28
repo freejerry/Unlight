@@ -1,0 +1,309 @@
+import { BATTLE_CARD_ART } from './battle-card.js';
+import { playQuestBattleEffect } from './bgm.js';
+import { questDiceEye } from './quest-dice-roll.js';
+
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function append(parent, tag, id, className) {
+  const node = document.createElement(tag);
+  if (id) node.id = id;
+  if (className) node.className = className;
+  parent.append(node);
+  return node;
+}
+
+function presentation(exchange, distance) {
+  const { phase, playerAttacks, attackCards, defenceCards, cards, defenceStartedAt, attackStartedAt } = exchange;
+  if (playerAttacks === null) return null;
+  if (cards || exchange.dice || exchange.duelFinish || ['complete', 'terminal', 'uncertain'].includes(phase)) return { role: 'result' };
+  if (defenceCards) return null;
+  if (phase === 'attack' || (phase === 'committing' && playerAttacks)) {
+    return { role: 'attack', banner: 'atk_a', table: distance === 1 ? 'atk' : distance === 4 ? 'atk_all' : 'atk_l',
+      timer: !attackCards, side: 'player' };
+  }
+  if (phase === 'defense' || (phase === 'committing' && !playerAttacks)) {
+    return { role: 'defense', banner: 'def_a', table: 'def', timer: !defenceCards, side: 'player' };
+  }
+  if (Number.isFinite(defenceStartedAt) && playerAttacks) {
+    return { role: 'waiting', table: 'wait_atk', timer: !defenceCards, side: 'opponent' };
+  }
+  if (Number.isFinite(attackStartedAt) && !playerAttacks) {
+    return { role: 'waiting', banner: 'def_a', table: 'wait_def', timer: !attackCards, side: 'opponent' };
+  }
+  return null;
+}
+
+export function createQuestBattleExchange(battle, {
+  signal, isCurrent, assets, status, hands, move, combatControls, showTable, showPhase, cutIn, startTimer, updateHp,
+  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll,
+}) {
+  const root = layer(battle, 'quest-battle-exchange', 26, 'quest-battle-exchange');
+  const points = layer(root, 'quest-battle-combat-points', 0, 'quest-battle-combat-points');
+  const rollArt = loadDiceArt();
+  let receipt;
+  let shown;
+  let stopTimer;
+  let clearCutIn;
+  let seenReveal;
+  let revealTask = Promise.resolve();
+  let rolled = false;
+  let hitCount = 0;
+  let hitTask = Promise.resolve();
+  let diceSettled = Promise.resolve();
+  let pointsKey;
+  let resultFinished;
+  const health = { ...initialHp };
+  const lastAbsoluteHp = {};
+
+  function live() { return !signal.aborted && isCurrent(); }
+
+  function summary(exchange) {
+    if (!receipt) {
+      receipt = append(root, 'section', 'quest-battle-exchange-result', 'sr-only');
+      receipt.setAttribute('aria-label', '攻防結果');
+    }
+    receipt.dataset.playerAttacks = String(exchange.playerAttacks);
+    return receipt;
+  }
+
+  function paintPoints(state, visible) {
+    const layout = assets?.points;
+    const { player, opponent } = state.points ?? {};
+    const key = visible ? `${player}:${opponent}` : '';
+    if (pointsKey === key) return;
+    pointsKey = key;
+    points.replaceChildren();
+    if (!layout || !visible) return;
+    for (const [side, value, center] of [['player', player, layout.playerX], ['opponent', opponent, layout.foeX]]) {
+      if (!Number.isInteger(value) || value < 0 || value > 9999) continue;
+      const strip = append(points, 'div', `quest-battle-${side}-points`, 'quest-battle-point-line');
+      strip.dataset.value = String(value);
+      strip.setAttribute('aria-label', `${side === 'player' ? '我方' : '對手'}點數 ${value}`);
+      const digits = String(value);
+      const spacing = layout.digitWidth;
+      const extra = Math.max(0, digits.length - 2) * spacing / 2;
+      const left = center - digits.length * spacing / 2 + (side === 'player' ? -extra : extra);
+      [...digits].forEach((digit, index) => {
+        const glyph = layout.digits[Number(digit)];
+        if (glyph) sprite(strip, { ...glyph, x: glyph.x + left + index * spacing, y: glyph.y + layout.y });
+      });
+    }
+  }
+
+  function paintRole(exchange, distance) {
+    const next = presentation(exchange, distance);
+    if (!next) {
+      if (shown && (exchange.attackCards || exchange.defenceCards)) {
+        stopTimer?.freeze?.();
+        shown.timer = false;
+        combatControls.hidden = true;
+      }
+      return;
+    }
+    const activeInput = ['attack', 'defense'].includes(next.role);
+    battle.dataset.combatRole = next.role;
+    const label = { attack: '攻擊階段', defense: '防禦階段', waiting: '等待對手', result: '結算攻防' }[next.role];
+    if (exchange.phase === 'uncertain') {
+      status.value = '無法確認攻防操作。';
+      status.className = 'quest-battle-status';
+    } else if (shown?.role !== next.role) status.value = label;
+    combatControls.hidden = !activeInput;
+    if (next.table !== shown?.table) showTable(next.table ?? 'blank');
+    if (next.banner !== undefined && next.banner !== shown?.banner) showPhase(next.banner, activeInput);
+    if (next.side !== shown?.side) {
+      void clearCutIn?.();
+      clearCutIn = next.side ? cutIn(next.side) : undefined;
+    }
+    if (next.timer !== shown?.timer || next.role !== shown?.role) {
+      if (next.role !== 'result' && next.role === shown?.role && !next.timer) stopTimer?.freeze?.();
+      else {
+        stopTimer?.();
+        stopTimer = next.timer ? startTimer(activeInput ? move.onTimeout : undefined) : undefined;
+      }
+    }
+    if (activeInput && next.role !== shown?.role) playQuestBattleEffect('phase', signal);
+    paintPoints(exchange, next.role !== 'result');
+    shown = next;
+  }
+
+  function showDiceReceipt(exchange) {
+    const parent = summary(exchange);
+    for (const [key, label, values] of [
+      ['attack', '攻擊骰', exchange.dice.attackDice], ['defense', '防禦骰', exchange.dice.defenceDice],
+    ]) {
+      const group = append(parent, 'ol', `quest-battle-${key}-dice`, 'quest-battle-dice-record');
+      group.setAttribute('aria-label', label);
+      for (const value of values) {
+        const die = append(group, 'li');
+        die.dataset.value = String(value);
+        die.dataset.eye = String(questDiceEye(value));
+        die.textContent = die.dataset.eye;
+      }
+    }
+  }
+
+  async function drawResultSymbols(art, playerDice, foeDice, playerAttacks) {
+    if (!art) return;
+    const board = layer(root, 'quest-battle-dice-symbols', 2, 'quest-battle-dice-symbols');
+    const markers = [];
+    const rows = [];
+    for (const [dice, own, attacker] of [[playerDice, true, playerAttacks], [foeDice, false, !playerAttacks]]) {
+      const source = (attacker ? art.attack : art.defense)?.normal;
+      if (!source?.file) continue;
+      const positions = [];
+      for (const [original, value] of dice.entries()) {
+        const eye = questDiceEye(value);
+        if (eye !== 1 && eye < 6) continue;
+        const index = positions.length;
+        const iniX = (own ? 270 : 680) - (original % 3) * 80;
+        const iniY = 470 - Math.floor(original / 3) * 50;
+        const x = 263 + (index % 5) * 60;
+        const y = own ? 380 + Math.floor(index / 5) * 60 : 280 - Math.floor(index / 5) * 60;
+        const marker = sprite(board, { ...source, x: x + source.x, y: y + source.y }, BATTLE_CARD_ART);
+        marker.dataset.side = own ? 'player' : 'opponent';
+        positions.push(marker);
+        markers.push(animate(marker, [{ translate: `${iniX - x}px ${iniY - y}px` }, { translate: '0 0' }], 300, signal));
+      }
+      rows.push({ markers: positions, attacker, art: attacker ? art.attack : art.defense });
+    }
+    await Promise.all(markers);
+    if (!live()) return;
+    const successes = dice => dice.filter(value => [1, 6, 7].includes(questDiceEye(value))).length;
+    const pairs = Math.min(successes(playerDice), successes(foeDice));
+    await Promise.all(rows.flatMap(row => row.markers.map(async (marker, index) => {
+      const frames = index < pairs ? row.art.cancel : row.attacker ? row.art.hit : undefined;
+      if (frames?.frames?.length) {
+        const x = Number.parseFloat(marker.style.left) - row.art.normal.x;
+        const y = Number.parseFloat(marker.style.top) - row.art.normal.y;
+        if (!reduced()) await wait(index * 100, signal);
+        for (const frame of frames.frames) {
+          if (!live()) return;
+          if (frame?.file) {
+            marker.src = `${BATTLE_CARD_ART}${frame.file}`;
+            place(marker, x + frame.x, y + frame.y, frame.width, frame.height);
+          }
+          if (!reduced()) await wait(1000 / frames.framesPerSecond, signal);
+        }
+      } else if (index < pairs) await animate(marker, [{ opacity: 1 }, { opacity: 0, scale: 1.2 }], 500, signal, index * 100);
+      if (index < pairs) marker.hidden = true;
+    })));
+    if (!reduced() && successes(playerDice) !== successes(foeDice)) await wait(500, signal);
+    if (live()) await animate(board, [{ opacity: 1 }, { opacity: 0 }], 300, signal);
+    board.remove();
+  }
+
+  async function showDice(exchange) {
+    showDiceReceipt(exchange);
+    const { playerAttacks, attackDice, defenceDice } = exchange.dice;
+    await revealTask;
+    if (!live() || !attackDice.length || !defenceDice.length) return;
+    const playerDice = playerAttacks ? attackDice : defenceDice;
+    const foeDice = playerAttacks ? defenceDice : attackDice;
+    const canvas = append(root, 'canvas', 'quest-battle-dice-roll', 'quest-battle-dice-roll');
+    canvas.setAttribute('aria-hidden', 'true');
+    try {
+      await playDiceRoll(canvas, { playerDice, foeDice, playerAttacks }, { signal,
+        onThrow: () => playQuestBattleEffect('dice', signal) });
+    } catch { /* A missing visual renderer does not change the authoritative dice record. */ }
+    if (!reduced() && live()) await wait(500, signal);
+    if (live()) await Promise.all([
+      animate(canvas, [{ opacity: 1 }, { opacity: 0 }], 500, signal).then(() => canvas.remove()),
+      rollArt.then(art => live() && drawResultSymbols(art?.diceResult, playerDice, foeDice, playerAttacks)),
+    ]);
+  }
+
+  function displayHits(exchange, distance) {
+    const pending = exchange.damage.slice(hitCount);
+    hitCount = exchange.damage.length;
+    if (pending.length) {
+      const parent = summary(exchange);
+      let list = parent.querySelector('#quest-battle-damage-events');
+      if (!list) {
+        list = append(parent, 'ol', 'quest-battle-damage-events');
+        list.setAttribute('aria-label', '受傷紀錄');
+      }
+      for (const hit of pending) {
+        const row = append(list, 'li');
+        row.dataset.player = String(hit.player);
+        row.dataset.damage = String(hit.damage);
+        row.dataset.nonHostile = String(hit.nonHostile);
+        row.textContent = `${hit.player ? '我方' : '對手'} ${hit.damage}`;
+      }
+    }
+    const previous = { ...health };
+    for (const hit of pending) {
+      const side = hit.player ? 'player' : 'opponent';
+      if (Number.isInteger(health[side])) health[side] = Math.max(0, health[side] - hit.damage);
+    }
+    for (const side of ['player', 'opponent']) {
+      const absolute = exchange.hitPoints[side];
+      if (!Number.isInteger(absolute) || absolute === lastAbsoluteHp[side]) continue;
+      lastAbsoluteHp[side] = absolute;
+      health[side] = absolute;
+    }
+    if (pending.length || !Object.is(previous.player, health.player) || !Object.is(previous.opponent, health.opponent)) {
+      const confirmedHp = { ...health };
+      hitTask = hitTask.then(async () => {
+        await diceSettled;
+        if (!live()) return;
+        for (const hit of pending) {
+          if (hit.damage <= 0) continue;
+          const label = (await rollArt)?.damage?.label;
+          if (!live()) return;
+          if (!hit.nonHostile) playQuestBattleEffect(distance === 1 ? 'slash' : 'bullet', signal);
+          const x = (hit.player ? [288, 184, 80, 184] : [472, 576, 680, 576])[distance - 1];
+          const marker = label && sprite(root, { ...label, x: x + 23, y: 216 }, BATTLE_CARD_ART);
+          const number = append(root, 'span', undefined, 'quest-battle-damage-number');
+          number.setAttribute('aria-hidden', 'true');
+          number.textContent = String(hit.damage);
+          place(number, x - 240, 139, 250, 120);
+          const parts = [marker, number].filter(Boolean);
+          if (!reduced()) {
+            await Promise.all(parts.map(node => animate(node, [{ opacity: 0, scale: 4 }, { opacity: 1, scale: 1 }], 250, signal, 300)));
+            if (live()) await wait(2200, signal);
+            if (live()) await Promise.all(parts.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 220, signal)));
+          }
+          for (const part of parts) part.remove();
+        }
+        if (live()) updateHp(confirmedHp);
+      });
+    }
+  }
+
+  function update(state) {
+    const exchange = state?.exchange;
+    if (!exchange || exchange.turn !== 1 || exchange.index !== 1 || !live()) return;
+    battle.dataset.exchangePhase = exchange.phase;
+    if (exchange.playerAttacks !== null) battle.dataset.playerAttacks = String(exchange.playerAttacks);
+    const distance = state.result?.distance ?? Number(battle.dataset.distance);
+    paintRole(exchange, distance);
+    if (Number.isSafeInteger(exchange.opponentTableCount) && !exchange.cards) drawOpponent(exchange.opponentTableCount);
+    const reveal = exchange.cards ?? exchange.defenceCards ?? exchange.attackCards;
+    const revealStage = exchange.cards ? 'final' : exchange.defenceCards ? 'defense' : exchange.attackCards ? 'attack' : '';
+    if (reveal && revealStage !== seenReveal) {
+      seenReveal = revealStage;
+      root.dataset.revealStage = revealStage;
+      revealTask = revealTask.then(() => live() && revealCards(reveal, revealStage));
+    }
+    if (exchange.dice && !rolled) {
+      rolled = true;
+      diceSettled = showDice(exchange);
+    }
+    displayHits(exchange, distance);
+    if ((exchange.phase === 'terminal' || exchange.phase === 'complete') && exchange.boundary && !resultFinished) {
+      resultFinished = true;
+      void Promise.all([diceSettled, hitTask]).then(() => {
+        if (!live()) return;
+        const result = summary(exchange);
+        result.dataset.state = exchange.phase;
+        result.dataset.boundary = exchange.boundary;
+        hands.playerTable.hidden = true;
+        hands.opponentTable.hidden = true;
+      });
+    }
+    if (exchange.duelFinish) summary(exchange).dataset.duelResult = String(exchange.duelFinish.result);
+    if (exchange.questFinish) summary(exchange).dataset.questResult = String(exchange.questFinish.result);
+  }
+
+  return { update };
+}

@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、抽牌、首次移動與結算。**部分**戰鬥 HUD。 | 從實際先手和距離接上攻防階段，另驗換角與技能。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、抽牌、首次移動和第一組防禦結算。**部分**戰鬥 HUD。 | 接上第二組攻防及多回合，另驗換角、技能和報酬。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -96,4 +96,9 @@
 ### 首回合玩家移動及結果
 
 - 固定舞台已接上方向、手牌和桌面牌的旋轉、放置、收回、重新放置及一次完成命令。原版方向、牌面和實際落點依 Ruby 各自回覆更新。原畫面 60 秒倒數自然到期時也只送一次完成。按 OK 後遇到實際回覆延遲及出牌遺失的案例已分別驗證，保留同一條 Quest 與最後確認狀態。[方向滑入並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/direction-hover-comparison.png) · [出牌並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/card-on-table-comparison.png) · [新版自然逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-wire.json)
-- 由 `SC47` 關閉輸入，待 `SC48` 才翻牌及顯示距離和先手。兩版保留各場真正抽到的牌並以原版尺寸比對。新版實跑另核對鍵盤聚焦過程舞台固定、雙方 56×86 卡牌、階段音、切入肖像及距離箭頭。換角、攻防、戰鬥日誌與結算期間的計時條交接待接入。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [原版抵銷箭頭](/workspace/shared/unlight-web-port/flash-parity/quest-movement-original/final/07-move-result-original.png) · [逐項驗證](flash-parity/quest-pve.md#首回合移動操作與結果)
+- 由 `SC47` 關閉輸入，待 `SC48` 才翻牌及顯示距離和先手。兩版保留各場真正抽到的牌並以原版尺寸比對。新版實跑另核對鍵盤聚焦過程舞台固定、雙方 56×86 卡牌、階段音、切入肖像及距離箭頭。計時條從移動停止後保留到攻防開始。換角和戰鬥日誌待驗。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [原版抵銷箭頭](/workspace/shared/unlight-web-port/flash-parity/quest-movement-original/final/07-move-result-original.png) · [逐項驗證](flash-parity/quest-pve.md#首回合移動操作與結果)
+
+### 首回合第一組攻防
+
+- 落日大蝙蝠首戰已從移動接到原版等待、防禦、翻牌、擲骰和攻防結算。兩版各用真正的 Ruby 出牌與骰值。新版依當次攻守使用原始黑白骰貼圖，在 WebGL 繪製原始 COLLADA 模型，並核對擲骰聲、遠距離命中聲及生命值 7/7 → 6/7。[防禦桌面並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/defense-table-comparison.png) · [擲骰並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/rolling-dice-comparison.png) · [新版生命值](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-06-authoritative-defense-result.png)
+- 真實回覆延遲測例驗證同一連線只出牌一次，等待期間保留最後確認的牌面。原版再驗確認本方 7/7 → 4/7，並在回合 1 收到下一筆 `SC51` 後開啟本方攻擊。新版已驗到同一組攻防的權威結算。角色姿勢、血花等戰鬥效果、第二組攻防及終局畫面仍待接續。[原版扣血及下一階段](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/hp-proof/23-original-hp-changed.png) · [原版及新版逐項驗收](flash-parity/quest-pve.md#首回合第一組攻防) · [實機重跑](flash-parity/qa.md#重跑首回合第一組攻防)

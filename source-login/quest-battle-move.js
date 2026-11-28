@@ -41,7 +41,7 @@ function displaced(node, frames, signal) {
   void animation.finished.catch(() => {}).finally(() => signal.removeEventListener('abort', cancel));
 }
 
-export function createQuestBattleMove({ battle, scene, hud, hands, controls, status, multi, signal, isCurrent }) {
+export function createQuestBattleMove({ battle, scene, hud, hands, controls, combatControls, status, multi, signal, isCurrent }) {
   const cards = new Map();
   const buttons = new Map();
   let definitions = new Map();
@@ -53,9 +53,18 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
   let autoSent = false;
   let compactSignature;
   let drawn = false;
+  let combat = false;
+  let combatDone;
 
   function live() { return !signal.aborted && isCurrent(); }
-  function canSend() { return live() && drawn && snapshot?.phase === 'move' && !snapshot.operation && !localAction && !clickGate && !snapshot.moveSubmitted; }
+  function combatTurn() {
+    return combat && snapshot?.phase === 'moved' && snapshot.exchange?.turn === 1 && snapshot.exchange?.index === 1;
+  }
+  function selectable() {
+    if (!combat) return snapshot?.phase === 'move' && !snapshot.moveSubmitted;
+    return combatTurn() && !snapshot.exchange.submitted && ['attack', 'defense'].includes(snapshot.exchange.phase);
+  }
+  function canSend() { return live() && drawn && selectable() && !snapshot.operation && !localAction && !clickGate; }
 
   signal.addEventListener('abort', () => clearTimeout(clickGate), { once: true });
 
@@ -68,7 +77,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
   }
 
   function errorMessage(error) {
-    if (error?.kind === 'quest-battle-uncertain') return '無法確認移動操作。';
+    if (error?.kind === 'quest-battle-uncertain') return combat ? '無法確認攻防操作。' : '無法確認移動操作。';
     if (error?.kind === 'quest-card-rejected') return '伺服器未接受這張牌的操作。';
     if (error?.kind === 'quest-direction-rejected') return '伺服器未接受這個移動方向。';
     return '';
@@ -76,10 +85,12 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
 
   async function send(kind, value, origin) {
     if (!canSend()) return;
-    const operation = {
+    const operation = (combat ? {
+      rotate: 'rotateBattleCard', add: 'addBattleCard', remove: 'removeBattleCard', commit: 'commitBattle',
+    } : {
       direction: 'chooseMove', rotate: 'rotateMoveCard', add: 'addMoveCard',
       remove: 'removeMoveCard', commit: 'commitMove',
-    }[kind];
+    })[kind];
     if (typeof scene[operation] !== 'function') return;
     const previous = document.activeElement === origin && origin?.matches(':focus-visible');
     localAction = kind;
@@ -116,7 +127,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     }
   }
 
-  function makeButton(key, name, value) {
+  function makeButton(key, name, value, combatButton = false) {
     if (key === 'change' && !multi) return;
     const command = key === 'done' ? hud.done : hud.moveButtons?.[key];
     if (!command?.up) return;
@@ -128,7 +139,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     const button = document.createElement('button');
     button.type = 'button';
     button.disabled = key === 'change';
-    button.dataset.moveCommand = key;
+    button.dataset[combatButton ? 'combatCommand' : 'moveCommand'] = key;
     button.setAttribute('aria-label', name);
     position(button, ox + x, oy + y, width, height);
     for (const [state, source] of [['up', up], ['over', over], ['down', down], ['disabled', key === 'change' ? null : disabled]]) {
@@ -136,14 +147,17 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     }
     if (key !== 'change') button.addEventListener('click', () => {
       if (button.hidden) return;
+      if (combatButton !== combat) return;
       if (key === 'done') return send('commit', undefined, button);
       return send('direction', value, button);
     }, { signal });
-    controls.append(button);
-    buttons.set(key, button);
+    (combatButton ? combatControls : controls).append(button);
+    if (!combatButton) buttons.set(key, button);
+    return button;
   }
 
   for (const [key, name, value] of directions) makeButton(key, name, value);
+  if (combatControls) combatDone = makeButton('done', '完成', null, true);
 
   function upgradeCard(node, entry) {
     const id = entry.id;
@@ -180,7 +194,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
       node.dataset.faceType = String(face.type);
       node.dataset.faceValue = String(face.value);
     }
-    node.dataset.moveHint = String(face?.type === 4 && getPreferences().arrow);
+    updateHint(node);
     if (!card) return;
     const canvas = document.createElement('canvas');
     const orientation = entry.up;
@@ -189,6 +203,12 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
       primary.replaceChildren(canvas);
       displaced(canvas, [{ transform: orientation ? 'rotate(180deg)' : 'rotate(-180deg)' }, { transform: 'none' }], signal);
     });
+  }
+
+  function updateHint(node) {
+    const type = Number(node.dataset.faceType);
+    const expected = combat ? snapshot?.exchange?.playerAttacks ? (snapshot.result?.distance === 1 ? 1 : 2) : 3 : 4;
+    node.dataset.moveHint = String(type === expected && getPreferences().arrow);
   }
 
   function syncZone(parent, entries, zone) {
@@ -200,11 +220,11 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
       const rotated = record.entry.up !== entry.up;
       record.entry = entry;
       record.zone = zone;
-      node.dataset.zone = zone;
+      node.dataset.zone = combat && zone === 'table' ? 'combat' : zone;
       const action = zone === 'hand' ? '出牌' : '收回';
       primary.setAttribute('aria-label', `${action} ${entry.event ? '事件牌' : '行動牌'} ${entry.id}`);
       if (rotated) paintCard(record, entry);
-      else node.dataset.moveHint = String(node.dataset.faceType === '4' && getPreferences().arrow);
+      else updateHint(node);
 
       const spacing = zone === 'hand' ? Math.min(60, Math.max(.68 * 60, 560 / entries.length)) : 60;
       const x = zone === 'hand' ? 202 + spacing * i : 380 + (i - (entries.length - 1) / 2) * spacing;
@@ -223,14 +243,19 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     const { direction, phase, operation, moveSubmitted } = snapshot;
     battle.dataset.operation = operation ?? localAction ?? '';
     battle.dataset.direction = Number.isInteger(direction) ? String(direction) : '';
-    const active = phase === 'move' || phase === 'committing';
+    const active = combat ? selectable() : phase === 'move' || phase === 'committing';
     for (const [key, , value] of directions) {
       const button = buttons.get(key);
       if (!button) continue;
       const selected = value !== null && value === direction;
       button.hidden = selected || (key === 'done' && (moveSubmitted || ['settling', 'moved'].includes(phase)));
       if (value !== null) button.setAttribute('aria-pressed', String(value === direction));
-      button.setAttribute('aria-disabled', String(!enabled || key === 'change'));
+      button.setAttribute('aria-disabled', String(combat || !enabled || key === 'change'));
+    }
+    if (combatDone) {
+      const ownDrop = combatTurn() && ['attack', 'defense', 'committing'].includes(snapshot.exchange.phase);
+      combatDone.hidden = !ownDrop || snapshot.exchange.submitted === true;
+      combatDone.setAttribute('aria-disabled', String(!combat || !enabled));
     }
     for (const { node, primary, rotate, entry } of cards.values()) {
       const allowed = enabled && entry.playable;
@@ -247,11 +272,16 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     if (!result || !live()) return;
     snapshot = result;
     const entries = result.hand;
-    const table = result.moveTable;
-    if (drawn && Array.isArray(entries) && Array.isArray(table) && result.phase !== 'moved') {
-      const signature = [...entries.map(({ id, up }) => `${id}:${up}`), '/', ...table.map(({ id, up }) => `${id}:${up}`)].join(',');
+    const table = combat ? result.exchange?.battleTable : result.moveTable;
+    if (drawn && Array.isArray(entries) && Array.isArray(table) && (combat ? combatTurn() : result.phase !== 'moved')) {
+      const signature = [combat ? result.exchange.phase : '', ...entries.map(({ id, up }) => `${id}:${up}`), '/',
+        ...table.map(({ id, up }) => `${id}:${up}`)].join(',');
       if (compactSignature !== signature) {
         compactSignature = signature;
+        if (combat) {
+          const visible = new Set([...entries, ...table].map(({ id }) => id));
+          for (const [id, { node }] of cards) if (!visible.has(id)) node.remove();
+        }
         syncZone(hands.player, entries, 'hand');
         syncZone(hands.playerTable, table, 'table');
       } else {
@@ -292,6 +322,16 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
   return {
     update,
     installCardArt,
+    beginCombat() {
+      if (combat || !live()) return;
+      combat = true;
+      timedOut = false;
+      autoSent = false;
+      compactSignature = undefined;
+      hands.playerTable.replaceChildren();
+      hands.playerTable.hidden = false;
+      update(scene.snapshot.adventure?.battle);
+    },
     attach(metadata) {
       if (!live() || drawn) return;
       definitions = metadata;
@@ -305,7 +345,7 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, sta
     },
     onTimeout() {
       timedOut = true;
-      if (localAction === 'commit' || snapshot?.operation === 'commit') autoSent = true;
+      if (localAction === 'commit' || ['commit', 'combat-commit'].includes(snapshot?.operation)) autoSent = true;
       update(snapshot);
     },
   };

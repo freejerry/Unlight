@@ -66,7 +66,10 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
 }
 SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse06.mp3": "b0655a05ef946fe47671a2bbf67768545ed02a59f084c93d3f951773a57abde0",
+    "public/sound/se/ulse07.mp3": "752ae4ec5ab51843bbf311d149c451d2fefb1b04f968e58cef232da0c43ab1f7",
     "public/sound/se/ulse08.mp3": "3140c532a2f6471fd4d3d5cf278077aebd04a691a0837d327652a8e84d6db2d7",
+    "public/sound/se/ulse09.mp3": "1e9ccf21bdb3c9f9c937fc31dfeb08838b29c1e570eefca2034477027e8f2395",
+    "public/sound/se/ulse10_f.mp3": "25992bf771fbd92beb3d7a44b4241721121105119959a7d20f60c76926844d61",
     "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
     "public/sound/se/ulse28.mp3": "6345735fa4f8686ac3c1bd093e008bcbc5d6308bbf86539c7d055c42f3de0024",
     "public/sound/se/ulse29.mp3": "78623927f2591f3ff6fe5afac445e7e6c661f485b02638a7bb49f539d3c4052a",
@@ -606,7 +609,8 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
-                "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js", "quest-battle-move.js",
+                "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
+                "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
