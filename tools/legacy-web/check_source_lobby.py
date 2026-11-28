@@ -3282,6 +3282,7 @@ def check_high_low_panel(page, stage, directory, database, player_id, choice, ca
         elif kept[0] == 1:
             expect(awards.locator('[data-award="gemsCardPower"]')).to_have_attribute("data-value", str(kept[2]))
     if result_ok.get_attribute("data-confirmation") == "level":
+        capture(stage, directory, "11-before-authoritative-bonus-level-up.png", animations="allow")
         result_ok.click()
         expect(result_ok).to_have_attribute("data-confirmation", "return", timeout=TIMEOUT)
         expect(result_ok).to_be_enabled()

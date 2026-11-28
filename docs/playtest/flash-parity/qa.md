@@ -191,6 +191,15 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 固定舞台測試沿用 `--quest-start-user` 及對應密碼檔。另傳 `--quest-high-low high` 驗 Next 後猜高，或 `--quest-high-low get` 驗直接領取。保留 `SC123`、`SC124` 及 `SC38/126` 的實際等待畫面，檢查按鈕何時啟用、對局合計與帳戶絕對值，以及續行格 7 是否保留原任務和原牌組。道具以真 `SC11` 和 SQLite 查核，角色卡用 `SC38` 的實體 ID 對照 Binder。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [高低獎勵骰規格](quest-pve.md#高低獎勵骰)
 
+```bash
+python3 tools/legacy-web/check_source_lobby.py --port 4389 \
+  --database /path/to/isolated/app/server/data/game_dev2.db \
+  --quest-start-user q568-fixture --quest-start-password-file /path/to/disposable-password \
+  --quest-high-low high --screens /tmp/unlight-q568-high
+```
+
+每次重跑使用另一位仍持有 NEW q568、進度 0、4/8 AP 的隔離角色。兩戰後只在原路線確認第 7 格的入口，留存最後一張場景截圖及 `quest-high-low-wire.json`。[已驗證測例與固定尺寸截圖](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/README.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)
