@@ -1010,12 +1010,13 @@ async function sendQuestStart(socket, signal, selected, deckIndex, markDispatche
 }
 
 async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot, markDispatched, markEncounter,
-  { emptyTerrain = false, fixedGemTreasure = null, firstLand, expectBattle = false, onArrival } = {}) {
+  { emptyTerrain = false, fixedGemTreasure = null, firstLand, expectBattle = false, strictTerrain = false, onArrival } = {}) {
   const peaceful = emptyTerrain || fixedGemTreasure !== null;
   const terminal = firstLand?.nextMask === 0;
   let arrived = false;
   let encounter = null;
   let progress = null;
+  let terrainReceivedAt = null;
   let finish = null;
   let deleted = false;
   let deckReset = false;
@@ -1030,7 +1031,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
       QUEST_PROGRESS_REPLY, QUEST_FINISH_REPLY, QUEST_DELETED_REPLY, QUEST_ERROR_REPLY,
       ...(peaceful || firstLand ? [QUEST_DECK_STATE_REPLY, QUEST_DUEL_FINISH_REPLY] : []),
       ...(fixedGemTreasure || firstLand ? [QUEST_GEMS_REPLY] : []),
-      ...(fixedGemTreasure ? [QUEST_TREASURE_REPLY] : []),
+      ...(fixedGemTreasure || strictTerrain ? [QUEST_TREASURE_REPLY] : []),
       ...(firstLand ? [QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY] : []),
     ], (reply) => {
       if (invalid) return;
@@ -1069,12 +1070,14 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
               throw new SessionError('protocol');
             }
             progress = update.progress;
+            if (strictTerrain) terrainReceivedAt = performance.now();
             if (!fixedGemTreasure) resolve(null); // The original callback may still settle this quest.
             break;
           }
           case QUEST_GEMS_REPLY: {
             const { value } = readQuestSettlementValueReply(reply);
-            if (progress === null || (fixedGemTreasure && !treasure
+            if (progress === null || (strictTerrain && (!fixedGemTreasure || gemBalance !== null))
+                || (fixedGemTreasure && !treasure
                 && (gemBalance !== null || value < fixedGemTreasure.value))) throw new SessionError('protocol');
             gemBalance = value;
             break;
@@ -1089,11 +1092,12 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
           case QUEST_TREASURE_REPLY: {
             const { type, slotType, value } = readQuestTreasureReply(reply);
             // SC25 has no inventory ID and belongs to this one outstanding, matched land entry.
-            if (gemBalance === null || treasure || type !== fixedGemTreasure.type
+            if (!fixedGemTreasure || gemBalance === null || treasure || type !== fixedGemTreasure.type
                 || slotType !== fixedGemTreasure.slotType || value !== fixedGemTreasure.value) {
               throw new SessionError('protocol');
             }
             treasure = { treasureId: fixedGemTreasure.treasureId, amount: value, balance: gemBalance };
+            if (strictTerrain) Object.assign(treasure, { type, slotType, value, receivedAt: performance.now() });
             resolve(null);
             break;
           }
@@ -1156,6 +1160,7 @@ async function submitQuestLand(socket, signal, { inventoryId, deckIndex }, slot,
       slot, encounter: null, progress, finish,
       ...(emptyTerrain ? { emptyTerrain: true } : {}), ...(treasure ? { fixedGemTreasure: treasure } : {}),
       ...(firstLand ? { gemBalance, map } : {}),
+      ...(strictTerrain ? { terrainReceivedAt } : {}),
     };
   } finally {
     unsubscribe();
@@ -1246,8 +1251,9 @@ function questSceneAdventureSnapshot(current, operation) {
     inventoryId, questId, deckIndex, state: current.state, slot: current.slot,
     progress: current.run.progress, encounter: current.encounter ?? null, finish: current.finish ?? null,
     emptyTerrain: current.emptyTerrain === true, fixedGemTreasure: current.fixedGemTreasure ?? null,
+    ...(current.terrainReceivedAt != null ? { terrainReceivedAt: current.terrainReceivedAt } : {}),
     battle: current.state === 'encounter' ? current.battle.sceneSnapshot(operation) : null,
-    ...(current.state === 'between-lands' ? { nextLands: current.battle.outcome.nextLands } : {}),
+    ...(current.state === 'between-lands' ? { nextLands: current.nextLands ?? current.battle.outcome.nextLands } : {}),
   });
 }
 
@@ -1288,10 +1294,10 @@ function nextSceneBattleLands(positions, slot, progress) {
   }));
 }
 
-function observeNonCombatTerrain(socket, { inventoryId, deckIndex }, { progress, fixedGemTreasure }, onUncertain) {
+function observeNonCombatTerrain(socket, { inventoryId, deckIndex }, { progress, fixedGemTreasure, terrainReceivedAt }, onUncertain) {
   const commands = [QUEST_PROGRESS_REPLY, QUEST_DECK_STATE_REPLY, QUEST_DELETED_REPLY, QUEST_FINISH_REPLY,
     QUEST_NEXT_LAND_REPLY, QUEST_ENCOUNTER_REPLY, QUEST_DUEL_START_REPLY, QUEST_DUEL_FINISH_REPLY, QUEST_ERROR_REPLY];
-  if (fixedGemTreasure) commands.push(QUEST_GEMS_REPLY, QUEST_TREASURE_REPLY);
+  if (fixedGemTreasure || terrainReceivedAt != null) commands.push(QUEST_GEMS_REPLY, QUEST_TREASURE_REPLY);
   function receive(reply) {
     try {
       if (reply.command === QUEST_PROGRESS_REPLY) {
@@ -3132,15 +3138,17 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       throw new SessionError('quest-land-unavailable');
     }
     const { selected, state: previousState, battle: previousBattle } = current;
+    const previousObserver = previousBattle ?? current.nonCombatObserver;
     return runQuestSceneOperation(scene, 'land', signal, async (socket, questSignal) => {
       const priorRun = current.run;
       const earlierAwards = scene.lastOutcome?.receipt?.cards ?? [];
       let run = priorRun;
       let firstLand;
       if (continuing) {
-        const outcome = previousBattle.outcome;
-        if (current.state !== 'between-lands' || outcome?.state !== 'land-cleared'
-            || !outcome.nextLands.some((land) => land.slot === slot)) throw new SessionError('quest-land-unavailable');
+        const outcome = previousBattle?.outcome;
+        const nextLands = previousBattle ? outcome?.nextLands : current.nextLands;
+        if (current.state !== 'between-lands' || (previousBattle && outcome?.state !== 'land-cleared')
+            || !nextLands?.some((land) => land.slot === slot)) throw new SessionError('quest-land-unavailable');
         run = { ...questRun(), positions: priorRun.positions, progress: priorRun.progress, damage: priorRun.damage };
         firstLand = run.positions.get(slot);
       } else {
@@ -3153,6 +3161,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       if (!firstLand || firstLand.stage === null || firstLand.nextMask === null) {
         throw new SessionError('quest-land-unavailable');
       }
+      const opensPassage = !continuing && firstLand.nextMask > 0 && (firstLand.emptyTerrain || firstLand.fixedGemTreasure);
+      if (opensPassage && !nextSceneBattleLands(run.positions, slot, 1 << slot).length) {
+        throw new SessionError('quest-land-unavailable');
+      }
 
       let dispatched = false;
       try {
@@ -3162,9 +3174,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           publishQuestScene(scene);
         }, (encounter) => {
           if (!sameValues(current.deck.cards.map(({ cardId }) => cardId), encounter.playerCardIds)
-              || (continuing && !sameValues(run.damage, encounter.playerDamage))) {
+              || (continuing && run.damage && !sameValues(run.damage, encounter.playerDamage))) {
             throw new SessionError('protocol');
           }
+          if (continuing) run.damage ??= encounter.playerDamage.slice();
           current.battle = observeQuestBattle(socket, selected, slot, encounter, run, (receipt) => {
             const settlement = reconcileQuestSettlement(selected, receipt);
             if (initialData) publishAvatar();
@@ -3183,9 +3196,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               || initialData?.deckCollection?.binder.some(({ inventoryId }) => inventoryId === id)
               || initialData?.deckChoices?.some(({ cards }) => cards.some(({ inventoryId }) => inventoryId === id)),
           });
-          void previousBattle?.stop('closed');
+          void previousObserver?.stop('closed');
+          current.nonCombatObserver = null;
         }, {
           firstLand, expectBattle: continuing, emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
+          strictTerrain: Boolean(opensPassage || current.nonCombatObserver),
           onArrival() {
             current.slot = slot;
             publishQuestScene(scene);
@@ -3203,7 +3218,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (continuing) scene.lastOutcome = null;
         if (result.progress !== null) run.progress = result.progress;
         current.emptyTerrain = result.emptyTerrain;
-        if (result.fixedGemTreasure) current.fixedGemTreasure = Object.freeze(result.fixedGemTreasure);
+        current.fixedGemTreasure = result.fixedGemTreasure ? Object.freeze(result.fixedGemTreasure) : null;
+        current.terrainReceivedAt = result.terrainReceivedAt;
+        current.nextLands = null;
         if (result.finish) {
           current.finish = Object.freeze(result.finish);
           current.state = 'finished';
@@ -3214,7 +3231,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           publishAvatar();
         } else if (result.encounter) current.state = 'encounter';
         else {
-          current.state = 'progress';
+          if (opensPassage) {
+            current.nextLands = nextSceneBattleLands(run.positions, slot, run.progress);
+            current.state = current.fixedGemTreasure ? 'terrain-reward' : 'between-lands';
+          } else current.state = 'progress';
           current.nonCombatObserver = observeNonCombatTerrain(socket, selected, result, () => {
             current.state = 'uncertain';
             publishQuestScene(scene);
@@ -3228,7 +3248,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           ...(current.emptyTerrain ? { emptyTerrain: true } : {}),
           ...(current.fixedGemTreasure ? { fixedGemTreasure: current.fixedGemTreasure } : {}) };
       } catch (error) {
-        if (continuing && current.battle === previousBattle && current.state !== 'finished') previousBattle.resume();
+        if (continuing && current.battle === previousBattle && current.state !== 'finished') previousObserver.resume();
         if (dispatched && error.kind !== 'quest-land-rejected') {
           current.state = 'uncertain';
           throw new SessionError('quest-land-uncertain');
@@ -3236,6 +3256,19 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         throw error;
       }
     });
+  }
+
+  async function confirmQuestSceneTerrainReward(scene, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    if (scene.operation) throw new SessionError('busy');
+    const current = scene.adventure;
+    if (current?.state === 'uncertain') throw new SessionError('quest-land-uncertain');
+    if (current?.state !== 'terrain-reward' || !current.nextLands?.length) throw new SessionError('quest-land-unavailable');
+    scene.channel.socket.assertOpen();
+    current.state = 'between-lands';
+    publishQuestScene(scene);
+    return current.fixedGemTreasure;
   }
 
   function matchesEncounter(current, key) {
@@ -3714,6 +3747,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             selectDeck: (delta, { signal } = {}) => selectQuestSceneDeck(scene, delta, signal),
             start: (inventoryId, { signal } = {}) => startQuestScene(scene, inventoryId, signal),
             enterLand: (slot, { signal } = {}) => enterQuestSceneLand(scene, slot, signal),
+            confirmTerrainReward: ({ signal } = {}) => confirmQuestSceneTerrainReward(scene, signal),
             readyBattle: ({ signal, encounterKey } = {}) => runQuestSceneBattle(scene, 'ready', signal,
               (battle, active) => battle.ready(active), undefined, encounterKey),
             async chooseMove(direction, { signal, moveTurn, encounterKey } = {}) {

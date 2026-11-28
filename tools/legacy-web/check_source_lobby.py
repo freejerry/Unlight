@@ -43,6 +43,10 @@ QUEST_SEARCH_TIMES = tuple(zip(
     (0, 180, 600, 1800, 3600, 7200, 14400, 28800, 57600, 86400, 259200),
     ("0分", "3分", "10分", "30分", "1小時", "2小時", "4小時", "8小時", "16小時", "1天", "3天"),
 ))
+PEACEFUL_TERRAINS = {
+    "empty": (4, 2, 0, 5, 1, "森林小道", "穩靜的獸道", {4: 101}, 4),
+    "gem": (32, 4, 1, 10, 6, "寂靜之丘", "綠影斑駁的小高丘", {3: 304, 5: 104}, 5),
+}
 # Frames observed in the untouched original Over timelines at 24 fps. Entries are (total, intro).
 LOBBY_HOVER_TIMELINES = {"btn_b": (48, 0), "btn_e": (60, 15), "btn_f": (120, 0), "btn_g": (35, 0), "btn_k": (8, 0)}
 
@@ -63,9 +67,9 @@ def avatar(database, player_id):
     """, player_id)
 
 
-def capture(stage, directory, name):
+def capture(stage, directory, name, *, animations="disabled"):
     if directory is not None:
-        stage.screenshot(path=directory / name, scale="css", animations="disabled")
+        stage.screenshot(path=directory / name, scale="css", animations=animations)
 
 
 def screen(stage, name):
@@ -2457,6 +2461,23 @@ def check_q3_final_treasure(page, stage, directory, database, quest, deck, befor
     capture(stage, directory, "41-q3-authoritative-map-unlock.png")
 
 
+def start_preowned_quest(page, database, player_id, quest, locked, *, ap_cost):
+    inventory_id, quest_id = quest[:2]
+    row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"][data-quest-id="{quest_id}"]')
+    row.locator(".quest-map-row-open").click()
+    detail = page.locator("#quest-map-detail")
+    expect(detail).to_have_attribute("data-quest-status", "1", timeout=TIMEOUT)
+    before = avatar(database, player_id)[0]
+    detail.locator('[data-quest-command="start"]').click()
+    expect(detail).to_have_attribute("data-quest-status", "2", timeout=TIMEOUT)
+    wait_quest_start_lock(page, database, before[0], quest[:2] + (2,) + quest[3:], locked)
+    before = before[:5] + (before[5] - ap_cost,) + before[6:]
+    assert avatar(database, player_id) == [before]
+    states = [packet for packet in read_movement_trace(page)["replies"] if packet[0] in (4, 17)]
+    assert states == [[17, 11, inventory_id, 1, quest_id], [4, 10, before[5]], [17, 11, inventory_id, 2, quest_id]], states
+    return detail, before
+
+
 def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land, complete=False):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
@@ -2487,18 +2508,7 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
             assert source["positions"][1]["fixedCharacterTreasure"] == {
                 "treasureId": 1004, "type": 1, "slotType": 1, "value": 1004,
             }
-    row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"][data-quest-id="{quest_id}"]')
-    row.locator(".quest-map-row-open").click()
-    detail = page.locator("#quest-map-detail")
-    expect(detail).to_have_attribute("data-quest-status", "1", timeout=TIMEOUT)
-    before = avatar(database, player_id)[0]
-    start = detail.locator('[data-quest-command="start"]')
-    start.click()
-    expect(detail).to_have_attribute("data-quest-status", "2", timeout=TIMEOUT)
-    started = quest[:2] + (2, quest[3], 0, 1, initial_damage, 0, 0)
-    wait_quest_start_lock(page, database, avatar_id, started, locked)
-    before = before[:5] + (before[5] - int(continue_land),) + before[6:]
-    assert avatar(database, player_id) == [before]
+    detail, before = start_preowned_quest(page, database, player_id, quest, locked, ap_cost=int(continue_land))
     first = detail.locator('button.quest-map-detail-land[data-slot="1"][data-land-id="201"]')
     expect(first).to_be_enabled()
     page.emulate_media(reduced_motion="no-preference")
@@ -2508,8 +2518,6 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     check_quest_opening(page, stage, directory, drop_reply=False, starting_hp=7 - initial_damage)
     page.evaluate("window.qaFirstDuel = document.querySelector('#stage > audio[data-bgm-scene=quest-duel]')")
     encounter = read_movement_trace(page)["replies"]
-    states = [packet for packet in encounter if packet[0] in (4, 17)]
-    assert states == [[17, 11, inventory_id, 1, quest_id], [4, 10, before[5]], [17, 11, inventory_id, 2, quest_id]], states
     assert next(packet for packet in encounter if packet[0] == 37)[2:] == [
         -1, "CPU", "21", "1004", 11, initial_damage, 0, 0, 0, 0, 0,
     ]
@@ -2546,6 +2554,231 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     assert not errors, errors
     if directory is not None:
         (directory / "37-quest-wire.json").write_text(json.dumps(trace, indent=2) + "\n")
+
+
+def check_terrain_hover(page, stage, directory, land, title, caption, image):
+    box = land.bounding_box()
+    land.hover()
+    expect(page.locator("#quest-map-detail-land-name")).to_have_text(title)
+    expect(page.locator("#quest-map-detail-land-caption")).to_have_text(caption)
+    wait_quest_art(page)
+    capture(stage, directory, image)
+    page.mouse.move(770, 346)
+    expect(page.locator("#quest-map-detail-land-name")).to_have_text("")
+    return box
+
+
+def check_peaceful_quest(page, origin, database, name, password, directory, kind, gem_slot):
+    quest_id, map_id, ap_cost, first_id, stage_id, title, caption, next_lands, battle_slot = PEACEFUL_TERRAINS[kind]
+    gem = kind == "gem"
+    battle_slot = battle_slot if gem_slot is None else gem_slot
+    battle_stage, enemy, foe, battle_title, battle_caption = (3, 301, "1007", "月光下的泥潭1", "住著老蛤蟆的泥潭") if battle_slot == 3 else (
+        2, 101, "1001", "通往集落之路1", "小矮人們的通道",
+    )
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    avatar_id = profile[0]
+    (quest,) = quest_inventory(database, avatar_id)
+    assert flags == 0 and profile[5:7] == (4, 5), profile
+    assert quest[1:3] == (quest_id, 0) and quest[4:] == (0, 1, 1, 0, 0), quest
+    map_read = "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?"
+    assert query(database, map_read, avatar_id) == [(map_id - 1, 0)]
+    deck = quest_deck(database, avatar_id)
+    parts = equipped_parts(database, avatar_id)
+    assert len(deck) == 1 and deck[0][1:] == (STARTER_CARD, 0, 0)
+    locked = [deck[0][:3] + (1,)]
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
+    page.locator("#lobby-quest-load").click()
+    screen(stage, "quest-map")
+    view = page.locator("#quest-map-view")
+    expect(view).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(view).to_have_attribute("data-map-id", str(map_id))
+    response = page.request.get(f"{origin}/api/quest-catalog?id={quest_id}&map={map_id}")
+    assert response.ok
+    (source,) = response.json()["quests"]
+    positions = {land["slot"]: land for land in source["positions"]}
+    first = positions[1]
+    assert (source["ap"], first["id"], first["stage"], first["enemyId"], first["eventNo"]) == (ap_cost, first_id, stage_id, 0, 0)
+    assert first["emptyTerrain"] is not gem and first["nextSlots"] == list(next_lands)
+    assert {slot: positions[slot]["id"] for slot in first["nextSlots"]} == next_lands
+    if gem:
+        assert first["fixedGemTreasure"] == {"treasureId": 50001, "type": 5, "slotType": 1, "value": 30}
+    assert (positions[battle_slot]["enemyId"], positions[battle_slot]["stage"]) == (enemy, battle_stage)
+
+    inventory_id = quest[0]
+    detail, before = start_preowned_quest(page, database, player_id, quest, locked, ap_cost=ap_cost)
+    first_button = detail.locator(f'button.quest-map-detail-land[data-slot="1"][data-land-id="{first_id}"]')
+    active_lands = detail.locator("button.quest-map-detail-land")
+    battle = page.locator("#quest-map-battle")
+    treasure = page.locator("#quest-map-treasure")
+    player_gems = page.locator("#quest-map-gems")
+    player_ap = page.locator("#quest-map-energy")
+    page.emulate_media(reduced_motion="no-preference")
+    expect(first_button).to_be_enabled(timeout=TIMEOUT)
+    expect(active_lands).to_have_count(1)
+    expect(player_ap).to_have_text(f"{before[5]}/{before[6]}")
+    balance_text = player_gems.inner_text()
+    original_progress = detail.get_attribute("data-progress")
+    first_box = check_terrain_hover(page, stage, directory, first_button, title, caption, "01-first-land-hover.png")
+    music(page, "quest", "ulbgm03.mp3")
+    page.evaluate("""() => {
+      const track = document.querySelector('#stage > audio[data-bgm-scene=quest]');
+      window.qaTerrainMusic = {track, start: track.currentTime};
+      const trace = window.qaQuestWire.sockets.at(-1);
+      trace.terrainSounds = [];
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        const playback = play.call(this);
+        if (this.src.includes('/sound/se/')) {
+          void playback.then(() => trace.terrainSounds.push(this.src.split('/').at(-1))).catch(() => {});
+        }
+        return playback;
+      };
+    }""")
+    pre_entry = read_movement_trace(page)
+    hold_movement_reply(page, 16, first_button.click, before=[25 if gem else 19])
+    expect(view).to_have_attribute("data-adventure-state", "entering")
+    expect(detail.locator('#quest-map-detail-pawn[data-slot="1"] img')).to_be_visible()
+    expect(active_lands).to_have_count(0)
+    expect(battle).to_have_count(0)
+    expect(treasure).to_have_count(0)
+    expect(player_gems).to_have_text(balance_text)
+    assert detail.get_attribute("data-progress") == original_progress
+    page.mouse.click(first_box["x"] + first_box["width"] / 2, first_box["y"] + first_box["height"] / 2)
+    held = read_movement_trace(page)
+    assert held["actions"] == [[13, inventory_id, 1], [16, inventory_id, 1, 1]]
+    assert held["terrainSounds"] == []
+    before_fence = [[128, 3, 1], [19, 10, inventory_id, 2], [10, 6, before[3] + 30]] if gem else [[128, 3, 1]]
+    replies = held["replies"][len(pre_entry["replies"]):]
+    assert [packet for packet in replies if packet[0] != 3] == before_fence, replies
+    capture(stage, directory, "02-withheld-land-proof.png")
+
+    release_movement_reply(page, next_command=3)
+    page.wait_for_function("() => window.qaQuestWire.actionHold.queued.length > 0", timeout=TIMEOUT)
+    fenced = read_movement_trace(page)
+    expected = [[25, 11, 5, 1, 30]] if gem else [[19, 10, inventory_id, 2]]
+    assert fenced["replies"][len(held["replies"]):] == expected
+    assert fenced["sent"][len(held["sent"]):] == [[3, 5]]
+    expect(active_lands).to_have_count(0)
+    expect(treasure).to_have_count(0)
+    expect(player_gems).to_have_text(balance_text)
+    assert detail.get_attribute("data-progress") == original_progress
+    capture(stage, directory, "03-withheld-original-pong.png")
+    release_movement_reply(page)
+    assert [3, 2] in read_movement_trace(page)["replies"][len(fenced["replies"]):]
+    expect(detail).to_have_attribute("data-progress", "2", timeout=TIMEOUT)
+    expect(detail.locator('span.quest-map-detail-land[data-cleared="true"][data-slot="1"]')).to_be_visible()
+    if gem:
+        expect(view).to_have_attribute("data-adventure-state", "terrain-reward")
+        expect(active_lands).to_have_count(0)
+        expect(treasure).to_have_attribute("data-state", "holding", timeout=TIMEOUT)
+        expect(treasure.locator("#quest-map-treasure-back")).to_be_visible()
+        expect(treasure.locator("#quest-map-treasure-ok")).to_be_disabled()
+        capture(stage, directory, "03a-gem-before-flip.png", animations="allow")
+        expect(treasure).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+        for field, value in (("treasure-id", 50001), ("type", 5), ("slot-type", 1), ("value", 30),
+                             ("gem-balance", before[3] + 30),
+                             ("quest-inventory-id", inventory_id), ("land-slot", 1)):
+            expect(treasure).to_have_attribute(f"data-{field}", str(value))
+        assert treasure.get_attribute("data-art") is None
+        gem_face = treasure.get_by_role("img", name="30 Gem", exact=True)
+        expect(gem_face).to_be_visible()
+        gem_name = gem_face.locator("#quest-map-treasure-gem-name")
+        gem_amount = gem_face.locator("#quest-map-treasure-gem-amount")
+        expect(gem_name).to_have_text("GET GEM!!")
+        expect(gem_amount).to_have_text("30")
+        for element, font in ((gem_name, "Unlight Treasure Mincho"), (gem_amount, "Bradley Gratis")):
+            assert element.evaluate("""(node, family) => getComputedStyle(node).fontFamily.startsWith(`"${family}"`)
+              && Array.from(document.fonts).some(font => font.status === 'loaded'
+                && font.family.replaceAll('"', '') === family)""", font)
+        for art_file in ("treasure-gem-frame.png", "treasure-gem-icon.png"):
+            image = gem_face.locator(f'img[src$="{art_file}"]')
+            expect(image).to_be_visible()
+            assert image.evaluate("image => image.complete && image.naturalWidth > 0")
+        page.wait_for_function("() => window.qaQuestWire.sockets.at(-1).terrainSounds.includes('ulse23.mp3')",
+                               timeout=TIMEOUT)
+        expect(player_gems).to_have_text(str(before[3] + 30))
+        stage_box = stage.bounding_box()
+        page.mouse.click(stage_box["x"] + 95, stage_box["y"] + 198)
+        expect(treasure).to_be_visible()
+        assert read_movement_trace(page)["actions"] == held["actions"]
+        capture(stage, directory, "04-confirmed-fixed-gem-receipt.png", animations="allow")
+        treasure.locator("#quest-map-treasure-ok").click()
+        expect(treasure).to_have_count(0)
+    else:
+        expect(player_gems).to_have_text(balance_text)
+        expect(treasure).to_have_count(0)
+    expect(view).to_have_attribute("data-adventure-state", "between-lands", timeout=TIMEOUT)
+    expect(active_lands).to_have_count(len(next_lands), timeout=TIMEOUT)
+    assert active_lands.evaluate_all("lands => lands.map(({dataset}) => [+dataset.slot, +dataset.landId])") == [
+        list(pair) for pair in next_lands.items()
+    ]
+    assert page.evaluate("""() => {
+      const {track, start} = window.qaTerrainMusic;
+      return track === document.querySelector('#stage > audio[data-bgm-scene=quest]') && !track.paused && track.currentTime > start;
+    }""")
+    complete_first = read_movement_trace(page)
+    assert [p for p in complete_first["sent"][len(pre_entry["sent"]):] if p[0] != 3] == [[16, 11]]
+    assert complete_first["terrainSounds"] == (["ulse23.mp3"] if gem else [])
+    for selector in ("#quest-map-back", "#quest-map-detail-back", "#quest-map-deck-previous", "#quest-map-deck-next"):
+        expect(page.locator(selector)).to_be_hidden()
+    expect(page.locator("#quest-map-settlement")).to_have_count(0)
+    expect(player_ap).to_have_text(f"{before[5]}/{before[6]}")
+    capture(stage, directory, "05-retained-quest-route.png")
+
+    next_button = detail.locator(f'button.quest-map-detail-land[data-slot="{battle_slot}"]')
+    check_terrain_hover(page, stage, directory, next_button, battle_title, battle_caption, "06-next-land-hover.png")
+    hold_movement_reply(page, 16, next_button.click, through=37)
+    opening = read_movement_trace(page)
+    arrival = [p for p in opening["replies"][len(complete_first["replies"]):] if p[0] != 3]
+    assert [p[0] for p in arrival] == [128, 37] and arrival[0] == [128, 3, battle_slot], arrival
+    assert arrival[1][2:] == [-1, "CPU", "21", foe, battle_stage, 1, 0, 0, 0, 0, 0], arrival
+    expect(battle).to_have_count(0)
+    assert all(p[0] != 22 for p in opening["sent"])
+    assert opening["terrainSounds"] == complete_first["terrainSounds"]
+    capture(stage, directory, "07-withheld-battle-opening.png")
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-stage", str(battle_stage), timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-land-slot", str(battle_slot))
+    expect(battle).to_have_attribute("data-encounter-key", f"{inventory_id}:{battle_slot}")
+    music(page, "quest-duel", f"bgm{battle_stage:03d}.mp3")
+    art = page.request.get(f"{origin}/source-login/quest-art/sources.json")
+    assert art.ok
+    layers = {layer["file"] for layer in art.json()["battle"]["stages"][str(battle_stage)]["layers"]}
+    assert layers <= set(battle.locator("img").evaluate_all("images => images.map(image => image.src.split('/').at(-1))"))
+    wait_quest_art(page)
+    far_band = battle.locator(".quest-battle-far-band")
+    if battle_stage == 2:
+        expect(far_band.locator('img[src$="quest-battle-stage02-far.png"]')).to_have_count(2)
+        duration, initial_x = far_band.evaluate("""band => [band.getAnimations()[0].effect.getTiming().duration,
+          new DOMMatrixReadOnly(getComputedStyle(band).transform).m41]""")
+        assert isclose(duration, 760 * 1000 / 20.4)
+        page.wait_for_function("""x => new DOMMatrixReadOnly(getComputedStyle(
+          document.querySelector('.quest-battle-far-band')).transform).m41 < x""", arg=initial_x)
+    else:
+        expect(far_band).to_have_count(0)
+    capture(stage, directory, "08-authoritative-battle-opening.png", animations="allow")
+    expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-turn", "1")
+    expect(battle.locator("#quest-battle-player-hp")).to_have_attribute("data-hp", "6")
+    expect(battle.locator("#quest-battle-opponent-hp")).to_have_attribute("data-hp", "3")
+    trace = read_movement_trace(page)
+    assert len(live) == 5 and all(not peer.is_closed() for peer in live) and not trace["overlaps"]
+    assert trace["readySends"] == [["settled", "complete"]]
+    assert trace["actions"] == [[13, inventory_id, 1], [16, inventory_id, 1, 1], [16, inventory_id, 1, battle_slot]]
+    assert [p for p in trace["sent"] if p[0] not in (0, 1, 3)] == [[12, 10], [13, 10], [16, 11], [16, 11], [22, 5]]
+    authored = [p for p in trace["replies"][len(opening["replies"]):] if p[0] in (40, 43, 44, 45, 46)]
+    assert [p[0] for p in authored] == [40, 43, 44, 45, 46] and authored[1] == [43, 3, 1], authored
+    assert quest_inventory(database, avatar_id) == [quest[:2] + (2, quest[3], 2, *quest[5:])]
+    assert quest_deck(database, avatar_id) == locked and equipped_parts(database, avatar_id) == parts
+    assert query(database, map_read, avatar_id) == [(map_id - 1, 0)]
+    assert avatar(database, player_id) == [before[:3] + (before[3] + (30 if gem else 0),) + before[4:]]
+    capture(stage, directory, "09-authoritative-battle-move.png", animations="allow")
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
+    assert not errors, errors
+    if directory is not None:
+        (directory / "10-peaceful-terrain-wire.json").write_text(json.dumps(trace, indent=2) + "\n")
 
 
 def check_button_hover(page, button):
@@ -3137,6 +3370,10 @@ def main():
                         help="Use an owned q3 fixture to verify both encounters on the retained original Quest")
     parser.add_argument("--quest-complete-q3", action="store_true",
                         help="Use an owned q3 fixture to win both battles and hold the genuine fixed treasure reply")
+    parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
+                        help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
+    parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
+                        help="Choose the left or right authored q32 battle; defaults to slot 5")
     parser.add_argument("--quest-terminal", choices=("return", "late", "defeat"),
                         help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()
@@ -3157,6 +3394,11 @@ def main():
     if args.quest_complete_q3 and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
                                    or args.quest_terminal or args.quest_next_land):
         parser.error("--quest-complete-q3 requires --quest-start-user and its own case")
+    if args.quest_peaceful and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
+                               or args.quest_terminal or args.quest_next_land or args.quest_complete_q3):
+        parser.error("--quest-peaceful requires --quest-start-user and its own case")
+    if args.quest_peaceful_gem_slot is not None and args.quest_peaceful != "gem":
+        parser.error("--quest-peaceful-gem-slot requires --quest-peaceful gem")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -3177,6 +3419,11 @@ def main():
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
+                elif args.quest_peaceful:
+                    check_peaceful_quest(page, origin, args.database, args.quest_start_user,
+                                         args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
+                                         args.quest_peaceful, args.quest_peaceful_gem_slot)
+                    print(f"Real retained Quest passed ({args.quest_peaceful} terrain then battle).")
                 elif args.quest_next_land or args.quest_complete_q3 or args.quest_terminal == "defeat":
                     check_preowned_quest(page, origin, args.database, args.quest_start_user,
                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,

@@ -1135,6 +1135,36 @@
         260
       ]
     },
+    "gem": {
+      "frame": {
+        "file": "treasure-gem-frame.png",
+        "x": 0,
+        "y": 0,
+        "width": 168,
+        "height": 240
+      },
+      "icon": {
+        "file": "treasure-gem-icon.png",
+        "x": 34,
+        "y": 31,
+        "width": 107,
+        "height": 108
+      },
+      "title": {
+        "text": "GET GEM!!",
+        "font": "treasure-gem-name.woff",
+        "x": 0,
+        "y": 5,
+        "width": 164,
+        "height": 100
+      },
+      "caption": {
+        "x": 15,
+        "y": 178,
+        "width": 150,
+        "height": 100
+      }
+    },
     "motion": {
       "slideDelayMs": 300,
       "slideFromY": -420,
@@ -1837,6 +1867,31 @@
       "sourceLabel": "red",
       "sourceShape": 2,
       "sourceFrame": 1
+    },
+    "treasure-gem-frame.png": {
+      "source": "data/image/item_cardframe.swf",
+      "sourceSha256": "ccc9f157c5cabcf205d290a96911436882ff9b2942bde277ea53dd21baf1383e",
+      "sha256": "5e7996ea63dc72b03915482c1fef2848a96f8961b2c6db4f57ce13907fa15502",
+      "sourceFrame": 1,
+      "originalFrame": 4,
+      "hiddenInstance": "rare"
+    },
+    "treasure-gem-icon.png": {
+      "source": "public/image/avatar_items/item_a_a001.swf",
+      "sourceSha256": "5ddf65c7bcf5692af534021694e9019ed771735bbf9fb02159e46e6e4bc05d3e",
+      "sha256": "974ce9111c76c354fb1a0a383c8b2c4c32166e45a136dc1bf6b4048b695bb6e7",
+      "sourceFrame": 1,
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "treasure-gem-name.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "01dfa98952d8123d65ac5803c0ce2fa0fb8a512a4087924282a5730fd621ba86",
+      "glyphs": "GET GEM!!"
     }
   }
 }

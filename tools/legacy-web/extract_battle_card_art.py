@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the pinned q1 standing, card and battle dice artwork."""
+"""Extract the pinned Quest standing, card and battle dice artwork."""
 
 import argparse
 from hashlib import sha256
@@ -18,6 +18,8 @@ from extract_quest_detail_art import kind, png_bytes, rasterize_svg
 STANDS = {
     "21": ("public/image/standchara/standchara03.swf", "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f"),
     "1004": ("public/image/standchara/standmon002_00.swf", "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e"),
+    "1001": ("public/image/standchara/standmon001_00.swf", "c5a506de29a9f7b20267dc2bbc8a45b4219cf3f212dc05867ecab63c1a58dd6c"),
+    "1007": ("public/image/standchara/standmon003_00.swf", "0a19be4040f63c9d9084c45eb950845b1fbefbca263fbeda77e2cc0074817133"),
 }
 FRAME = ("data/image/game/acframe.swf", "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9")
 CONTROLS = ("data/image/cardaction.swf", "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220")

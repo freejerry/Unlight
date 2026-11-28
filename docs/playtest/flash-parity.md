@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群兩戰、固定蝙蝠卡寶箱與首區解鎖。**部分**戰鬥 HUD 與其他獎勵。 | 接續實機和局、空地與 Gem 寶物、換角及其他地形。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群兩戰、固定蝙蝠卡寶箱與首區解鎖。空地與 30 Gem 寶箱已沿原路線進入道路或泥潭戰鬥。**部分**戰鬥 HUD 與其他獎勵。 | 接續實機和局、換角、道路終局與泥潭兩支線的後續地形和報酬。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -122,3 +122,7 @@
 ### 末格蝙蝠卡寶箱與隱者之道
 
 - 原版與新版均實際完成兩場勝利，依序確認戰鬥結果、蝙蝠卡及任務完成。兩版都沿用原 Quest 連線，資料庫確認只增加一張蝙蝠卡、一次通關、牌組解鎖及區域旗標 1／計數 0。新版另外暫緩真 `SC25`，證明實體 `SC13` 先入庫時，畫面維持原結果，直到其餘結算確認。翻牌使用原圖、時序及 `ulse23.mp3`，最後 Back 正常關閉任務。[蝙蝠卡寶箱並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/treasure-comparison.png) · [任務完成並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/quest-clear-comparison.png) · [新區域並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/hermit-road-comparison.png) · [逐項規格](flash-parity/quest-pve.md#末格蝙蝠卡寶箱與區域解鎖)
+
+### 空地與固定 Gem 接續戰鬥
+
+- 原版與新版都實跑「山丘矮人」首格空地至道路戰鬥，以及「紫色泥沼澤2」30 Gem 寶箱至泥潭戰鬥。新版另實跑 Gem 寶箱的右支線道路戰鬥。實機驗到兩種原始 BGM、同一 Quest、牌組鎖、既有傷勢和每場唯一一次 Ready。寶箱在首次戰鬥前也會播放原始翻牌音，按 OK 後開放已確認的路線。[道路戰場並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q4-stage2-comparison.png) · [Gem 寶箱並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q32-gem-comparison.png) · [泥潭戰場並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q32-stage3-comparison.png) · [逐項規格](flash-parity/quest-pve.md#非戰鬥地形與續戰)

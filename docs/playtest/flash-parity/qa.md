@@ -165,6 +165,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 依序確認戰鬥結果、寶箱和任務完成。保存卡背、翻牌或翻後卡面及兩處任務地圖面板。核對 `ulse23.mp3` 只播放一次、兩次地圖面板確認沒有額外點擊音。三次 OK 後，查隱者之道 0/3、任務歸檔及蝙蝠卡實體 ID。再按 Back 檢查唯一 `CS2`、正常關閉及四條登入連線。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [分項規格](quest-pve.md#末格蝙蝠卡寶箱與區域解鎖)
 
+### 重跑空地與固定 Gem 後續戰
+
+使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)
+
+沿用本頁 `--quest-start-user` 的啟動方式。空地用 `--quest-peaceful empty`。Gem 用 `--quest-peaceful gem` 進格 5，或以另一位新角色加 `--quest-peaceful-gem-slot 3`。空地暫緩真實 `SC19`，Gem 暫緩真實 `SC25`，接著各暫緩同一 Quest 的 Pong。核對棋子、可進格與餘額何時更新。Gem 翻牌後才啟用本機 OK，且翻牌音只播一次。兩條路徑再暫緩 `SC40`，核對同一任務、Deck 1、實際傷勢和唯一一次 Ready。道路戰場檢查兩張可循環的原始遠景及 `bgm002.mp3`。泥潭戰場檢查靜止原始底圖及 `bgm003.mp3`。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [任務原版規格](quest-pve.md#非戰鬥地形與續戰)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

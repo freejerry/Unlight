@@ -664,7 +664,8 @@ def create_app(
             app.router.add_get("/source-login/quest-result-art/index.json", serve_file(quest_result_art / "index.json"))
             for artifact in sorted(quest_result_art.glob("*")):
                 if artifact.suffix in (".png", ".woff"):
-                    app.router.add_get(f"/source-login/quest-result-art/{artifact.name}", serve_file(artifact))
+                    headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
+                    app.router.add_get(f"/source-login/quest-result-art/{artifact.name}", serve_file(artifact, headers))
 
             illustration_hashes = {}
             with suppress(OSError):

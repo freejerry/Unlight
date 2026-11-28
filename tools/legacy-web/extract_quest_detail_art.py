@@ -68,6 +68,9 @@ SOURCE_DIGESTS = {
     "unit_chara04": "b2b425125e5897e0c460f49116d60f7a4354389022a44dfe3c75b27bcdf2cb26",
     "unit_chara11": "f6fdb01b3ff95d95d14f7bc650a102b79f7e0bcf150e01c318bedfaae0e939d2",
     "unit_chara12": "7c67cb97b7e14dfac14d5f54039ce786d91ed4266b04dadcdb1c572485675496",
+    "bg_btl00a_far": "fc69665706cffedd9ca894d99dfde48a6db2cc0e6de40d4a2a123d54afb32170",
+    "bg_btl02a": "6efa988629c9288fecac1b529d6dba7c58c98a5062e9000bf0e9c6c9597fc927",
+    "bg_btl03a": "2a46c9649848ac593073f801fd90bb5a8e3414b77c4e88bd38b90feb8fe25f12",
     "bg_btl11a": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
     "bg_btl11a_book": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
@@ -97,10 +100,12 @@ SOURCE_DIGESTS = {
     "standchara04_f": "ff548ffac53b20005c5fd69372e5d32c1c4c74fb0bbdf8916480ca0476df98df",
     "standchara11_f": "fe03d041aa5442d51c61c8a40a81a0debdd92a49ce9c3001957a9c1ca3476e7a",
     "standchara12_f": "22ed984b92efc0a0cba84e6b667300d7b4e5f5083f31fc433f1e8b2cfcf9b36f",
+    "standmon001_00_f": "6358207e01180f6b35ba118dbd611ae4813ae7ac8af7162c7d71bae543ab9152",
     "standmon002_00_f": "c43e7eeb9d71a86279fe796f9a2e1884ab564998c8440908a1c13065e363813f",
+    "standmon003_00_f": "63d67d31585cddce6f3582956bf722ad00bd3353afc3d27356d77af09ad31e5a",
 }
 BATTLE_SOURCE_DIRS = {
-    "bg_btl11a": "bg", "bg_btl11a_book": "bg",
+    **dict.fromkeys(("bg_btl00a_far", "bg_btl02a", "bg_btl03a", "bg_btl11a", "bg_btl11a_book"), "bg"),
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
                      "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
@@ -109,6 +114,7 @@ BATTLE_SOURCE_DIRS = {
 MOVE_FACE_SOURCES = {
     "1": "standchara01_f", "21": "standchara03_f", "31": "standchara04_f",
     "101": "standchara11_f", "111": "standchara12_f", "1004": "standmon002_00_f",
+    "1001": "standmon001_00_f", "1007": "standmon003_00_f",
 }
 
 # Source vector order in MapStageImage.as. Stages 8, 9 and 12 use the lake SWF.
@@ -425,8 +431,13 @@ class Movie:
                 if not matrix:
                     raise ValueError(f"Unexpected bitmap fill matrix {style.attrib}")
                 bx, by = translation(matrix[1])
-                if ((bx, by) != (x0, y0) or not 0 <= bx + image.width * TWIPS - x1 <= 2
-                        or not 0 <= by + image.height * TWIPS - y1 <= 2):
+                def matches_bitmap(rect):
+                    return rect is not None and rect[:2] == (bx, by) and (
+                        0 <= bx + image.width * TWIPS - rect[2] <= 2
+                        and 0 <= by + image.height * TWIPS - rect[3] <= 2
+                    )
+
+                if not matches_bitmap((x0, y0, x1, y1)) and not matches_bitmap(bitmap_rectangle(path)):
                     raise ValueError(f"Unexpected rectangular image area in shape {shape.attrib}")
                 left, top = bx + dx, by + dy
                 width, height = image.width * TWIPS, image.height * TWIPS
@@ -441,6 +452,16 @@ class Movie:
                 raise ValueError(f"Unexpected fill {style.attrib}")
             pieces.append(Primitive(extent, markup))
         return pieces
+
+
+def bitmap_rectangle(path):
+    if not re.fullmatch(r"M-?\d+,-?\d+(?: L-?\d+,-?\d+){4} Z", path):
+        return None
+    coords = tuple(map(int, re.findall(r"-?\d+", path)))
+    x, y = sorted(set(coords[::2])), sorted(set(coords[1::2]))
+    if len(x) == len(y) == 2 and len(set(zip(coords[::2], coords[1::2]))) == 4:
+        return x[0], y[0], x[1], y[1]
+    return None
 
 
 def shape_paths(shape):
@@ -833,6 +854,31 @@ def extract(asset_root, art, swfdump):
             for name, placed in zip(("near-bottom", "near-foreground"), placements, strict=True)
         ]
         return [dict(far_art, depth=0), *(dict(part, depth=3) for part in near_parts)]
+
+    def stage2_battle_layers():
+        far = movie("bg_btl00a_far")
+        _, far_placements = next(timeline(far.root))
+        pieces, shapes = far.primitives(far_placements)
+        # FarBG draws the raw 760×273 picture into a transparent 760×350 BitmapData.
+        (band,) = pieces
+        if band.bounds != (0, 0, 15200, 5460) or band.image.size != (760, 273):
+            raise ValueError("Unexpected original stage 2 far band")
+        bitmap = Image.new("RGBA", (760, 350))
+        bitmap.paste(band.image, (0, 0))
+        motion = {"direction": -1, "stepsPerSecond": QUEST_STAGE_FRAME_RATE / 2}
+        far_art = publish(far, "quest-battle-stage02-far.png", png_bytes(bitmap),
+                          dict(x=0, y=0, width=760, height=350), "stage", 1,
+                          shapeIds=shapes, bitmapIds=[band.bitmap_id], sourceDepth=1, scroll=motion)
+        road = movie("bg_btl02a")
+        _, road_placements = next(timeline(road.root))
+        road_art = add(road, "stage02-road", road_placements, "stage", art_set="battle", sourceDepth=3)
+        return [dict(far_art, depth=0, scroll=motion), dict(road_art, depth=0)]
+
+    def stage3_battle_layers():
+        lake = movie("bg_btl03a")
+        _, placements = next(timeline(lake.root))
+        layer = add(lake, "stage03-lake", placements, "stage", art_set="battle", sourceDepth=3)
+        return [dict(layer, depth=0)]
 
     def battle_static_frame():
         source = movie("base")
@@ -1260,6 +1306,8 @@ def extract(asset_root, art, swfdump):
     manifest["detail"] = detail
     manifest["battle"] = {
         "stages": {
+            "2": {"layers": stage2_battle_layers(), "bgm": "/public/sound/bgm/bgm002.mp3"},
+            "3": {"layers": stage3_battle_layers(), "bgm": "/public/sound/bgm/bgm003.mp3"},
             "11": {"layers": stage11_battle_layers(), "bgm": "/public/sound/bgm/bgm000.mp3"},
         },
         "common": [battle_static_frame()],

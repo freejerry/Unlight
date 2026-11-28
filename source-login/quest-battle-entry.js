@@ -148,6 +148,25 @@ function sprite(parent, artLayer, root = art) {
   return image;
 }
 
+function drawStageLayer(battle, source, signal) {
+  if (!source.scroll || reduced()) {
+    sprite(battle, source);
+    return;
+  }
+  const { x, y, width, height, depth, scroll: { direction, stepsPerSecond } } = source;
+  const band = layer(battle, 'quest-battle-far-band', depth);
+  place(band, x, y, width, height);
+  const tile = { file: source.file, x: 0, y: 0, width, height };
+  sprite(band, tile);
+  sprite(band, { ...tile, x: -direction * width });
+  // FarBG ScrollThread copies the cached bitmap twice, advancing one whole pixel every two source frames.
+  const animation = band.animate([
+    { transform: 'translateX(0px)' },
+    { transform: `translateX(${direction * width}px)` },
+  ], { duration: 1000 * width / stepsPerSecond, iterations: Infinity, easing: `steps(${width}, end)` });
+  signal.addEventListener('abort', () => animation.cancel(), { once: true });
+}
+
 async function animate(node, frames, duration, signal, delay = 0) {
   if (!node || reduced() || signal.aborted) return;
   const animation = node.animate(frames, { duration, delay, easing: sineOut, fill: 'both' });
@@ -1214,7 +1233,7 @@ export async function mountQuestBattleEntry(view, board, {
   title.tabIndex = -1;
   title.textContent = '戰鬥開場';
   battle.append(title);
-  for (const source of layers) sprite(battle, source);
+  for (const source of layers) drawStageLayer(battle, source, signal);
   const moveFocus = board.contains(document.activeElement) || document.activeElement === document.body;
   view.append(battle);
   board.inert = true;

@@ -470,6 +470,10 @@ button.quest-map-detail-land {
 #quest-map-settlement[data-art="unavailable"] { padding: 184px 48px 0; }
 #quest-map-settlement[data-art="unavailable"] > button { position: static; padding: 4px 16px; color: inherit; background: #252525; }
 
+#quest-map-treasure[data-art="unavailable"] { width: 224px; height: 152px; padding: 39px 12px 12px; text-align: center; }
+#quest-map-treasure[data-art="unavailable"] p { position: relative; margin: 0 0 5px; }
+#quest-map-treasure[data-art="unavailable"] button { position: relative; min-width: 60px; }
+
 #quest-map-region-picker { width: 384px; height: 384px; }
 #quest-map-region-close { top: 12px; left: 332px; width: 24px; height: 24px; }
 .quest-map-region-option > img { top: -8px; left: -12px; width: 80px; height: 80px; }

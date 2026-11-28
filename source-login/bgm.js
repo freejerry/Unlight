@@ -192,17 +192,24 @@ function requestMusic() {
   });
 }
 
+function prepareQuestCue(cue) {
+  const file = questCueFiles.get(cue);
+  if (file && !questCueAudio.has(cue)) {
+    questCueAudio.set(cue, createAudio(`/public/sound/se/${file}`, audioVolume("se")));
+  }
+  return questCueAudio.get(cue);
+}
+
 export function selectQuestDuelMusic(stageNumber, isBoss) {
   duelTrack = isBoss ? duelTracks[12] : duelTracks[stageNumber] ?? duelTracks[0];
-  for (const [cue, file] of questCueFiles) {
-    if (!questCueAudio.has(cue)) questCueAudio.set(cue, createAudio(`/public/sound/se/${file}`, audioVolume("se")));
-  }
+  for (const cue of questCueFiles.keys()) prepareQuestCue(cue);
 }
 
 export function playQuestBattleEffect(cue, signal) {
-  const base = questCueAudio.get(cue);
   const volume = audioVolume("se");
-  if (!active || !base || base.error || !volume || signal?.aborted) return;
+  if (!active || !volume || signal?.aborted) return;
+  const base = prepareQuestCue(cue);
+  if (!base || base.error) return;
   // The original multi-play permits successive dealt cards to overlap.
   const audio = playingQuestCues.has(base) ? base.cloneNode() : base;
   audio.volume = volume;
@@ -230,6 +237,7 @@ export function playQuestBattleEffect(cue, signal) {
 function playSceneMusic() {
   if (!active || !sceneEntered()) return;
   const scene = stage.dataset.soundscape ?? "title";
+  if (scene === "quest") prepareQuestCue("flip");
   if (scene === "title" && music === titleMusic && titleFade) return;
   entryObserver.disconnect();
   const wasWarming = warmingMusic;

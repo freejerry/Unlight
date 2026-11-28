@@ -4,6 +4,8 @@ const art = new URL('./quest-result-art/', import.meta.url);
 const width = 780;
 const height = 680;
 const focalLength = width / (2 * Math.tan(15 * Math.PI / 360));
+const gemNameFont = 'Unlight Treasure Mincho';
+const gemFonts = new WeakMap();
 const presentations = new WeakMap();
 const alreadyShown = { ready: Promise.resolve(true), dispose() {} };
 const unavailable = { ready: Promise.resolve(false), dispose() {} };
@@ -103,19 +105,73 @@ async function loadArt(assets, signal) {
   return response.ok ? (await response.json()).treasure : null;
 }
 
-function sameReward(treasure, card) {
-  return treasure?.type === 1 && treasure.slotType === 1 && card && treasure.value === card.id
-    && treasure.card?.cardId === card.id && [treasure.treasureId, card.id, treasure.card.inventoryId]
-      .every(value => Number.isSafeInteger(value) && value > 0);
+function loadGemFont(document, file) {
+  if (file !== 'treasure-gem-name.woff') return Promise.resolve(false);
+  if (!gemFonts.has(document)) {
+    const font = new FontFace(gemNameFont, `url("${new URL(file, art)}")`);
+    gemFonts.set(document, font.load().then(loaded => {
+      document.fonts.add(loaded);
+      return true;
+    }).catch(() => {
+      gemFonts.delete(document);
+      return false;
+    }));
+  }
+  return gemFonts.get(document);
 }
 
-/** Present a confirmed fixed character-card treasure. Acknowledge it locally before Quest Clear. */
-export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, onConfirm, onSound }) {
-  if (!view || signal?.aborted || !sameReward(treasure, card) || typeof onConfirm !== 'function') return unavailable;
-  const inventoryId = treasure.card.inventoryId;
+async function prepareGemFace(face, gem, amount) {
+  if (!validArea(gem?.title) || gem.title.text !== 'GET GEM!!' || !validArea(gem.caption)) return false;
+  const [frame, icon, fontReady] = await Promise.all([
+    prepareLayer(gem.frame), prepareLayer(gem.icon), loadGemFont(face.ownerDocument, gem.title.font),
+    face.ownerDocument.fonts.load?.('24px "Bradley Gratis"', '0123456789Gem'),
+  ]);
+  if (!frame || !icon || !fontReady) return false;
+
+  const glow = { color: '#000', textAlign: 'center', letterSpacing: '1px', paddingTop: '2px',
+    paintOrder: 'stroke fill', WebkitTextStroke: '2px #fff', textShadow: '0 0 2px #fff' };
+  graphic(face, frame);
+  const caption = add(face, 'span', 'quest-map-treasure-gem-caption');
+  put(caption, gem.caption);
+  Object.assign(caption.style, glow, { font: '24px "Bradley Gratis", serif', whiteSpace: 'nowrap' });
+  const number = add(caption, 'span', 'quest-map-treasure-gem-amount');
+  number.style.fontSize = '50px';
+  number.textContent = String(amount);
+  add(caption, 'span').textContent = 'Gem';
+  graphic(face, icon);
+  const title = add(face, 'span', 'quest-map-treasure-gem-name');
+  put(title, gem.title);
+  Object.assign(title.style, glow, { font: `12px "${gemNameFont}", serif` });
+  title.textContent = gem.title.text;
+  face.setAttribute('role', 'img');
+  face.setAttribute('aria-label', `${amount} Gem`);
+  return true;
+}
+
+function rewardKey(treasure, card, land) {
+  const positiveInteger = value => Number.isSafeInteger(value) && value > 0;
+  if (!positiveInteger(treasure?.treasureId)) return null;
+  if (treasure?.type === 1 && treasure.slotType === 1 && card && treasure.value === card.id
+      && treasure.card?.cardId === card.id && [card.id, treasure.card.inventoryId].every(positiveInteger)) {
+    return `card:${treasure.card.inventoryId}`;
+  }
+  // A fixed Gem award belongs to the matched quest inventory and land and grants no physical card.
+  if (treasure.card || card || !positiveInteger(treasure.amount) || !Number.isSafeInteger(treasure.balance)
+      || treasure.balance < treasure.amount || (treasure.type !== undefined && treasure.type !== 5)
+      || (treasure.slotType !== undefined && treasure.slotType !== 1)
+      || (treasure.value !== undefined && treasure.value !== treasure.amount)
+      || !positiveInteger(land?.inventoryId) || !Number.isInteger(land.slot) || land.slot < 0 || land.slot >= 15) return null;
+  return `gem:${land.inventoryId}:${land.slot}:${treasure.treasureId}`;
+}
+
+/** Present a confirmed fixed treasure and acknowledge it locally before advancing the quest. */
+export function mountQuestTreasurePanel(view, { treasure, card, land, assets, signal, onConfirm, onSound }) {
+  const key = rewardKey(treasure, card, land);
+  if (!view || signal?.aborted || !key || typeof onConfirm !== 'function') return unavailable;
+  const isGem = !card;
   const state = presentations.get(view) ?? { active: null, acknowledged: new Set() };
-  if (state.acknowledged.has(inventoryId)) return alreadyShown;
-  if (state.active) return state.active.inventoryId === inventoryId ? state.active.handle : unavailable;
+  if (state.acknowledged.has(key)) return alreadyShown;
+  if (state.active) return state.active.key === key ? state.active.handle : unavailable;
   presentations.set(view, state);
 
   const controller = new AbortController();
@@ -124,8 +180,12 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
   dialog.className = 'quest-map-dialog';
   dialog.setAttribute('aria-labelledby', 'quest-map-treasure-title');
   Object.assign(dialog.style, { width: `${width}px`, height: `${height}px`, overflow: 'hidden' });
-  Object.assign(dialog.dataset, { state: 'loading', treasureId: String(treasure.treasureId), type: String(treasure.type),
-    slotType: String(treasure.slotType), value: String(treasure.value), cardId: String(card.id), cardInventoryId: String(inventoryId) });
+  Object.assign(dialog.dataset, { state: 'loading', treasureId: String(treasure.treasureId),
+    type: String(isGem ? 5 : treasure.type), value: String(isGem ? treasure.amount : treasure.value) });
+  if (treasure.slotType !== undefined) dialog.dataset.slotType = String(treasure.slotType);
+  if (isGem) Object.assign(dialog.dataset, { gemBalance: String(treasure.balance),
+    questInventoryId: String(land.inventoryId), landSlot: String(land.slot) });
+  else Object.assign(dialog.dataset, { cardId: String(card.id), cardInventoryId: String(treasure.card.inventoryId) });
   const title = add(dialog, 'h2', 'quest-map-treasure-title');
   title.className = 'sr-only';
   title.tabIndex = -1;
@@ -133,9 +193,9 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
   const content = add(dialog, 'div');
   Object.assign(content.style, { position: 'absolute', inset: '0', pointerEvents: 'none',
     perspective: `${focalLength}px`, perspectiveOrigin: `${width / 2}px ${height / 2}px` });
-  const face = view.ownerDocument.createElement('canvas');
-  face.id = 'quest-map-treasure-card';
-  face.dataset.cardId = String(card.id);
+  const face = view.ownerDocument.createElement(isGem ? 'div' : 'canvas');
+  face.id = isGem ? 'quest-map-treasure-gem' : 'quest-map-treasure-card';
+  if (!isGem) face.dataset.cardId = String(card.id);
 
   function dispose() {
     if (visual.aborted) return;
@@ -143,7 +203,7 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
     signal?.removeEventListener('abort', dispose);
     if (dialog.open) dialog.close();
     dialog.remove();
-    if (state.active?.inventoryId === inventoryId) state.active = null;
+    if (state.active?.key === key) state.active = null;
   }
 
   signal?.addEventListener('abort', dispose, { once: true });
@@ -166,7 +226,7 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
 
     const loaded = await liveResult(Promise.all([
       prepareLayer(panel), prepareLayer(layers.back), prepareLayer(ok.up), prepareLayer(ok.over), prepareLayer(ok.down),
-      renderCharacterCard(face, card, { signal: visual }),
+      isGem ? prepareGemFace(face, source.gem, treasure.amount) : renderCharacterCard(face, card, { signal: visual }),
     ]), visual);
     if (!loaded || visual.aborted || !loaded[0] || !loaded[1] || !loaded[2] || !loaded[5]) return false;
     const [plate, backArt, up, over, down] = loaded;
@@ -189,10 +249,28 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
         put(skin, selected);
       }, { signal: visual });
     }
+    async function confirmGem() {
+      let confirmed;
+      try { confirmed = await onConfirm(); }
+      catch { confirmed = false; }
+      if (confirmed === false) {
+        if (!visual.aborted) {
+          button.disabled = false;
+          button.focus({ preventScroll: true });
+        }
+        return;
+      }
+      state.acknowledged.add(key);
+      dispose();
+    }
     button.addEventListener('click', () => {
       if (button.disabled || dialog.dataset.state !== 'ready' || visual.aborted) return;
       button.disabled = true;
-      state.acknowledged.add(inventoryId);
+      if (isGem) {
+        void confirmGem();
+        return;
+      }
+      state.acknowledged.add(key);
       dispose();
       onConfirm();
     }, { signal: visual });
@@ -256,6 +334,6 @@ export function mountQuestTreasurePanel(view, { treasure, card, assets, signal, 
     if (!ready) dispose();
     return ready;
   }) };
-  state.active = { inventoryId, handle };
+  state.active = { key, handle };
   return handle;
 }
