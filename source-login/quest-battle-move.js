@@ -54,15 +54,20 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
   let compactSignature;
   let drawn = false;
   let combat = false;
+  let turn = 1;
+  let exchangeKey;
+  let combatRole;
+  let moveEnabled = true;
   let combatDone;
 
   function live() { return !signal.aborted && isCurrent(); }
   function combatTurn() {
-    return combat && snapshot?.phase === 'moved' && snapshot.exchange?.turn === 1 && snapshot.exchange?.index === 1;
+    return combat && snapshot?.phase === 'moved' && snapshot.exchange &&
+      (snapshot.exchange.key ?? `${snapshot.exchange.turn}:${snapshot.exchange.index}`) === exchangeKey;
   }
   function selectable() {
-    if (!combat) return snapshot?.phase === 'move' && !snapshot.moveSubmitted;
-    return combatTurn() && !snapshot.exchange.submitted && ['attack', 'defense'].includes(snapshot.exchange.phase);
+    if (!combat) return moveEnabled && snapshot?.phase === 'move' && (snapshot.ready?.turn ?? turn) === turn && !snapshot.moveSubmitted;
+    return combatTurn() && !snapshot.exchange.submitted && ['attack', 'defense'].includes(combatRole) && snapshot.exchange.phase === combatRole;
   }
   function canSend() { return live() && drawn && selectable() && !snapshot.operation && !localAction && !clickGate; }
 
@@ -99,7 +104,8 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
     updateControls();
     try {
       const args = value === undefined ? [] : [value];
-      const next = await scene[operation](...args, { signal });
+      const scope = combat ? { exchangeKey } : { moveTurn: turn };
+      const next = await scene[operation](...args, { signal, ...scope });
       if (!live()) return;
       update(next ?? scene.snapshot.adventure?.battle);
       const ownCard = cards.get(value);
@@ -273,15 +279,14 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
     snapshot = result;
     const entries = result.hand;
     const table = combat ? result.exchange?.battleTable : result.moveTable;
-    if (drawn && Array.isArray(entries) && Array.isArray(table) && (combat ? combatTurn() : result.phase !== 'moved')) {
+    const currentMove = moveEnabled && (result.ready?.turn ?? turn) === turn && ['move', 'committing', 'settling'].includes(result.phase);
+    if (drawn && Array.isArray(entries) && Array.isArray(table) && (combat ? combatTurn() : currentMove)) {
       const signature = [combat ? result.exchange.phase : '', ...entries.map(({ id, up }) => `${id}:${up}`), '/',
         ...table.map(({ id, up }) => `${id}:${up}`)].join(',');
       if (compactSignature !== signature) {
         compactSignature = signature;
-        if (combat) {
-          const visible = new Set([...entries, ...table].map(({ id }) => id));
-          for (const [id, { node }] of cards) if (!visible.has(id)) node.remove();
-        }
+        const visible = new Set([...entries, ...table].map(({ id }) => id));
+        for (const [id, { node }] of cards) if (!visible.has(id)) node.remove();
         syncZone(hands.player, entries, 'hand');
         syncZone(hands.playerTable, table, 'table');
       } else {
@@ -322,9 +327,11 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
   return {
     update,
     installCardArt,
-    beginCombat() {
-      if (combat || !live()) return;
+    beginCombat(key = snapshot?.exchange?.key ?? `${snapshot?.exchange?.turn}:${snapshot?.exchange?.index}`) {
+      if (!live() || (combat && key === exchangeKey)) return;
       combat = true;
+      exchangeKey = key;
+      combatRole = undefined;
       timedOut = false;
       autoSent = false;
       compactSignature = undefined;
@@ -332,11 +339,37 @@ export function createQuestBattleMove({ battle, scene, hud, hands, controls, com
       hands.playerTable.hidden = false;
       update(scene.snapshot.adventure?.battle);
     },
+    setCombatRole(role) {
+      combatRole = role;
+      updateControls();
+    },
+    beginDraw(nextTurn, survivors) {
+      combat = false;
+      combatRole = undefined;
+      moveEnabled = false;
+      turn = nextTurn;
+      timedOut = false;
+      autoSent = false;
+      compactSignature = undefined;
+      const visible = new Set(survivors.map(({ id }) => id));
+      for (const [id, { node }] of cards) if (!visible.has(id)) node.remove();
+      syncZone(hands.player, survivors, 'hand');
+      hands.playerTable.replaceChildren();
+      updateControls();
+    },
+    beginMove(nextTurn) {
+      turn = nextTurn;
+      moveEnabled = true;
+      compactSignature = undefined;
+      hands.playerTable.hidden = false;
+      update(scene.snapshot.adventure?.battle);
+    },
     attach(metadata) {
-      if (!live() || drawn) return;
-      definitions = metadata;
+      if (!live()) return;
+      for (const [id, data] of metadata) definitions.set(id, data);
       for (const node of Array.from(hands.player.children)) {
         const id = Number(node.dataset.cardId);
+        if (cards.get(id)?.node === node) continue;
         upgradeCard(node, { id, up: node.dataset.up === 'true', event: node.dataset.kind === 'event', playable: false });
       }
       drawn = true;

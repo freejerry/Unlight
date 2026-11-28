@@ -610,7 +610,7 @@ def create_app(
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
-                "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js",
+                "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
@@ -643,6 +643,10 @@ def create_app(
             app.router.add_get("/source-login/battle-card-art/index.json", serve_file(battle_card_art / "index.json"))
             for artifact in sorted(battle_card_art.glob("*.png")):
                 app.router.add_get(f"/source-login/battle-card-art/{artifact.name}", serve_file(artifact))
+            quest_hit_art = SOURCE_LOGIN_ROOT / "quest-hit-art"
+            app.router.add_get("/source-login/quest-hit-art/index.json", serve_file(quest_hit_art / "index.json"))
+            for image in sorted(quest_hit_art.glob("*.png")):
+                app.router.add_get(f"/source-login/quest-hit-art/{image.name}", serve_file(image))
 
             illustration_hashes = {}
             with suppress(OSError):

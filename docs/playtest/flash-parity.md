@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、抽牌、首次移動和第一組防禦結算。**部分**戰鬥 HUD。 | 接上第二組攻防及多回合，另驗換角、技能和報酬。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、兩組攻防、次回合抽牌與移動。**部分**戰鬥 HUD。 | 從正常戰鬥走到勝敗和任務結算，另驗換角、技能與報酬。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -102,3 +102,8 @@
 
 - 落日大蝙蝠首戰已從移動接到原版等待、防禦、翻牌、擲骰和攻防結算。兩版各用真正的 Ruby 出牌與骰值。新版依當次攻守使用原始黑白骰貼圖，在 WebGL 繪製原始 COLLADA 模型，並核對擲骰聲、遠距離命中聲及生命值 7/7 → 6/7。[防禦桌面並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/defense-table-comparison.png) · [擲骰並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/rolling-dice-comparison.png) · [新版生命值](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-06-authoritative-defense-result.png)
 - 真實回覆延遲測例驗證同一連線只出牌一次，等待期間保留最後確認的牌面。原版再驗確認本方 7/7 → 4/7，並在回合 1 收到下一筆 `SC51` 後開啟本方攻擊。新版已驗到同一組攻防的權威結算。角色姿勢、血花等戰鬥效果、第二組攻防及終局畫面仍待接續。[原版扣血及下一階段](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/hp-proof/23-original-hp-changed.png) · [原版及新版逐項驗收](flash-parity/quest-pve.md#首回合第一組攻防) · [實機重跑](flash-parity/qa.md#重跑首回合第一組攻防)
+
+### 同回合攻守互換與次回合
+
+- 原版與新版都從落日大蝙蝠的遠距離防禦走到回合 1 的我方攻擊。空攻擊略過擲骰視覺及聲音，實際進入 Draw／Move。新版保持同一條 Quest，正確顯示第二組初始點數 0 與 1、原始回合字圖，並把同場實際補入的事件牌 259 接到剩餘手牌後方。暫緩 `SC51`、`SC46` 及本方方向 `SC60` 的實跑均核對到輸入交接和單次 Ready。[攻守互換並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/second-attack-comparison.png) · [第二回合 Move 並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-two-move-comparison.png) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-native-next-turn-wire.json) · [重跑](flash-parity/qa.md#重跑同回合攻守互換與次回合)
+- 近距離和遠距離試玩保留原始攻擊姿勢、斬擊、槍擊、血花及音效。兩場各扣 3 點和 1 點，生命值在動畫中更新並延續到第二回合。下一段核對勝敗、換角及結算後回任務地圖。[新版斬擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root/root-02c-exchange-1-slash.png) · [新版槍擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-02c-exchange-1-bullet.png) · [原版規格及分項驗收](flash-parity/quest-pve.md#同回合攻守互換與次回合)

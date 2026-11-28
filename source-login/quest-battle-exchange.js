@@ -14,28 +14,29 @@ function append(parent, tag, id, className) {
 
 function presentation(exchange, distance) {
   const { phase, playerAttacks, attackCards, defenceCards, cards, defenceStartedAt, attackStartedAt } = exchange;
+  const second = exchange.index === 2;
   if (playerAttacks === null) return null;
   if (cards || exchange.dice || exchange.duelFinish || ['complete', 'terminal', 'uncertain'].includes(phase)) return { role: 'result' };
   if (defenceCards) return null;
   if (phase === 'attack' || (phase === 'committing' && playerAttacks)) {
-    return { role: 'attack', banner: 'atk_a', table: distance === 1 ? 'atk' : distance === 4 ? 'atk_all' : 'atk_l',
+    return { role: 'attack', banner: second ? 'def_b' : 'atk_a', table: distance === 1 ? 'atk' : distance === 4 ? 'atk_all' : 'atk_l',
       timer: !attackCards, side: 'player' };
   }
   if (phase === 'defense' || (phase === 'committing' && !playerAttacks)) {
-    return { role: 'defense', banner: 'def_a', table: 'def', timer: !defenceCards, side: 'player' };
+    return { role: 'defense', banner: second ? 'atk_b' : 'def_a', table: 'def', timer: !defenceCards, side: 'player' };
   }
   if (Number.isFinite(defenceStartedAt) && playerAttacks) {
     return { role: 'waiting', table: 'wait_atk', timer: !defenceCards, side: 'opponent' };
   }
   if (Number.isFinite(attackStartedAt) && !playerAttacks) {
-    return { role: 'waiting', banner: 'def_a', table: 'wait_def', timer: !attackCards, side: 'opponent' };
+    return { role: 'waiting', banner: second ? 'atk_b' : 'def_a', table: 'wait_def', timer: !attackCards, side: 'opponent' };
   }
   return null;
 }
 
 export function createQuestBattleExchange(battle, {
   signal, isCurrent, assets, status, hands, move, combatControls, showTable, showPhase, cutIn, startTimer, updateHp,
-  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll,
+  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll, playHit, playAttackPose, onSettled,
 }) {
   const root = layer(battle, 'quest-battle-exchange', 26, 'quest-battle-exchange');
   const points = layer(root, 'quest-battle-combat-points', 0, 'quest-battle-combat-points');
@@ -44,6 +45,7 @@ export function createQuestBattleExchange(battle, {
   let shown;
   let stopTimer;
   let clearCutIn;
+  let cutInExit;
   let seenReveal;
   let revealTask = Promise.resolve();
   let rolled = false;
@@ -52,10 +54,11 @@ export function createQuestBattleExchange(battle, {
   let diceSettled = Promise.resolve();
   let pointsKey;
   let resultFinished;
+  let visible = true;
   const health = { ...initialHp };
   const lastAbsoluteHp = {};
 
-  function live() { return !signal.aborted && isCurrent(); }
+  function live() { return visible && !signal.aborted && isCurrent(); }
 
   function summary(exchange) {
     if (!receipt) {
@@ -63,6 +66,8 @@ export function createQuestBattleExchange(battle, {
       receipt.setAttribute('aria-label', '攻防結果');
     }
     receipt.dataset.playerAttacks = String(exchange.playerAttacks);
+    receipt.dataset.turn = String(exchange.turn);
+    receipt.dataset.exchangeIndex = String(exchange.index);
     return receipt;
   }
 
@@ -97,6 +102,7 @@ export function createQuestBattleExchange(battle, {
         stopTimer?.freeze?.();
         shown.timer = false;
         combatControls.hidden = true;
+        move.setCombatRole(undefined);
       }
       return;
     }
@@ -108,10 +114,11 @@ export function createQuestBattleExchange(battle, {
       status.className = 'quest-battle-status';
     } else if (shown?.role !== next.role) status.value = label;
     combatControls.hidden = !activeInput;
+    move.setCombatRole(activeInput ? next.role : undefined);
     if (next.table !== shown?.table) showTable(next.table ?? 'blank');
     if (next.banner !== undefined && next.banner !== shown?.banner) showPhase(next.banner, activeInput);
     if (next.side !== shown?.side) {
-      void clearCutIn?.();
+      cutInExit = clearCutIn?.();
       clearCutIn = next.side ? cutIn(next.side) : undefined;
     }
     if (next.timer !== shown?.timer || next.role !== shown?.role) {
@@ -195,6 +202,9 @@ export function createQuestBattleExchange(battle, {
   async function showDice(exchange) {
     showDiceReceipt(exchange);
     const { playerAttacks, attackDice, defenceDice } = exchange.dice;
+    if (live() && attackDice.length && defenceDice.length && playAttackPose) {
+      void Promise.resolve().then(() => live() && playAttackPose({ battle, playerAttacks, signal })).catch(() => false);
+    }
     await revealTask;
     if (!live() || !attackDice.length || !defenceDice.length) return;
     const playerDice = playerAttacks ? attackDice : defenceDice;
@@ -231,10 +241,11 @@ export function createQuestBattleExchange(battle, {
       }
     }
     const previous = { ...health };
-    for (const hit of pending) {
+    const hits = pending.map(hit => {
       const side = hit.player ? 'player' : 'opponent';
       if (Number.isInteger(health[side])) health[side] = Math.max(0, health[side] - hit.damage);
-    }
+      return { hit, hp: { ...health } };
+    });
     for (const side of ['player', 'opponent']) {
       const absolute = exchange.hitPoints[side];
       if (!Number.isInteger(absolute) || absolute === lastAbsoluteHp[side]) continue;
@@ -246,11 +257,19 @@ export function createQuestBattleExchange(battle, {
       hitTask = hitTask.then(async () => {
         await diceSettled;
         if (!live()) return;
-        for (const hit of pending) {
-          if (hit.damage <= 0) continue;
+        if (!hits.length) {
+          await updateHp(confirmedHp);
+          return;
+        }
+        for (const [index, { hit, hp }] of hits.entries()) {
+          const targetHp = index === hits.length - 1 ? confirmedHp : hp;
+          if (hit.damage <= 0) {
+            if (live()) await updateHp(targetHp);
+            continue;
+          }
           const label = (await rollArt)?.damage?.label;
           if (!live()) return;
-          if (!hit.nonHostile) playQuestBattleEffect(distance === 1 ? 'slash' : 'bullet', signal);
+          playQuestBattleEffect(distance === 1 ? 'slash' : 'bullet', signal);
           const x = (hit.player ? [288, 184, 80, 184] : [472, 576, 680, 576])[distance - 1];
           const marker = label && sprite(root, { ...label, x: x + 23, y: 216 }, BATTLE_CARD_ART);
           const number = append(root, 'span', undefined, 'quest-battle-damage-number');
@@ -258,21 +277,25 @@ export function createQuestBattleExchange(battle, {
           number.textContent = String(hit.damage);
           place(number, x - 240, 139, 250, 120);
           const parts = [marker, number].filter(Boolean);
-          if (!reduced()) {
-            await Promise.all(parts.map(node => animate(node, [{ opacity: 0, scale: 4 }, { opacity: 1, scale: 1 }], 250, signal, 300)));
-            if (live()) await wait(2200, signal);
-            if (live()) await Promise.all(parts.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 220, signal)));
-          }
-          for (const part of parts) part.remove();
+          const caption = async () => {
+            if (!reduced()) {
+              await Promise.all(parts.map(node => animate(node, [{ opacity: 0, scale: 4 }, { opacity: 1, scale: 1 }], 250, signal, 300)));
+              if (live()) await wait(2200, signal);
+              if (live()) await Promise.all(parts.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 220, signal)));
+            }
+            for (const part of parts) part.remove();
+          };
+          const effect = playHit && Promise.resolve().then(() => live() && playHit({ hit, distance, battle, signal })).catch(() => false);
+          await Promise.all([caption(), updateHp(targetHp), effect]);
         }
-        if (live()) updateHp(confirmedHp);
       });
     }
   }
 
   function update(state) {
     const exchange = state?.exchange;
-    if (!exchange || exchange.turn !== 1 || exchange.index !== 1 || !live()) return;
+    if (!exchange || !live()) return;
+    battle.dataset.exchangeIndex = String(exchange.index);
     battle.dataset.exchangePhase = exchange.phase;
     if (exchange.playerAttacks !== null) battle.dataset.playerAttacks = String(exchange.playerAttacks);
     const distance = state.result?.distance ?? Number(battle.dataset.distance);
@@ -292,18 +315,36 @@ export function createQuestBattleExchange(battle, {
     displayHits(exchange, distance);
     if ((exchange.phase === 'terminal' || exchange.phase === 'complete') && exchange.boundary && !resultFinished) {
       resultFinished = true;
-      void Promise.all([diceSettled, hitTask]).then(() => {
+      void Promise.all([diceSettled, hitTask, revealTask, cutInExit]).then(() => {
         if (!live()) return;
         const result = summary(exchange);
         result.dataset.state = exchange.phase;
         result.dataset.boundary = exchange.boundary;
         hands.playerTable.hidden = true;
         hands.opponentTable.hidden = true;
+        onSettled?.(exchange);
       });
     }
     if (exchange.duelFinish) summary(exchange).dataset.duelResult = String(exchange.duelFinish.result);
     if (exchange.questFinish) summary(exchange).dataset.questResult = String(exchange.questFinish.result);
   }
 
-  return { update };
+  return {
+    update,
+    archive(turn, index) {
+      visible = false;
+      stopTimer?.();
+      points.remove();
+      const suffix = `${turn}-${index}`;
+      root.id = `quest-battle-exchange-archive-${suffix}`;
+      if (receipt) {
+        receipt.id = `quest-battle-exchange-history-${suffix}`;
+        for (const id of ['quest-battle-attack-dice', 'quest-battle-defense-dice', 'quest-battle-damage-events']) {
+          const node = receipt.querySelector(`#${id}`);
+          if (node) node.id = `${id}-${suffix}`;
+        }
+      }
+      return root;
+    },
+  };
 }

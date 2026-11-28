@@ -4,6 +4,7 @@ import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
 import { createQuestBattleMove } from './quest-battle-move.js';
 import { playQuestDiceRoll } from './quest-dice-roll.js';
+import { playQuestAttackPose, playQuestHitEffect } from './quest-hit-effect.js';
 
 const art = new URL('./quest-art/', import.meta.url);
 const decodedStages = new WeakMap();
@@ -180,7 +181,7 @@ function character(parent, definition, id, damage, x, y, scale, signal) {
   return { canvas, ready };
 }
 
-function renderHealth(layerNode, assets, encounter, definitions) {
+function renderHealth(layerNode, assets, encounter, definitions, signal) {
   const health = assets.hud.health;
   const indicators = new Map();
   sprite(layerNode, health?.base);
@@ -208,14 +209,22 @@ function renderHealth(layerNode, assets, encounter, definitions) {
     healthValue.append(current, `/${card.hp}`);
     indicators.set(side, { current, healthValue, line, maximum: card.hp });
   }
-  return hitPoints => {
+  return async hitPoints => {
+    const changes = [];
     for (const [side, { current, healthValue, line, maximum }] of indicators) {
       const hp = hitPoints[side];
-      if (!Number.isInteger(hp)) continue;
-      healthValue.dataset.hp = String(hp);
-      current.textContent = String(hp);
-      if (line) line.style.transform = `scaleX(${Math.max(0, Math.min(1, hp / maximum))})`;
+      if (!Number.isInteger(hp) || hp === Number(healthValue.dataset.hp)) continue;
+      const previous = line?.style.transform;
+      const next = `scaleX(${Math.max(0, Math.min(1, hp / maximum))})`;
+      if (line) line.style.transform = next;
+      changes.push((async () => {
+        if (line) await animate(line, [{ transform: previous }, { transform: next }], 100, signal);
+        if (signal.aborted) return;
+        healthValue.dataset.hp = String(hp);
+        current.textContent = String(hp);
+      })());
     }
+    await Promise.all(changes);
   };
 }
 
@@ -276,15 +285,21 @@ function drawOpponentCards(hands, handCount, tableCount, signal) {
   return faceDownCards(hands.opponent, handCount, opponentHandPosition, signal);
 }
 
-async function revealHand(hands, ready, signal, { onDeal, onEvent }) {
+async function revealHand(hands, ready, signal, { onDeal, onEvent, opponentHandCount }) {
   const entries = [
     ...ready.action.cards.map(card => ({ ...card, kind: 'action' })),
     ...ready.event.cards.map(card => ({ ...card, kind: 'event' })),
   ];
   const metadata = actionCards(entries.map(card => card.id), signal);
-  const count = ready.action.opponentDrawCount + ready.event.opponentDrawCount;
-  const players = entries.map((entry, index) => playerCard(hands.player, entry, index, entries.length));
-  const opponents = drawOpponentCards(hands, count, 0, signal);
+  const newlyDrawn = ready.action.opponentDrawCount + ready.event.opponentDrawCount;
+  const count = Number.isInteger(opponentHandCount) ? opponentHandCount : newlyDrawn;
+  const survivors = hands.player.children.length;
+  const players = entries.map((entry, index) => playerCard(hands.player, entry, survivors + index, survivors + entries.length));
+  const opponents = drawOpponentCards(hands, count, 0, signal).slice(Math.max(0, count - newlyDrawn));
+  if (ready.turn > 1 && !Number.isInteger(opponentHandCount)) {
+    delete hands.opponent.dataset.count;
+    hands.opponent.setAttribute('aria-label', `對手本次補牌 ${newlyDrawn} 張`);
+  }
 
   const faceRendering = metadata.then(cards => {
     if (signal.aborted) return;
@@ -762,7 +777,7 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   const player = encounter.playerCardIds[0];
   const skills = renderSkills(battle, hud.skills, definitions.get(player), definitions.get(encounter.opponentCardIds[0]));
   const chat = renderChatDecoration(battle, hud.chat);
-  const updateHealth = renderHealth(main, assets, encounter, definitions);
+  const updateHealth = renderHealth(main, assets, encounter, definitions, signal);
   const rangeNames = ['short', 'middle', 'long', 'hiding'];
   let range = sprite(main, hud.range?.[rangeNames[encounter.duel.distance - 1]]);
   const phaseSprites = layer(main, 'quest-battle-phase', 0);
@@ -797,7 +812,13 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   void battleCardControls(signal).then(move.installCardArt);
   const distance = encounter.duel.distance;
   battle.dataset.distance = String(distance);
-  let confirmedDraw;
+  let visibleTurn = 0;
+  let turnArt;
+  let drawingTurn;
+  let latest;
+  const observedExchanges = new Map();
+  const observedMoves = new Map();
+  const archivedCombat = [];
   let stopTimer;
   let drawn = false;
   let renderedState;
@@ -812,7 +833,9 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     if (presentedMove) return;
     presentedMove = true;
     battle.dataset.moveResult = 'revealing';
+    main.querySelector('#quest-battle-move-result')?.remove();
     const receipt = output(main, 'quest-battle-move-result', 'sr-only', 0, 0);
+    receipt.dataset.turn = String(visibleTurn);
     receipt.dataset.distance = String(result.distance);
     receipt.dataset.playerInitiative = String(result.playerInitiative);
     receipt.dataset.playerPower = String(result.playerPower);
@@ -829,10 +852,11 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     range = sprite(main, hud.range?.[rangeNames[result.distance - 1]]);
     const config = hud.movePresentation?.distance;
     const anchors = { player: config?.playerX ?? [288, 184, 80, 184], opponent: config?.foeX ?? [472, 576, 680, 576] };
+    const priorDistance = Number(battle.dataset.distance);
     const shifts = [];
     for (const actor of standees.children) {
       const x = anchors[actor.dataset.side];
-      const delta = x?.[result.distance - 1] - x?.[distance - 1];
+      const delta = x?.[result.distance - 1] - x?.[priorDistance - 1];
       if (!Number.isFinite(delta) || !delta) continue;
       actor.style.left = `${Number.parseFloat(actor.style.left) + delta}px`;
       shifts.push(animate(actor, [{ translate: `${-delta}px 0` }, { translate: '0 0' }], config?.durationMs ?? 300, signal));
@@ -846,7 +870,7 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
       controls.hidden = true;
       showTable('blank');
       battle.dataset.moveResult = 'settled';
-      updateCombat(scene.snapshot.adventure?.battle);
+      advance();
     }
   }
 
@@ -884,20 +908,30 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     if (hud.phaseAnimation?.[key]) void runFrames(phaseSprites, hud.phaseAnimation[key], signal).then(frame => frame?.remove());
   }
 
-  function updateCombat(state) {
-    if (!state?.exchange || battle.dataset.moveResult !== 'settled' || !isCurrent()) return;
-    if (typeof state.exchange.playerAttacks === 'boolean') {
+  function updateCombat(source) {
+    if (!source || !isCurrent()) return;
+    const key = source.key ?? `${source.turn}:${source.index}`;
+    if (typeof source.playerAttacks === 'boolean') {
       stopTimer?.();
       stopTimer = undefined;
     }
     if (!combatView) {
-      combatView = createQuestBattleExchange(battle, {
+      const active = { key, turn: source.turn, index: source.index, settled: false };
+      combatView = active;
+      active.view = createQuestBattleExchange(battle, {
         signal, isCurrent, assets: hud.combat, status, hands, move, combatControls, showTable, showPhase, layer, sprite, place, animate, wait,
         cutIn: side => showMoveCutIns(battle, hud.movePresentation, encounter, signal, side),
         startTimer: onTimeout => startMoveTimer(main, hud.time, signal, onTimeout, true),
         loadDiceArt: () => battleExchangeArt(signal), playDiceRoll: playQuestDiceRoll,
-        updateHp: hitPoints => {
-          updateHealth(hitPoints);
+        playHit: playQuestHitEffect, playAttackPose: playQuestAttackPose,
+        onSettled() {
+          if (combatView !== active) return;
+          active.settled = true;
+          advance();
+        },
+        async updateHp(hitPoints) {
+          await updateHealth(hitPoints);
+          if (signal.aborted || !isCurrent()) return;
           const card = definitions.get(player);
           const hp = hitPoints.player;
           if (card && Number.isInteger(hp) && hp <= card.hp) {
@@ -924,14 +958,27 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
             opponentRevealKey = key;
           }
           const player = boundary === 'final';
+          if (player) {
+            const spent = new Set(reveal.playerCards.map(({ id }) => id));
+            for (const card of Array.from(hands.player.children)) if (spent.has(Number(card.dataset.cardId))) card.remove();
+          }
           return revealMoveCards(hands, reveal, signal, { player, opponent });
         },
       });
+      opponentRevealKey = undefined;
       hands.opponentTable.replaceChildren();
       delete hands.opponentTable.dataset.count;
-      move.beginCombat();
+      move.beginCombat(key);
     }
-    combatView.update(state);
+    combatView.view.update({ ...latest, exchange: source, result: observedMoves.get(source.turn) ?? latest.result });
+  }
+
+  function archiveCombat() {
+    const { view, key, turn: oldTurn, index } = combatView;
+    archivedCombat.push(view.archive(oldTurn, index));
+    if (archivedCombat.length > 2) archivedCombat.shift().remove();
+    observedExchanges.delete(key);
+    combatView = undefined;
   }
 
   function paint(phase) {
@@ -958,6 +1005,7 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
       stopTimer?.();
       stopTimer = undefined;
     } else if (phase === 'move' && !stopTimer) {
+      move.beginMove(visibleTurn);
       endCutIns = showMoveCutIns(battle, hud.movePresentation, encounter, signal);
       stopTimer = startMoveTimer(main, hud.time, signal, move.onTimeout);
       playQuestBattleEffect('phase', signal);
@@ -965,39 +1013,110 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     if (phase === 'draw') playQuestBattleEffect('phase', signal);
   }
 
-  function receive(next) {
-    if (signal.aborted || !isCurrent()) return;
-    const result = next.adventure?.battle;
-    if (!result) return;
-    if (result.turn === 1 && !battle.dataset.turn) {
-      battle.dataset.turn = '1';
-      turn.value = '1';
-      sprite(main, hud.turn?.['1']);
-      paint('draw');
+  function startDraw(turnNumber) {
+    visibleTurn = turnNumber;
+    for (const [key, exchange] of observedExchanges) if (exchange.turn < turnNumber) observedExchanges.delete(key);
+    for (const priorTurn of observedMoves.keys()) if (priorTurn < turnNumber) observedMoves.delete(priorTurn);
+    drawn = false;
+    presentedMove = false;
+    endCutIns = undefined;
+    delete battle.dataset.moveResult;
+    delete battle.dataset.moveStartedAt;
+    delete battle.dataset.initiative;
+    delete battle.dataset.exchangeIndex;
+    delete battle.dataset.exchangePhase;
+    delete battle.dataset.combatRole;
+    delete battle.dataset.playerAttacks;
+    main.querySelector('#quest-battle-move-result')?.remove();
+    battle.dataset.turn = String(turnNumber);
+    battle.dataset.drawState = 'awaiting-cards';
+    turn.value = String(turnNumber);
+    turnArt?.remove();
+    turnArt = sprite(main, hud.turn?.[turnNumber]);
+    const draw = latest.ready?.turn === turnNumber ? latest.ready : null;
+    const incoming = new Set(draw ? [...draw.action.cards, ...draw.event.cards].map(({ id }) => id) : []);
+    move.beginDraw(turnNumber, (latest.hand ?? []).filter(({ id }) => !incoming.has(id)));
+    paint('draw');
+  }
+
+  function advance() {
+    if (!latest || signal.aborted || !isCurrent()) return;
+    if (combatView) {
+      const active = combatView;
+      const source = observedExchanges.get(active.key);
+      updateCombat(source);
+      if (!active.settled) return;
+      const nextExchange = source?.boundary === 'next-attack' && observedExchanges.get(`${active.turn}:2`);
+      if (nextExchange) {
+        archiveCombat();
+        updateCombat(nextExchange);
+        return;
+      }
+      if (source?.boundary !== 'next-turn' || latest.turn !== visibleTurn + 1) return;
+      archiveCombat();
+      startDraw(latest.turn);
     }
-    if (result.ready?.turn === 1 && !confirmedDraw) {
-      confirmedDraw = result.ready;
-      void revealHand(hands, confirmedDraw, signal, {
+    if (!visibleTurn && Number.isInteger(latest.turn)) startDraw(latest.turn);
+    if (['uncertain', 'closed'].includes(latest.phase)) { paint(latest.phase); return; }
+
+    const ready = latest.ready;
+    if (ready?.turn === visibleTurn && drawingTurn !== visibleTurn) {
+      drawingTurn = visibleTurn;
+      battle.dataset.readyTurn = String(ready.turn);
+      battle.dataset.drawState = 'dealing';
+      void revealHand(hands, ready, signal, {
+        opponentHandCount: latest.opponentHandCount,
         onDeal() { if (deckSize > 0) deck.value = String(--deckSize); },
         onEvent() { if (renderedState === 'draw') showTable('drw_evt'); },
       }).then(metadata => {
-        if (signal.aborted || !isCurrent()) return;
+        if (signal.aborted || !isCurrent() || ready.turn !== visibleTurn) return;
         move.attach(metadata);
         drawn = true;
-        receive(scene.snapshot);
+        battle.dataset.drawState = 'settled';
+        advance();
       });
     }
-    if (drawn && ['move', 'committing', 'settling'].includes(result.phase) && Number.isSafeInteger(result.opponentHandCount) && Number.isSafeInteger(result.opponentMoveCount)) {
-      drawOpponentCards(hands, result.opponentHandCount, result.opponentMoveCount, signal);
+    if (!drawn) return;
+    const result = observedMoves.get(visibleTurn);
+    if (result) {
+      if (!presentedMove) {
+        paint('moved');
+        void presentMove(result);
+      } else if (battle.dataset.moveResult === 'settled') {
+        const source = observedExchanges.get(`${visibleTurn}:1`);
+        if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
+          status.value = '等待角色更換。';
+        } else {
+          const changed = ['player', 'opponent'].some(side => {
+            const roster = latest.roster?.[side];
+            const actual = roster?.cards[roster.activeIndex]?.cardId;
+            return Number.isInteger(actual) && actual !== encounter[`${side}CardIds`][0];
+          });
+          if (!changed) updateCombat(source);
+        }
+      }
+      return;
     }
-    move.update(result);
-    if (Number.isFinite(result.moveStartedAt)) battle.dataset.moveStartedAt = String(result.moveStartedAt);
-    if (combatView) { updateCombat(result); return; }
-    if (['committing', 'settling', 'moved', 'uncertain', 'closed'].includes(result.phase)) paint(result.phase);
-    else if (result.phase === 'move' && drawn) paint('move');
-    else if (!['encounter', 'preparing', 'move'].includes(result.phase)) paint('waiting');
-    if (result.result && ['moved', 'character-change', 'between-turns'].includes(result.phase)) void presentMove(result.result);
-    updateCombat(result);
+    if (['move', 'committing', 'settling'].includes(latest.phase) && Number.isSafeInteger(latest.opponentHandCount) &&
+        Number.isSafeInteger(latest.opponentMoveCount)) {
+      hands.opponentTable.hidden = false;
+      drawOpponentCards(hands, latest.opponentHandCount, latest.opponentMoveCount, signal);
+    }
+    if (['move', 'committing', 'settling'].includes(latest.phase)) paint(latest.phase);
+    if (Number.isFinite(latest.moveStartedAt)) battle.dataset.moveStartedAt = String(latest.moveStartedAt);
+  }
+
+  function receive(next) {
+    if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
+    latest = next.adventure.battle;
+    const moveTurn = latest.ready?.turn ?? latest.turn;
+    if (latest.result && Number.isInteger(moveTurn) && !observedMoves.has(moveTurn)) observedMoves.set(moveTurn, latest.result);
+    for (const source of [...(latest.exchangeHistory ?? []), latest.exchange]) {
+      if (!source || source.turn < visibleTurn || (source.turn === visibleTurn && source.index < combatView?.index)) continue;
+      observedExchanges.set(source.key ?? `${source.turn}:${source.index}`, source);
+    }
+    move.update(latest);
+    advance();
   }
 
   paint('opening');

@@ -124,6 +124,7 @@ SUB_EVENTS = ("tbox_red_s", "tbox_red_g", "tbox_green_s", "tbox_blue_s", "tbox_w
 # The normal starter CharaCards (1,21,31,101,111) have these character IDs.
 STARTER_CHARACTERS = (1, 3, 4, 11, 12)
 QUEST_STAGE_FRAME_RATE = 24 * 1.7  # QuestView.show and Unlight.SPEED in Main.as
+QUEST_TURN_LIMIT = 18  # QuestController passes the original BATTLE_TIMEOUT_TURN.
 
 
 def kind(tag):
@@ -387,7 +388,7 @@ class Movie:
                 pieces.extend(self.shape(shape, translation(placement["matrix"])))
         return pieces, shapes
 
-    def shape(self, shape, offset, ratio=0):
+    def shape(self, shape, offset, ratio=0, *, outline_behind_fill=False):
         name = kind(shape)
         if name == "DefineMorphShape":
             if shape.find(f"{NS}fillstyle").get("type") == "0":
@@ -399,7 +400,10 @@ class Movie:
         dx, dy = offset
         extent = (x0 + dx, y0 + dy, x1 + dx, y1 + dy)
         pieces = []
-        for style, path in shape_paths(shape):
+        paths = shape_paths(shape)
+        if outline_behind_fill:
+            paths = sorted(paths, key=lambda item: kind(item[0]) != "linestyle")
+        for style, path in paths:
             if kind(style) == "linestyle":
                 flags = style.get("flags", "0")
                 if flags not in ("0", "320"):
@@ -730,7 +734,7 @@ def color_transform(pieces, attributes):
     return [Primitive(piece.bounds, f"{start}{piece.markup}{end}", piece.bitmap_id) for piece in pieces]
 
 
-def authored_primitives(source, placements):
+def authored_primitives(source, placements, *, outline_behind_fill=False):
     """Resolve HUD sprites and Flash depth masks, preserving color transforms."""
     pieces, shapes = [], []
     clip = None
@@ -751,17 +755,17 @@ def authored_primitives(source, placements):
         if symbol_kind == "DefineSprite":
             child_frame = part.get("spriteFrame", 1)
             children = list(timeline(symbol))[child_frame - 1][1]
-            originals, nested_shapes = authored_primitives(source, children)
+            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill)
             shapes.extend(nested_shapes)
         elif symbol_kind == "DefineButton2":
             children = [button.attrib for button in symbol if kind(button) == "buttonRecord"
                         and part.get("buttonState", "up") in button.attrib["states"].split(",")]
-            originals, nested_shapes = authored_primitives(source, children)
+            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill)
             shapes.extend(nested_shapes)
         elif symbol_kind == "DefineText" and all(hex_alpha(text.attrib["color"]) == 0 for text in symbol):
             continue
         else:
-            originals = source.shape(symbol, (0, 0), int(part.get("ratio", 0)))
+            originals = source.shape(symbol, (0, 0), int(part.get("ratio", 0)), outline_behind_fill=outline_behind_fill)
             shapes.append(source.original_id(part))
         transformed_parts = placed_primitives(originals, part["matrix"])
         if "cxform" in part:
@@ -852,8 +856,8 @@ def extract(asset_root, art, swfdump):
                            sourceDepths=list(range(1, 8)))
         return dict(frame, depth=4)
 
-    def battle_art(source, filename, placements, frame=1, *, crop=None, **evidence):
-        pieces, shape_ids = authored_primitives(source, placements)
+    def battle_art(source, filename, placements, frame=1, *, crop=None, outline_behind_fill=False, **evidence):
+        pieces, shape_ids = authored_primitives(source, placements, outline_behind_fill=outline_behind_fill)
         if crop:
             x0, y0, x1, y1 = crop
             pieces = [piece for piece in pieces if piece.bounds[0] < x1 and piece.bounds[1] < y1
@@ -1081,7 +1085,12 @@ def extract(asset_root, art, swfdump):
         health_base = battle_art(life, "health-base", contents)
         base = movie("base")
         turn = base.instance("turn")
-        turn_one = battle_art(base, "turn-01", [turn], sourceInstance="turn", spriteId=base.original_id(turn))
+        # The original black stroke surrounds the colored glyph instead of covering it.
+        turns = {
+            str(number): battle_art(base, f"turn-{number:02}", [turn | {"spriteFrame": number}], number,
+                                    outline_behind_fill=True, sourceInstance="turn", spriteId=base.original_id(turn))
+            for number in range(1, QUEST_TURN_LIMIT + 1)
+        }
 
         hand = movie("card_base")
         _, contents = list(timeline(hand.root))[1]
@@ -1118,7 +1127,7 @@ def extract(asset_root, art, swfdump):
             "phase": {key: assets["frames"][-1] for key, assets in phase_animation.items()},
             "phaseAnimation": phase_animation,
             "phaseSound": "/public/sound/se/ulse12.mp3",
-            "turn": {"1": turn_one},
+            "turn": turns,
             "table": tables,
             "range": ranges,
             "time": {

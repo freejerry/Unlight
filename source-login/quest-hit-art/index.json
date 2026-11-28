@@ -1,0 +1,340 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "renderer": "JPEXS FFDec 26.6.0",
+  "rendererSha256": "3f1b1993a8ab34d4910192931236074d2c69db23e23d69cd16848c851b1995c3",
+  "effects": {
+    "slash": {
+      "frames": [
+        null,
+        null,
+        {
+          "file": "slash-03.png",
+          "x": -9,
+          "y": -25,
+          "width": 18,
+          "height": 50
+        },
+        {
+          "file": "slash-03.png",
+          "x": -9,
+          "y": -25,
+          "width": 18,
+          "height": 50
+        },
+        {
+          "file": "slash-05.png",
+          "x": -13,
+          "y": -153,
+          "width": 24,
+          "height": 306
+        },
+        {
+          "file": "slash-06.png",
+          "x": -16,
+          "y": -192,
+          "width": 30,
+          "height": 384
+        },
+        {
+          "file": "slash-07.png",
+          "x": -21,
+          "y": -192,
+          "width": 37,
+          "height": 384
+        },
+        {
+          "file": "slash-08.png",
+          "x": -26,
+          "y": -200,
+          "width": 48,
+          "height": 400
+        },
+        {
+          "file": "slash-09.png",
+          "x": -12,
+          "y": -200,
+          "width": 13,
+          "height": 400
+        },
+        {
+          "file": "slash-10.png",
+          "x": 0,
+          "y": -160,
+          "width": 1,
+          "height": 320
+        },
+        {
+          "file": "slash-10.png",
+          "x": 0,
+          "y": -160,
+          "width": 1,
+          "height": 320
+        },
+        {
+          "file": "slash-12.png",
+          "x": 0,
+          "y": -153,
+          "width": 1,
+          "height": 306
+        },
+        null
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": false
+    },
+    "bullet": {
+      "frames": [
+        null,
+        null,
+        null,
+        {
+          "file": "bullet-03.png",
+          "x": -32,
+          "y": -33,
+          "width": 82,
+          "height": 71
+        },
+        {
+          "file": "bullet-04.png",
+          "x": -113,
+          "y": -126,
+          "width": 360,
+          "height": 278
+        },
+        {
+          "file": "bullet-05.png",
+          "x": -115,
+          "y": -127,
+          "width": 364,
+          "height": 280
+        },
+        {
+          "file": "bullet-04.png",
+          "x": -113,
+          "y": -126,
+          "width": 360,
+          "height": 278
+        },
+        {
+          "file": "bullet-04.png",
+          "x": -113,
+          "y": -126,
+          "width": 360,
+          "height": 278
+        },
+        {
+          "file": "bullet-04.png",
+          "x": -113,
+          "y": -126,
+          "width": 360,
+          "height": 278
+        }
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": true
+    },
+    "bulletOver": {
+      "frames": [
+        null,
+        null,
+        null,
+        {
+          "file": "bulletOver-04.png",
+          "x": -15,
+          "y": -18,
+          "width": 35,
+          "height": 31
+        },
+        {
+          "file": "bulletOver-04.png",
+          "x": -15,
+          "y": -17,
+          "width": 35,
+          "height": 31
+        },
+        {
+          "file": "bulletOver-06.png",
+          "x": -15,
+          "y": -15,
+          "width": 34,
+          "height": 30
+        },
+        {
+          "file": "bulletOver-07.png",
+          "x": -15,
+          "y": -12,
+          "width": 34,
+          "height": 29
+        },
+        null
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": false
+    },
+    "blood": {
+      "frames": [
+        null,
+        {
+          "file": "blood-02.png",
+          "x": -9,
+          "y": -9,
+          "width": 19,
+          "height": 18
+        },
+        {
+          "file": "blood-03.png",
+          "x": -26,
+          "y": -25,
+          "width": 53,
+          "height": 51
+        },
+        {
+          "file": "blood-04.png",
+          "x": -40,
+          "y": -36,
+          "width": 83,
+          "height": 73
+        },
+        {
+          "file": "blood-05.png",
+          "x": -45,
+          "y": -38,
+          "width": 90,
+          "height": 78
+        }
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": true
+    }
+  },
+  "provenance": {
+    "slash-03.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 3,
+      "sha256": "72c021b4e6d0fd7ad57fdd20ed60f0947c5768972abad5fdcab88860e4741ae4"
+    },
+    "slash-05.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 5,
+      "sha256": "91110a4e2349b1425f8a75d7d91bba86f6ba641d15d56d5ee7e78753b76ee64c"
+    },
+    "slash-06.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 6,
+      "sha256": "c992765720ff125bc6d65ab902ab333ca4bc8e683b615ce8e7fdd79497c071f9"
+    },
+    "slash-07.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 7,
+      "sha256": "aa2f450f8121a5cd913c2a20aa35e540e340f24f5fa4e421bac63d385d80014b"
+    },
+    "slash-08.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 8,
+      "sha256": "78748e5c6c8da6f8a5b4b50bf15c8856037664d2a066ae2a0894c786caee9db6"
+    },
+    "slash-09.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 9,
+      "sha256": "345592d1afe1102d11c7f58968cea92ef74da048ad07a0ae6a7e8db49df29468"
+    },
+    "slash-10.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 10,
+      "sha256": "59a5a548efd1d05fedcbedc099abda414e5355dff2bbe3c6f79648d5d1827c9e"
+    },
+    "slash-12.png": {
+      "source": "data/image/game/effect_hit_slash.swf",
+      "sourceSha256": "3592bda8ba161fa100cd8d4b9f1e5ff9faca666f588dfa7d2a8671534fa2dfa5",
+      "sourceSprite": 11,
+      "sourceFrame": 12,
+      "sha256": "c89ef683dfacbd47ee4fa28e1daf877804f1a2e6f0fc4faf33ce830cb46daa1c"
+    },
+    "bullet-03.png": {
+      "source": "data/image/game/effect_hit_bullet.swf",
+      "sourceSha256": "042b91f16198b3fbaf423f1e51fd34567f01086d7b27b9b27a67e79d854c8b70",
+      "sourceSprite": 5,
+      "sourceFrame": 3,
+      "sha256": "90a01b3dda59bb9f28824c36913aa59e5270816809f3de9ed5db1d1112f489db"
+    },
+    "bullet-04.png": {
+      "source": "data/image/game/effect_hit_bullet.swf",
+      "sourceSha256": "042b91f16198b3fbaf423f1e51fd34567f01086d7b27b9b27a67e79d854c8b70",
+      "sourceSprite": 5,
+      "sourceFrame": 4,
+      "sha256": "9574d2bd94287f010014fd1a65e765a7953b12ee1c60bfd0236b99ce0d366617"
+    },
+    "bullet-05.png": {
+      "source": "data/image/game/effect_hit_bullet.swf",
+      "sourceSha256": "042b91f16198b3fbaf423f1e51fd34567f01086d7b27b9b27a67e79d854c8b70",
+      "sourceSprite": 5,
+      "sourceFrame": 5,
+      "sha256": "b723dd8816b84d8c454f62a643eefbb8302f0c118f4dd268dd5616ecd04e4cfc"
+    },
+    "bulletOver-04.png": {
+      "source": "data/image/game/effect_hit_bullet_p.swf",
+      "sourceSha256": "86952ec2ba7a2d3a919c874a23e015545f194856f96fddf8efb7a3de84226637",
+      "sourceSprite": 4,
+      "sourceFrame": 4,
+      "sha256": "3dd58b1844c113ccf6dbf454212dcd6757d668f2876ff69a9482a8591a11e08e"
+    },
+    "bulletOver-06.png": {
+      "source": "data/image/game/effect_hit_bullet_p.swf",
+      "sourceSha256": "86952ec2ba7a2d3a919c874a23e015545f194856f96fddf8efb7a3de84226637",
+      "sourceSprite": 4,
+      "sourceFrame": 6,
+      "sha256": "c609c380aa726765d51661c440ac72b8a25a837402a74a70fa8b8ece0454e1a1"
+    },
+    "bulletOver-07.png": {
+      "source": "data/image/game/effect_hit_bullet_p.swf",
+      "sourceSha256": "86952ec2ba7a2d3a919c874a23e015545f194856f96fddf8efb7a3de84226637",
+      "sourceSprite": 4,
+      "sourceFrame": 7,
+      "sha256": "67f69ebdcb8b06e8eba5337c20a28fdc4819f3dcae58c925fb00fab3ef5f9fc5"
+    },
+    "blood-02.png": {
+      "source": "data/image/game/effect_dmg_blood.swf",
+      "sourceSha256": "c752bf12a45dbf75c2030c591023f1717d3f02de7abdd29ff32bb63c68173e30",
+      "sourceSprite": 4,
+      "sourceFrame": 2,
+      "sha256": "5998d8b1a09dab1071ce0859abb60cab974bff5fa5498e154de87bcf67a482e1"
+    },
+    "blood-03.png": {
+      "source": "data/image/game/effect_dmg_blood.swf",
+      "sourceSha256": "c752bf12a45dbf75c2030c591023f1717d3f02de7abdd29ff32bb63c68173e30",
+      "sourceSprite": 4,
+      "sourceFrame": 3,
+      "sha256": "cec944276c831c9b1e3e93bed2d02dfdf9211bd757e71b244d6f36a392b13455"
+    },
+    "blood-04.png": {
+      "source": "data/image/game/effect_dmg_blood.swf",
+      "sourceSha256": "c752bf12a45dbf75c2030c591023f1717d3f02de7abdd29ff32bb63c68173e30",
+      "sourceSprite": 4,
+      "sourceFrame": 4,
+      "sha256": "717c78d74f87d738229bdbc430a10e65d4fcbd0576ebd94b87f0273fa1c4ed55"
+    },
+    "blood-05.png": {
+      "source": "data/image/game/effect_dmg_blood.swf",
+      "sourceSha256": "c752bf12a45dbf75c2030c591023f1717d3f02de7abdd29ff32bb63c68173e30",
+      "sourceSprite": 4,
+      "sourceFrame": 5,
+      "sha256": "40cdffcd2864e11617fbdae3dde4d6fed193d53c6fc9c809b3958802223ddea6"
+    }
+  }
+}

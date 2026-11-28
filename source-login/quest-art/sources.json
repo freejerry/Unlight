@@ -10667,7 +10667,359 @@
       "y": 58.0,
       "width": 59,
       "height": 26,
-      "sha256": "5d87735b381c0bd0c497ae16a38f35308858fa4edb548d169cfa68b2bebb3a92"
+      "sha256": "fcf249ba2b145feb4c1a80d1caf75f5cdad3cb7854eee070ef3403c72ada9fcb"
+    },
+    "quest-battle-turn-02.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 2,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        13
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 696.34848186,
+      "y": 58.0,
+      "width": 61,
+      "height": 26,
+      "sha256": "c4592bd5c2f02acbc938799604e4d936d14a474ad3d52b6c851c595daf185ff9"
+    },
+    "quest-battle-turn-03.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 3,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        15
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 696.0982873099999,
+      "y": 58.0,
+      "width": 61,
+      "height": 27,
+      "sha256": "5a9a12aad306d7d46ecf81e85de5cac47a7f476e2f687315153082a7f5caefb9"
+    },
+    "quest-battle-turn-04.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 4,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        17
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 694.1968087299999,
+      "y": 58.0,
+      "width": 63,
+      "height": 26,
+      "sha256": "b91984b3b32ce957e36516902a9acc409ecfc3505d0503f36adf60cfa7ddfb25"
+    },
+    "quest-battle-turn-05.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 5,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        19
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 695.49782039,
+      "y": 58.0,
+      "width": 62,
+      "height": 27,
+      "sha256": "2249111810c433a18b59941c6ee93d41fc9cd9851acd2e2d7e042e1fea2827b5"
+    },
+    "quest-battle-turn-06.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 6,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        21
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 695.7480149400001,
+      "y": 56.3,
+      "width": 62,
+      "height": 29,
+      "sha256": "c4784e3fe56d3295092569c7ca596c6e756c5d224ed04d804811118e09c8d4ff"
+    },
+    "quest-battle-turn-07.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        23
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 696.29844295,
+      "y": 58.0,
+      "width": 61,
+      "height": 29,
+      "sha256": "c70721e12f8b6cc82d9afd1ffae18a78fcb46cf6cb9a91058515272c2310c200"
+    },
+    "quest-battle-turn-08.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 8,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        25
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 694.94739238,
+      "y": 58.0,
+      "width": 63,
+      "height": 27,
+      "sha256": "ba27f70e5830a7efb446ed89fde7c3c197bbff1344dd4d0b800c9ccf73ca9e8f"
+    },
+    "quest-battle-turn-09.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 9,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        27
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 695.89813167,
+      "y": 58.0,
+      "width": 62,
+      "height": 30,
+      "sha256": "ad881c76477222e39b9c364fcfef2c3aaf5db16b2e8eac95b1506a680cb74e28"
+    },
+    "quest-battle-turn-10.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 10,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        29,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 27,
+      "sha256": "6a64132cde5d860ccf6ef058b20f109b2e8822e299e90171fbee8079174aac68"
+    },
+    "quest-battle-turn-11.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 11,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        10,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 26,
+      "sha256": "550488f6aacd6055a0e3ae1bd1a6f68da28508f90d1c3e5280b8828b5f3b2159"
+    },
+    "quest-battle-turn-12.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 12,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        13,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 26,
+      "sha256": "033c3e1dcee95b2e64278e46573d345964b76c5b3bfb514580a50215d57c7a86"
+    },
+    "quest-battle-turn-13.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 13,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        15,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 27,
+      "sha256": "3b817d41d1c85501ae86fb79e1cac954b9f66dcba14de3203f0e169b5fdafca4"
+    },
+    "quest-battle-turn-14.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 14,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        17,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 26,
+      "sha256": "f855c926ed13d0f960e573335fb091fe8ce126ee34c3256011a3d018dd109cce"
+    },
+    "quest-battle-turn-15.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 15,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        19,
+        10
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 27,
+      "sha256": "b1cdb279d570477a3261b28b36315d494a2b484a45f991f49d1a185ffe106ebc"
+    },
+    "quest-battle-turn-16.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 16,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        31,
+        10,
+        32
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 56.3,
+      "width": 71,
+      "height": 29,
+      "sha256": "f5df5a9af8e746f91463d74c91403c6be8ad09d7d291da7d9a5d1765b9e4b2c2"
+    },
+    "quest-battle-turn-17.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 17,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        33,
+        10,
+        32
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 29,
+      "sha256": "e91dd27eb4e6c81121592f92d8482193ad3525d7f6fb2349b60f0c962841e161"
+    },
+    "quest-battle-turn-18.png": {
+      "source": "data/image/game/base.swf",
+      "sourceSha256": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+      "sourceFrame": 18,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9,
+        34,
+        10,
+        32
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "turn",
+      "spriteId": 35,
+      "x": 686.14054422,
+      "y": 58.0,
+      "width": 71,
+      "height": 27,
+      "sha256": "5ac45cbb94774973ac0ba84610c74e2f2c677e64d2a7a9ad0ade54ad21cc3881"
     },
     "quest-battle-hand-base.png": {
       "source": "data/image/game/card_base.swf",
@@ -14665,6 +15017,125 @@
           "y": 58.0,
           "width": 59,
           "height": 26
+        },
+        "2": {
+          "file": "quest-battle-turn-02.png",
+          "x": 696.34848186,
+          "y": 58.0,
+          "width": 61,
+          "height": 26
+        },
+        "3": {
+          "file": "quest-battle-turn-03.png",
+          "x": 696.0982873099999,
+          "y": 58.0,
+          "width": 61,
+          "height": 27
+        },
+        "4": {
+          "file": "quest-battle-turn-04.png",
+          "x": 694.1968087299999,
+          "y": 58.0,
+          "width": 63,
+          "height": 26
+        },
+        "5": {
+          "file": "quest-battle-turn-05.png",
+          "x": 695.49782039,
+          "y": 58.0,
+          "width": 62,
+          "height": 27
+        },
+        "6": {
+          "file": "quest-battle-turn-06.png",
+          "x": 695.7480149400001,
+          "y": 56.3,
+          "width": 62,
+          "height": 29
+        },
+        "7": {
+          "file": "quest-battle-turn-07.png",
+          "x": 696.29844295,
+          "y": 58.0,
+          "width": 61,
+          "height": 29
+        },
+        "8": {
+          "file": "quest-battle-turn-08.png",
+          "x": 694.94739238,
+          "y": 58.0,
+          "width": 63,
+          "height": 27
+        },
+        "9": {
+          "file": "quest-battle-turn-09.png",
+          "x": 695.89813167,
+          "y": 58.0,
+          "width": 62,
+          "height": 30
+        },
+        "10": {
+          "file": "quest-battle-turn-10.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 27
+        },
+        "11": {
+          "file": "quest-battle-turn-11.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 26
+        },
+        "12": {
+          "file": "quest-battle-turn-12.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 26
+        },
+        "13": {
+          "file": "quest-battle-turn-13.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 27
+        },
+        "14": {
+          "file": "quest-battle-turn-14.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 26
+        },
+        "15": {
+          "file": "quest-battle-turn-15.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 27
+        },
+        "16": {
+          "file": "quest-battle-turn-16.png",
+          "x": 686.14054422,
+          "y": 56.3,
+          "width": 71,
+          "height": 29
+        },
+        "17": {
+          "file": "quest-battle-turn-17.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 29
+        },
+        "18": {
+          "file": "quest-battle-turn-18.png",
+          "x": 686.14054422,
+          "y": 58.0,
+          "width": 71,
+          "height": 27
         }
       },
       "table": {

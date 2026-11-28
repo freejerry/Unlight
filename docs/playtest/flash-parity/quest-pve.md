@@ -117,7 +117,7 @@
 
 ### 後續驗收
 
-1. 從首組攻防的下一筆 `SC51` 接上攻守互換，保留同一條 Quest 與真實手牌、距離、HP 及階段時鐘。接續第二組攻防、下回合的 Draw／Move，以及首場勝敗。以原版實跑核對第二組攻守、命中切入、傷害特效和回合轉場。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版階段切換](../../../app/client/src/view/scene/game/DuelTable.as#L545)
+1. 從實跑確定的第二回合 Move 繼續到落日大蝙蝠的勝敗。分別驗本方首攻、非空攻擊結算、再後續回合，以及進入同一任務的結算與返回。以原版實跑核對結束條件、音樂淡出與畫面交接。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
 2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 接續局結果及任務結算，按持有 ID 驗證 `SC24`。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
 4. 首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。
@@ -189,6 +189,21 @@
 - 新版正常測例實際進入遠距離防禦。放入物理牌 55、收回、再放入，核對索引及同一條 Quest。暫緩 `SC56` 時仍維持 7/7，放行實際 10 顆攻擊骰與 5 顆防禦骰後，`SC73` 扣 1 點至 6/7。播放 15 次擲骰短音及 1 次遠距離命中音。另一場獨立試玩直接讀取 WebGL 畫素，左側有 8,942 個高亮度像素，右側有 12,310 個低亮度像素，確認材質跟隨攻守。真 `SC65` 延遲案例在超時後只保留一筆放牌指令，沒有提前移牌或播放成功音。[原版與新版防禦並排](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/defense-table-comparison.png) · [兩次獨立擲骰取樣](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/rolling-dice-comparison.png) · [新版自動驗收封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-native-first-exchange-wire.json) · [獨立試玩與 WebGL 畫素](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/root-verified/root-first-combat-wire.json) · [遲到回覆畫面](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-07-combat-reply-uncertain.png)
 
 兩版在獨立帳號實跑，抽牌、距離及骰值依該場 Ruby 變動。正常瀏覽器流程已驗首次防禦，首次本方攻擊另有傳輸與 WebGL 材質測例，待原版和新版實際試玩。角色攻擊姿態、斬擊、槍擊、血花、戰鬥日誌與同回合的攻守互換操作也列在後續驗收。[重跑第一組攻防](qa.md#重跑首回合第一組攻防)
+
+### 同回合攻守互換與次回合
+
+| 流程 | 原版規格與本段驗收 |
+| --- | --- |
+| 第一組結算後 | 確認雙方現役存活。Ruby 在第二筆 `SC51` 前發送雙方新點數，再對調同回合攻擊方。Flash 排入上一組翻牌、擲骰、HP 變化與下一組階段動畫。先前用掉的牌移出桌面，手牌、距離、血量和背景音樂接續。測例應確認上一組指令或鍵盤焦點無法跨階段重送。[同回合事件順序](../../../app/server/src/rule/event/multi_duel_event.rb#L44) · [點數與攻守回覆](../../../app/server/src/controller/duel_controller.rb#L545) |
+| 第二組攻防 | 依距離選攻擊桌，防禦維持藍色桌面，更新點數圖、切入肖像、60 秒計時與原位置的 OK。同一條 Quest 的 `SC51/53` 分別控制攻擊／防禦權。完成後，`SC55/56` 是這一組的牌面與骰值。原版在任一方骰組為空時略過 3D 骰子、骰聲與攻擊姿態，照常接受下一階段。[固定舞台切換](../../../app/client/src/view/scene/game/DuelTable.as#L545) · [空骰與 RollResultEvent](../../../app/client/src/model/Duel.as#L449) |
+| 命中 | 有兩組實際骰值時，只讓攻擊方進入原始 `up` 姿態。正傷害觸發受擊方震動、近距離斬擊或其他距離槍擊、血花與 Damage。受擊位置由當前距離的站位加局部位置決定，血花依傷害數量增加並使用原版隨機大小、座標與角度。HP 條和數字使用已確認的變化。[姿態與傷害入口](../../../app/client/src/view/scene/game/StandChara.as#L850) · [命中圖層與時序](../../../app/client/src/view/image/game/StandCharaImage.as#L566) · [HP 顯示](../../../app/client/src/view/scene/game/HP.as#L642) |
+| 第二組轉下一回合 | 兩組結束後接收本方 `SC60` 的方向待定 2，等 `SC43` 推進原舞台回合數並顯示 Draw。`SC44/45` 分別補入行動及事件牌，可帶空串。兩方未使用的牌仍在手中。等 `SC46` 開放 Move 後才可操作，並開始新的 60 秒顯示，全程僅送一次 Ready。[原版補牌](../../../app/server/src/controller/duel_controller.rb#L445) · [方向重置](../../../app/server/src/controller/duel_controller.rb#L688) · [Flash 階段動畫](../../../app/client/src/view/scene/game/DuelTable.as#L494) |
+
+- 原版繁中固定舞台實跑落日大蝙蝠，距離 3，由對手先攻。本方將實際抽到的物理牌 33 旋轉至 `DEF1` 後防禦。攻、防各擲 6 顆，兩方 HP 維持 7/7 和 1/1。下一筆 `SC51` 在回合 1 開放我方攻擊，按原版 OK 送出唯一的空桌 `CS33`。該組攻擊骰為空，防禦骰有 5 顆。Ruby 接續 `SC60`、`SC43`、`SC44`、`SC45`、`SC46`，第二回合補入事件牌 259，上半面朝上。同一條 Quest 留存，AP 4/5、任務進行中、牌組鎖定。[原版同回合攻擊](/workspace/shared/unlight-web-port/flash-parity/quest-exchange-two-original/07-original-turn1-second-attack-ready.png) · [原版第二回合 Draw](/workspace/shared/unlight-web-port/flash-parity/quest-exchange-two-original/08-original-turn2-draw.png) · [原版第二回合 Move](/workspace/shared/unlight-web-port/flash-parity/quest-exchange-two-original/09-original-turn2-move.png) · [原版操作和封包](/workspace/shared/unlight-web-port/flash-parity/quest-exchange-two-original/wire.json)
+- 新版自動實跑同為遠距離、先防禦再攻擊。第二組開場的對方 `SC82` 牌 ID 為空，遮罩仍是 7，點數為 1。本方回覆的點數為 0。數字依真實點數顯示，當牌 ID 和遮罩一致時才標記卡片。第二組空攻擊只回傳一顆防禦骰，11 次擲骰音全屬第一組。第二回合只補入同一張上半面朝上的事件牌 259，等真正的 `SC46` 才開放新 Move。再按後退送出 `CS23`，由同一條 Quest 的 `SC60` 確認。[第二組攻擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-03-second-attack.png) · [暫緩 Move](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-04-next-draw-awaiting-move.png) · [原始方向確認](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-06-next-move-direction-confirmed.png) · [新版真實封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-native-next-turn-wire.json)
+- 獨立指標試玩核對近距離斬擊和遠距離槍擊。在兩場真實 `SC73` 回覆中，扣 3 點、扣 1 點分別把生命值更新為 4/7 和 6/7，並延續到第二回合。四組命中素材與 18 個普通回合標示由固定的 SWF 擷取，保留每格的座標、順序和透明度。回合數以原版白色填色覆蓋黑邊。修正後的最終畫面另外核對點數圖與 OK 可見性。[第二組攻擊並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/second-attack-comparison.png) · [第二回合 Move 並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-two-move-comparison.png) · [新版斬擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root/root-02c-exchange-1-slash.png) · [新版槍擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-02c-exchange-1-bullet.png) · [最終實跑封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-exchange-two-wire.json) · [來源素材與字圖驗證](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-glyph-validation.json)
+
+原版可分別在 `SC44` 和 `SC45` 到達時排入補牌，新版在刻意分開封包的驗收中保留最後確認的手牌直到 `SC46`。正常 Ruby 回覆實跑已核對補牌順序。原版短暫白色斜面濾鏡、換角畫面、戰鬥日誌及終局另列後續驗收。[原版補牌入列](../../../app/client/src/net/server/QuestServer.as#L1033) · [可重跑步驟](qa.md#重跑同回合攻守互換與次回合)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 
