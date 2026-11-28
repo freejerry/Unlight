@@ -131,8 +131,8 @@ MOVE_FACE_SOURCES = {
     "1033": "standmon012_02_f", "1034": "standmon011_00_f",
     "1050": "standmon017_01_f",
 }
-# The original CharaCards.csv uses standchara03 for all three Grunwald variants.
-STAND_ALIASES = {"25": "21", "30": "21"}
+# These progression cards reuse their original character's standing and move art.
+STAND_ALIASES = {"3": "1", "25": "21", "30": "21"}
 
 # Source vector order in MapStageImage.as. Stages 8, 9 and 12 use the lake SWF.
 TERRAIN = (

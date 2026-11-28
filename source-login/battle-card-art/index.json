@@ -2642,6 +2642,171 @@
         ],
         "settledFrame": 14
       }
+    },
+    "3": {
+      "shadow": {
+        "file": "stand-1-shadow.png",
+        "x": -55,
+        "y": 0,
+        "width": 111,
+        "height": 40
+      },
+      "stand": {
+        "file": "stand-1-stand.png",
+        "x": -54,
+        "y": -200,
+        "width": 111,
+        "height": 204
+      },
+      "opening": {
+        "file": "stand-1-opening.png",
+        "x": -157,
+        "y": -458,
+        "width": 376,
+        "height": 458,
+        "origin": [
+          380.1,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -534.75,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -475.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -422.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -376.25,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -335.85,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -301.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -273.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -251.95,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -236.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -227.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -265.8,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -307.55,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -349.35,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -391.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -432.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -474.65,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -516.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -558.2,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
     }
   },
   "actionFrames": {
@@ -4209,6 +4374,47 @@
       "sha256": "a0364c60813fe16216df4748e66b5a3f02101c0e13128453200b62e97fb41477",
       "sourceInstance": "up",
       "sourceShape": 2
+    },
+    "condition-chips.png": {
+      "sha256": "d6a7b389d37af41a053fec1a300bb1009e04e37e6b1575aa355c3fa11123b574",
+      "sources": {
+        "mov": {
+          "file": "data/image/icon_card_mov.swf",
+          "sha256": "772faa91053b701a935068502d6e64e93ac4c8c4ecf14e5db44704d1a7debd2d",
+          "row": 0
+        },
+        "swd": {
+          "file": "data/image/icon_card_swd.swf",
+          "sha256": "9c6398341c958d5c919f64bdd034d12df664c48b7bcf229984f6e36bd7c6238b",
+          "row": 3
+        },
+        "gun": {
+          "file": "data/image/icon_card_gun.swf",
+          "sha256": "b05621c16b373cd8b5e4fdfa2908ae14131d99ba5e4f84b271dffba675705e02",
+          "row": 6
+        },
+        "str": {
+          "file": "data/image/icon_card_str.swf",
+          "sha256": "83323d2d1a777f50eefcb820f1a31d0f2c498791ad11fb7ff6c2233f380d22ad",
+          "row": 9
+        },
+        "shd": {
+          "file": "data/image/icon_card_shd.swf",
+          "sha256": "a37045d0f72bf06a9d6ee98977e9c8d700a1fab2d66695203e34deb3b796227e",
+          "row": 12
+        },
+        "wld": {
+          "file": "data/image/icon_card_wld.swf",
+          "sha256": "64e803fec9163ccd3b2fa375c6ebc6161b8e8c2f9eb2af0c41ea766f873fd9f4",
+          "row": 15
+        },
+        "wld3": {
+          "file": "data/image/icon_card_wld3.swf",
+          "sha256": "efefbc3c5adbbd89cd34d1c36930d499788a3e77bdc698024b663278caec0dd3",
+          "row": 18
+        }
+      },
+      "sourceFrames": 30
     }
   },
   "characterReverse": {
@@ -4307,6 +4513,59 @@
           }
         ]
       }
+    },
+    "requirementChips": {
+      "file": "condition-chips.png",
+      "width": 19,
+      "height": 11,
+      "columns": 10,
+      "sources": {
+        "mov": {
+          "file": "data/image/icon_card_mov.swf",
+          "sha256": "772faa91053b701a935068502d6e64e93ac4c8c4ecf14e5db44704d1a7debd2d",
+          "row": 0
+        },
+        "swd": {
+          "file": "data/image/icon_card_swd.swf",
+          "sha256": "9c6398341c958d5c919f64bdd034d12df664c48b7bcf229984f6e36bd7c6238b",
+          "row": 3
+        },
+        "gun": {
+          "file": "data/image/icon_card_gun.swf",
+          "sha256": "b05621c16b373cd8b5e4fdfa2908ae14131d99ba5e4f84b271dffba675705e02",
+          "row": 6
+        },
+        "str": {
+          "file": "data/image/icon_card_str.swf",
+          "sha256": "83323d2d1a777f50eefcb820f1a31d0f2c498791ad11fb7ff6c2233f380d22ad",
+          "row": 9
+        },
+        "shd": {
+          "file": "data/image/icon_card_shd.swf",
+          "sha256": "a37045d0f72bf06a9d6ee98977e9c8d700a1fab2d66695203e34deb3b796227e",
+          "row": 12
+        },
+        "wld": {
+          "file": "data/image/icon_card_wld.swf",
+          "sha256": "64e803fec9163ccd3b2fa375c6ebc6161b8e8c2f9eb2af0c41ea766f873fd9f4",
+          "row": 15
+        },
+        "wld3": {
+          "file": "data/image/icon_card_wld3.swf",
+          "sha256": "efefbc3c5adbbd89cd34d1c36930d499788a3e77bdc698024b663278caec0dd3",
+          "row": 18
+        }
+      },
+      "origin": [
+        64,
+        52
+      ],
+      "offset": [
+        0,
+        -11
+      ],
+      "stepX": 20,
+      "stepY": 30
     }
   }
 }

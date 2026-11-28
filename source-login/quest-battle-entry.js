@@ -302,6 +302,28 @@ function character(parent, definition, id, damage, x, y, scale, signal) {
   return { canvas, ready };
 }
 
+const reverseChipTypes = { 近: 'swd', 遠: 'gun', 移: 'mov', 特: 'str', 防: 'shd', 無: 'wld' };
+
+function rewrittenCardCondition(raw) {
+  if (raw === '') return raw;
+  if (typeof raw !== 'string') return;
+  // Ruby supplies already-localized range characters, which may be concatenated. Flash keeps the original range icons.
+  const [range, cards, excess] = raw.split(':');
+  if (typeof cards === 'string' && excess === undefined && /^[近中遠]*$/.test(range)) return cards;
+}
+
+function battleSkillChips(raw) {
+  return raw.split(',').flatMap(token => {
+    const set = /\[([^\]]+)\]/.exec(token);
+    const symbol = Object.keys(reverseChipTypes).find(value => token.includes(value));
+    const type = set ? set[1].length > 1 && 'wld3' : reverseChipTypes[symbol];
+    const number = token.match(/[0-9]/)?.[0];
+    if (!type || number === undefined) return [];
+    const category = token.includes('+') ? 1 : token.includes('-') ? 2 : 0;
+    return [{ type, frame: category * 10 + (Number(number) || 10) }];
+  });
+}
+
 function inspectCharacter(parent, definition, id, damage, signal) {
   const card = document.createElement('div');
   card.id = 'quest-battle-player-character';
@@ -326,14 +348,61 @@ function inspectCharacter(parent, definition, id, damage, signal) {
   rear.hidden = true;
   card.append(rear);
   let flipping = false;
+  let overrides;
+  let refreshConditions = () => {};
+  function updateConditions(row) {
+    if (signal.aborted || row?.index !== 0) return;
+    const next = row.cardId === id ? row.featConditions : undefined;
+    if (next === overrides) return;
+    overrides = next;
+    refreshConditions();
+  }
   const skills = (definition?.skills ?? []).slice(0, 4).map(skill => ({ ...skill, detail: formatBattleSkill(skill) }));
   void Promise.all([ready, battleCharacterReverse(signal)]).then(([, art]) => {
     if (!art || signal.aborted || canvas.hidden) return;
     sprite(rear, art.plate, BATTLE_CARD_ART);
     const content = document.createElement('div');
     rear.append(content);
+    const groups = [];
+    const atlas = art.requirementChips;
+    refreshConditions = () => {
+      for (const { i, skill, label, holder, selected } of groups) {
+        const change = rewrittenCardCondition(overrides?.[i]);
+        const cards = change ?? skill.detail?.cardCondition ?? '';
+        const changed = String(change !== undefined);
+        if (holder.dataset.cards === cards && label.dataset.conditionChanged === changed) continue;
+        holder.dataset.cards = cards;
+        label.dataset.conditionChanged = changed;
+        holder.replaceChildren();
+        if (!atlas) {
+          if (selected) holder.textContent = change ?? skill.detail?.requirements.find(([name]) => name === '卡片')?.[1] ?? '';
+          continue;
+        }
+        battleSkillChips(cards).forEach(({ type, frame }, index) => {
+          const source = atlas.sources[type];
+          if (!source) return;
+          const chip = document.createElement('span');
+          chip.className = 'quest-battle-character-chip';
+          chip.dataset.type = type;
+          chip.dataset.frame = String(frame);
+          chip.setAttribute('aria-hidden', 'true');
+          const sx = (frame - 1) % atlas.columns * atlas.width;
+          const sy = (source.row + Math.floor((frame - 1) / atlas.columns)) * atlas.height;
+          chip.style.backgroundImage = `url("${BATTLE_CARD_ART}${atlas.file}")`;
+          chip.style.backgroundPosition = `-${sx}px -${sy}px`;
+          place(chip, atlas.origin[0] + atlas.offset[0] + atlas.stepX * index,
+            atlas.origin[1] + atlas.offset[1] + atlas.stepY * i, atlas.width, atlas.height);
+          holder.append(chip);
+        });
+        const readable = document.createElement('span');
+        readable.className = 'sr-only';
+        readable.textContent = cards.replace(/近/g, '劍').replace(/遠/g, '槍').replace(/\+/g, '以上').replace(/-/g, '以下');
+        holder.append(readable);
+      }
+    };
     function select(index) {
       content.replaceChildren();
+      groups.length = 0;
       skills.forEach((skill, i) => {
         const y = 24 + i * 30;
         const selected = i === index;
@@ -348,6 +417,8 @@ function inspectCharacter(parent, definition, id, damage, signal) {
         feat.type = 'button';
         feat.className = 'quest-battle-character-feat';
         feat.textContent = skill.name;
+        feat.dataset.featIndex = String(i);
+        if (Number.isInteger(skill.id)) feat.dataset.featId = String(skill.id);
         feat.setAttribute('aria-pressed', String(selected));
         place(feat, 4, 22 + i * 30, 154, 18);
         feat.addEventListener('click', () => {
@@ -355,18 +426,23 @@ function inspectCharacter(parent, definition, id, damage, signal) {
           select(i);
           content.querySelectorAll('button')[i].focus({ preventScroll: true });
         });
-        content.append(feat);
+        const holder = document.createElement('div');
+        holder.id = `quest-battle-character-requirements-${i}`;
+        feat.setAttribute('aria-describedby', holder.id);
+        if (!atlas) {
+          holder.className = 'quest-battle-character-requirements';
+          place(holder, 64, 25 + i * 30, 95);
+        }
+        groups.push({ i, skill, label: feat, holder, selected });
+        content.append(feat, holder);
         if (!selected || !skill.detail) return;
-        const requirements = document.createElement('p');
-        requirements.className = 'quest-battle-character-requirements';
-        requirements.textContent = skill.detail.requirements.find(([name]) => name === '卡片')?.[1] ?? '';
-        place(requirements, 64, 25 + i * 30, 95);
         const description = document.createElement('p');
         description.className = 'quest-battle-character-description';
         description.textContent = skill.detail.description;
         place(description, 4, 146, 160, 90);
-        content.append(requirements, description);
+        content.append(description);
       });
+      refreshConditions();
     }
     select(0);
     canvas.setAttribute('aria-hidden', 'true');
@@ -404,7 +480,7 @@ function inspectCharacter(parent, definition, id, damage, signal) {
     flip.removeAttribute('aria-disabled');
     flipping = false;
   });
-  return { canvas, ready };
+  return { canvas, ready, updateConditions };
 }
 
 function createDamageScopes(standees, signal, activeRoster) {
@@ -1529,6 +1605,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   function receive(next) {
     if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
     latest = next.adventure.battle;
+    activeFace.updateConditions(latest.roster?.player?.cards?.[0]);
     damageScopes.sync();
     featPlayback.preload(latest.feats?.used);
     skills?.update(latest.feats);

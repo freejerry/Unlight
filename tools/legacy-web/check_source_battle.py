@@ -23,35 +23,52 @@ def observe_battle_receipts(page, origin):
       const captured = new WeakSet();
       export function createFrameParser() {
         const parser = parse();
-        return {
-          reset: () => parser.reset(),
-          push(chunk, receive) {
-            parser.push(chunk, body => {
-              const wire = window.qaQuestWire;
-              const gate = wire?.counterGuardReveal;
-              if (!gate || wire.receiving !== gate.peer) return receive(body);
-              const command = ((body[0] ^ (gate.key?.[0] ?? 0)) << 8)
-                | (body[1] ^ (gate.key?.[gate.key.length > 1 ? 1 : 0] ?? 0));
-              if (gate.frames.length || command === 55) gate.frames.push({command, deliver: () => receive(body)});
-              else receive(body);
-            });
-          },
-        };
+        function dispatch(body, receive) {
+          const wire = window.qaQuestWire;
+          const gate = wire?.battleFrameHold;
+          if (!gate || wire.receiving !== gate.peer) return receive(body);
+          const command = ((body[0] ^ (gate.key?.[0] ?? 0)) << 8)
+            | (body[1] ^ (gate.key?.[gate.key.length > 1 ? 1 : 0] ?? 0));
+          if (gate.frames.length || command === gate.stopBefore) {
+            gate.frames.push({command, deliver: () => dispatch(body, receive)});
+          } else receive(body);
+        }
+        return {reset: () => parser.reset(), push: (chunk, receive) => parser.push(chunk, body => dispatch(body, receive))};
       }
       export function readReply(body) {
         const reply = read(body);
         const trace = window.qaQuestWire?.receiving;
-        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,51,52,53,54,55,56,61,62,65,66,67,68,69,83,107,108,110].includes(reply.command)) return reply;
+        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,51,52,53,54,55,56,61,62,65,66,67,68,69,83,107,108,110,115,120].includes(reply.command)) return reply;
         captured.add(body);
         const audit = read(body);
         const values = reply.command === 40 && body.byteLength === 7 ? [audit.byte(), audit.byte(), audit.byte()]
           : [107,108].includes(reply.command) && body.byteLength === 6 ? [audit.int()]
-          : [83,110].includes(reply.command) && body.byteLength === 7 ? [audit.byte(), audit.int()]
+          : [83,110,115].includes(reply.command) && body.byteLength === 7 ? [audit.byte(), audit.int()]
+          : reply.command === 120 && body.byteLength >= 15 ? [audit.byte(), audit.int(), audit.int(), audit.string(4096, true)]
           : [67,68,69].includes(reply.command) && body.byteLength === 3 ? [audit.byte()] : [];
         (trace.battleAudit ??= []).push([reply.command, body.byteLength, ...values, performance.now()]);
         return reply;
       }
     """))
+
+
+def defer_battle_frames(page, stop_before):
+    assert page.evaluate("""stopBefore => {
+      const wire = window.qaQuestWire;
+      const {peer, key} = wire.actionHold;
+      wire.battleFrameHold = {peer, key, stopBefore, frames: []};
+      return wire.endActionHold(true);
+    }""", stop_before) > 0
+
+
+def release_battle_frames(page, *, next_gate=None):
+    page.evaluate("""stopBefore => {
+      const wire = window.qaQuestWire;
+      const {peer, key, frames} = wire.battleFrameHold;
+      wire.battleFrameHold = stopBefore === null ? null : {peer, key, stopBefore, frames: []};
+      wire.receiving = peer;
+      try { for (const {deliver} of frames) deliver(); } finally { wire.receiving = null; }
+    }""", next_gate)
 
 
 def observe_battle_motion(page):
@@ -195,7 +212,7 @@ def close_battle_lobby_notices(page, stage, origin):
     assert qa.read_lobby_achievement_trace(page)['sent'] == check['sent']
 
 
-def enter_battle(page, origin, database, user, password, directory, quest_id):
+def enter_battle(page, origin, database, user, password, directory, quest_id, *, hold_condition=False):
     ((player_id, flags),) = qa.player(database, user)
     (profile,) = qa.avatar(database, player_id)
     avatar_id = profile[0]
@@ -244,7 +261,10 @@ def enter_battle(page, origin, database, user, password, directory, quest_id):
     page.emulate_media(reduced_motion='no-preference')
     observe_battle_motion(page)
     qa.observe_quest_opening_audio(page)
-    page.evaluate('window.qaQuestWire.holdAction(22, {through: 45})')
+    if hold_condition:
+        page.evaluate('window.qaQuestWire.holdAction(22, {before: [120]})')
+    else:
+        page.evaluate('window.qaQuestWire.holdAction(22, {through: 45})')
     entering.click()
     battle = page.locator(STAGE)
     expect(battle).to_have_attribute('data-burn', 'settled', timeout=qa.TIMEOUT)
@@ -252,7 +272,7 @@ def enter_battle(page, origin, database, user, password, directory, quest_id):
     return stage, battle, live, errors, avatar_id, quest, deck
 
 
-def check_draw(page, stage, battle, directory):
+def check_draw(page, stage, battle, directory, *, release=qa.release_movement_reply):
     trace = qa.read_movement_trace(page)
     start = next(packet for packet in trace['replies'] if packet[0] == 40)
     (_, _, deck_size, player_event_size, foe_event_size, distance, _) = start
@@ -275,7 +295,7 @@ def check_draw(page, stage, battle, directory):
           .some((value, index) => index % 4 === 3 && value > 0);
     }"""), 'Missing rendered source deck'
     checkpoints = [snapshot(page, stage, directory, '02-deck-and-draw-before-sc46')]
-    qa.release_movement_reply(page)
+    release(page)
     expect(battle).to_have_attribute('data-phase', 'move', timeout=qa.TIMEOUT)
     cards = [[card_id, bool(mask & (1 << index)), kind]
              for kind, (_, _, ids, mask, _) in zip(('action', 'event'), replies[1:])
@@ -301,6 +321,51 @@ def check_draw(page, stage, battle, directory):
             'hand': cards, 'draws': replies, 'flights': flights, 'checkpoints': checkpoints}
 
 
+def check_eased_condition(page, stage, battle, directory):
+    receipt = [120, 30, 1, 0, 2, '近:防1+,特1+']
+    first_turn = [115, 120, 43]
+    card = battle.locator('#quest-battle-player-character[data-card-id="3"]')
+    flip = card.locator('.quest-battle-character-flip')
+    reverse = card.locator('.quest-battle-character-review')
+    thorn = reverse.locator('.quest-battle-character-feat[data-feat-id="7"][data-feat-index="2"]')
+    chips = reverse.locator('#quest-battle-character-requirements-2')
+    changed = card.locator('.quest-battle-character-feat[data-condition-changed="true"]')
+    assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 120
+    trace = qa.read_movement_trace(page)
+    assert [row[:-1] for row in trace['battleAudit'] if row[0] in first_turn] == [[115, 7, 1, 38]]
+    baseline = sent_quest_actions(page)
+    expect(flip).to_be_enabled()
+    flip.click(position={'x': 84, 'y': 180})
+    expect(card).to_have_attribute('data-face', 'back')
+    expect(flip).to_be_enabled()
+    expect(thorn).to_have_text('茨林')
+    thorn.click()
+    expect(thorn).to_have_attribute('aria-pressed', 'true')
+    expect(changed).to_have_count(0)
+    expect(chips).to_have_attribute('data-cards', '特2+,防2+')
+    expect(battle.locator(f'{HAND} .quest-battle-hand-card')).to_have_count(0)
+    base = snapshot(page, stage, directory, '05-original-thorn-condition-before-sc120')
+    defer_battle_frames(page, 43)
+    page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 43', timeout=qa.TIMEOUT)
+    trace = qa.read_movement_trace(page)
+    assert [row[:-1] for row in trace['battleAudit'] if row[0] in first_turn] == [[115, 7, 1, 38], receipt]
+    expect(changed).to_have_count(1)
+    expect(thorn).to_have_attribute('data-condition-changed', 'true')
+    expect(thorn).to_have_css('color', 'rgb(14, 224, 252)')
+    expect(chips).to_have_attribute('data-cards', '防1+,特1+')
+    for kind in ('shd', 'str'):
+        expect(chips.locator(f'.quest-battle-character-chip[data-type="{kind}"][data-frame="11"]')).to_be_visible()
+    expect(battle.locator(f'{HAND} .quest-battle-hand-card')).to_have_count(0)
+    confirmed = snapshot(page, stage, directory, '07-authoritative-thorn-condition-before-sc43')
+    flip.press('Enter')
+    expect(card).to_have_attribute('data-face', 'front')
+    expect(flip).to_be_enabled()
+    assert sent_quest_actions(page) == baseline
+    release_battle_frames(page, next_gate=46)
+    page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 46', timeout=qa.TIMEOUT)
+    return {'receipt': receipt, 'base': base, 'confirmed': confirmed}
+
+
 def check_attention_controls(page, stage, battle, directory, card_id, skill_id, skill_name):
     skill = battle.locator(f'#quest-battle-skills .quest-battle-skill-name[data-side="player"][data-skill-id="{skill_id}"]')
     tooltip = battle.locator(f'#quest-battle-skill-detail[data-side="player"][data-skill-id="{skill_id}"]')
@@ -318,6 +383,8 @@ def check_attention_controls(page, stage, battle, directory, card_id, skill_id, 
     expect(tooltip).to_have_css('opacity', '1')
     if skill_id == 100:
         phase, distance, cards, effect = ('防禦', '近,中距離', '防1,防1', '讓防禦力變成與對戰對手的攻擊力相同')
+    elif skill_id == 7:
+        phase, distance, cards, effect = ('防禦', '近距離', '特合計2以上,防合計2以上', '防禦力+6')
     elif skill_id == 25:
         phase, distance, cards, effect = ('攻擊', '近距離', '劍1,劍1', '攻擊力+5')
     else:
@@ -337,7 +404,7 @@ def check_attention_controls(page, stage, battle, directory, card_id, skill_id, 
     expect(card).to_have_attribute('data-face', 'back', timeout=qa.TIMEOUT)
     expect(flip).to_be_enabled()
     expect(front).to_be_hidden()
-    if skill_id == 100:
+    if skill_id in (7, 100):
         rear.get_by_role('button', name=skill_name, exact=True).click()
     expect(rear.locator('.quest-battle-character-feat[aria-pressed="true"]')).to_have_text(skill_name)
     assert rear.locator('img').first.evaluate('image => image.complete && image.naturalWidth > 0')
@@ -649,15 +716,9 @@ def play_starter_skill(page, stage, battle, directory, plan):
             'availability': limits, 'cards': placed, 'attackDice': len(dice[3]), 'cue': confirm_feat_sound(page, trace, feat)}
 
 
-def play_counter_guard(page, stage, battle, directory):
+def enter_second_defense(page, battle):
     done = battle.locator('button[data-combat-command="done"]')
     player_table = battle.locator('#quest-battle-player-table')
-    opponent_table = battle.locator(TABLE)
-    player_points = battle.locator('#quest-battle-player-points')
-    opponent_points = battle.locator('#quest-battle-opponent-points')
-    skill = battle.locator('.quest-battle-skill-name[data-side="player"][data-skill-id="100"]')
-    activation = battle.locator('.quest-battle-feat[data-side="player"][data-activated-skill-id="100"]')
-    final = battle.locator('#quest-battle-exchange[data-reveal-stage="final"]')
     expect(battle).to_have_attribute('data-exchange-phase', 'attack', timeout=qa.TIMEOUT)
     expect(battle).to_have_attribute('data-exchange-index', '1')
     expect(player_table.locator('[data-card-id]')).to_have_count(0)
@@ -673,6 +734,19 @@ def play_counter_guard(page, stage, battle, directory):
     first_reveal, = [packet for packet in trace['replies'] if packet[0] == 55]
     assert first_reveal[2] == [], first_reveal
     exchanged = max(index for index, packet in enumerate(trace['replies']) if packet == [51, 3, 0])
+    return baseline, trace, exchanged
+
+
+def play_counter_guard(page, stage, battle, directory):
+    done = battle.locator('button[data-combat-command="done"]')
+    player_table = battle.locator('#quest-battle-player-table')
+    opponent_table = battle.locator(TABLE)
+    player_points = battle.locator('#quest-battle-player-points')
+    opponent_points = battle.locator('#quest-battle-opponent-points')
+    skill = battle.locator('.quest-battle-skill-name[data-side="player"][data-skill-id="100"]')
+    activation = battle.locator('.quest-battle-feat[data-side="player"][data-activated-skill-id="100"]')
+    final = battle.locator('#quest-battle-exchange[data-reveal-stage="final"]')
+    baseline, trace, exchanged = enter_second_defense(page, battle)
     audit_start = len(trace['battleAudit'])
     expect(skill).to_have_attribute('data-ready', 'false')
     actions, cards = [], []
@@ -715,15 +789,10 @@ def play_counter_guard(page, stage, battle, directory):
         expect(opponent_points).to_have_attribute('data-value', str(preview[1][-1]))
         pending = snapshot(page, stage, directory, '01-counter-guard-before-confirmed-point-rewrite')
     finally:
-        assert page.evaluate("""() => {
-          const wire = window.qaQuestWire;
-          const {peer, key} = wire.actionHold;
-          wire.counterGuardReveal = {peer, key, frames: []};
-          return wire.endActionHold(true);
-        }""") > 0
+        defer_battle_frames(page, 55)
 
     try:
-        page.wait_for_function('() => window.qaQuestWire.counterGuardReveal.frames[0]?.command === 55', timeout=qa.TIMEOUT)
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 55', timeout=qa.TIMEOUT)
         trace = qa.read_movement_trace(page)
         point_changes = [item[:-1] for item in trace['battleAudit'][audit_start:] if item[0] in (83, 110)]
         assert len(point_changes) == 2, point_changes
@@ -735,13 +804,7 @@ def play_counter_guard(page, stage, battle, directory):
         expect(opponent_points).to_have_attribute('data-value', str(preview[1][-1]))
         confirmed = snapshot(page, stage, directory, '01-counter-guard-points-before-final-reveal')
     finally:
-        page.evaluate("""() => {
-          const wire = window.qaQuestWire;
-          const {peer, frames} = wire.counterGuardReveal;
-          wire.counterGuardReveal = null;
-          wire.receiving = peer;
-          try { for (const {deliver} of frames) deliver(); } finally { wire.receiving = null; }
-        }""")
+        release_battle_frames(page)
 
     page.wait_for_function("""start => window.qaQuestWire.sockets.at(-1).replies.slice(start)
       .some(([opcode]) => opcode === 56)""", arg=exchanged, timeout=qa.TIMEOUT)
@@ -762,6 +825,79 @@ def play_counter_guard(page, stage, battle, directory):
     assert sent_quest_actions(page)[len(baseline):] == [[33, 9], *[[code, widths[code]] for code, *_ in actions], [34, 9]]
     return {'cards': cards, 'points': preview, 'rewrite': rewrite, 'dice': dice,
             'beforeRewrite': pending, 'beforeReveal': confirmed, 'cutIn': cut_in, 'cue': confirm_feat_sound(page, trace, 100)}
+
+
+def play_eased_thorn(page, stage, battle, directory):
+    done = battle.locator('button[data-combat-command="done"]')
+    skill = battle.locator('.quest-battle-skill-name[data-side="player"][data-skill-id="7"]')
+    activation = battle.locator('.quest-battle-feat[data-side="player"][data-activated-skill-id="7"]')
+    definitions = qa.action_card_definitions()
+    baseline, trace, exchanged = enter_second_defense(page, battle)
+    audit_start = len(trace['battleAudit'])
+    expect(skill).to_have_attribute('data-ready', 'false')
+    own_cards = [[2, False], [27, False]]
+    sent = [[33, 9]]
+    for card, kind, available in ((2, '3', 'false'), (27, '5', 'true')):
+        definition = definitions[card]
+        assert (definition['b_type'], definition['b_value']) == (kind, '1'), definition
+        hand = battle.locator(f'{HAND} .quest-battle-hand-card')
+        hand_ids = hand.evaluate_all('cards => cards.map(card => Number(card.dataset.cardId))')
+        index = hand_ids.index(card)
+        row = hand.and_(battle.locator(f'[data-card-id="{card}"]'))
+        expect(row).to_have_attribute('data-up', 'true')
+        rotate = row.locator('.quest-battle-card-rotate')
+        expect(rotate).to_be_enabled()
+        rotate.press('Enter')
+        expect(row).to_have_attribute('data-up', 'false')
+        assert [63, 10, 1, 0, index, card, 0] in qa.read_movement_trace(page)['replies']
+        row.locator('.quest-battle-card-primary').click(position={'x': 27, 'y': 18})
+        expect(battle.locator(f'#quest-battle-player-table [data-card-id="{card}"][data-zone="combat"]')).to_have_attribute('data-up', 'false')
+        expect(skill).to_have_attribute('data-ready', available)
+        sent.extend([[32, 12], [30, 11]])
+    trace = qa.read_movement_trace(page)
+    available = [row[:-1] for row in trace['battleAudit'][audit_start:] if row[0] in (107, 108, 110)]
+    assert available == [[107, 6, 7]], available
+    assert [packet for packet in trace['replies'][exchanged:] if packet[0] == 65 and packet[2] == 1] == [
+        [65, 8, 1, 0, 2], [65, 8, 1, 0, 27],
+    ]
+    points = battle.locator('#quest-battle-player-points')
+    expect(points).to_have_attribute('data-value', '13')
+    ready = snapshot(page, stage, directory, '01-eased-thorn-ready-with-two-one-point-cards')
+    observe_feat_sound(page)
+    qa.hold_movement_reply(page, 34, done.click, before=[110])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 110
+        expect(activation).to_have_count(0)
+        expect_covered(battle.locator(TABLE))
+        assert page.evaluate('window.qaStarterSkillPlayback') == []
+    finally:
+        qa.release_movement_reply(page)
+
+    page.wait_for_function("""start => window.qaQuestWire.sockets.at(-1).replies.slice(start)
+      .some(([opcode]) => opcode === 56)""", arg=exchanged, timeout=qa.TIMEOUT)
+    effect = activation.locator('img:visible').first
+    expect(effect).to_be_visible(timeout=qa.TIMEOUT)
+    assert effect.evaluate('image => image.complete && image.naturalWidth > 0')
+    fired = snapshot(page, stage, directory, '01-real-eased-thorn-activation')
+    trace = qa.read_movement_trace(page)
+    used = [row[:-1] for row in trace['battleAudit'][audit_start:] if row[0] == 110]
+    assert used == [[110, 7, 1, 7]], used
+    final, dice = [packet for packet in trace['replies'][exchanged:] if packet[0] in (55, 56)][:2]
+    assert final[:1] == [55] and final[2] == own_cards, final
+    assert dice[0] == 56 and dice[2] == 0 and len(dice[4]) == 13, dice
+    assert trace['combat'] == [[33, '', ''], [30, 2, 0, 0], [30, 27, 0, 0], [34, '', '']], trace['combat']
+    assert sent_quest_actions(page)[len(baseline):] == [*sent, [34, 9]]
+    advantage = sum(roll > 3 for roll in dice[4]) - sum(roll > 3 for roll in dice[3])
+    damage = None
+    if dice[3] and advantage > 0:
+        page.wait_for_function("""start => window.qaQuestWire.sockets.at(-1).replies.slice(start)
+          .some(([opcode, , side]) => opcode === 73 && side === 0)""", arg=exchanged, timeout=qa.TIMEOUT)
+        damage = next(packet for packet in qa.read_movement_trace(page)['replies'][exchanged:] if packet[0] == 73 and not packet[2])
+        # The Cave Bat has one HP. Original Entrant#damaged clamps the reported delta to available HP.
+        assert damage == [73, 8, 0, 1, 0], (damage, dice)
+        expect(battle.locator('#quest-battle-opponent-hp')).to_have_attribute('data-hp', '0', timeout=qa.TIMEOUT)
+    return {'cards': own_cards, 'ready': ready, 'fired': fired, 'activation': used[0], 'dice': dice,
+            'counterDamage': damage, 'cue': confirm_feat_sound(page, trace, 7)}
 
 
 def verify_terminal(page, stage, directory, live, quest_id, quest):
@@ -808,12 +944,25 @@ def check_battle(page, args, plan):
     origin = f'http://127.0.0.1:{args.port}'
     player_card = plan['cardId']
     quest_id = plan['questId']
+    eased = args.case == 'eased-condition'
     stage, battle, live, errors, avatar_id, quest, deck = enter_battle(
-        page, origin, args.database, args.user, args.password_file.read_text().rstrip('\r\n'), args.screens, quest_id)
+        page, origin, args.database, args.user, args.password_file.read_text().rstrip('\r\n'), args.screens, quest_id,
+        hold_condition=eased)
     assert deck[0][1] == player_card, deck
     evidence = {'case': args.case, 'questId': quest_id, 'inventoryId': quest[0], 'cardId': player_card}
     try:
-        evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
+        if eased:
+            equipped = qa.query(args.database, """
+                SELECT s.id, s.card_id, s.kind, s.deck_position, s.card_position
+                FROM chara_card_slot_inventories s JOIN chara_card_decks d ON d.id = s.chara_card_deck_id
+                WHERE d.avatar_id = ? AND d.name = 'Deck 1'
+            """, avatar_id)
+            assert len(equipped) == 1 and equipped[0][1:] == (10000, 0, 0, 0), equipped
+            evidence['weapon'] = equipped[0]
+            evidence['easedCondition'] = check_eased_condition(page, stage, battle, args.screens)
+            evidence['2-and-6'] = check_draw(page, stage, battle, args.screens, release=release_battle_frames)
+        else:
+            evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
         if 'openingActions' in plan:
             assert [row[0] for row in evidence['2-and-6']['hand'] if row[2] == 'action'] == plan['openingActions']
         evidence['5-and-7'] = check_attention_controls(page, stage, battle, args.screens,
@@ -828,7 +977,9 @@ def check_battle(page, args, plan):
                 evidence['3-and-8'] = check_enemy_first(page, stage, battle, args.screens, plan.get('defense', []))
             else:
                 wait_for_own_attack(page, battle, plan.get('defense', []))
-        if args.case == 'counter-guard':
+        if eased:
+            evidence['1'] = play_eased_thorn(page, stage, battle, args.screens)
+        elif args.case == 'counter-guard':
             evidence['1'] = play_counter_guard(page, stage, battle, args.screens)
         elif args.case == 'skill':
             evidence['1'] = play_starter_skill(page, stage, battle, args.screens, plan)
@@ -859,12 +1010,18 @@ def main():
     parser.add_argument('--password-file', type=Path, required=True)
     parser.add_argument('--screens', required=True, type=Path)
     parser.add_argument('--chromium', default='/usr/bin/chromium')
-    parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard'), default='presentation')
+    parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition'), default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
     if (args.case == 'skill') != (args.plan is not None):
         parser.error('--case skill and its original --plan must be used together')
-    if args.case == 'counter-guard':
+    if args.case == 'eased-condition':
+        plan = {
+            'questId': 1, 'cardId': 3, 'skillId': 7, 'skillName': '茨林', 'direction': -1,
+            'openingActions': [27, 2, 60, 45, 32], 'movementCards': [[45, False]],
+            'playerFirst': True, 'range': 1, 'wins': False,
+        }
+    elif args.case == 'counter-guard':
         plan = {
             'questId': 1, 'cardId': 82, 'skillId': 100, 'skillName': '攻防抗衡', 'direction': 0,
             'openingActions': [27, 2, 60, 45, 32], 'movementCards': [[45, False]],

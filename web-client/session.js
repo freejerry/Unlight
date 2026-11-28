@@ -25,7 +25,7 @@ import {
   QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
   QUEST_CHARA_CHANGE_REQUEST, QUEST_CHARA_CHANGE_REPLY, QUEST_ROSTER_HP_REPLIES, QUEST_CHARA_REVIVE_REPLY,
   QUEST_CHARA_TRANSFORM_REPLY,
-  QUEST_HAND_EFFECT_REPLIES, QUEST_FEAT_REPLIES, QUEST_POINT_REWRITE_REPLY,
+  QUEST_HAND_EFFECT_REPLIES, QUEST_FEAT_REPLIES, QUEST_POINT_REWRITE_REPLY, QUEST_FEAT_CONDITION_REPLY,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY,
   QUEST_REWARD_HIGH_REQUEST, QUEST_REWARD_LOW_REQUEST, QUEST_REWARD_NEXT_REQUEST, QUEST_REWARD_TAKE_REQUEST,
@@ -40,7 +40,7 @@ import {
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
   readQuestDuelFinishReply, readQuestCombatBoundaryReply,
-  readQuestHandEffectReply, readQuestFeatReply, readQuestPointRewriteReply,
+  readQuestHandEffectReply, readQuestFeatReply, readQuestPointRewriteReply, readQuestFeatConditionReply,
   readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
   readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply, readQuestItemReply,
   readAvatarPartGrantReply, readAvatarPartEquipReply, readAvatarPartVanishReply,
@@ -2275,6 +2275,21 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     }
   }
 
+  function receiveFeatCondition(reply) {
+    // The original start-turn after-hook can emit this ahead of the first SC43.
+    if (phase === 'encounter' || phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return false;
+    let update;
+    try { update = readQuestFeatConditionReply(reply); } catch { return false; }
+    const { player, rosterIndex, featIndex, condition } = update;
+    const side = player ? 'player' : 'opponent';
+    const card = roster[side].cards[rosterIndex];
+    if (!card || card.featConditions?.[featIndex] === condition) return false;
+    const changing = characterChange?.applied[side];
+    if (changing?.index === rosterIndex && changing.cardId !== card.cardId) return false;
+    card.featConditions = Object.freeze({ ...card.featConditions, [featIndex]: condition });
+    return true;
+  }
+
   function isOwnSubmission(reply) {
     try {
       const player = reply.byte();
@@ -2458,6 +2473,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if (side === 'player' && (roster.player.activeIndex !== update.index || selected.cardId !== update.cardId)) readyFeats.clear();
       if (selected.cardId !== update.cardId) {
         selected.cardId = update.cardId;
+        delete selected.featConditions;
         selected.hp = null;
         changedHp.add(selected);
       }
@@ -2915,7 +2931,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
     ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
     ...(onStateChange ? [QUEST_MOVE_SUBMITTED_REPLY, QUEST_ATTACK_SUBMITTED_REPLY, QUEST_DEFENCE_SUBMITTED_REPLY,
-      QUEST_POINT_UPDATE_REPLY, QUEST_POINT_REWRITE_REPLY, ...QUEST_FEAT_REPLIES] : []),
+      QUEST_POINT_UPDATE_REPLY, QUEST_POINT_REWRITE_REPLY, QUEST_FEAT_CONDITION_REPLY, ...QUEST_FEAT_REPLIES] : []),
     ...(fixedTreasure || bonusGameTreasure ? [QUEST_TREASURE_REPLY] : []),
     ...(bonusGameTreasure ? QUEST_REWARD_REPLIES : []),
   ];
@@ -2923,6 +2939,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     if (phase === 'closed') return;
     let combatChanged = false;
     try {
+      if (reply.command === QUEST_FEAT_CONDITION_REPLY) {
+        combatChanged = receiveFeatCondition(reply);
+        return;
+      }
       if (reply.command === QUEST_POINT_REWRITE_REPLY) {
         combatChanged = receivePointRewrite(reply);
         return;

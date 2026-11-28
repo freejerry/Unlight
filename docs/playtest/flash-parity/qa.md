@@ -174,6 +174,21 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case counter-guard \
 
 規則與發動仍由原版 Ruby 執行。原版 Flash 可用同一組隔離配置，依相同方向、牌面、桌面及 OK 順序操作，保留使用的 SWF 雜湊、實際回覆和 780×680 畫面。相同牌序若改為向前到近距離，蝙蝠當回合第二組會空桌攻擊。攻防抗衡仍發動，雙方骰數為 0。 [原版點數處理](../../../app/client/src/net/server/QuestServer.as#L1540) · [原版技能規則](../../../app/server/src/model/chara_card.rb#L5709) · [原版近距離畫面與紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-counter-guard-live/original/near/wire.json)
 
+### 重跑艾伯李斯特的裝備改條件
+
+在隔離的原版 Ruby 測試角色上完成教學，使用原版角色取得與牌組操作，把艾伯李斯特 Lv3（角色卡 #3）放在 Deck 1 首位。取得武器「凱旋之棘」#10000 與經驗素材 #5024，先以原版 `Avatar.combine` 合成，再將同一武器裝備到角色的武器欄。隔離資料準備腳本載入原版裝備限制檢查所需的 `Sequel.extension :blank`。確認武器仍為 #10000、有正經驗、攻防加值都是零，且原版被動技能為 41。使用 Q1、舞台 11、對手 `[1004]` 和初始種子 9。
+
+隔離測例會分別暫緩原始 `SC120`、`SC43` 和 `SC46`。先翻卡核對「茨林」的基礎條件，再放行 `SC120` 確認卡背技能名轉青色、出牌門檻更新為防禦 1 以上及特殊 1 以上。兩張原版圖示與近距離標記各依來源顯示。首回合開始後核對原版保留的滑入內容與實際手牌。以 #45 的移動 2 向前，等真實回覆確認近距離和己方先攻，空桌通過首組攻擊。接著以 #2 防 1 與 #27 特 1 防禦，核對原版技能亮起、發動確認、特寫音效和骰數。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case eased-condition \
+  --port 4397 --database "$proof_dir/eased-condition-ruby/app/server/data/game_dev2.db" \
+  --user questeased --password-file "$proof_dir/questeased-password" \
+  --screens "$proof_dir/eased-condition-native"
+```
+
+原版 Flash 使用相同角色、裝備、牌序與移動操作，保存首回合回覆、卡背和進入防禦的實際紀錄。完整防禦出牌與技能特寫取自新版實跑。 [原版合成模型](../../../app/server/src/model/avatar.rb#L482) · [原版卡背處理](../../../app/client/src/view/scene/game/DuelCharaCards.as#L382) · [原版茨林規則](../../../app/server/src/model/chara_card.rb#L4504)
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。

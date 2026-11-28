@@ -91,6 +91,7 @@ export function formatBattleSkill(skill) {
     .replace(/D/g, ',防')]);
   return {
     requirements,
+    cardCondition: cards ?? '',
     effect: effect.replace(/,\s?/g, '\n').replace(/ATK/g, '攻擊力').replace(/DEF/g, '防禦力').replace(/MOV/g, '移動力'),
     description: [effect, ...story].join('\n'),
   };
@@ -101,10 +102,14 @@ export async function battleCharacterReverse(signal) {
     if (signal?.aborted) return null;
     const { characterReverse } = await loadManifest();
     if (!characterReverse) return null;
-    const { plate, tab } = characterReverse;
+    const { plate, tab, requirementChips } = characterReverse;
     const layers = [plate, tab.up, tab.selected, ...Object.values(tab.phases), ...Object.values(tab.ranges).flat()];
-    await Promise.all(layers.map(layer => loadImage(layer.file)));
-    return signal?.aborted ? null : characterReverse;
+    const optionalChips = requirementChips
+      ? Promise.resolve().then(() => loadImage(requirementChips.file)).then(() => true, () => false)
+      : false;
+    const [chipsReady] = await Promise.all([optionalChips, ...layers.map(layer => loadImage(layer.file))]);
+    if (signal?.aborted) return null;
+    return chipsReady ? characterReverse : { ...characterReverse, requirementChips: undefined };
   } catch {
     return null;
   }

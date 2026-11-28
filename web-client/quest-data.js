@@ -9,6 +9,8 @@ const MAX_DECK_INDEX = 127;
 const LAND_SLOT_COUNT = 15;
 const MAX_LAND_PROGRESS = (1 << LAND_SLOT_COUNT) - 1;
 const ROSTER_SLOT_COUNT = 3;
+const FEAT_SLOT_COUNT = 4;
+const MAX_FEAT_CONDITION_BYTES = 256;
 const REFILL_ORIENTATION_BITS = 32;
 const NEW_STATUS = 0;
 const PENDING_STATUS = 4;
@@ -91,6 +93,7 @@ export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
 export const QUEST_CHARA_CHANGE_REPLY = 72;
 export const QUEST_DAMAGE_REPLY = 73;
 export const QUEST_POINT_REWRITE_REPLY = 83;
+export const QUEST_FEAT_CONDITION_REPLY = 120;
 const QUEST_FEAT_SEALED_REPLY = 81;
 const QUEST_FEAT_ON_REPLY = 107;
 const QUEST_FEAT_OFF_REPLY = 108;
@@ -688,6 +691,18 @@ export function readQuestPointRewriteReply(reply) {
   const value = reply.int();
   reply.done();
   return { player, value };
+}
+
+export function readQuestFeatConditionReply(reply) {
+  if (reply.command !== QUEST_FEAT_CONDITION_REPLY) throw new Error('Unexpected quest feat condition reply.');
+  const player = readDuelBoolean(reply);
+  const rosterIndex = reply.int();
+  const featIndex = reply.int();
+  const condition = reply.string(MAX_FEAT_CONDITION_BYTES, true);
+  reply.done();
+  if (rosterIndex < 0 || rosterIndex >= ROSTER_SLOT_COUNT || featIndex < 0 || featIndex >= FEAT_SLOT_COUNT
+      || /[\u0000-\u001f\u007f]/u.test(condition)) throw new Error('Invalid quest feat condition.');
+  return { player, rosterIndex, featIndex, condition };
 }
 
 export function readQuestMoveCardReply(reply) {

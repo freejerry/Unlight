@@ -64,6 +64,15 @@ EVENTS = {
 CARD_VIEW = (-28, -43, 56, 86)
 LARGE_CARD_VIEW = (-86, -121, 172, 242)
 MARKS = ("on_atk", "on_bow", "on_def", "on_mov", "on_str", "on_mov_u")
+REQUIREMENT_ICONS = {
+    "mov": ("data/image/icon_card_mov.swf", "772faa91053b701a935068502d6e64e93ac4c8c4ecf14e5db44704d1a7debd2d"),
+    "swd": ("data/image/icon_card_swd.swf", "9c6398341c958d5c919f64bdd034d12df664c48b7bcf229984f6e36bd7c6238b"),
+    "gun": ("data/image/icon_card_gun.swf", "b05621c16b373cd8b5e4fdfa2908ae14131d99ba5e4f84b271dffba675705e02"),
+    "str": ("data/image/icon_card_str.swf", "83323d2d1a777f50eefcb820f1a31d0f2c498791ad11fb7ff6c2233f380d22ad"),
+    "shd": ("data/image/icon_card_shd.swf", "a37045d0f72bf06a9d6ee98977e9c8d700a1fab2d66695203e34deb3b796227e"),
+    "wld": ("data/image/icon_card_wld.swf", "64e803fec9163ccd3b2fa375c6ebc6161b8e8c2f9eb2af0c41ea766f873fd9f4"),
+    "wld3": ("data/image/icon_card_wld3.swf", "efefbc3c5adbbd89cd34d1c36930d499788a3e77bdc698024b663278caec0dd3"),
+}
 
 
 def render(movie, placements, bounds, *, skip=()):
@@ -83,7 +92,30 @@ def positive(image):
     return image
 
 
-def character_reverse(movie, save):
+def requirement_chips(open_movie, save):
+    width, height, columns, frame_count = 19, 11, 10, 30
+    offset = (0, -11)
+    rows_per_icon = frame_count // columns
+    sheet = Image.new("RGBA", (width * columns, height * rows_per_icon * len(REQUIREMENT_ICONS)))
+    sources = {}
+    for index, (name, pin) in enumerate(REQUIREMENT_ICONS.items()):
+        movie = open_movie(pin)
+        (root,) = movie.frame(movie.movie, 1)
+        if root["matrix"] != "t0,0":
+            raise ValueError(f"Unexpected condition chip anchor: {name}")
+        row = index * rows_per_icon
+        sprite = movie.symbols[root["idref"]]
+        for frame in range(frame_count):
+            chip = positive(render(movie, movie.frame(sprite, frame + 1), (*offset, width, height)))
+            sheet.paste(chip, (width * (frame % columns), height * (row + frame // columns)))
+        sources[name] = {"file": pin[0], "sha256": pin[1], "row": row}
+    file = save("condition-chips.png", sheet, None, sources=sources, sourceFrames=frame_count)
+    return {"file": file, "width": width, "height": height, "columns": columns,
+            "sources": sources, "origin": [64, 52], "offset": list(offset), "stepX": 20, "stepY": 30}
+
+
+def character_reverse(open_movie, save):
+    movie = open_movie(CHARACTER_FRAME)
     bounds = (0, 0, 168, 240)
     root = movie.frame(movie.movie, 1)
     tab = next(item for item in root if item.get("name") == "tab0")
@@ -115,6 +147,7 @@ def character_reverse(movie, save):
             "ranges": {key: [icon(f"icon_range{n}", frame) for frame in (1, 2)]
                        for n, key in enumerate(("近", "中", "遠"))},
         },
+        "requirementChips": requirement_chips(open_movie, save),
     }
 
 
@@ -296,8 +329,8 @@ def generate(args):
 
     def save_bytes(filename, data, pin, **details):
         (args.output / filename).write_bytes(data)
-        provenance[filename] = {"source": pin[0], "sourceSha256": pin[1],
-                                "sha256": sha256(data).hexdigest(), **details}
+        source = {"source": pin[0], "sourceSha256": pin[1]} if pin else {}
+        provenance[filename] = {**source, "sha256": sha256(data).hexdigest(), **details}
         return filename
 
     def save(filename, image, pin, **details):
@@ -307,7 +340,7 @@ def generate(args):
         return DisplayList(checked_source(args.assets, pin), args.swfdump)
 
     if args.character_reverse:
-        index["characterReverse"] = character_reverse(open_movie(CHARACTER_FRAME), save)
+        index["characterReverse"] = character_reverse(open_movie, save)
         index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
         return
 
@@ -399,7 +432,7 @@ def generate(args):
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "stands": stands, "actionFrames": action_frames,
              "actionValues": values, "eventValues": events, "actionControls": controls,
-             "characterReverse": character_reverse(open_movie(CHARACTER_FRAME), save),
+             "characterReverse": character_reverse(open_movie, save),
              "exchange": {"diceResult": dice_result, "diceRoll": dice_roll, "damage": damage},
              "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n")

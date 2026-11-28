@@ -176,7 +176,10 @@
   color: white;
   text-align: left;
   font: bold 11px/16px var(--interface-font), serif;
+  letter-spacing: 2px;
 }
+.quest-battle-character-inspect .quest-battle-character-feat[data-condition-changed="true"] { color: #0ee0fc; }
+.quest-battle-character-chip { position: absolute; pointer-events: none; }
 .quest-battle-character-review img, .quest-battle-character-description, .quest-battle-character-requirements {
   position: absolute;
   pointer-events: none;

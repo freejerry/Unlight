@@ -1221,6 +1221,288 @@
         944,
         704
       ]
+    },
+    "7": {
+      "name": "茨林",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        {
+          "file": "thorn-forest-02.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "thorn-forest-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "thorn-forest-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "thorn-forest-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-17.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-25.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-26.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-28.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-31.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-32.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-33.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-34.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-35.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-36.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "thorn-forest-37.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceChildStops": {}
     }
   },
   "provenance": {
@@ -1763,6 +2045,222 @@
       "sourceSha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
       "sourceFrame": 31,
       "sha256": "1f1d60f6434eba43db3a6e4f98b87a0a02c99375daa7a5a98d62380c4a223e91"
+    },
+    "thorn-forest-02.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 2,
+      "sha256": "8110df7a47097aa0de94edad2c9ed098d81f9d896a722d333391ef23b6346e7b"
+    },
+    "thorn-forest-03.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 3,
+      "sha256": "bd4736b1003504930e464c716ff596584e4fa5c62ef87c11501ef00b6c26d031"
+    },
+    "thorn-forest-04.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 4,
+      "sha256": "85d3858f645daa60d9a5864d97b39d703339b78ddc5d6f37243bfc4350347b31"
+    },
+    "thorn-forest-05.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 5,
+      "sha256": "959b137c03650d4751cb607dcf8d887d0cb61b25612c9c78c1bf5be0aabd8693"
+    },
+    "thorn-forest-06.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 6,
+      "sha256": "88bb15ed3bd506bde82b5bebef702fe930fe37c731ef3f8487bf94dc6deb044e"
+    },
+    "thorn-forest-07.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 7,
+      "sha256": "706996239e39193fac4c2cec9212eabef7c8afdb38294c91acbe1e7272af55de"
+    },
+    "thorn-forest-08.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 8,
+      "sha256": "bea7b7a95f88c92507eee0b3338363781222f5804e2dd52e2a3ca1c89cb895a3"
+    },
+    "thorn-forest-09.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 9,
+      "sha256": "1d71646b58b7e01926be88f84e9d4e8e12b285ebc05882cd9cfbb11dbc97ed35"
+    },
+    "thorn-forest-10.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 10,
+      "sha256": "57c328c7ccfb04e25b43303778c9dd711da25069673925f5ab8bbc5363825a50"
+    },
+    "thorn-forest-11.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 11,
+      "sha256": "5d445e1cb00621795032540bfd3f95f566426c19da28dc51943ddb023746a84c"
+    },
+    "thorn-forest-12.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 12,
+      "sha256": "5f6c4a61b292b199d17a4a5112af1d4ccf6a0a2f47aadaee661d14f560359449"
+    },
+    "thorn-forest-13.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 13,
+      "sha256": "3537e5804e55ee73fbf08418fa83b8675b6ab9bb2855289eda71ac0a519e9728"
+    },
+    "thorn-forest-14.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 14,
+      "sha256": "8f2f9de8df81e2421fa6bf4cafe9e0058c0958dd79bc04b4f0920c69c036b836"
+    },
+    "thorn-forest-15.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 15,
+      "sha256": "ab03f26e2e65a89b7cc067b71edf9dc8fb0f0f25eaccdcff9cba0dead48bebc6"
+    },
+    "thorn-forest-16.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 16,
+      "sha256": "1254b42d89679537ae0d3a47f758fa7b66d3ed6f4bd1f3ba94277d5f497c6917"
+    },
+    "thorn-forest-17.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 17,
+      "sha256": "1963a78bd54c1f4905c9f22150eab47eb16ab1cbf97e164c73bab5519aaac318"
+    },
+    "thorn-forest-18.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 18,
+      "sha256": "12e5a1158088ba5d5eec51311ea22a31be309aad70c66b739477f3d1684d7d79"
+    },
+    "thorn-forest-19.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 19,
+      "sha256": "65c8e55865b52cd6644858487633aab8d73ba40e2d6084d888184a3582fa6192"
+    },
+    "thorn-forest-20.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 20,
+      "sha256": "298de848c37d13a409d5dc2bac3ca9aba08ac263e08b14b153a975017b069a46"
+    },
+    "thorn-forest-21.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 21,
+      "sha256": "a92376cd2fcfa4fb4ceb3f0b67f11d0d520f6cbfc6a97b79f7a5dd20b91d114d"
+    },
+    "thorn-forest-22.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 22,
+      "sha256": "07f6fad07a6c73be74f1fb29f1ab2e21304059c3b9bd523c7163c8eee42af3d0"
+    },
+    "thorn-forest-23.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 23,
+      "sha256": "615e6c92f261a39362d4a2d3ba78cd9ab27fb14f55e68acc66496bac8fdffbf3"
+    },
+    "thorn-forest-24.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 24,
+      "sha256": "30a4321a0482044196aa9915607ca71c4cbfc72423c48ab3348a0c9274b21f87"
+    },
+    "thorn-forest-25.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 25,
+      "sha256": "5dfe1b589b5fed23637b516550d186f6a5e268e759a9c5359f1b6ecb7e1b4f73"
+    },
+    "thorn-forest-26.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 26,
+      "sha256": "f7f622cd7a65737e3eef0553caafbb387887a8f6530e896dbb554bd9fa74db18"
+    },
+    "thorn-forest-27.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 27,
+      "sha256": "a342d84d888c7992447117c31383eb2aa69f34e987cf426b4625ee0771e21d3a"
+    },
+    "thorn-forest-28.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 28,
+      "sha256": "c941b4126d9f3f23b3816ae757e5ec44eec59b9dafe57e832e328aa2adb1d3da"
+    },
+    "thorn-forest-29.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 29,
+      "sha256": "b934873f7fdf9ae334ad23ef19d8ee932637ee64b3e629248bfec1c06735ca65"
+    },
+    "thorn-forest-30.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 30,
+      "sha256": "ae82753f2431e7f4fbf8e02dedf4bf8436b547090a2c24aa776def4d97e0469f"
+    },
+    "thorn-forest-31.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 31,
+      "sha256": "ef728246ec85011990c5899b9286a223788f5ca109e973658c01a289f7ef5f20"
+    },
+    "thorn-forest-32.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 32,
+      "sha256": "2ee18197d92780aa59ea17db6a299b3dedf1b1fcfd1c70176e1d0618f196b5bc"
+    },
+    "thorn-forest-33.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 33,
+      "sha256": "197c61ec6ce1424b33e58630bf18ee1c37f6d7e0e8dd543d4c3b9e01a0d845f8"
+    },
+    "thorn-forest-34.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 34,
+      "sha256": "7d9345afbefaa3d1aa563a7926e6e8ac1dd35273ba35d99df0b96bdcd8c9c5c2"
+    },
+    "thorn-forest-35.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 35,
+      "sha256": "4190fd7d0b6432f69e89629a84e7d2d53474e82010619591e8fe797a1910b818"
+    },
+    "thorn-forest-36.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 36,
+      "sha256": "7836045b1f0f08da590cda5454255253cab5a6a07b830dd0f07ed5eb2ac129a8"
+    },
+    "thorn-forest-37.png": {
+      "source": "public/image/cutinchara01_skl02.swf",
+      "sourceSha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+      "sourceFrame": 37,
+      "sha256": "0d9991d624e3d45554109f3f335fe86a67acd122cdb5dee393efd0a1c9af58a9"
     }
   }
 }

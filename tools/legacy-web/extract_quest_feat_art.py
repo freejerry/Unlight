@@ -37,6 +37,11 @@ FEATS = {
         "sha256": "623ce272da2bbdeb65a89046097b347677b86e6b4f4466d5dc115eea8fe276b9",
         "frames": 46, "childStops": {}, "sourceCanvas": (944, 704),
     },
+    "thorn-forest": {
+        "ids": [7], "name": "茨林", "file": "public/image/cutinchara01_skl02.swf",
+        "sha256": "10a5507d407ce002f37120e944495cefc7c1c6b6081aebc71aeeb2eafb731131",
+        "frames": 56, "childStops": {},
+    },
 }
 WIDTH, HEIGHT = 760, 680
 VISIBLE_STAGE_WIDTH = 780
