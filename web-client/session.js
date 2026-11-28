@@ -27,6 +27,7 @@ import {
   QUEST_REWARD_HIGH_REQUEST, QUEST_REWARD_LOW_REQUEST, QUEST_REWARD_NEXT_REQUEST, QUEST_REWARD_TAKE_REQUEST,
   QUEST_REWARD_AWARD_REPLY, QUEST_REWARD_CANDIDATES_REPLY, QUEST_REWARD_BASE_DICE_REPLY,
   QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY,
+  QUEST_ITEM_USE_REQUEST, QUEST_ITEM_GRANTED_REPLY, QUEST_ITEM_CONSUMED_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
@@ -37,7 +38,7 @@ import {
   readQuestDuelFinishReply, readQuestCombatBoundaryReply,
   readQuestHandEffectReply,
   readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
-  readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply,
+  readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply, readQuestItemReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -98,6 +99,9 @@ const QUEST_BONUS_GAME_TREASURE_TYPE = 7; // Original TG_BONUS_GAME.
 const QUEST_VANGUARD_KINDS = new Set([0, 8, 13]); // Original ordinary, reborn, and episode characters.
 const QUEST_BOSS_KIND = 2; // Original QT_BOSS.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
+const ORDINARY_QUEST_PAGE_LAST_INDEX = [2, 10, 18, 26, 34, 35]; // Flash Const.QUEST_MAP_NUM cumulative totals minus one.
+const QUEST_REWARD_ITEMS = new Map([[4, null], [5, 1], [6, 3], [7, 5], [8, 12]]); // AvatarItems master definitions and ITEM_EFFECTS.
+const QUEST_ITEM_MISSING = 72;
 const LAST_ORDINARY_SEARCH_MAP = 36;
 const FIRST_TUTORIAL_SEARCH_MAP = 2009;
 const LAST_TUTORIAL_SEARCH_MAP = 2013;
@@ -145,7 +149,7 @@ const QUEST_SETTLEMENT_REPLIES = [
   QUEST_CHARACTER_AWARD_REPLY, QUEST_ENERGY_REPLY,
 ];
 const QUEST_REWARD_REPLIES = [QUEST_REWARD_AWARD_REPLY, QUEST_REWARD_CANDIDATES_REPLY, QUEST_REWARD_BASE_DICE_REPLY,
-  QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY];
+  QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY, QUEST_ITEM_CONSUMED_REPLY];
 const QUEST_REWARD_AVATAR_REPLIES = [QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_CHARACTER_AWARD_REPLY];
 const HEARTBEAT = 180_000;
 const CLOSE_TIMEOUT = 1500;
@@ -197,6 +201,9 @@ const messages = {
   'quest-character-overridden': '原版伺服器選擇了其他角色。',
   'quest-reward-unavailable': '原版獎勵目前不接受這項操作。',
   'quest-reward-uncertain': '尚未確認獎勵結果，本次獎勵暫停操作。',
+  'quest-reward-item-unavailable': '目前無法使用這個獎勵道具。',
+  'quest-reward-item-rejected': '遊戲服務未接受這個獎勵道具。',
+  'quest-reward-item-insufficient': '骰點差超出這個道具的補正範圍。',
   'quest-return-unavailable': '任務服務尚未確認可返回地圖。',
   'quest-return-uncertain': '未能確認原版任務連線已釋放。',
 };
@@ -483,7 +490,7 @@ function observeInitialData(socket, signal) {
             ({ questData, ...profile }) => resolve({
               versions,
               ...profile,
-              questData: questData ? { ...questData, receivedAt } : null,
+              questData: questData ? Object.assign(questData, { receivedAt }) : null,
             }),
             reject,
           );
@@ -630,7 +637,7 @@ async function submitAvatarRegistration(socket, fields, signal, { markSent, mark
         || avatar.energy < 0 || avatar.energyMax < 1 || !questData || !avatar.questDecks.some(({ index }) => index === 1)) {
       throw new SessionError('protocol');
     }
-    return { ...profile, questData: { ...questData, receivedAt } };
+    return { ...profile, questData: Object.assign(questData, { receivedAt }) };
   } finally {
     unsubscribe();
   }
@@ -732,8 +739,8 @@ async function closeSession(auth, channels) {
   await auth?.close();
 }
 
-async function queryQuest(playerId, sessionKey, signal, read) {
-  const socket = new SessionSocket(QUEST_PORT);
+async function queryQuest(playerId, sessionKey, signal, read, onPushedReply) {
+  const socket = new SessionSocket(QUEST_PORT, undefined, onPushedReply);
   const channel = { socket, port: QUEST_PORT, verified: false, retained: false };
   try {
     const confirm = () => confirmChannel(channel, playerId, sessionKey, signal);
@@ -1385,7 +1392,7 @@ function sameQuestReward(first, second) {
   return first === second || (first && second && first.genre === second.genre && first.id === second.id && first.amount === second.amount);
 }
 
-function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publish }) {
+function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publish, itemInventory, mapFlag }) {
   let phase = 'loading';
   let round = 0;
   let rank = null;
@@ -1393,6 +1400,8 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
   let baseDice = null;
   let rolledDice = null;
   let decision = null;
+  let itemUse = null;
+  let itemBaseDiceReceived = false;
   let claim = null;
   let append;
   let nextRank;
@@ -1400,6 +1409,7 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
   let avatar;
   let cards;
   let pending;
+  let pendingItem;
   let expected = QUEST_REWARD_CANDIDATES_REPLY;
   const preludeDeadline = setTimeout(fail, TIMEOUT);
 
@@ -1408,16 +1418,84 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
     clearTimeout(preludeDeadline);
     phase = 'uncertain';
     expected = null;
+    if (pendingItem?.dispatched && !pendingItem.consumed) itemInventory.block(pendingItem.item.inventoryId);
     pending?.reject(new SessionError('quest-reward-uncertain'));
     publish();
+  }
+
+  function verifyDecision(data) {
+    if (data.bonus !== nextRank || (data.won && (!sameQuestReward(data.current, choices[1])
+        || !sameQuestReward(data.next, append)))) throw new SessionError('protocol');
+  }
+
+  function acceptDecision(data) {
+    if (data.won) choices = Object.freeze([data.current, ...choices.slice(2), data.next]);
+    decision = data;
+    rank = data.bonus;
+    phase = 'offer';
+  }
+
+  function receiveItem(reply) {
+    const { item } = pendingItem;
+    if (reply.command === QUEST_ERROR_REPLY) {
+      const code = readQuestErrorReply(reply);
+      if (code !== QUEST_ITEM_MISSING || expected !== QUEST_ITEM_CONSUMED_REPLY) throw new SessionError('protocol');
+      itemInventory.block(item.inventoryId);
+      phase = 'offer';
+      expected = null;
+      pending.reject(new SessionError('quest-reward-item-rejected', code));
+      return;
+    }
+    if (pendingItem.insufficient) throw new SessionError('protocol');
+    if (reply.command !== expected) throw new SessionError('protocol');
+    if (reply.command === QUEST_ITEM_CONSUMED_REPLY) {
+      const { inventoryId } = readQuestItemReply(reply);
+      if (inventoryId !== item.inventoryId) throw new SessionError('protocol');
+      itemInventory.consume(inventoryId);
+      pendingItem.consumed = true;
+      itemUse = Object.freeze({ inventoryId, itemId: item.itemId, kind: item.kind });
+      itemBaseDiceReceived = false;
+      expected = QUEST_REWARD_BASE_DICE_REPLY;
+      return;
+    }
+    if (reply.command === QUEST_REWARD_BASE_DICE_REPLY) {
+      const dice = readQuestRewardReply(reply);
+      if (!sameValues(dice, rolledDice)) throw new SessionError('protocol');
+      pendingItem.dice = dice;
+      itemBaseDiceReceived = true;
+      if (item.kind === 'amend') {
+        expected = QUEST_REWARD_DECISION_REPLY;
+        return;
+      }
+    } else {
+      const amended = readQuestRewardReply(reply);
+      verifyDecision(amended);
+      if (!amended.won) throw new SessionError('protocol');
+      pendingItem.decision = amended;
+    }
+    // The acknowledged physical use does not prove the effect on the reward phase.
+    baseDice = pendingItem.dice;
+    if (item.kind === 'reroll') {
+      round += 1;
+      rolledDice = decision = null;
+      phase = 'guess';
+    } else acceptDecision(pendingItem.decision);
+    expected = null;
+    pending.resolve();
   }
 
   function received(reply) {
     const rewardReply = QUEST_REWARD_REPLIES.includes(reply.command);
     const claimUpdate = phase === 'claiming' && QUEST_REWARD_AVATAR_REPLIES.includes(reply.command);
-    if (!rewardReply && !claimUpdate) return false;
+    const itemReply = phase === 'using-item' && (rewardReply || reply.command === QUEST_ERROR_REPLY);
+    if (!rewardReply && !claimUpdate && !itemReply) return false;
     if (phase === 'uncertain' || phase === 'claimed') return true;
     try {
+      if (itemReply) {
+        receiveItem(reply);
+        publish();
+        return true;
+      }
       if (claimUpdate) {
         if (award) throw new SessionError('protocol');
         if (reply.command === QUEST_CHARACTER_AWARD_REPLY) {
@@ -1465,12 +1543,8 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
           expected = QUEST_REWARD_DECISION_REPLY;
           break;
         case QUEST_REWARD_DECISION_REPLY:
-          if (data.bonus !== nextRank || (data.won && (!sameQuestReward(data.current, choices[1])
-              || !sameQuestReward(data.next, append)))) throw new SessionError('protocol');
-          if (data.won) choices = Object.freeze([data.current, ...choices.slice(2), data.next]);
-          decision = data;
-          rank = data.bonus;
-          phase = 'offer';
+          verifyDecision(data);
+          acceptDecision(data);
           expected = null;
           break;
         case QUEST_REWARD_AWARD_REPLY: {
@@ -1501,27 +1575,59 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
 
   function snapshot() {
     const allowed = !pending && canPlay();
-    return Object.freeze({ phase, round, rank, choices, baseDice, rolledDice, decision, claim,
+    const failed = phase === 'offer' && decision?.won === false;
+    const items = Object.freeze(itemInventory.available().map(({ inventoryId, itemId, blocked }) => {
+      const maximumDifference = QUEST_REWARD_ITEMS.get(itemId);
+      return Object.freeze({ inventoryId, itemId, kind: maximumDifference === null ? 'reroll' : 'amend', maximumDifference,
+        usable: !blocked && allowed && failed });
+    }));
+    return Object.freeze({ phase, round, rank, choices, baseDice, rolledDice, decision, claim, items, itemUse, itemBaseDiceReceived,
+      canUseItem: items.some((item) => item.usable),
       canNext: allowed && phase === 'offer' && decision?.won !== false,
       canTake: allowed && phase === 'offer', canGuess: allowed && phase === 'guess' });
   }
 
-  async function request(action, signal) {
+  async function request(action, signal, { inventoryId, mapIndex } = {}) {
     if (signal.aborted) throw new SessionError('cancelled');
     if (phase === 'uncertain') throw new SessionError('quest-reward-uncertain');
     if (pending) throw new SessionError('busy');
     const gate = snapshot();
     const next = action === 'next';
     const take = action === 'take';
-    if (!(next ? gate.canNext : take ? gate.canTake : gate.canGuess && (action === 'high' || action === 'low'))) {
+    const usesItem = action === 'item';
+    const item = usesItem && gate.items.find((owned) => owned.inventoryId === inventoryId && owned.usable);
+    if (usesItem && (!item || !Number.isInteger(mapFlag) || mapFlag < 0
+        || !ORDINARY_QUEST_PAGE_LAST_INDEX.some((last) => Math.min(mapFlag, last) === mapIndex))) {
+      throw new SessionError('quest-reward-item-unavailable');
+    }
+    if (!usesItem && !(next ? gate.canNext : take ? gate.canTake : gate.canGuess && (action === 'high' || action === 'low'))) {
       throw new SessionError('quest-reward-unavailable');
     }
     const previous = phase;
     const response = new Promise((resolve, reject) => { pending = { resolve, reject }; });
     const result = bounded(response, signal);
     let sent = false;
+    let refusalFence;
+    let fenceController;
     try {
-      if (next) {
+      if (usesItem) {
+        phase = 'using-item';
+        expected = QUEST_ITEM_CONSUMED_REPLY;
+        const difference = Math.abs(baseDice[0] + baseDice[1] - rolledDice[0] - rolledDice[1]);
+        pendingItem = { item, insufficient: item.maximumDifference !== null && difference > item.maximumDifference };
+        socket.send(QUEST_ITEM_USE_REQUEST, [item.inventoryId, mapIndex]);
+        pendingItem.dispatched = true;
+        if (pendingItem.insufficient) {
+          // Above the authored threshold Ruby restores the item and sends no outcome packet.
+          fenceController = new AbortController();
+          refusalFence = finishQuestObservation(socket, AbortSignal.any([signal, fenceController.signal])).then(() => {
+            if (phase !== 'using-item') return;
+            phase = 'offer';
+            expected = null;
+            pending.reject(new SessionError('quest-reward-item-insufficient'));
+          }).catch((error) => pending.reject(error));
+        }
+      } else if (next) {
         phase = 'opening';
         expected = QUEST_REWARD_CANDIDATES_REPLY;
         socket.send(QUEST_REWARD_NEXT_REQUEST, []);
@@ -1544,6 +1650,7 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
       socket.assertOpen();
     } catch (error) {
       if (sent) {
+        if (error.kind === 'quest-reward-item-rejected' || error.kind === 'quest-reward-item-insufficient') throw error;
         fail();
         throw new SessionError('quest-reward-uncertain');
       }
@@ -1553,7 +1660,12 @@ function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publ
       await result.catch(() => {});
       throw error;
     } finally {
+      if (fenceController) {
+        fenceController.abort();
+        await refusalFence;
+      }
       pending = null;
+      pendingItem = null;
       publish();
     }
   }
@@ -2256,6 +2368,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
               canPlay: () => outcomeState === 'land-cleared' || outcomeState === 'settled',
               knowsCard: continuation.knowsCard,
               applyClaim: continuation.claimReward,
+              itemInventory: continuation.itemInventory,
+              mapFlag: continuation.mapBefore.questFlag,
               publish: () => publishBattlePhase(true),
             });
           }
@@ -2537,6 +2651,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         receiveSettlement(reply);
         combatChanged = outcomeState !== beforeOutcome || outcomeReceipt !== beforeReceipt
           || (sceneCombat?.exchange === exchange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_FINISH_REPLY));
+        return;
+      }
+      if (reward && reply.command === QUEST_ERROR_REPLY && outcomeReceipt) {
+        reward.invalidate();
         return;
       }
       if ((expectsLandContinuation() || expectsFixedTreasure()) && reply.command === QUEST_ERROR_REPLY) {
@@ -2883,11 +3001,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     removeBattleCard: (id, signal) => send('battle-card', 'remove', null, signal, { id }),
     rotateBattleCard: (id, signal) => send('battle-rotate', QUEST_CARD_ROTATE_REQUEST, null, signal, { id }),
     commitBattle: (signal) => send('battle-commit', 'done', ['', ''], signal),
-    async rewardAction(action, signal, round) {
+    async rewardAction(action, signal, round, details) {
       if (!reward || (round !== undefined && round !== reward.snapshot().round)) {
         throw new SessionError('quest-reward-unavailable');
       }
-      await reward.request(action, signal);
+      await reward.request(action, signal, details);
       return reward.snapshot();
     },
     async stop(reason) {
@@ -2936,8 +3054,44 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let adventure = null;
   const boundQuestDecks = new Map();
   const confirmedQuestAwards = new Set();
+  let knownQuestItems = readItemInventory(questData);
+  const blockedQuestItems = new Set();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
+
+  function readItemInventory(data) {
+    return data?.itemInventory ? new Map(data.itemInventory.map((item) => [item.inventoryId, item])) : null;
+  }
+
+  const rewardItemInventory = {
+    available() {
+      if (!knownQuestItems) return [];
+      return [...knownQuestItems.values()].filter(({ itemId, state }) => state === 0 && QUEST_REWARD_ITEMS.has(itemId))
+        .map((item) => ({ ...item, blocked: blockedQuestItems.has(item.inventoryId) }));
+    },
+    block(id) { blockedQuestItems.add(id); },
+    consume(id) {
+      const item = knownQuestItems?.get(id);
+      if (item?.state !== 0 || blockedQuestItems.has(id)) throw new SessionError('protocol');
+      knownQuestItems.set(id, { ...item, state: 2 });
+    },
+  };
+
+  function receiveQuestItemGrant(scene, reply) {
+    if (reply.command !== QUEST_ITEM_GRANTED_REPLY || !scene?.channel.verified || questScene !== scene) return false;
+    if (!knownQuestItems) return true;
+    try {
+      const item = readQuestItemReply(reply);
+      const previous = knownQuestItems.get(item.inventoryId);
+      if (previous && (previous.itemId !== item.itemId || previous.state === 2)) throw new SessionError('protocol');
+      if (previous) return true;
+      knownQuestItems.set(item.inventoryId, { ...item, state: 0 });
+    } catch {
+      knownQuestItems = null;
+    }
+    publishQuestScene(scene);
+    return true;
+  }
 
   function publishAvatar() {
     if (!avatarSubscriptions.size) return;
@@ -3139,7 +3293,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     }
   }
 
-  async function readFromQuest(read, signal, reconcile) {
+  async function readFromQuest(read, signal, reconcile, onPushedReply) {
     if (signal?.aborted) throw new SessionError('cancelled');
     if (!initialData) throw new SessionError('network');
     assertQuestAvailable();
@@ -3150,7 +3304,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const cancel = () => controller.abort(new SessionError('cancelled'));
     signal?.addEventListener('abort', cancel, { once: true });
     const timeout = setTimeout(() => controller.abort(new SessionError('timeout')), TIMEOUT);
-    const task = queryQuest(playerId, sessionKey, controller.signal, read);
+    const task = queryQuest(playerId, sessionKey, controller.signal, read, onPushedReply);
     questRequest = { controller, task };
     try {
       const result = await task;
@@ -3518,6 +3672,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           }, {
             fence: (signal) => fenceQuestSceneLand(scene, signal),
             reconcile: (receipt) => reconcileSceneLandProgress(scene, current, receipt),
+            itemInventory: rewardItemInventory,
             ownCardLevel1Id,
             mapBefore: { questFlag: questData.questFlag, questClearNum: questData.questClearNum },
             knowsCard: (id) => confirmedQuestAwards.has(id)
@@ -3639,11 +3794,11 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     return scene.snapshot.adventure.battle;
   }
 
-  async function runQuestSceneReward(scene, action, { signal, encounterKey, rewardRound } = {}) {
+  async function runQuestSceneReward(scene, action, { signal, encounterKey, rewardRound, mapIndex } = {}, inventoryId) {
     const current = scene.adventure;
     return runQuestSceneOperation(scene, `battle-reward-${action}`, signal, (_, requestSignal) => {
       if (scene.adventure !== current || !matchesEncounter(current, encounterKey)) throw new SessionError('quest-reward-unavailable');
-      return current.battle.rewardAction(action, requestSignal, rewardRound);
+      return current.battle.rewardAction(action, requestSignal, rewardRound, { inventoryId, mapIndex });
     });
   }
 
@@ -3968,6 +4123,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           const { questData: profileQuests, ...profile } = confirmedAvatar;
           initialData = { ...initialData, ...profile, registration: null };
           questData = profileQuests;
+          knownQuestItems = readItemInventory(questData);
           confirmedAvatar = null;
           registrationState = 'active';
           publishAvatar();
@@ -4146,6 +4302,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               return runQuestSceneReward(scene, direction, options);
             },
             takeBattleReward: (options) => runQuestSceneReward(scene, 'take', options),
+            useBattleRewardItem: (inventoryId, options) => runQuestSceneReward(scene, 'item', options, inventoryId),
             returnFromBattle: ({ signal, encounterKey } = {}) => returnFromQuestSceneBattle(scene, signal, encounterKey),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then(async (reason) => {
@@ -4156,7 +4313,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
               return scene.failure ?? reason;
             }),
           };
-        });
+        }, (reply) => receiveQuestItemGrant(scene, reply));
       } catch (error) {
         if (scene) await closeQuestScene(scene);
         throw error;

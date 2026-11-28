@@ -79,14 +79,14 @@ async function playTrack(node, frames, fps, signal, stop = frames?.length) {
   }
 }
 
-function createButton(parent, key, source, select, signal) {
+function createButton(parent, key, source, select, signal, label = names[key]) {
   const node = append(parent, 'button', key);
   const [x, y, width, height] = source?.hit ?? areas[key];
   node.type = 'button';
   node.hidden = true;
   node.disabled = true;
   node.dataset.action = key;
-  node.setAttribute('aria-label', names[key]);
+  node.setAttribute('aria-label', label);
   place(node, x, y, width, height);
   if (source?.up) {
     const states = ['up', 'over', 'down'];
@@ -97,7 +97,7 @@ function createButton(parent, key, source, select, signal) {
     }
   } else {
     node.classList.add('quest-battle-bonus-fallback-button');
-    node.textContent = names[key];
+    node.textContent = label;
   }
   node.addEventListener('click', () => select(key), { signal });
   return node;
@@ -197,7 +197,172 @@ function positionCard(card, zone, index, size, signal, duration = 0, incoming = 
   ]);
 }
 
-export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadCards, signal, onSound, onClaim }) {
+function mountRewardItems(board, source, { launcher, onUse, onSound, signal }) {
+  if (!source) return null;
+  const panel = append(board, 'section', 'item-panel');
+  panel.hidden = true;
+  panel.dataset.state = 'closed';
+  panel.setAttribute('aria-label', '道具');
+  launcher.setAttribute('aria-controls', panel.id);
+  launcher.setAttribute('aria-expanded', 'false');
+  const [x, y] = source.origin;
+  const { durationMs, initialX, hiddenX } = source.motion;
+  const { maxRows, step, x: listX, y: listY } = source.list;
+  place(panel, x, y, source.plate.width, source.plate.height);
+  draw(panel, source.plate);
+  const rows = append(panel, 'div', 'item-list');
+  rows.setAttribute('role', 'group');
+  rows.setAttribute('aria-label', '持有道具');
+  const details = {};
+  for (const key of ['name', 'count', 'duration', 'caption', 'page']) {
+    const text = append(panel, 'span', `item-${key === 'duration' ? 'time' : key}`);
+    place(text, ...source.labels[key]);
+    details[key] = text;
+  }
+  const detailIcon = draw(panel, null, 'item-icon');
+  const closeButton = createButton(panel, 'item-close', source.controls.close, () => {
+    onSound?.('confirm');
+    void setOpen(false);
+  }, signal, 'Close');
+  const useButton = createButton(panel, 'item-use', source.controls.use, () => {
+    if (selected && !useButton.disabled) onUse(groups.get(selected).first);
+  }, signal, 'Use');
+  const backButton = createButton(panel, 'item-page-back', source.controls.back, () => changePage(-1), signal, '上一頁');
+  const nextButton = createButton(panel, 'item-page-next', source.controls.next, () => changePage(1), signal, '下一頁');
+  let open = false;
+  let openedBefore = false;
+  let motionRevision = 0;
+  let locked = false;
+  let canUse = false;
+  let page = 0;
+  let selected;
+  let groups = new Map();
+  let currentRows = new Map();
+  let itemSignature;
+
+  function drawIcon(node, id, anchor) {
+    const art = source.items[id]?.icon;
+    if (!art) return image(node, null);
+    const { x, y, scale } = anchor;
+    return image(node, { ...art, x: x + art.x * scale, y: y + art.y * scale, width: art.width * scale, height: art.height * scale });
+  }
+
+  function refreshSelection() {
+    const group = groups.get(selected);
+    const definition = source.items[selected];
+    for (const [id, tile] of currentRows) {
+      tile.disabled = locked;
+      tile.setAttribute('aria-pressed', String(id === selected));
+    }
+    panel.dataset.state = open ? locked ? 'using' : 'open' : 'closed';
+    panel.dataset.selectedItemId = group ? String(selected) : '';
+    details.name.textContent = group ? definition.name : '';
+    details.count.textContent = group ? String(group.count) : '';
+    details.duration.textContent = group ? '-' : '';
+    details.caption.textContent = group ? definition.caption : '';
+    drawIcon(detailIcon, selected, source.iconAnchors.detail);
+    closeButton.hidden = false;
+    closeButton.disabled = locked;
+    useButton.hidden = !group;
+    useButton.disabled = !open || locked || !canUse || !group?.first.usable;
+    backButton.disabled = nextButton.disabled = locked;
+  }
+
+  function paintRows() {
+    const items = Array.from(groups);
+    const pages = Math.ceil(items.length / maxRows);
+    page = Math.min(page, Math.max(0, pages - 1));
+    rows.replaceChildren();
+    currentRows = new Map();
+    items.slice(page * maxRows, (page + 1) * maxRows).forEach(([id, group], index) => {
+      const { row } = source;
+      const rowOffset = listY + index * step;
+      const tile = createButton(rows, `item-${id}`, row, () => {
+        if (!open || locked) return;
+        onSound?.('confirm');
+        selected = id;
+        refreshSelection();
+      }, signal, `${source.items[id].name} x${group.count}`);
+      const [hitX, hitY, width, height] = row.hit;
+      place(tile, listX + hitX, rowOffset + hitY, width, height);
+      tile.className = 'quest-battle-bonus-item-row';
+      tile.hidden = false;
+      Object.assign(tile.dataset, { itemId: String(id), inventoryId: String(group.first.inventoryId),
+        count: String(group.count), usable: String(group.first.usable) });
+      const selectedArt = draw(tile, null);
+      selectedArt.dataset.skin = 'selected';
+      image(selectedArt, row.selected ?? row.up, -hitX, -hitY);
+      drawIcon(draw(tile, null), id, source.iconAnchors.row);
+      const quantity = append(tile, 'span');
+      quantity.className = 'quest-battle-bonus-item-row-count';
+      place(quantity, ...source.labels.rowCount);
+      quantity.textContent = `x${group.count}`;
+      currentRows.set(id, tile);
+    });
+    backButton.hidden = nextButton.hidden = pages <= 1;
+    details.page.textContent = pages > 1 ? `${page + 1}/${pages}` : '';
+    refreshSelection();
+  }
+
+  function changePage(delta) {
+    const count = Math.ceil(groups.size / maxRows);
+    if (locked || count < 2) return;
+    page = (page + delta + count) % count;
+    paintRows();
+  }
+
+  function update(items, canUseItem, busy) {
+    canUse = canUseItem;
+    locked = busy;
+    const signature = Array.from(items ?? [], item => `${item.itemId}:${item.inventoryId}:${item.usable}`).join();
+    if (itemSignature === signature) {
+      refreshSelection();
+      return;
+    }
+    itemSignature = signature;
+    groups = new Map();
+    // Flash sorts by the master ID then selects the first physical entry in its linked inventory.
+    for (const item of [...(items ?? [])].sort((first, next) => first.itemId - next.itemId)) {
+      if (!source.items[item.itemId]) continue;
+      const group = groups.get(item.itemId);
+      if (group) group.count += 1;
+      else groups.set(item.itemId, { count: 1, first: item });
+    }
+    if (!groups.has(selected)) selected = undefined;
+    paintRows();
+  }
+
+  async function setOpen(show, { focus = true } = {}) {
+    if (show === open || signal.aborted) return;
+    open = show;
+    const revision = ++motionRevision;
+    launcher.setAttribute('aria-expanded', String(open));
+    panel.inert = !show;
+    refreshSelection();
+    if (show) {
+      panel.hidden = false;
+      const offset = (openedBefore ? hiddenX : initialX) - x;
+      openedBefore = true;
+      if (focus) (currentRows.get(selected) ?? currentRows.values().next().value ?? closeButton).focus({ preventScroll: true });
+      await motion(panel, [{ opacity: 0, translate: `${offset}px 0` }, { opacity: 1, translate: '0 0' }], durationMs, signal);
+    } else {
+      if (focus && !launcher.disabled && !launcher.hidden) launcher.focus({ preventScroll: true });
+      await motion(panel, [{ opacity: 1, translate: '0 0' }, { opacity: 0, translate: `${hiddenX - x}px 0` }], durationMs, signal);
+      if (!signal.aborted && revision === motionRevision) panel.hidden = true;
+    }
+  }
+
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && open && !locked) {
+      event.preventDefault();
+      onSound?.('confirm');
+      void setOpen(false);
+    }
+  }, { signal });
+  return { update, close: options => setOpen(false, options), toggle: () => setOpen(!open), get open() { return open; } };
+}
+
+export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadCards, signal, onSound, onClaim, onAlert }) {
   const frame = assets?.bonus ?? {};
   const board = append(parent, 'section');
   board.id = 'quest-battle-bonus';
@@ -221,6 +386,8 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
   const controls = append(board, 'div');
   controls.className = 'quest-battle-bonus-controls';
   const buttons = Object.fromEntries(Object.keys(names).map(key => [key, createButton(controls, key, frame.controls?.[key], act, signal)]));
+  const itemPanel = mountRewardItems(board, frame.itemPanel, { launcher: buttons.item,
+    onUse: item => void submit('item-use', item.inventoryId), onSound, signal });
   const dice = append(board, 'canvas', 'dice');
   dice.hidden = true;
   dice.setAttribute('role', 'img');
@@ -232,12 +399,16 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
   let latest = reward;
   let entered = false;
   let pending;
+  let pendingItemId;
   let selected;
   let shownRound;
   let rollTask;
   let verdictTask;
   let claimTask;
   let dicePainted;
+  let reportedItem;
+  let presentedItem;
+  let appliedItem;
   let resultReady = false;
   let current;
   let upcoming = [];
@@ -246,18 +417,20 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
   function state(next, exposed = [], enabled = []) {
     const changed = board.dataset.state !== next;
     const active = board.ownerDocument.activeElement;
+    const arriving = [];
     board.dataset.state = next;
     for (const [key, button] of Object.entries(buttons)) {
-      const arriving = button.hidden && exposed.includes(key);
+      const show = button.hidden && exposed.includes(key);
       button.hidden = !exposed.includes(key);
       button.disabled = !!pending || !enabled.includes(key);
-      if (arriving) void motion(button, [{ opacity: 0 }, { opacity: 1 }], 200, signal);
+      if (show) arriving.push(motion(button, [{ opacity: 0 }, { opacity: 1 }], 200, signal));
     }
     if (changed && (active === board || active === board.ownerDocument.body || controls.contains(active)) &&
         !enabled.includes(active?.dataset?.action)) {
       const focus = enabled.map(key => buttons[key]).find(button => !button.disabled) ?? board;
       focus.focus({ preventScroll: true });
     }
+    return Promise.all(arriving);
   }
 
   function rankValue(value) {
@@ -302,12 +475,23 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
     advance();
   }
 
-  async function act(key) {
+  function act(key) {
     const button = buttons[key];
     if (signal.aborted || pending || button.hidden || button.disabled) return;
+    if (key === 'item') {
+      onSound?.('bonus-select');
+      return itemPanel?.toggle();
+    }
+    return submit(key);
+  }
+
+  async function submit(key, inventoryId) {
+    if (signal.aborted || pending) return;
     pending = key;
+    pendingItemId = inventoryId;
     board.dataset.pending = key;
     display.value = '';
+    if (key === 'exit') void itemPanel?.close({ focus: false });
     if (key === 'high' || key === 'low') {
       selected = key;
       verdict.hidden = true;
@@ -315,13 +499,15 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       image(selectedArt, frame.selected?.[key]);
     }
     advance();
-    onSound?.('bonus-select');
-    try { await runAction(key, latest.round); }
-    catch {
-      if (!signal.aborted && latest?.phase !== 'uncertain') display.value = '無法確認獎勵操作。';
+    if (key !== 'item-use') onSound?.('bonus-select');
+    try { await runAction(key, latest.round, inventoryId); }
+    catch (error) {
+      if (!signal.aborted && latest?.phase !== 'uncertain' && error?.kind !== 'quest-reward-item-insufficient') {
+        display.value = '無法確認獎勵操作。';
+      }
     } finally {
       if (!signal.aborted) {
-        pending = undefined;
+        pending = pendingItemId = undefined;
         delete board.dataset.pending;
         if (latest?.phase === 'guess' && !latest.rolledDice) {
           selected = undefined;
@@ -422,15 +608,52 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
     await onClaim(claim);
   }
 
+  async function presentItemReturn(inventoryId, values) {
+    // ResultScene.getBottomDiceThread changes the target and runs both button fades before closing Item.
+    presentedItem = inventoryId;
+    board.dataset.itemTransition = 'outgoing';
+    target(values);
+    state('using-item', ['item', 'exit']);
+    await Promise.all([buttons.item, buttons.exit].map(button =>
+      motion(button, [{ opacity: 1 }, { opacity: 0 }], 200, signal)));
+    if (signal.aborted || latest?.phase === 'uncertain') return;
+    board.dataset.itemTransition = 'incoming';
+    await state('using-item', ['high', 'low']);
+    if (signal.aborted || latest?.phase === 'uncertain') return;
+    board.dataset.itemTransition = 'drawer';
+    await itemPanel?.close({ focus: false });
+    if (signal.aborted) return;
+    delete board.dataset.itemTransition;
+    advance();
+  }
+
   function advance() {
     if (!latest || signal.aborted) return;
-    const { phase, choices, round, decision, baseDice, rolledDice, claim, canNext, canTake, canGuess } = latest;
+    const { phase, choices, round, decision, baseDice, rolledDice, claim, canNext, canTake, canGuess, itemUse } = latest;
+    const newItemTarget = itemUse && latest.itemBaseDiceReceived && presentedItem !== itemUse.inventoryId;
     if (Number.isInteger(round)) board.dataset.round = String(round);
+    itemPanel?.update(latest.items, latest.canUseItem,
+      !!pending || phase === 'using-item' || newItemTarget || !!board.dataset.itemTransition);
+    if (itemUse && reportedItem !== itemUse.inventoryId) {
+      reportedItem = itemUse.inventoryId;
+      board.dataset.itemInventoryId = String(reportedItem);
+      board.dataset.itemId = String(itemUse.itemId);
+      const name = frame.itemPanel?.items[itemUse.itemId]?.name;
+      if (name) onAlert?.('quest-reward-item-used', `使用${name}`, board);
+    }
     if (phase === 'uncertain') {
+      delete board.dataset.itemTransition;
+      void itemPanel?.close({ focus: false });
       state(phase);
       display.value = '無法確認獎勵結算。';
       return;
     }
+    if (newItemTarget) {
+      // While an amendment waits for SC124, its matching SC123 is the verified prior roll.
+      void presentItemReturn(itemUse.inventoryId, phase === 'using-item' ? rolledDice : baseDice);
+      return;
+    }
+    if (board.dataset.itemTransition) return;
     if (claimTask) return;
     if (!entered) {
       if (!current && choices?.length) void bringOn(latest);
@@ -441,7 +664,15 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       rollTask = verdictTask = dicePainted = undefined;
       resultReady = false;
     }
-    target(baseDice);
+    if (itemUse && appliedItem !== itemUse.inventoryId && phase !== 'using-item') {
+      appliedItem = itemUse.inventoryId;
+      if (itemUse.kind === 'amend' && decision?.won) {
+        verdictTask = undefined;
+        resultReady = false;
+      }
+    }
+    const waitingAfterItemDice = latest.itemBaseDiceReceived && itemUse?.inventoryId === pendingItemId;
+    target(phase === 'using-item' && waitingAfterItemDice ? rolledDice : baseDice);
     if (rolledDice?.length && !dicePainted) {
       dicePainted = true;
       rollTask = roll(rolledDice);
@@ -452,7 +683,9 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       claimTask = Promise.resolve(verdictTask).then(() => !signal.aborted && finish(claim));
       return;
     }
-    if (phase === 'claiming' || pending === 'get' || pending === 'exit') {
+    if (phase === 'using-item' || pending === 'item-use') {
+      state('using-item', waitingAfterItemDice ? ['high', 'low'] : ['item', 'exit']);
+    } else if (phase === 'claiming' || pending === 'get' || pending === 'exit') {
       state('claiming', [decision?.won === false ? 'exit' : 'get']);
     } else if (phase === 'rolling' || selected || (verdictTask && !resultReady)) {
       state('rolling', ['high', 'low'].filter(key => key !== selected || selectedArt.hidden));
@@ -462,9 +695,10 @@ export function mountQuestBattleBonus(parent, { assets, reward, runAction, loadC
       state('guess', ['high', 'low'], canGuess ? ['high', 'low'] : []);
     } else if (phase === 'offer') {
       const failed = decision?.won === false;
-      const exposed = failed ? [frame.controls?.item && 'item', 'exit'].filter(Boolean) : ['next', 'get'];
+      const showItem = !!itemPanel && !!frame.controls?.item;
+      const exposed = failed ? [showItem && 'item', 'exit'].filter(Boolean) : ['next', 'get'];
       state(decision ? (failed ? 'failure' : 'success') : 'offer', exposed,
-        [canNext && 'next', canTake && (failed ? 'exit' : 'get')].filter(Boolean));
+        [failed && canTake && showItem && 'item', canNext && 'next', canTake && (failed ? 'exit' : 'get')].filter(Boolean));
     }
   }
 

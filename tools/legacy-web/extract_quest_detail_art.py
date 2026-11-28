@@ -428,9 +428,10 @@ class Movie:
         for style, path in paths:
             if kind(style) == "linestyle":
                 flags = style.get("flags", "0")
-                if flags not in ("0", "320"):
+                if flags not in ("0", "320", "640"):
                     raise ValueError(f"Unexpected line style {style.attrib}")
-                stroke = 'stroke-linecap="butt"' if flags == "320" else 'stroke-linecap="round" stroke-linejoin="round"'
+                stroke = {"320": 'stroke-linecap="butt"', "640": 'stroke-linecap="square" stroke-linejoin="round"',
+                          "0": 'stroke-linecap="round" stroke-linejoin="round"'}[flags]
                 color = style.attrib["color"]
                 opacity = f' stroke-opacity="{hex_alpha(color)}"' if preserve_stroke_alpha else ""
                 markup = (

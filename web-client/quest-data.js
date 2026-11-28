@@ -18,6 +18,7 @@ const MAX_FREE_DUEL_COUNT = 3; // Original FREE_DUEL_COUNT and FreeDuelCountImag
 const text = new TextDecoder('utf-8', { fatal: true });
 
 export const QUEST_MAP_REQUEST = 6;
+export const QUEST_ITEM_USE_REQUEST = 7;
 export const QUEST_MAP_REPLY = 14;
 export const QUEST_INVENTORY_REPLY = 6;
 export const QUEST_DISCOVERY_REQUEST = 17;
@@ -30,6 +31,7 @@ export const QUEST_ENERGY_REPLY = 4;
 export const QUEST_EXP_REPLY = 7;
 export const QUEST_LEVEL_REPLY = 8;
 export const QUEST_GEMS_REPLY = 10;
+export const QUEST_ITEM_GRANTED_REPLY = 11;
 export const QUEST_CHARACTER_AWARD_REPLY = 13;
 export const QUEST_MAP_FLAG_REPLY = 26;
 export const QUEST_MAP_CLEAR_COUNT_REPLY = 28;
@@ -95,6 +97,7 @@ export const QUEST_REWARD_BASE_DICE_REPLY = 123;
 export const QUEST_REWARD_DECISION_REPLY = 124;
 export const QUEST_REWARD_ROLLED_DICE_REPLY = 125;
 export const QUEST_REWARD_FINAL_REPLY = 126;
+export const QUEST_ITEM_CONSUMED_REPLY = 127;
 
 const PARTY_DAMAGE_REPLY = 74;
 const HEAL_REPLY = 77;
@@ -126,7 +129,8 @@ const questFields = [
   4, skipString, 11 * 4, // Avatar header.
   { key: 'partCount', width: 4 }, optionalList('partInventoryIds', MAX_PART_LIST_BYTES),
   optionalList('partIds', MAX_PART_LIST_BYTES), optionalList('partUsage', MAX_PART_LIST_BYTES), skipString,
-  ...skipGroup(3), // Items.
+  { key: 'itemCount', width: 4 }, optionalList('itemInventoryIds', MAX_CARD_LIST_BYTES),
+  optionalList('itemIds', MAX_CARD_LIST_BYTES), optionalList('itemStates', MAX_CARD_LIST_BYTES),
   { key: 'deckCount', width: 4 }, optionalList('deckNames'), ...skipStrings(3),
   optionalList('deckStatuses'), ...skipStrings(2),
   { key: 'cardCount', width: 4 }, optionalList('cardInventoryIds', MAX_CARD_LIST_BYTES),
@@ -175,6 +179,24 @@ function readEquippedPartIds({ partCount, partInventoryIds, partIds, partUsage }
     return null;
   }
   return Object.freeze(ids.filter((_, index) => (usage[index] & EQUIPPED_PART) === EQUIPPED_PART));
+}
+
+function readOwnedItems({ itemCount, itemInventoryIds, itemIds, itemStates }) {
+  if (itemCount < 0 || [itemInventoryIds, itemIds, itemStates].includes(undefined)) return null;
+  try {
+    const inventoryIds = integerList(itemInventoryIds);
+    const ids = integerList(itemIds);
+    const states = integerList(itemStates);
+    if ([inventoryIds, ids, states].some((list) => list.length !== itemCount)
+        || new Set(inventoryIds).size !== itemCount
+        || [inventoryIds, ids].some((list) => list.some((id) => id < 1 || id > MAX_INT32))
+        || states.some((state) => state > 1)) return null;
+    return Object.freeze(inventoryIds.map((inventoryId, index) => Object.freeze({
+      inventoryId, itemId: ids[index], state: states[index],
+    })));
+  } catch {
+    return null;
+  }
 }
 
 function readDeckLists(values) {
@@ -520,6 +542,16 @@ export function readQuestRewardReply(reply) {
   }
   reply.done();
   return Object.freeze(data);
+}
+
+export function readQuestItemReply(reply) {
+  const granted = reply.command === QUEST_ITEM_GRANTED_REPLY;
+  if (!granted && reply.command !== QUEST_ITEM_CONSUMED_REPLY) throw new Error('Unexpected quest item reply.');
+  const inventoryId = reply.int();
+  const itemId = granted ? reply.int() : null;
+  reply.done();
+  if (inventoryId < 1 || (granted && itemId < 1)) throw new Error('Invalid quest item reply.');
+  return { inventoryId, itemId };
 }
 
 function readDuelCardIds(reply) {
@@ -895,7 +927,7 @@ export function createQuestDataReader() {
         throw new Error('Invalid quest data.');
       }
       // Data reports inventory status per row and quest progress at the map level.
-      return {
+      const result = {
         capacity,
         questFlag,
         questClearNum,
@@ -906,6 +938,8 @@ export function createQuestDataReader() {
           return row;
         }),
       };
+      // The session uses this separately from the ordinary Quest inventory snapshot.
+      return Object.defineProperty(result, 'itemInventory', { value: readOwnedItems(values) });
     },
     dispose() {
       buffer?.fill(0);

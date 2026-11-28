@@ -23,6 +23,7 @@ from extract_quest_detail_art import (
 )
 from extract_quest_result_art import PINS, STAGE, item_icon_movie, stage_movie
 from extract_quest_hit_art import swf_tag
+from extract_quest_bonus_item_art import append_item_panel
 from source_stage_art import tags
 
 
@@ -266,6 +267,7 @@ def generate(args):
         "cards": cards,
         "items": items,
     }
+    append_item_panel(args.assets, args.output, args.swfdump, args.mincho_font, index, panel)
     index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 

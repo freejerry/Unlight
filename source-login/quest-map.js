@@ -757,7 +757,7 @@ function setupQuestDetails(view, {
           onEncounter: stage => onEncounter?.({
             stage, isBoss: land.eventNo === bossLandEvent,
           }),
-          onBattleFinish, onBattleSound,
+          onBattleFinish, onBattleSound, onAlert,
           async returnToMap() {
             if (battleSignal.aborted || activeBattle !== lifetime || view.inert) return false;
             const restoreFocus = document.activeElement?.matches(':focus-visible');

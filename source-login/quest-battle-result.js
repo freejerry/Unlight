@@ -198,7 +198,7 @@ async function portraitLayer(playerCardId, signal) {
 
 /** Show the original Quest battle awards and any confirmed bonus before returning to the map. */
 export function mountQuestDuelResult(battle, {
-  outcome, playerCardId, signal, canReturn = false, receipt, onReturn, onSound, reward, runRewardAction, loadCards,
+  outcome, playerCardId, signal, canReturn = false, receipt, onReturn, onSound, reward, runRewardAction, loadCards, onAlert,
 }) {
   const controller = new AbortController();
   const visual = controller.signal;
@@ -348,7 +348,7 @@ export function mountQuestDuelResult(battle, {
       if (visual.aborted) return;
       button.hidden = destination.hidden = true;
       bonus = mountQuestBattleBonus(overlay, {
-        assets, reward, runAction: runRewardAction, loadCards, signal: visual, onSound: sound, onClaim: showClaim,
+        assets, reward, runAction: runRewardAction, loadCards, signal: visual, onSound: sound, onClaim: showClaim, onAlert,
       });
       return;
     }

@@ -346,8 +346,10 @@ async function openQuest(session) {
       onAlert(kind, message, focus) {
         if (questRoute !== route || route.leaving || loginAlert.open) return;
         const warning = ['quest-search-rejected', 'quest-empty-deck', 'quest-start-rejected', 'quest-land-rejected'];
-        const heading = warning.includes(kind) ? '警告' : 'Error';
+        let heading = warning.includes(kind) ? '警告' : 'Error';
+        if (kind === 'quest-reward-item-used') heading = '信息';
         openAlert(kind, heading, message, focus?.isConnected ? focus : postLogin.querySelector('#quest-map-back'));
+        if (kind === 'quest-reward-item-used') loginAlertOK.focus({ preventScroll: true });
       },
     });
     void route.scene.closed.then(() => {

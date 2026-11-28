@@ -325,7 +325,7 @@
 | 固定舞台與輸入區 | 780 × 680 舞台。Next、Get／Exit、High、Low 的 80 × 80 有效區中心分別為 `(312,189)`、`(448,189)`、`(380,120)`、`(380,258)`。進入猜骰後收起 Next／Get，收到一輪結果後才開放領取或離開。骰子相機的原始縮放視窗為 780 × 680，原點距舞台 `(60,35)`。 |
 | 圖層與停幀 | 卡框、說明、圖示、標題依原版順序合成。Premium Rank 空星白線透明度為 `64/255`，金星遮罩跟隨 Ruby 的排名值。比較數字使用原版 2–12 畫格。擲骰、成功／失敗及 Get 的圖層與畫格列在素材清單。 |
 
-候選框、按鈕、數字與骰子沿用原版素材。倍率、加成和結算數字在領取前留白，收到 `SC126` 後才由左至右淡入。勝負、盤面更新與可領取狀態跟隨原 Quest 回覆。原版的道具控制、重擲、變更和實機失敗分支仍待驗收。[共用戰果場景](../../../app/client/src/view/scene/game/ResultScene.as#L478) · [原版控制與有效區](../../../app/client/src/view/image/game/ResultFrame.as#L506) · [原版獎勵骰相機](../../../app/client/src/view/scene/game/ResultDiceManager.as#L38) · [原版獎勵回覆](../../../app/server/src/controller/duel_controller.rb#L1587) · [素材座標與來源](../../../source-login/quest-result-art/index.json)
+候選框、按鈕、數字與骰子沿用原版素材。倍率、加成和結算數字在領取前留白，收到 `SC126` 後才由左至右淡入。勝負、盤面更新與可領取狀態跟隨原 Quest 回覆。下方另列原版的道具窗、重擲與補正。終局獎勵及活動專用道具仍待實跑。[共用戰果場景](../../../app/client/src/view/scene/game/ResultScene.as#L478) · [原版控制與有效區](../../../app/client/src/view/image/game/ResultFrame.as#L506) · [原版獎勵骰相機](../../../app/client/src/view/scene/game/ResultDiceManager.as#L38) · [原版獎勵回覆](../../../app/server/src/controller/duel_controller.rb#L1587) · [素材座標與來源](../../../source-login/quest-result-art/index.json)
 
 - 隔離 Ruby 用原版搜尋種子 190 取得 q568。兩戰使用對局種子 1。Lv5 古魯瓦爾多的兩場各一回合，第 5 格底骰 `1,6`，選 High 擲出 `6,1`，同點由 Ruby 判成功。真正 `SC11` 寫入「時間沙漏」，`SC38` 回覆的角色卡持有欄為空。R5 的兩場各兩回合，高低骰同為同點成功，SQLite 則在 Binder 找到 `SC38` 指定的新古魯瓦爾多 Lv3。[原版五個獎勵場次](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/README.md)
 - 新版以同一 Lv5 牌組和種子跑完整條 `1→5`，骰面、候選與原版模型吻合。確定時間沙漏入庫後，第一次 OK 淡出獎勵卡並顯示原始升級提示，第二次 OK 返回原 Quest。SQLite 為 151 Gem／290 EXP、Lv7、AP 8/8，保留進度 34、傷勢 4 及 Deck 1，原路線開放格 7。兩版的同條件候選擷取仍可看見 Flash 相容版左上角的偵錯文字。[同條件候選並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/lv5-offer-comparison.png) · [新版升級提示](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/qa-item/11a-authoritative-bonus-level-up.png) · [新版返回與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/qa-item/quest-high-low-wire.json)
@@ -337,6 +337,26 @@
 - Lv6 升 Lv7 會補滿 AP，上限仍為 8。Ruby 原版未送上限更新，原版會保留已知上限。修正後新版也保留確定的上限並等目前 AP 的回覆，在同一次任務返回時顯示紅心 8/8。跨過上限會增加的等級仍等待對應等級的伺服器確認。新版之後實際滑入格 7、核對地形說明，且未送出額外入格指令。[原版 AP 公式](../../../app/server/src/model/avatar.rb#L1505) · [原版 AP 等級表](../../../app/server/src/constants/common_constants.rb#L165) · [兩版 AP 和格 7 並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/lv5-full-ap-and-map-comparison.png) · [新版修正後完整封包](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/root-item/quest-high-low-wire.json)
 
 後續先驗敗猜後的原版 Item，使用隔離角色原本持有且未使用的「幸運四葉草」。打開及關閉清單只切換本機介面。選實體項目發一次 `CS7`，參數為持有 ID 與目前地圖索引。重擲需收新的底骰 `SC123` 和相同實體 ID 的消耗確認 `SC127`，再手動猜一次。骰差為 2 時，門檻 1 的道具維持未使用，門檻 3 則需保留同一候選並核對 `SC123`、成功的 `SC124` 及 `SC127`。[原版 Item 清單](../../../app/client/src/view/scene/game/ResultScene.as#L522) · [原版 Quest 使用指令](../../../app/client/src/controller/QuestCtrl.as#L285) · [Ruby 重擲及門檻](../../../app/server/src/model/avatar_item.rb#L612)
+
+#### 敗猜後的 Item 清單
+
+| 狀態 | 原版行為與驗收重點 |
+| --- | --- |
+| 敗猜 | 真正的 `SC124=false` 先觸發失敗聲 `ulse19` 和失敗動畫。Item 與 Exit 在動畫後出現。Item 開啟或收合並播放 `ulse17`，全程留在同一次 Quest。 |
+| 開啟與選擇 | 清單依 `0.3 / RESULT_SCENE_SPEED` 秒的原版緩動滑入舞台 `(25,25)`，沿用原版 TCN 視窗、道具圖和對戰分頁。單欄六列從 `(177,81)` 開始，間距 48。選列顯示原始物品名稱、說明和未使用數量，播放 `ulse01`，選列本身不送封包。 |
+| 使用與確認 | 使用才發一次 `CS7`，包含實體持有 ID 及 0 起算地圖索引。q568 在地圖 ID 22，而這個指令的地圖索引是 21。收到真正的 `SC127` 時開啟標題「信息」與內文「使用」加道具名的提示，並移除相符的實體持有物。提示沿用 `ulse02`。 |
+| 重擲 | 使用幸運四葉草後先收 `SC127`，再收 `SC123`。`SC123` 以剛才敗猜的骰眼作新目標。Item／Exit 先淡出 200 毫秒，High／Low 再淡入 200 毫秒，最後收合清單 60 毫秒。只消耗伺服器確認的實體物品，保留候選、排名及同條 Quest。 |
+| 補正 | 白色石楠的上限按定義分別核對。骰差超過上限時，Ruby 保留可用狀態，且可能沒有錯誤封包。補正成功需收到新的底骰及 `SC124=true`，沿用原候選，等 `SC127` 確認後才更新持有量。 |
+
+[原版敗猜與按鈕](../../../app/client/src/view/image/game/ResultFrame.as#L565) · [清單排列](../../../app/client/src/view/scene/item/WindowItemListPanel.as#L94) · [實體道具指令](../../../app/client/src/net/command/QuestCommand.as#L219) · [繁中使用提示](../../../app/client/src/net/server/QuestServer.as#L533) · [原版道具回復](../../../app/server/src/model/item_inventory.rb#L56)
+
+固定隔離角色以 Lv5 古魯瓦爾多打完 `1→5`，兩戰均用種子 1。在第 5 格首次猜骰前將隔離角色的 RNG 設為 3。原版 Ruby 實際先猜高 `1,6→3,1` 失敗，四葉草重擲後猜低 `3,1→2,4` 也失敗。白色石楠1 因骰差 2 回復為未使用。白色石楠3 發出 `SC127→SC123→SC124`，成功移到時間沙漏候選，未額外擲骰。最後 Get 確認入庫一個時間沙漏，保留任務進度 34、傷勢 4 與 Deck 1。這組原版 Ruby 離線模型的兩個瀏覽器實跑另列證據。[原版控制與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/q568-lv5-reroll-amend-rollseed3.json)
+
+繁中 Flash 用同一組骰面實際從敗猜開啟、關閉並重開 Item，確認兩次開關均為本機操作。四葉草的兩筆持有量降為一筆。石楠1 送出使用後保持未使用，畫面留在道具窗。石楠3 成功後領取時間沙漏，再依序確認戰果和 Lv7 回同一 Quest，格 7 滑入可操作。原版混音比對包括按鍵、失敗、道具提示、成功和返回任務曲。Ruffle 實跑的裝置字形讓使用提示部分文字空白，內容仍依原版 ActionScript 的繁中詞組。[原版兩次使用與返回](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-consumable-original/high/README.md) · [原版骰面和道具確認](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-consumable-original/high/wire.json) · [原版混音比對](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-consumable-original/high/audio-summary.json)
+
+新版實際照原版兩場牌序走完同一條路線。延遲四葉草的 `SC123` 時，使用提示已取得焦點，第一筆實體道具已消耗，下一次猜骰保持停用。延遲石楠3 的 `SC124` 時，新底骰已到，補正結果仍等待確認。原版對不足的石楠1 保持沉默，新版以同連線的 Pong 確認沒有消耗回覆及效果，保留選取和道具。Get 只領一個時間沙漏。最後兩次 OK 回到進度 34、傷勢 4、Deck 1 鎖定的原地圖，能滑入格 7，紅心 8/8。[石楠1 保留並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/heather-insufficient-comparison.png) · [補正後領取並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/heather-payout-comparison.png) · [同一地圖並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/retained-map-comparison.png) · [新版完整封包及存檔](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/root-item-chain/quest-high-low-wire.json)
+
+重擲並排取在新骰點已顯示、High／Low 淡入、道具窗仍開啟的畫格。新版截圖時只暫停這兩個實際淡入動畫，核對道具窗、遮罩和 OK 焦點後恢復播放。完整流程另有未暫停畫格的獨立實跑。兩版使用相同骰眼，骰子停格朝向可隨動畫軌跡變化。[重擲提示並排](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/clover-transition-comparison.png) · [截圖後繼續驗收的封包](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/transition-capture/quest-high-low-wire.json)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

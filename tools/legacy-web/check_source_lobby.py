@@ -239,7 +239,9 @@ def observe_session_codec(page, origin):
           ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
         const combat = [28, 29, 30, 31, 33, 34].includes(command)
           ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, key});
+        const item = command === 7 && fields?.length === 2
+          ? fields.map(field => field.value ?? field) : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, key});
         return frame;
       }
       export function readReply(body) {
@@ -253,7 +255,7 @@ def observe_session_codec(page, origin):
           const bytes = new DataView(body.buffer, body.byteOffset, body.byteLength);
           const data = reply.command === 32 && body.byteLength >= 6 ? [bytes.getInt32(2)]
             : reply.command === 4 && body.byteLength === 10 ? [bytes.getInt32(2)]
-            : [7, 8, 10, 22, 26, 28].includes(reply.command) && body.byteLength === 6 ? [bytes.getInt32(2)]
+            : [7, 8, 10, 22, 26, 28, 127].includes(reply.command) && body.byteLength === 6 ? [bytes.getInt32(2)]
             : reply.command === 17 && body.byteLength === 11 ? [bytes.getInt32(2), bytes.getInt8(6), bytes.getInt32(7)]
             : [11, 13, 19].includes(reply.command) && body.byteLength === 10 ? [bytes.getInt32(2), bytes.getInt32(6)]
             : reply.command === 12 && body.byteLength === 14 ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10)]
@@ -322,7 +324,7 @@ def observe_quest_wire(page):
         send(frame) {{
           const encoded = wire.encoded.get(frame);
           if (this.questTrace) {{
-            const {{ command, confirm, action, movement, combat, key }} = encoded;
+            const {{ command, confirm, action, movement, combat, item, key }} = encoded;
             const hold = wire.actionHold;
             if (hold?.peer === this.questTrace && hold.command === command && hold.before !== null) hold.key = key;
             this.questTrace.sent.push([command, frame.byteLength]);
@@ -330,6 +332,7 @@ def observe_quest_wire(page):
             if (action) this.questTrace.actions.push(action);
             if (movement) this.questTrace.movement.push(movement);
             if (combat) this.questTrace.combat.push(combat);
+            if (item) (this.questTrace.rewardItems ??= []).push(item);
             if (command === 22) {{
               const battle = document.querySelector('#quest-map-battle');
               (this.questTrace.readySends ??= []).push([battle?.dataset.burn, battle?.dataset.intro]);
@@ -3154,18 +3157,250 @@ def check_bonus_dice(panel, selector, dice):
 
 
 def bonus_commands(page):
-    return [p for p in read_movement_trace(page)["sent"] if p[0] in (36, 37, 38, 39)]
+    return [p for p in read_movement_trace(page)["sent"] if p[0] in (7, 36, 37, 38, 39)]
 
 
-def press_bonus_action(page, button, command, blocked_reply, sent):
+def press_bonus_action(page, button, command, blocked_reply, sent, *, repeat_pointer=True):
     expect(button).to_be_visible(timeout=TIMEOUT)
     expect(button).to_be_enabled(timeout=TIMEOUT)
     box = button.bounding_box()
     assert box is not None
+    point = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     hold_movement_reply(page, command, button.click, before=[blocked_reply])
-    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-    sent.append([command, 5])
+    if repeat_pointer:
+        page.mouse.click(*point)
+    sent.append([command, 13 if command == 7 else 5])
     assert bonus_commands(page) == sent
+    return point
+
+
+def check_bonus_guess(page, stage, directory, bonus, *, choice, bottom, expected_roll, prize, following,
+                      sent, pending_frame, result_frame):
+    offset = len(read_movement_trace(page)["replies"])
+    press_bonus_action(page, bonus.locator(f"#quest-battle-bonus-{choice}"), 36 if choice == "high" else 37, 124, sent)
+    expect(bonus).to_have_attribute("data-state", "rolling")
+    expect(bonus.locator("#quest-battle-bonus-selected")).to_have_attribute("data-choice", choice)
+    expect(bonus.locator("button:enabled:visible")).to_have_count(0)
+    for control in ("next", "get", "exit", "item"):
+        expect(bonus.locator(f"#quest-battle-bonus-{control}")).to_be_hidden()
+    held = [p for p in read_movement_trace(page)["replies"][offset:] if p[0] in (124, 125)]
+    assert held == [[125, 9, expected_roll]], held
+    capture(stage, directory, pending_frame, animations="allow")
+    release_movement_reply(page)
+    (verdict,) = [p for p in read_movement_trace(page)["replies"][offset:] if p[0] == 124]
+    won = sum(expected_roll) >= sum(bottom) if choice == "high" else sum(expected_roll) <= sum(bottom)
+    assert verdict[2:] == [won, prize if won else [], following if won else [], 155], verdict
+    expect(bonus.locator("#quest-battle-bonus-decision")).to_have_attribute("data-won", str(won).lower(), timeout=TIMEOUT)
+    check_bonus_dice(bonus, "#quest-battle-bonus-dice", expected_roll)
+    painted = bonus.locator('#quest-battle-bonus-dice[data-state="settled"]')
+    expect(painted).to_be_visible()
+    assert painted.evaluate("""canvas => {
+      const gl = canvas.getContext('webgl2');
+      if (canvas.width !== 780 || canvas.height !== 680 || !gl || gl.isContextLost()) return false;
+      const pixels = new Uint8Array(4 * canvas.width * canvas.height);
+      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      return pixels.some((value, index) => index % 4 === 3 && value > 0);
+    }"""), "The original two dice must paint real WebGL pixels"
+    capture(stage, directory, result_frame, animations="allow")
+    return verdict
+
+
+def bonus_item_inventory(database, avatar_id):
+    return {physical: (item_id, state, used) for physical, item_id, state, used in query(database, """
+        SELECT id, avatar_item_id, state, use_at IS NOT NULL FROM item_inventories
+        WHERE avatar_id = ? AND avatar_item_id IN (4, 5, 6) ORDER BY id
+    """, avatar_id)}
+
+
+def select_bonus_item(bonus, database, avatar_id, item_id):
+    panel = bonus.locator("#quest-battle-bonus-item-panel")
+    if not panel.is_visible():
+        bonus.locator("#quest-battle-bonus-item").click()
+    expect(panel).to_have_attribute("data-state", "open")
+    physical_ids = [physical for physical, (master, state, _) in bonus_item_inventory(database, avatar_id).items()
+                    if master == item_id and state == 0]
+    assert physical_ids, item_id
+    row = panel.locator(f'.quest-battle-bonus-item-row[data-item-id="{item_id}"]')
+    expect(row).to_have_attribute("data-count", str(len(physical_ids)))
+    physical_id = int(row.get_attribute("data-inventory-id"))
+    assert physical_id in physical_ids
+    row.click()
+    expect(panel).to_have_attribute("data-selected-item-id", str(item_id))
+    ((name, description),) = query(database, "SELECT name, caption FROM avatar_items WHERE id = ?", item_id)
+    expect(panel.locator("#quest-battle-bonus-item-name")).to_have_text(name)
+    expect(panel.locator("#quest-battle-bonus-item-caption")).to_have_text(description)
+    expect(panel.locator("#quest-battle-bonus-item-count")).to_have_text(str(len(physical_ids)))
+    expect(panel.locator("#quest-battle-bonus-item-time")).to_have_text("-")
+    return panel, physical_id, name
+
+
+def record_bonus_item_evidence(page, item_id, inventory_id, before, held, after, *, notice):
+    evidence = {"itemId": item_id, "inventoryId": inventory_id, "heldState": "using-item", "heldNotice": notice}
+    for mark, trace in (("before", before), ("held", held), ("after", after)):
+        evidence[mark] = {key: len(trace[key]) for key in ("sent", "replies")}
+    page.evaluate("item => (window.qaQuestWire.sockets.at(-1).rewardItemEvidence ??= []).push(item)", evidence)
+
+
+def use_bonus_item(page, stage, directory, bonus, database, avatar_id, item_id, sent, *, target, decision=None):
+    assert bonus_commands(page) == sent
+    before = bonus_item_inventory(database, avatar_id)
+    panel, physical_id, name = select_bonus_item(bonus, database, avatar_id, item_id)
+    assert bonus_item_inventory(database, avatar_id) == before
+    assert bonus_commands(page) == sent
+    notice = page.locator('#login-alert[open][data-kind="quest-reward-item-used"]')
+    expect(notice).to_have_count(0)
+    wait_quest_art(page)
+    capture(stage, directory, f"09-item-{item_id}-authored-description.png", animations="allow")
+    start = read_movement_trace(page)
+    shown_target = bonus.locator("#quest-battle-bonus-target").get_attribute("data-dice")
+    expected = [[127, 6, physical_id], [123, 9, target]]
+    if decision is not None:
+        expected.append(decision)
+    use_point = press_bonus_action(page, panel.locator("#quest-battle-bonus-item-use"), 7, expected[-1][0], sent,
+                                   repeat_pointer=False)
+    held = read_movement_trace(page)
+    assert held["rewardItems"][len(start.get("rewardItems", [])):] == [[physical_id, 21]]
+    assert held["replies"][len(start["replies"]):] == expected[:-1]
+    assert bonus_item_inventory(database, avatar_id) == before | {physical_id: (item_id, 2, 1)}
+    expect(bonus).to_have_attribute("data-state", "using-item")
+    expect(bonus.locator("#quest-battle-bonus-decision")).to_have_attribute("data-won", "false")
+    if decision is None:
+        expect(bonus.locator("#quest-battle-bonus-target")).to_have_attribute("data-dice", shown_target)
+    else:
+        check_bonus_dice(bonus, "#quest-battle-bonus-target", target)
+    expect(bonus).to_have_attribute("data-item-inventory-id", str(physical_id))
+    expect(bonus).to_have_attribute("data-item-id", str(item_id))
+    left = sum(master == item_id and state == 0 for master, state, _ in before.values()) - 1
+    row = panel.locator(f'.quest-battle-bonus-item-row[data-item-id="{item_id}"]')
+    if left:
+        expect(row).to_have_attribute("data-count", str(left))
+    else:
+        expect(row).to_have_count(0)
+    for control in ("high", "low", "next", "get", "exit", "item"):
+        expect(bonus.locator(f"#quest-battle-bonus-{control}:enabled:visible")).to_have_count(0)
+    expect(notice).to_be_visible(timeout=TIMEOUT)
+    expect(notice.locator("#login-alert-title")).to_have_text("信息")
+    expect(notice.locator("#login-alert-message")).to_have_text(f"使用{name}")
+    expect(notice.locator("#login-alert-ok")).to_be_focused()
+    capture(stage, directory, f"09-item-{item_id}-source-ack-with-effect-held.png", animations="allow")
+    if decision is not None:
+        page.mouse.click(*use_point)
+        assert bonus_commands(page) == sent
+        notice.locator("#login-alert-ok").click()
+        expect(notice).to_have_count(0)
+        expect(bonus).to_have_attribute("data-state", "using-item")
+    release_movement_reply(page)
+    if decision is None and directory is not None:
+        # Hold only the two live visual fades long enough for the compositor screenshot.
+        try:
+            page.wait_for_function("""dice => {
+              const stage = document.getElementById('stage');
+              const bonus = document.getElementById('quest-battle-bonus');
+              const drawer = document.getElementById('quest-battle-bonus-item-panel');
+              const target = document.getElementById('quest-battle-bonus-target');
+              const notice = document.querySelector('#login-alert[open][data-kind="quest-reward-item-used"]');
+              if (bonus?.dataset.itemTransition !== 'incoming' || target?.dataset.dice !== dice.join(',')
+                || !drawer || drawer.hidden || Number(getComputedStyle(drawer).opacity) < 0.95
+                || Math.abs(drawer.getBoundingClientRect().x - stage.getBoundingClientRect().x - 25) > 0.5
+                || notice?.querySelector('#login-alert-ok') !== document.activeElement) return false;
+              const fades = ['high', 'low'].map(direction => {
+                const button = document.getElementById(`quest-battle-bonus-${direction}`);
+                if (!button || button.hidden || !button.disabled || Number(getComputedStyle(button).opacity) < 0.6) return null;
+                return button.getAnimations().find(animation => animation.playState === 'running');
+              });
+              if (!fades.every(Boolean)) return false;
+              window.qaRewardFrameFades = fades;
+              for (const fade of fades) fade.pause();
+              return true;
+            }""", arg=target, timeout=TIMEOUT)
+            capture(stage, directory, "09-item-4-source-effect-with-drawer-open.png", animations="allow")
+            assert page.evaluate("""() => {
+              const stage = document.getElementById('stage');
+              const drawer = document.getElementById('quest-battle-bonus-item-panel');
+              const notice = document.querySelector('#login-alert[open][data-kind="quest-reward-item-used"]');
+              const mask = getComputedStyle(stage, '::after');
+              return window.qaRewardFrameFades?.every(fade => fade.playState === 'paused')
+                && !drawer.hidden && Number(getComputedStyle(drawer).opacity) >= 0.95
+                && Math.abs(drawer.getBoundingClientRect().x - stage.getBoundingClientRect().x - 25) <= 0.5
+                && notice?.querySelector('#login-alert-ok') === document.activeElement
+                && mask.backdropFilter === 'blur(1px)' && Number(mask.opacity) > 0;
+            }""")
+        finally:
+            page.evaluate("""() => {
+              for (const fade of window.qaRewardFrameFades ?? []) fade.play();
+              delete window.qaRewardFrameFades;
+            }""")
+    after = read_movement_trace(page)
+    assert after["replies"][len(start["replies"]):] == expected
+    expect(panel).to_be_hidden()
+    check_bonus_dice(bonus, "#quest-battle-bonus-target", target)
+    if decision is None:
+        expect(bonus).to_have_attribute("data-state", "guess", timeout=TIMEOUT)
+        for direction in ("high", "low"):
+            control = bonus.locator(f"#quest-battle-bonus-{direction}")
+            expect(control).to_be_visible()
+            control.evaluate("button => Promise.all(button.getAnimations().map(animation => animation.finished))")
+        expect(notice).to_be_visible()
+        capture(stage, directory, "09-item-4-source-effect-with-notice-open.png", animations="allow")
+        notice.locator("#login-alert-ok").click()
+        expect(notice).to_have_count(0)
+    assert bonus_commands(page) == sent
+    record_bonus_item_evidence(page, item_id, physical_id, start, held, after, notice=True)
+    return physical_id
+
+
+def check_bonus_item_chain(page, stage, directory, bonus, database, player_id, sent, profile, following):
+    avatar_id = profile["profile"][0]
+    initial = bonus_item_inventory(database, avatar_id)
+    assert sorted(initial.values()) == [(4, 0, 0), (4, 0, 0), (5, 0, 0), (6, 0, 0)], initial
+    launcher = bonus.locator("#quest-battle-bonus-item")
+    panel = bonus.locator("#quest-battle-bonus-item-panel")
+    launcher.click()
+    expect(panel).to_have_attribute("data-state", "open")
+    panel.locator("#quest-battle-bonus-item-close").click()
+    expect(panel).to_be_hidden()
+    assert bonus_commands(page) == sent
+
+    clover = use_bonus_item(page, stage, directory, bonus, database, avatar_id, 4, sent, target=[3, 1])
+    expect(bonus).to_have_attribute("data-round", "2")
+    verdict = check_bonus_guess(page, stage, directory, bonus, choice="low", bottom=[3, 1], expected_roll=[2, 4],
+                                prize=[2, 11, 1], following=following, sent=sent,
+                                pending_frame="09-second-roll-before-held-decision.png",
+                                result_frame="09-second-authoritative-failure.png")
+    assert not verdict[2]
+    panel, insufficient, _ = select_bonus_item(bonus, database, avatar_id, 5)
+    expect(panel.locator('[data-item-id="4"][data-count="1"]')).to_have_count(1)
+    start = read_movement_trace(page)
+    press_bonus_action(page, panel.locator("#quest-battle-bonus-item-use"), 7, 3, sent)
+    held = read_movement_trace(page)
+    assert held["sent"][len(start["sent"]):] == [[7, 13], [3, 5]]
+    assert held["rewardItems"][len(start["rewardItems"]):] == [[insufficient, 21]]
+    assert held["replies"][len(start["replies"]):] == []
+    expect(page.locator("#login-alert[open]")).to_have_count(0)
+    expect(bonus).to_have_attribute("data-state", "using-item")
+    release_movement_reply(page)
+    expect(bonus).to_have_attribute("data-state", "failure", timeout=TIMEOUT)
+    after = read_movement_trace(page)
+    assert after["replies"][len(start["replies"]):] == [[3, 2]]
+    assert bonus_item_inventory(database, avatar_id)[insufficient][:2] == (5, 0)
+    expect(panel).to_have_attribute("data-state", "open")
+    expect(panel.locator('[data-item-id="5"]')).to_have_attribute("data-inventory-id", str(insufficient))
+    expect(page.locator("#login-alert[open]")).to_have_count(0)
+    expect(bonus.locator("#quest-battle-bonus-decision")).to_have_attribute("data-won", "false")
+    record_bonus_item_evidence(page, 5, insufficient, start, held, after, notice=False)
+    capture(stage, directory, "09-insufficient-item-left-failed-and-unspent.png", animations="allow")
+
+    amended = [124, 28, True, [2, 11, 1], following, 155]
+    heather = use_bonus_item(page, stage, directory, bonus, database, avatar_id, 6, sent, target=[2, 4], decision=amended)
+    expect(bonus.locator("#quest-battle-bonus-decision")).to_have_attribute("data-won", "true", timeout=TIMEOUT)
+    expect(bonus.locator("#quest-battle-bonus-get")).to_be_enabled(timeout=TIMEOUT)
+    expect(bonus).to_have_attribute("data-round", "2")
+    used = {physical: (master, state) for physical, (master, state, _) in bonus_item_inventory(database, avatar_id).items()}
+    assert used == {physical: (master, 2 if physical in (clover, heather) else 0)
+                    for physical, (master, _, _) in initial.items()}
+    assert bonus_profile(database, player_id) == profile
+    capture(stage, directory, "09-authoritative-amend-without-extra-roll.png", animations="allow")
+    return amended
 
 
 def check_high_low_panel(page, stage, directory, database, player_id, choice, card_id, duel):
@@ -3179,6 +3414,8 @@ def check_high_low_panel(page, stage, directory, database, player_id, choice, ca
     initial = [p for p in read_movement_trace(page)["replies"] if p[0] in (122, 123)]
     assert [p[0] for p in initial] == [122, 123]
     assert initial[0][2:] == [*choices, 154] and initial[1][2:] == [bottom]
+    item_case = choice == "item"
+    assert not item_case or card_id == 25
     before = bonus_profile(database, player_id)
     expect(result_ok).to_have_attribute("data-confirmation", "begin", timeout=TIMEOUT)
     expect(result_ok).to_be_enabled()
@@ -3205,7 +3442,7 @@ def check_high_low_panel(page, stage, directory, database, player_id, choice, ca
         offset = len(read_movement_trace(page)["replies"])
         press_bonus_action(page, bonus.locator("#quest-battle-bonus-next"), 39, 123, count_proof)
         expect(bonus).to_have_attribute("data-state", "opening")
-        expect(bonus.locator("button:enabled")).to_have_count(0)
+        expect(bonus.locator("button:enabled:visible")).to_have_count(0)
         for control in ("high", "low", "exit"):
             expect(bonus.locator(f"#quest-battle-bonus-{control}")).to_be_hidden()
         held = [p for p in read_movement_trace(page)["replies"][offset:] if p[0] in (122, 123)]
@@ -3216,42 +3453,24 @@ def check_high_low_panel(page, stage, directory, database, player_id, choice, ca
         check_bonus_dice(bonus, "#quest-battle-bonus-target", bottom)
         expect(bonus.locator("#quest-battle-bonus-item")).to_be_hidden()
         capture(stage, directory, "07-next-enabled-authentic-high-low-choice.png", animations="allow")
-        offset = len(read_movement_trace(page)["replies"])
-        press_bonus_action(page, bonus.locator(f"#quest-battle-bonus-{choice}"), 36 if choice == "high" else 37, 124, count_proof)
-        expect(bonus).to_have_attribute("data-state", "rolling")
-        expect(bonus.locator("#quest-battle-bonus-selected")).to_have_attribute("data-choice", choice)
-        expect(bonus.locator("button:enabled")).to_have_count(0)
-        for control in ("next", "get", "exit", "item"):
-            expect(bonus.locator(f"#quest-battle-bonus-{control}")).to_be_hidden()
-        held = [p for p in read_movement_trace(page)["replies"][offset:] if p[0] in (124, 125)]
-        (roll,) = [p[2] for p in held if p[0] == 125]
-        assert len(held) == 1 and roll == ([3, 5] if card_id == 30 else [6, 1]), held
-        capture(stage, directory, "08-authentic-roll-before-held-decision.png", animations="allow")
-        release_movement_reply(page)
-        (verdict,) = [p for p in read_movement_trace(page)["replies"][offset:] if p[0] == 124]
-        won = sum(roll) >= sum(bottom) if choice == "high" else sum(roll) <= sum(bottom)
-        assert verdict[2:] == [won, choices[1] if won else [], following if won else [], 155], verdict
-        expect(bonus.locator("#quest-battle-bonus-decision")).to_have_attribute("data-won", str(won).lower(), timeout=TIMEOUT)
-        check_bonus_dice(bonus, "#quest-battle-bonus-dice", roll)
-        painted = bonus.locator('#quest-battle-bonus-dice[data-state="settled"]')
-        expect(painted).to_be_visible()
-        assert painted.evaluate("""canvas => {
-          const gl = canvas.getContext('webgl2');
-          if (canvas.width !== 780 || canvas.height !== 680 || !gl || gl.isContextLost()) return false;
-          const pixels = new Uint8Array(4 * canvas.width * canvas.height);
-          gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-          return pixels.some((value, index) => index % 4 === 3 && value > 0);
-        }"""), "The original two dice must paint real WebGL pixels"
-        capture(stage, directory, "09-authoritative-high-low-decision.png", animations="allow")
-        kept = verdict[3]
+        first_roll = [3, 1] if item_case else ([3, 5] if card_id == 30 else [6, 1])
+        verdict = check_bonus_guess(page, stage, directory, bonus, choice="high" if item_case else choice, bottom=bottom,
+                                    expected_roll=first_roll, prize=choices[1],
+                                    following=following, sent=count_proof,
+                                    pending_frame="08-authentic-roll-before-held-decision.png",
+                                    result_frame="09-authoritative-high-low-decision.png")
         assert bonus_profile(database, player_id) == before
+        if item_case:
+            assert not verdict[2]
+            verdict = check_bonus_item_chain(page, stage, directory, bonus, database, player_id, count_proof, before, following)
+        kept = verdict[3]
 
     offset = len(read_movement_trace(page)["replies"])
     claim_action = "exit" if verdict is not None and not verdict[2] else "get"
     held_code = 38 if choice == "get" else 126
     press_bonus_action(page, bonus.locator(f"#quest-battle-bonus-{claim_action}"), 38, held_code, count_proof)
     expect(bonus).to_have_attribute("data-state", "claiming")
-    expect(bonus.locator("button:enabled")).to_have_count(0)
+    expect(bonus.locator("button:enabled:visible")).to_have_count(0)
     expect(bonus.locator("#quest-battle-bonus-claim")).to_be_hidden()
     assert pending_totals.evaluate_all("nodes => nodes.every(node => node.hidden || Number(getComputedStyle(node).opacity) === 0)")
     expect(battle.locator('#quest-battle-result-ok[data-confirmation="return"]:enabled')).to_have_count(0)
@@ -3293,6 +3512,8 @@ def check_high_low_panel(page, stage, directory, database, player_id, choice, ca
         "ulse17.mp3", "ulse17.mp3", "ulse07.mp3", "ulse07.mp3",
         "ulse18.mp3" if verdict[2] else "ulse19.mp3", "ulse17.mp3",
     ]
+    if item_case:
+        expected_cues = [f"ulse{number:02}.mp3" for number in (17, 17, 7, 7, 19, 17, 17, 17, 7, 7, 19, 17, 18, 17)]
     cue_files = ["ulse07.mp3", "ulse17.mp3", "ulse18.mp3", "ulse19.mp3"]
     page.wait_for_function("""({offset, files, count}) => window.qaQuestWire.sockets.at(-1).terrainSounds
       .slice(offset).filter(file => files.includes(file)).length >= count""",
@@ -3461,7 +3682,7 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
     trace = read_movement_trace(page)
     assert trace["actions"] == [[13, inventory_id, 1], [16, inventory_id, 1, 1], [16, inventory_id, 1, 5]]
     assert trace["readySends"] == [["settled", "complete"]] * 2
-    assert [p[0] for p in trace["sent"] if p[0] not in (0, 1, 3, 36, 37, 38, 39)] == [
+    assert [p[0] for p in trace["sent"] if p[0] not in (0, 1, 3, 7, 36, 37, 38, 39)] == [
         12, 13, *(code for group in staged for code in (16, 22, *(p[0] for p in group))),
     ]
     assert len(live) == 5 and not trace["overlaps"] and all(not peer.is_closed() for peer in live)
@@ -3471,6 +3692,16 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
         "profile": dict(zip(("level", "gems", "exp", "energy", "energyMax"), profile[2:7], strict=True)),
         "questProgress": 34, "questInjury": [4, 0, 0], "deckLocked": locked[0][-1], "inventoryAdded": added,
     }
+    if choice == "item":
+        trace["persistedReward"]["consumables"] = bonus_item_inventory(database, avatar_id)
+        trace["retainedRewardMap"] = {
+            "inventoryId": int(detail.get_attribute("data-inventory-id")),
+            "mapId": int(view.get_attribute("data-map-id")),
+            "progress": int(detail.get_attribute("data-progress")),
+            "enabledSlot": int(next_land.get_attribute("data-slot")),
+            "landId": int(next_land.get_attribute("data-land-id")),
+            "backVisible": page.locator("#quest-map-back").is_visible(),
+        }
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
     assert not errors, errors
@@ -4299,8 +4530,8 @@ def main():
                         help="Choose the left or right authored q32 battle; defaults to slot 5")
     parser.add_argument("--quest-peaceful-complete", choices=("win", "defeat"),
                         help="Complete q4 or either q32 branch with the source-seeded disposable fixture")
-    parser.add_argument("--quest-high-low", choices=("get", "high", "low"),
-                        help="Verify q568 stock bonus receipts and persistence with a source-seeded card25 or card30 fixture")
+    parser.add_argument("--quest-high-low", choices=("get", "high", "low", "item"),
+                        help="Verify q568 bonus receipts and persistence, including owned consumables with the card25 item fixture")
     parser.add_argument("--quest-terminal", choices=("return", "late", "defeat"),
                         help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()

@@ -812,7 +812,8 @@ function showMoveArrows(battle, assets, result, signal) {
 }
 
 async function renderBattleHud(battle, sourceAvatar, {
-  assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, returnToMap,
+  assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, onAlert, mapIndex,
+  returnToMap,
 }) {
   const { hud } = assets;
   const standees = layer(battle, 'quest-battle-standees', 2);
@@ -1089,13 +1090,14 @@ async function renderBattleHud(battle, sourceAvatar, {
     for (const node of pieces) node.hidden = true;
     showTable('blank');
     duelResult = mountQuestDuelResult(battle, {
-      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound, reward: latest.reward, loadCards,
+      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound, reward: latest.reward, loadCards, onAlert,
       onReturn: () => !signal.aborted && isCurrent() && latest.outcome?.canReturn === true && returnToMap?.(),
-      runRewardAction(action, rewardRound) {
+      runRewardAction(action, rewardRound, inventoryId) {
         if (signal.aborted || !isCurrent()) return false;
         const options = { signal, encounterKey: encounter.key, rewardRound };
         if (action === 'next') return scene.nextBattleReward(options);
         if (action === 'high' || action === 'low') return scene.guessBattleReward(action, options);
+        if (action === 'item-use') return scene.useBattleRewardItem(inventoryId, { ...options, mapIndex });
         return scene.takeBattleReward(options);
       },
     });
@@ -1271,8 +1273,9 @@ async function renderBattleHud(battle, sourceAvatar, {
 }
 
 export async function mountQuestBattleEntry(view, board, {
-  encounter, landSlot, layers, assets, signal, scene, loadCards, isCurrent, onEncounter, onBattleFinish, onBattleSound, returnToMap,
+  encounter, landSlot, layers, assets, signal, scene, loadCards, isCurrent, onEncounter, onBattleFinish, onBattleSound, onAlert, returnToMap,
 }) {
+  const mapIndex = view.dataset.mapType === 'normal' ? Number(view.dataset.mapId) - 1 : undefined;
   const { transition: timing } = assets;
   const delay = timing.delayAfterDetermineMs - (performance.now() - encounter.receivedAt);
   await wait(delay, signal);
@@ -1315,6 +1318,7 @@ export async function mountQuestBattleEntry(view, board, {
   await runOpening(battle, sourceAvatar, { assets, encounter, definitions, stands, signal });
   if (signal.aborted || view.inert || !isCurrent()) return;
   await renderBattleHud(battle, sourceAvatar, {
-    assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, returnToMap,
+    assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, onAlert, mapIndex,
+    returnToMap,
   });
 }

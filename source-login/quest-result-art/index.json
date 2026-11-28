@@ -2548,6 +2548,356 @@
       "source": "public/image/tex/sixdice.png",
       "sourceSha256": "bb9266928b75d8304c520cb2fd9eb9fc4dd5e9e69000c8f8c7f39f94840f4a65",
       "sha256": "bb9266928b75d8304c520cb2fd9eb9fc4dd5e9e69000c8f8c7f39f94840f4a65"
+    },
+    "bonus-item-panel.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "47eeb9298d496a8fe542c76bf57812fb720b56096c71f9ad2c10671c786a33b2",
+      "shapeIds": [
+        1,
+        3,
+        5,
+        7,
+        9
+      ],
+      "bitmapIds": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "sourceDepths": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "bonus-item-panel-close-up.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "763ac9d43b9455d4f2f5ce6bdf8c49ec1bfc649c32656ee492e4ff22233eb033",
+      "shapeIds": [
+        21
+      ],
+      "bitmapIds": [
+        20
+      ],
+      "sourceInstance": "btn_close",
+      "sourceButton": 26,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        25
+      ]
+    },
+    "bonus-item-panel-close-over.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "99db5a188d091592bd9fd35af0050cf520b4b5d7fd810a2311199c7edeabd501",
+      "shapeIds": [
+        23
+      ],
+      "bitmapIds": [
+        22
+      ],
+      "sourceInstance": "btn_close",
+      "sourceButton": 26,
+      "sourceStates": [
+        "over"
+      ],
+      "hitShapeIds": [
+        25
+      ]
+    },
+    "bonus-item-panel-close-down.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "c7c23f213c710c8cf0c2166767436c6c1cf0ca66e876ae700c06fc1bf86eac98",
+      "shapeIds": [
+        25
+      ],
+      "bitmapIds": [
+        24
+      ],
+      "sourceInstance": "btn_close",
+      "sourceButton": 26,
+      "sourceStates": [
+        "down"
+      ],
+      "hitShapeIds": [
+        25
+      ]
+    },
+    "bonus-item-panel-use-up.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "622dae3e2298a885134b7e28138361b8c3db57edc034da7f6d9cac1eae25d9f5",
+      "shapeIds": [
+        28
+      ],
+      "bitmapIds": [
+        27
+      ],
+      "sourceInstance": "btn_use",
+      "sourceButton": 31,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-item-panel-use-over.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "abe39718ded367905222e0cb2af57f43782f94a1b6879889854e452abdcbcd08",
+      "shapeIds": [
+        30
+      ],
+      "bitmapIds": [
+        29
+      ],
+      "sourceInstance": "btn_use",
+      "sourceButton": 31,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-item-panel-back-up.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "b2f68fd2146cd55e4bdf04f89d1576cc2a63cf9eeb0e12b78aa2db8f0f01af77",
+      "shapeIds": [
+        11
+      ],
+      "bitmapIds": [
+        10
+      ],
+      "sourceInstance": "btn_back",
+      "sourceButton": 14,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        13
+      ]
+    },
+    "bonus-item-panel-back-over.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "afc46bf6235909c3b4115ebaaff9afef749cf9858625a4d5800c623cc89c0b68",
+      "shapeIds": [
+        13
+      ],
+      "bitmapIds": [
+        12
+      ],
+      "sourceInstance": "btn_back",
+      "sourceButton": 14,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "hitShapeIds": [
+        13
+      ]
+    },
+    "bonus-item-panel-next-up.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "4469383094ad79aa4d463c1fdf6a70639bbe855a1bd9507317460026c1a3d468",
+      "shapeIds": [
+        16
+      ],
+      "bitmapIds": [
+        15
+      ],
+      "sourceInstance": "btn_next",
+      "sourceButton": 19,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        18
+      ]
+    },
+    "bonus-item-panel-next-over.png": {
+      "source": "data/image/item/itemwindow_ch.swf",
+      "sourceSha256": "c82efd9969992f1a6ebdad31b5e87c772fb3bb271bf261d87666ec7147c9c150",
+      "sha256": "0a8757166449db462a47b68a2dcb161c3e0e9acc7016733de9d72fc2e57fb393",
+      "shapeIds": [
+        18
+      ],
+      "bitmapIds": [
+        17
+      ],
+      "sourceInstance": "btn_next",
+      "sourceButton": 19,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "hitShapeIds": [
+        18
+      ]
+    },
+    "bonus-item-row-up.png": {
+      "source": "data/image/item/itemwin_itembase.swf",
+      "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+      "sha256": "2f6257356dc4c38a11055138ebbba2c3426daa7175d2c23df4bd1e27a11a6f20",
+      "shapeIds": [
+        1,
+        3
+      ],
+      "bitmapIds": [],
+      "sourceInstance": "btn_base",
+      "sourceButton": 7,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        5
+      ]
+    },
+    "bonus-item-row-over.png": {
+      "source": "data/image/item/itemwin_itembase.swf",
+      "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+      "sha256": "9b36dd10241f8868792755d9587a15e92566efcf2c587aa5f19e509e53cafc1f",
+      "shapeIds": [
+        1,
+        5
+      ],
+      "bitmapIds": [],
+      "sourceInstance": "btn_base",
+      "sourceButton": 7,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "hitShapeIds": [
+        5
+      ]
+    },
+    "bonus-item-row-selected.png": {
+      "source": "data/image/item/itemwin_itembase.swf",
+      "sourceSha256": "04959dea5b9989232eff51ec2ce460efbacba424306cf44cbf89c0e67a51cd86",
+      "sha256": "b2d5a9abfc77e6676c0d817449583edaf480cea14419a3acecabe17c6634d73a",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceState": "btn_base hidden"
+    },
+    "bonus-item-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "c290bbc8b03e2ce3e34513e931701d5ed699f254ca00bba340cbd5d40e98aa1e",
+      "shapeIds": [
+        17,
+        43,
+        50
+      ],
+      "bitmapIds": [
+        16,
+        42,
+        49
+      ],
+      "sourceInstance": "b_item",
+      "sourceButton": 53,
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-item-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "3fc9ff2566d415cf659e439b102df9fe1d7729dc4f0e75e65bb860c9b4b1d1f9",
+      "shapeIds": [
+        17,
+        43,
+        52
+      ],
+      "bitmapIds": [
+        16,
+        42,
+        51
+      ],
+      "sourceInstance": "b_item",
+      "sourceButton": 53,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-item-panel-mincho.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "2eb3dcb9e7278a7f92eceab314cf0170a4aef07340d8d7a5d4b1d654849c16ec",
+      "glyphs": "0123456789/-x幸運四葉草可以重投獎勵遊戲的骰子白色石楠1骰子的差小於1時,可以繼續進行獎勵遊戲白色石楠3骰子的差小於3時,可以繼續進行獎勵遊戲白色石楠5骰子的差小於5時,可以繼續進行獎勵遊戲跳越星可以繼續進行獎勵遊戲"
+    },
+    "bonus-item-panel-icon-4.png": {
+      "source": "public/image/avatar_items/item_c_b000.swf",
+      "sourceSha256": "de45574d19402c10a7721f34989fef80caab2b545fb5f473518a3116898e5a4b",
+      "sha256": "062f86e62b768721cb579dcbb76d3eb008e40046fb45fdaeee148479529aaf31",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 1
+    },
+    "bonus-item-panel-icon-5.png": {
+      "source": "public/image/avatar_items/item_c_b001.swf",
+      "sourceSha256": "0406261daca46859ca7faf1b8b82e64f12161fa4a8fec2592dfd6a44137e85ee",
+      "sha256": "7cce85cc8d6984551ab014c022fffd80b5fad171c402b0c790848e0f41bcea74",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 1
+    },
+    "bonus-item-panel-icon-6.png": {
+      "source": "public/image/avatar_items/item_c_b001.swf",
+      "sourceSha256": "0406261daca46859ca7faf1b8b82e64f12161fa4a8fec2592dfd6a44137e85ee",
+      "sha256": "410a579b6cedc812b9ee8c6376db1eb3848fcae6a98bb6de8c5cdbfdf315d9f3",
+      "shapeIds": [
+        3
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 2
+    },
+    "bonus-item-panel-icon-7.png": {
+      "source": "public/image/avatar_items/item_c_b001.swf",
+      "sourceSha256": "0406261daca46859ca7faf1b8b82e64f12161fa4a8fec2592dfd6a44137e85ee",
+      "sha256": "1f7b2f9caa4a264aecc96dd21a4e25c33a1c080a9d9697f4d6c5625e2f801790",
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 3
+    },
+    "bonus-item-panel-icon-8.png": {
+      "source": "public/image/avatar_items/item_c_b003.swf",
+      "sourceSha256": "0aacc0ca52032cc31c34a45d6aa99b427279bc6b389a0a549fef224daef79b70",
+      "sha256": "6a59d8510755cf5e45d15ff416e7fd2171fe1ce142851ccfddfc72fa3899b4d1",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 1
     }
   },
   "bonus": {
@@ -2699,6 +3049,35 @@
         },
         "hit": [
           408.0,
+          149.0,
+          80.0,
+          80.0
+        ]
+      },
+      "item": {
+        "up": {
+          "file": "bonus-item-up.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "over": {
+          "file": "bonus-item-over.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "down": {
+          "file": "bonus-item-over.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "hit": [
+          272.0,
           149.0,
           80.0,
           80.0
@@ -3779,6 +4158,293 @@
           "width": 144,
           "height": 90
         }
+      }
+    },
+    "itemPanel": {
+      "origin": [
+        25,
+        25
+      ],
+      "plate": {
+        "file": "bonus-item-panel.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 208,
+        "height": 360
+      },
+      "controls": {
+        "close": {
+          "up": {
+            "file": "bonus-item-panel-close-up.png",
+            "x": 180.0,
+            "y": 4.0,
+            "width": 24,
+            "height": 24
+          },
+          "over": {
+            "file": "bonus-item-panel-close-over.png",
+            "x": 180.0,
+            "y": 4.0,
+            "width": 24,
+            "height": 24
+          },
+          "down": {
+            "file": "bonus-item-panel-close-down.png",
+            "x": 180.0,
+            "y": 4.0,
+            "width": 24,
+            "height": 24
+          },
+          "hit": [
+            180.0,
+            4.0,
+            23.95,
+            23.95
+          ]
+        },
+        "use": {
+          "up": {
+            "file": "bonus-item-panel-use-up.png",
+            "x": 32.0,
+            "y": 330.0,
+            "width": 80,
+            "height": 24
+          },
+          "over": {
+            "file": "bonus-item-panel-use-over.png",
+            "x": 32.0,
+            "y": 330.0,
+            "width": 80,
+            "height": 24
+          },
+          "down": {
+            "file": "bonus-item-panel-use-over.png",
+            "x": 32.0,
+            "y": 330.0,
+            "width": 80,
+            "height": 24
+          },
+          "hit": [
+            32.0,
+            330.0,
+            79.95,
+            23.95
+          ]
+        },
+        "back": {
+          "up": {
+            "file": "bonus-item-panel-back-up.png",
+            "x": 144.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "over": {
+            "file": "bonus-item-panel-back-over.png",
+            "x": 144.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "down": {
+            "file": "bonus-item-panel-back-over.png",
+            "x": 144.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "hit": [
+            144.0,
+            345.0,
+            15.95,
+            13.95
+          ]
+        },
+        "next": {
+          "up": {
+            "file": "bonus-item-panel-next-up.png",
+            "x": 191.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "over": {
+            "file": "bonus-item-panel-next-over.png",
+            "x": 191.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "down": {
+            "file": "bonus-item-panel-next-over.png",
+            "x": 191.0,
+            "y": 345.0,
+            "width": 16,
+            "height": 14
+          },
+          "hit": [
+            191.0,
+            345.0,
+            15.95,
+            13.95
+          ]
+        }
+      },
+      "row": {
+        "up": {
+          "file": "bonus-item-row-up.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 40,
+          "height": 40
+        },
+        "over": {
+          "file": "bonus-item-row-over.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 40,
+          "height": 40
+        },
+        "down": {
+          "file": "bonus-item-row-over.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 40,
+          "height": 40
+        },
+        "hit": [
+          0.0,
+          0.0,
+          40.0,
+          40.0
+        ],
+        "selected": {
+          "file": "bonus-item-row-selected.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "list": {
+        "x": 152,
+        "y": 56,
+        "step": 48,
+        "maxRows": 6
+      },
+      "labels": {
+        "name": [
+          10,
+          5,
+          200,
+          30
+        ],
+        "count": [
+          5,
+          154,
+          135,
+          30
+        ],
+        "duration": [
+          5,
+          189,
+          135,
+          30
+        ],
+        "caption": [
+          5,
+          227,
+          130,
+          100
+        ],
+        "rowCount": [
+          10,
+          32,
+          40,
+          20
+        ],
+        "page": [
+          156,
+          342,
+          30,
+          20
+        ]
+      },
+      "iconAnchors": {
+        "detail": {
+          "x": 73,
+          "y": 86,
+          "scale": 0.7
+        },
+        "row": {
+          "x": 20,
+          "y": 20,
+          "scale": 0.2
+        }
+      },
+      "items": {
+        "4": {
+          "name": "幸運四葉草",
+          "caption": "可以重投獎勵遊戲的骰子",
+          "icon": {
+            "file": "bonus-item-panel-icon-4.png",
+            "x": -49.85,
+            "y": -51.7,
+            "width": 100,
+            "height": 104
+          }
+        },
+        "5": {
+          "name": "白色石楠1",
+          "caption": "骰子的差小於1時,可以繼續進行獎勵遊戲",
+          "icon": {
+            "file": "bonus-item-panel-icon-5.png",
+            "x": -61.25,
+            "y": -61.4,
+            "width": 124,
+            "height": 121
+          }
+        },
+        "6": {
+          "name": "白色石楠3",
+          "caption": "骰子的差小於3時,可以繼續進行獎勵遊戲",
+          "icon": {
+            "file": "bonus-item-panel-icon-6.png",
+            "x": -61.25,
+            "y": -61.4,
+            "width": 124,
+            "height": 121
+          }
+        },
+        "7": {
+          "name": "白色石楠5",
+          "caption": "骰子的差小於5時,可以繼續進行獎勵遊戲",
+          "icon": {
+            "file": "bonus-item-panel-icon-7.png",
+            "x": -61.25,
+            "y": -61.4,
+            "width": 124,
+            "height": 121
+          }
+        },
+        "8": {
+          "name": "跳越星",
+          "caption": "可以繼續進行獎勵遊戲",
+          "icon": {
+            "file": "bonus-item-panel-icon-8.png",
+            "x": -58.75,
+            "y": -55.95,
+            "width": 118,
+            "height": 112
+          }
+        }
+      },
+      "font": "bonus-item-panel-mincho.woff",
+      "motion": {
+        "initialX": -125,
+        "hiddenX": -250,
+        "durationMs": 60,
+        "easing": "sine-out"
       }
     }
   }

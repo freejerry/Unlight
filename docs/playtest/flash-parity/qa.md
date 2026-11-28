@@ -200,6 +200,8 @@ python3 tools/legacy-web/check_source_lobby.py --port 4389 \
 
 每次重跑使用另一位仍持有 NEW q568、進度 0、4/8 AP 的隔離角色。兩戰後核對實際目前 AP 和上限，滑入原路線第 7 格並驗地形名稱與說明。留存最後一張場景截圖及 `quest-high-low-wire.json`。[已驗證測例與固定尺寸截圖](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/README.md)
 
+使用 `--quest-high-low item` 可重跑敗猜與道具分支。角色持有兩份幸運四葉草、一份白色石楠1 和一份白色石楠3，Deck 1 使用 Lv5 古魯瓦爾多。限定該隔離角色的第 5 格首次擲骰種子為 3。先猜高再用四葉草，接著猜低、使用不足的石楠1，再用石楠3 領取。腳本依序核對真實 `SC127`、暫緩效果回覆時的「信息」提示、同一連線的沉默拒絕、單次入庫及返回。比對過場時只在截圖前暫停 High／Low 的淡入動畫，截圖後恢復播放。[原版測例準備及規格](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/CONSUMABLES.md) · [兩版完整驗收](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-item-live/README.md)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)
