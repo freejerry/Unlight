@@ -151,3 +151,4 @@
 ### 大廳 Record 直接成就獎勵
 
 - 兩版實跑首次登入的三件抽獎券，以及同一角色重新登入後完成 q3 兩戰。旗標 0→1，Back 前 124 Gem。回到同一條 Lobby 後確實加發兩件道具、七張記憶的碎片和 3,000 Gem。四張 Record 依序顯示抽獎券、記憶的碎片、Gem、魔女秘藥。新版另實跑逐張翻牌聲和本機 OK、底層入口互斥、焦點恢復與再次返回時的防重。[首次登入並排](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/initial-record-ticket-comparison.png) · [返回大廳的逐項畫面與封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/README.md)
+- 已重跑設定、大廳、搜尋、重新登入及 q568 終局直接 Get。起始旗標 21 的 q568 隔離角色於進任務前已由 Lobby 發放成就 31，首戰前為 3,100 Gem。Quest 的直接 Get 仍只額外發 3 Gem，兩個 OK 後正常返回。[設定返回大廳](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/regressions/options-return-to-lobby.png) · [q568 回歸封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/regressions/q568-terminal-get-wire.json)
