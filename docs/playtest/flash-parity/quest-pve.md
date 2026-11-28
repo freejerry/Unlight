@@ -122,7 +122,7 @@
 1. 落日大蝙蝠的勝利與敗北已實跑繁中 Flash 及新版的兩次 OK 和返回。新版也已跑完 18 回合和局。接續繁中 Flash 和局，核對 Draw、音效、報酬、兩次確認及任務歸檔。地圖結算使用任務失敗圖。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
 2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 依原版入口驗收獎勵骰。先取 q568 第 5 格的 Next、High／Low、Get／Exit 和獎勵交接，再擴及終格勝利、重試及原版額外選項。其餘搜尋索引、區域與特殊分支按各自的可達狀態驗收。[高低獎勵骰](#高低獎勵骰)
-4. q3 大蝙蝠之群已完成首區頭目固定蝙蝠卡寶箱、通關與區域切換。q4 山丘矮人勝利、q32 紫色泥沼澤2兩線終局及左線先鋒卡均有原版與新版操作紀錄。接續真正兩卡的換角流程，以及先鋒卡的全租借牌組條件。[道路終局與泥潭後續格](#道路終局與泥潭後續格) · [泥潭左線與先鋒卡](#泥潭左線與先鋒卡)
+4. q3 大蝙蝠之群已完成首區頭目固定蝙蝠卡寶箱、通關與區域切換。q4 山丘矮人勝利、q32 紫色泥沼澤2兩線終局及左線先鋒卡均有原版與新版操作紀錄。Q82 已驗收雙卡主動換角，接續強制換角和先鋒卡的全租借牌組條件。 [道路終局與泥潭後續格](#道路終局與泥潭後續格) · [泥潭左線與先鋒卡](#泥潭左線與先鋒卡) · [雙卡主動換角](#雙卡主動換角)
 5. 測試延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。依隔離 Ruby 的 SQLite 查核持久化結果，測試紀錄只保存非敏感資料。早期原版、共享傳輸和暫停分支各自有測例，固定舞台狀態依本分支實跑結果更新。
 
 | 首組之後的狀態 | 下一段原版驗收依據 |
@@ -174,7 +174,17 @@
 - 新版獨立指標流程先選前進再選後退。真實牌 9 旋轉後從手牌索引 1 放入桌面 0，收回後從混合手牌索引 5 再放入。按 OK 發一次 `CS26`。`SC48` 確認距離 3、對手先攻、雙方點數 1 與 3。雙方牌面驗證為 56×86，維持原來的桌面區域。同一登入的五條連線、AP 4/5、任務與鎖定牌組均經核對。[新版指標封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-manual-wire.json) · [新版結算畫面](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-manual-03-result.png)
 - 另一場保持畫面原地等待，從觀察到 Move 到發送 `CS26` 約 59.6 秒。一整輪無方向與牌片操作、開始和確認各一次，實際 Ruby 結算距離 1、對手先手。另在真出牌回覆延遲至未確認後才交付的案例，牌留手中，驗證再次點擊也維持同一次出牌命令。[自然逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-wire.json) · [計時警示](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/root/root-timer-02-original-countdown-warning.png) · [遲到回覆畫面](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/qa-05-movement-reply-uncertain.png) · [原樣重跑](qa.md#重跑首回合移動)
 
-移動涵蓋單卡落日大蝙蝠的主要操作。移動確認後保留停止的計時條，直到 Ruby 開啟下一階段。換角、戰鬥日誌的先手與距離文字、其餘逐牌有效標記及事件牌效果留在後續驗收。兩版並排保留各場真正抽到的牌與取樣時點。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [移動素材清單](../../../source-login/quest-art/sources.json) · [卡片原始素材](../../../source-login/battle-card-art/index.json)
+移動涵蓋單卡落日大蝙蝠的主要操作。移動確認後保留停止的計時條，直到 Ruby 開啟下一階段。戰鬥日誌的先手與距離文字、其餘逐牌有效標記及事件牌效果留在後續驗收。兩版並排保留各場真正抽到的牌與取樣時點。[結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-movement-live/movement-result-comparison.png) · [移動素材清單](../../../source-login/quest-art/sources.json) · [卡片原始素材](../../../source-login/battle-card-art/index.json)
+
+### 雙卡主動換角
+
+繁中原版在 Q82 用格雷高爾 #635、古魯瓦爾多 #21 對毒蛙 #1008。首回合點 3 對 3 的換角方向 `(408,282)`，收到本方 `SC60(3)` 才確認 Move。牌桌先播放 `SC48` 的移動結果，再處理 `SC49`。原版兩張角色卡共用左側候補位置 `(200,144)`，左 `OK` 的命中區為 `(204,388)` 起 160×32。右上角關閉按鈕相當於選擇目前主戰槽。畫面計時 60 秒，Ruby 階段期限 120 秒。 [原版選角畫面](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/12-original-choice-panel.png) · [原版選角邏輯](../../../app/client/src/view/scene/game/DuelCharaCards.as#L632) · [原版計時](../../../app/client/src/view/scene/game/DuelTable.as#L625)
+
+原版在選角面板和候補卡進場期間仍顯示移動切入肖像。進場完成後播放兩側的 `face_out`，這時左 `OK` 仍可操作。 [原版桌面交接](../../../app/client/src/view/scene/game/DropTable.as#L974) · [進場後的原版滑入畫面](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/13-original-choice-hover.png)
+
+原版操作只送一次 `CS35(1)`。Ruby 先確認我方槽 1／卡 21，再確認敵方槽 0／卡 1008。`SC50` 開始收起面板並切換立繪與主戰卡，面板和卡片使用 500 ms ease-out sine。收到攻防開始訊息後，原版顯示古魯瓦爾多的 7/7 生命、技能「猛擊」及防禦操作。 [原版換角後畫面](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/14-original-confirmed-grunwald-in-combat.png) · [原版實際回覆](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/wire.json) · [Ruby 階段](../../../app/server/src/controller/duel_controller.rb#L511)
+
+新版以同一副牌組、同一種子實跑。逐幀確認移動切入肖像退場後，同一個選角面板仍保持開啟。暫緩 `SC72` 和 `SC50` 時，格雷高爾的立繪、角色卡、技能和 11/11 生命仍維持已確認狀態。放行 `SC50` 後顯示古魯瓦爾多為主戰角色，格雷高爾改列候補，攻防操作仍鎖定。收到真正的 `SC51` 及後續 `SC53` 才能防禦，沿用同一條 Quest 連線。候補卡滑入檢視及死亡換角另待驗收。 [新版封包與畫面進度](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/native/battle-numbered-wire.json) · [兩版選角對照](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/choice-panel-comparison.png)
 
 ### 首回合第一組攻防
 

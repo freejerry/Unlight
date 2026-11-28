@@ -2,6 +2,7 @@ import { playQuestBattleEffect } from './bgm.js';
 import { BATTLE_CARD_ART, battleCardControls, battleCharacterReverse, battleExchangeArt, battleStands, formatBattleSkill, renderActionCard } from './battle-card.js';
 import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
+import { createQuestBattleChange } from './quest-battle-change.js';
 import { createQuestFeatPlayback } from './quest-battle-feat.js';
 import {
   animateInitialDeckCount, createCoveredOpponentCards, createQuestBattleMove, sweepQuestTableCards,
@@ -324,11 +325,12 @@ function battleSkillChips(raw) {
   });
 }
 
-function inspectCharacter(parent, definition, id, damage, signal) {
+function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 0) {
   const card = document.createElement('div');
   card.id = 'quest-battle-player-character';
   card.className = 'quest-battle-character-inspect';
   card.dataset.cardId = String(id);
+  card.dataset.rosterIndex = String(rosterIndex);
   card.dataset.face = 'front';
   place(card, 0, 440, 168, 240);
   parent.append(card);
@@ -351,7 +353,7 @@ function inspectCharacter(parent, definition, id, damage, signal) {
   let overrides;
   let refreshConditions = () => {};
   function updateConditions(row) {
-    if (signal.aborted || row?.index !== 0) return;
+    if (signal.aborted || row?.index !== rosterIndex) return;
     const next = row.cardId === id ? row.featConditions : undefined;
     if (next === overrides) return;
     overrides = next;
@@ -480,7 +482,7 @@ function inspectCharacter(parent, definition, id, damage, signal) {
     flip.removeAttribute('aria-disabled');
     flipping = false;
   });
-  return { canvas, ready, updateConditions };
+  return { card, canvas, ready, updateConditions };
 }
 
 function createDamageScopes(standees, signal, activeRoster) {
@@ -529,43 +531,73 @@ function renderHealth(layerNode, assets, encounter, definitions, signal) {
     ['player', encounter.playerCardIds, encounter.playerDamage, 10],
     ['opponent', encounter.opponentCardIds, encounter.opponentDamage, 600],
   ].entries()) {
-    const card = definitions.get(cardIds[0]);
-    if (!Number.isInteger(card?.hp) || !Number.isInteger(damage[0])) continue;
-    const hp = Math.max(0, card.hp - damage[0]);
     const gauge = health?.gauges?.[index];
     let line;
-    if (gauge && card.hp > 0) {
+    if (gauge) {
       line = gaugeLine(layerNode, gauge);
       line.style.background = health.color;
-      line.style.transform = `scaleX(${hp / card.hp})`;
     }
     const label = health?.labels?.[side === 'player' ? 'player' : 'foe'];
     const healthValue = output(layerNode, `quest-battle-${side}-hp`, 'quest-battle-hp', label?.x ?? x, label?.y ?? 397);
-    healthValue.dataset.hp = String(hp);
-    healthValue.dataset.max = String(card.hp);
     healthValue.setAttribute('aria-label', side === 'player' ? '我方生命值' : '對手生命值');
     const current = document.createElement('strong');
-    current.textContent = healthValue.dataset.hp;
-    healthValue.append(current, `/${card.hp}`);
-    indicators.set(side, { current, healthValue, line, maximum: card.hp });
+    const total = document.createTextNode('');
+    healthValue.append(current, total);
+    indicators.set(side, { current, total, healthValue, line });
+    const card = definitions.get(cardIds[0]);
+    const hp = Number.isInteger(card?.hp) && Number.isInteger(damage[0]) ? Math.max(0, card.hp - damage[0]) : null;
+    setActor(side, { index: 0, cardId: cardIds[0], hp });
   }
-  return async hitPoints => {
+
+  function scale(hp, max) {
+    return `scaleX(${Math.max(0, Math.min(1, hp / max))})`;
+  }
+
+  function setActor(side, row) {
+    const record = indicators.get(side);
+    const { current, total, healthValue, line } = record;
+    const max = definitions.get(row.cardId)?.hp;
+    const hp = Number.isInteger(row.hp) ? row.hp : null;
+    record.row = row;
+    record.maximum = max;
+    healthValue.dataset.cardId = String(row.cardId);
+    healthValue.dataset.rosterIndex = String(row.index);
+    healthValue.hidden = !Number.isInteger(max);
+    if (Number.isInteger(max)) healthValue.dataset.max = String(max);
+    else delete healthValue.dataset.max;
+    if (hp !== null) healthValue.dataset.hp = String(hp);
+    else delete healthValue.dataset.hp;
+    current.textContent = hp === null ? '?' : String(hp);
+    total.data = Number.isInteger(max) ? `/${max}` : '';
+    if (line) {
+      for (const animation of line.getAnimations()) animation.cancel();
+      line.hidden = !(Number.isInteger(max) && max > 0 && hp !== null);
+      line.style.transform = line.hidden ? 'scaleX(0)' : scale(hp, max);
+    }
+  }
+
+  async function update(hitPoints) {
     const changes = [];
-    for (const [side, { current, healthValue, line, maximum }] of indicators) {
+    for (const [side, record] of indicators) {
+      const { current, healthValue, line, maximum, row } = record;
       const hp = hitPoints[side];
-      if (!Number.isInteger(hp) || hp === Number(healthValue.dataset.hp)) continue;
+      if (!Number.isInteger(hp) || !Number.isInteger(maximum) || hp === Number(healthValue.dataset.hp)) continue;
       const previous = line?.style.transform;
-      const next = `scaleX(${Math.max(0, Math.min(1, hp / maximum))})`;
-      if (line) line.style.transform = next;
+      const next = maximum > 0 ? scale(hp, maximum) : 'scaleX(0)';
+      if (line) {
+        line.hidden = maximum <= 0;
+        line.style.transform = next;
+      }
       changes.push((async () => {
         if (line) await animate(line, [{ transform: previous }, { transform: next }], 100, signal);
-        if (signal.aborted) return;
+        if (signal.aborted || record.row !== row) return;
         healthValue.dataset.hp = String(hp);
         current.textContent = String(hp);
       })());
     }
     await Promise.all(changes);
-  };
+  }
+  return { setActor, update };
 }
 
 async function actionCards(ids, signal) {
@@ -675,39 +707,36 @@ const standPosition = {
   opponent: [472, 576, 680, 576],
 };
 
+function drawStand(parent, stands, side, id, distance, opening, distanceArt) {
+  const pose = stands?.[id];
+  const foe = side === 'opponent';
+  const part = opening ? pose?.opening : pose?.stand;
+  if (!part) return;
+  const xs = (foe ? distanceArt?.foeX : distanceArt?.playerX) ?? standPosition[side];
+  const [x, y] = opening ? part.origin : [xs[distance - 1], distanceArt?.y ?? 416];
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const standNode = artwork => {
+    const originX = foe ? x - artwork.width - artwork.x * 2 : x;
+    const node = assetAt(parent, artwork, originX, y, foe);
+    node.dataset.side = side;
+    node.dataset.standOffsetX = String(Number.parseFloat(node.style.left) - x);
+    node.dataset.distance = String(distance);
+    return node;
+  };
+  if (!opening && pose.shadow) standNode(pose.shadow);
+  const image = standNode(part);
+  image.dataset.cardId = String(id);
+  image.dataset.standSourceCardId = String(pose.sourceCardId ?? id);
+  image.classList.add('quest-battle-stand');
+  return { image, part, foe };
+}
+
 function drawStands(parent, stands, encounter, opening = false, distanceArt) {
-  const distance = encounter.duel.distance;
-  const nodes = [];
-  for (const [side, ids, authoredXs] of [
-    ['player', encounter.playerCardIds, distanceArt?.playerX],
-    ['opponent', encounter.opponentCardIds, distanceArt?.foeX],
-  ]) {
-    const id = opening && side === 'opponent' ? ids.at(-1) : ids[0];
-    const pose = stands?.[id];
-    const foe = side === 'opponent';
-    const part = opening ? pose?.opening : pose?.stand;
-    if (!part) continue;
-    const xs = authoredXs ?? standPosition[side];
-    const [x, y] = opening ? part.origin : [xs[distance - 1], distanceArt?.y ?? 416];
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    const flipOrigin = art => foe ? x - art.width - art.x * 2 : x;
-    const standNode = (art, parent) => {
-      const node = assetAt(parent, art, flipOrigin(art), y, foe);
-      node.dataset.side = side;
-      node.dataset.standOffsetX = String(Number.parseFloat(node.style.left) - x);
-      node.dataset.distance = String(distance);
-      return node;
-    };
-    if (!opening && pose.shadow) {
-      standNode(pose.shadow, parent);
-    }
-    const image = standNode(part, parent);
-    image.dataset.cardId = String(id);
-    image.dataset.standSourceCardId = String(pose.sourceCardId ?? id);
-    image.classList.add('quest-battle-stand');
-    nodes.push({ image, part, foe });
-  }
-  return nodes;
+  const { playerCardIds, opponentCardIds, duel } = encounter;
+  return [
+    drawStand(parent, stands, 'player', playerCardIds[0], duel.distance, opening, distanceArt),
+    drawStand(parent, stands, 'opponent', opening ? opponentCardIds.at(-1) : opponentCardIds[0], duel.distance, opening, distanceArt),
+  ].filter(Boolean);
 }
 
 function moveStands(parent, distance, signal, distanceArt) {
@@ -724,6 +753,69 @@ function moveStands(parent, distance, signal, distanceArt) {
       distanceArt?.durationMs ?? 300, signal, 0, quadIn));
   }
   return Promise.all(shifts);
+}
+
+function confirmedBattleActors(snapshot) {
+  const { roster, characterChange } = snapshot;
+  const applied = characterChange?.kind === 'movement' && characterChange.closed ? characterChange.applied : null;
+  const actors = {};
+  for (const side of ['player', 'opponent']) {
+    const party = roster?.[side];
+    const change = applied?.[side];
+    const index = change?.index ?? party?.activeIndex;
+    const row = party?.cards?.[index];
+    if (!row || row.index !== index || !Number.isSafeInteger(row.cardId) || (change && row.cardId !== change.cardId)) return null;
+    actors[side] = row;
+  }
+  return actors;
+}
+
+function renderReserveTabs(battle, artwork, definitions) {
+  if (!artwork?.base) return;
+  const root = layer(battle, 'quest-battle-reserve-tabs', 30, 'quest-battle-reserve-tabs');
+  root.setAttribute('aria-label', '候補角色');
+  let previous;
+  return {
+    root,
+    update(party, hidden) {
+      root.hidden = hidden;
+      if (hidden || !party) return;
+      const rows = party.cards.filter(({ index }) => index !== party.activeIndex);
+      const key = JSON.stringify(rows.map(({ index, cardId, hp, alive }) => [index, cardId, hp, alive]));
+      if (key === previous) return;
+      previous = key;
+      root.replaceChildren();
+      rows.forEach((row, index) => {
+        const card = definitions.get(row.cardId);
+        const x = (index + 1) * 168 + artwork.offsets.player[0];
+        const y = 680 + artwork.offsets.player[1];
+        const tab = layer(root, 'quest-battle-reserve-tab', index);
+        tab.dataset.cardId = String(row.cardId);
+        tab.dataset.rosterIndex = String(row.index);
+        const image = plate => sprite(tab, { ...plate, x: x + plate.x, y: y + plate.y });
+        image(artwork.base);
+        const dead = row.alive === false || (Number.isInteger(row.hp) && row.hp <= 0);
+        const hp = Number.isInteger(row.hp) ? row.hp : null;
+        const values = { name: card?.name ?? '', hp: dead ? '' : hp ?? '?', level: card?.level ?? '?',
+          attack: card?.ap ?? '?', defense: card?.dp ?? '?', maxHp: card?.hp ?? '?' };
+        for (const [field, [left, top, width, height]] of Object.entries(artwork.labels)) {
+          const label = document.createElement('span');
+          label.dataset.reserveField = field;
+          label.textContent = values[field];
+          Object.assign(label.style, { position: 'absolute', textAlign: 'center', color: '#4c4c4c',
+            font: 'bold 9px/14px Verdana, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden' });
+          if (field === 'maxHp') label.style.color = '#b3b3b3';
+          if (field === 'name') Object.assign(label.style, { textAlign: 'left', color: '#3c3c3c',
+            font: '14px/18px "Unlight Card Mincho", serif', letterSpacing: '1px' });
+          if (field === 'hp') Object.assign(label.style, { font: '24px/25px "Bradley Gratis", serif', letterSpacing: '2px',
+            color: hp === null || hp >= card?.hp ? '#fff' : hp >= card?.hp / 2 ? '#ffff30' : '#ff7070' });
+          place(label, x + left, y + top, width, height);
+          tab.append(label);
+        }
+        if (dead && artwork.dead) image(artwork.dead);
+      });
+    },
+  };
 }
 
 function openingNames(parent, encounter, definitions, signal) {
@@ -1164,10 +1256,10 @@ function createSkillPresentation(skills) {
   };
 }
 
-function showMoveCutIns(battle, manifest, encounter, signal, onlySide, stands) {
+function showMoveCutIns(battle, manifest, actors, signal, onlySide, stands) {
   const cutIn = layer(battle, 'quest-battle-cut-ins', 17, onlySide ? undefined : 'quest-battle-cut-ins');
   const poses = [];
-  for (const [id, foe] of [[encounter.playerCardIds[0], false], [encounter.opponentCardIds[0], true]]) {
+  for (const [id, foe] of [[actors.player.cardId, false], [actors.opponent.cardId, true]]) {
     if (onlySide && onlySide !== (foe ? 'opponent' : 'player')) continue;
     const source = manifest?.cutIns?.[id] ?? manifest?.cutIns?.[stands?.[id]?.sourceCardId];
     if (!source?.image) continue;
@@ -1311,7 +1403,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     { signal, definitions });
   const skillPresentation = createSkillPresentation(skills);
   const chat = renderChatDecoration(battle, hud.chat);
-  const updateHealth = renderHealth(main, assets, encounter, definitions, signal);
+  const health = renderHealth(main, assets, encounter, definitions, signal);
   const healthIndicators = [
     ['player', main.querySelector('#quest-battle-player-hp')],
     ['opponent', main.querySelector('#quest-battle-opponent-hp')],
@@ -1338,15 +1430,24 @@ async function renderBattleHud(battle, sourceAvatar, {
   }
   const deck = mountDeckStock(battle, encounter.duel.deckSize, signal);
   const roster = layer(battle, 'quest-battle-roster', 30);
-  const activeFace = inspectCharacter(roster, definitions.get(player), player, encounter.playerDamage[0], signal);
+  const reserveTabs = renderReserveTabs(battle, hud.characterChange?.reserveTab, definitions);
+  const actors = {
+    player: { index: 0, cardId: player }, opponent: { index: 0, cardId: encounter.opponentCardIds[0] },
+  };
+  for (const side of ['player', 'opponent']) battle.dataset[`${side}ActiveCardId`] = String(actors[side].cardId);
+  let faceScope = new AbortController();
+  let activeFace = inspectCharacter(roster, definitions.get(player), player, encounter.playerDamage[0],
+    AbortSignal.any([signal, faceScope.signal]));
   const hands = createHands(battle);
   const covered = createCoveredOpponentCards(hands, signal);
-  const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat, roster].filter(Boolean);
+  const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat, roster, reserveTabs?.root].filter(Boolean);
   const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
   status.setAttribute('role', 'status');
   status.tabIndex = -1;
   const move = createQuestBattleMove({ battle, scene, encounterKey: encounter.key, hud, hands, controls, combatControls, status,
     multi: encounter.duel.multi, signal, isCurrent });
+  const changeView = createQuestBattleChange(battle, { scene, encounterKey: encounter.key, signal, isCurrent, assets: hud, definitions,
+    animate, startTimer: onTimeout => startMoveTimer(main, hud.time, signal, onTimeout, true), status });
   void battleCardControls(signal).then(move.installCardArt);
   const distance = encounter.duel.distance;
   battle.dataset.distance = String(distance);
@@ -1361,25 +1462,129 @@ async function renderBattleHud(battle, sourceAvatar, {
   let drawn = false;
   let renderedState;
   let endCutIns;
+  let moveCutInExit;
   let presentedMove = false;
   let tableLoop;
   let combatView;
   let terminalTask;
   let duelResult;
   let resultStatus;
+  let characterPresentation;
   const featPlayback = createQuestFeatPlayback(battle, { signal, isCurrent, onSound: onBattleSound, wait });
-  const damageScopes = createDamageScopes(standees, signal, () => latest?.roster);
+  const damageScopes = createDamageScopes(standees, signal, visualRoster);
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
 
   async function updateHp(hitPoints) {
     if (signal.aborted || !isCurrent()) return;
-    await updateHealth(hitPoints);
-    if (signal.aborted || !isCurrent()) return;
-    const card = definitions.get(player);
+    const face = activeFace;
+    const card = definitions.get(actors.player.cardId);
+    await health.update(hitPoints);
+    if (signal.aborted || !isCurrent() || face !== activeFace) return;
     const hp = hitPoints.player;
     if (card && Number.isInteger(hp) && hp <= card.hp) {
-      await renderCharacterCard(activeFace.canvas, card, { signal, damage: card.hp - hp });
+      await renderCharacterCard(face.canvas, card, { signal: AbortSignal.any([signal, faceScope.signal]), damage: card.hp - hp });
     }
+  }
+
+  function visualRoster() {
+    const roster = latest?.roster;
+    if (!roster) return;
+    return {
+      player: { ...roster.player, activeIndex: actors.player.index },
+      opponent: { ...roster.opponent, activeIndex: actors.opponent.index },
+    };
+  }
+
+  function observeCurrentSkills() {
+    const roster = visualRoster();
+    skillPresentation.observe({ ...latest, roster }, latest.exchange ?? (combatView && latest.exchangeHistory?.at(-1)));
+    activeFace.updateConditions(roster?.player?.cards[actors.player.index]);
+  }
+
+  async function presentChangedActors() {
+    const next = confirmedBattleActors(latest);
+    if (!next) return false;
+    const shifts = [];
+    const distance = Number(battle.dataset.distance);
+    for (const side of ['player', 'opponent']) {
+      const actor = next[side];
+      if (actor.index === actors[side].index && actor.cardId === actors[side].cardId) continue;
+      const holder = document.createDocumentFragment();
+      if (!drawStand(holder, stands, side, actor.cardId, distance, false, distanceArt)) return false;
+      const outgoing = standees.querySelectorAll(`img[data-side="${side}"][data-stand-offset-x]`);
+      shifts.push({ side, actor, entering: Array.from(holder.children), outgoing });
+    }
+    await Promise.all(shifts.flatMap(({ entering }) => entering.map(image => image.decode())));
+    if (signal.aborted || !isCurrent()) return false;
+    await Promise.all(shifts.flatMap(({ outgoing }) => Array.from(outgoing, image =>
+      animate(image, [{ opacity: 1 }, { opacity: 0 }], 500, signal))));
+    if (signal.aborted || !isCurrent()) return false;
+    const now = confirmedBattleActors(latest);
+    if (!now || shifts.some(({ side, actor }) => now[side].index !== actor.index || now[side].cardId !== actor.cardId)) return false;
+    for (const { side, outgoing, entering } of shifts) {
+      for (const image of outgoing) image.remove();
+      const before = side === 'player' ? standees.querySelector('img[data-side="opponent"]') : null;
+      for (const image of entering) standees.insertBefore(image, before);
+      const actor = now[side];
+      actors[side] = actor;
+      battle.dataset[`${side}ActiveCardId`] = String(actor.cardId);
+      health.setActor(side, actor);
+      if (side !== 'player') continue;
+      faceScope.abort();
+      faceScope = new AbortController();
+      const focus = activeFace.card.contains(document.activeElement);
+      activeFace.card.remove();
+      const card = definitions.get(actor.cardId);
+      const damage = card && Number.isInteger(actor.hp) ? Math.max(0, card.hp - actor.hp) : undefined;
+      activeFace = inspectCharacter(roster, card, actor.cardId, damage, AbortSignal.any([signal, faceScope.signal]), actor.index);
+      if (focus) status.focus({ preventScroll: true });
+    }
+    damageScopes.sync();
+    observeCurrentSkills();
+    await Promise.all([
+      activeFace.ready,
+      changeView.settled(),
+      ...shifts.flatMap(({ entering }) => entering.map(image => animate(image, [{ opacity: 0 }, { opacity: 1 }], 500, signal))),
+    ]);
+    return !signal.aborted && isCurrent();
+  }
+
+  function startCharacterPresentation(turn) {
+    if (characterPresentation?.turn === turn) return;
+    const presentation = { turn, settled: false };
+    characterPresentation = presentation;
+    battle.dataset.characterChangePresentation = 'changing';
+    void Promise.all([presentChangedActors(), closeMoveCutIns()]).then(([settled]) => settled, () => false).then(settled => {
+      if (signal.aborted || !isCurrent() || characterPresentation !== presentation) return;
+      presentation.settled = settled;
+      battle.dataset.characterChangePresentation = settled ? 'settled' : 'unavailable';
+      if (settled) advance();
+      else {
+        status.value = '無法顯示已確認的出戰角色。';
+        status.className = 'quest-battle-status';
+      }
+    });
+  }
+
+  function closeMoveCutIns() {
+    if (!endCutIns) return moveCutInExit;
+    const leave = endCutIns;
+    endCutIns = undefined;
+    const exit = leave().finally(() => {
+      if (moveCutInExit === exit) moveCutInExit = undefined;
+    });
+    moveCutInExit = exit;
+    return exit;
+  }
+
+  function queueChangeCutInExit() {
+    const leave = endCutIns;
+    if (!leave) return;
+    // The original selection cards rise before DropTable plays both face_out timelines.
+    const delay = reduced() ? 0 : hud.characterChange?.animation?.openMs ?? 500;
+    void wait(delay, signal).then(() => {
+      if (!signal.aborted && isCurrent() && endCutIns === leave) void closeMoveCutIns();
+    });
   }
 
   async function presentMove(result) {
@@ -1423,7 +1628,9 @@ async function renderBattleHud(battle, sourceAvatar, {
     const shift = moveStands(standees, result.distance, signal, distanceArt);
     battle.dataset.distance = String(result.distance);
     battle.dataset.initiative = result.playerInitiative ? 'player' : 'opponent';
-    await Promise.all([shift, endCutIns?.()]);
+    const change = latest.characterChange ?? latest.lastCharacterChange;
+    const approachingChange = latest.direction === 3 || (change?.kind === 'movement' && change.turn === visibleTurn);
+    await Promise.all([shift, approachingChange ? undefined : closeMoveCutIns()]);
     if (!signal.aborted && isCurrent()) {
       hands.playerTable.hidden = true;
       hands.opponentTable.hidden = true;
@@ -1480,7 +1687,7 @@ async function renderBattleHud(battle, sourceAvatar, {
       combatView = active;
       active.view = createQuestBattleExchange(battle, {
         signal, isCurrent, assets: hud.combat, status, hands, move, combatControls, showTable, showPhase, layer, sprite, place, animate, wait,
-        cutIn: side => showMoveCutIns(battle, hud.movePresentation, encounter, signal, side, stands),
+        cutIn: side => showMoveCutIns(battle, hud.movePresentation, actors, signal, side, stands),
         startTimer: onTimeout => startMoveTimer(main, hud.time, signal, onTimeout, true),
         loadDiceArt: () => battleExchangeArt(signal), playDiceRoll: playQuestDiceRoll,
         playFeats: exchange => featPlayback.play(latest.feats?.used, exchange.turn, key),
@@ -1545,6 +1752,7 @@ async function renderBattleHud(battle, sourceAvatar, {
 
   async function presentDuelResult() {
     onBattleFinish?.();
+    void closeMoveCutIns();
     const { duel, receipt, canReturn } = latest.outcome;
     renderedState = 'terminal';
     battle.dataset.phase = 'terminal';
@@ -1561,7 +1769,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     for (const node of pieces) node.hidden = true;
     showTable('blank');
     duelResult = mountQuestDuelResult(battle, {
-      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound, reward: latest.reward, loadCards, onAlert,
+      outcome: duel, receipt, playerCardId: actors.player.cardId, signal, canReturn, onSound: onBattleSound, reward: latest.reward, loadCards, onAlert,
       onReturn: () => !signal.aborted && isCurrent() && latest.outcome?.canReturn === true && returnToMap?.(),
       runRewardAction(action, rewardRound, inventoryId) {
         if (signal.aborted || !isCurrent()) return false;
@@ -1604,7 +1812,7 @@ async function renderBattleHud(battle, sourceAvatar, {
       stopTimer = undefined;
     } else if (phase === 'move' && !stopTimer) {
       move.beginMove(visibleTurn);
-      endCutIns = showMoveCutIns(battle, hud.movePresentation, encounter, signal, undefined, stands);
+      endCutIns = showMoveCutIns(battle, hud.movePresentation, actors, signal, undefined, stands);
       stopTimer = startMoveTimer(main, hud.time, signal, move.onTimeout);
       playQuestBattleEffect('phase', signal);
     }
@@ -1625,6 +1833,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     delete battle.dataset.exchangePhase;
     delete battle.dataset.combatRole;
     delete battle.dataset.playerAttacks;
+    delete battle.dataset.characterChangePresentation;
     main.querySelector('#quest-battle-move-result')?.remove();
     battle.dataset.turn = String(turnNumber);
     battle.dataset.drawState = 'awaiting-cards';
@@ -1639,6 +1848,11 @@ async function renderBattleHud(battle, sourceAvatar, {
 
   function advance() {
     if (!latest || signal.aborted || !isCurrent()) return;
+    const presentable = battle.dataset.moveResult === 'settled';
+    changeView.update(latest, { presentable });
+    const pickerActive = presentable && latest.characterChange?.kind === 'movement';
+    const actorChanging = characterPresentation?.turn === visibleTurn && !characterPresentation.settled;
+    reserveTabs?.update(visualRoster()?.player, pickerActive || actorChanging);
     const outcome = latest.outcome;
     if (outcome) updateDuelOutcome(outcome);
     if (terminalTask) return;
@@ -1667,7 +1881,11 @@ async function renderBattleHud(battle, sourceAvatar, {
       startDraw(latest.turn);
     }
     if (!visibleTurn && Number.isInteger(latest.turn)) startDraw(latest.turn);
-    if (['uncertain', 'closed'].includes(latest.phase)) { paint(latest.phase); return; }
+    if (['uncertain', 'closed'].includes(latest.phase)) {
+      void closeMoveCutIns();
+      paint(latest.phase);
+      return;
+    }
 
     const ready = latest.ready;
     if (ready?.turn === visibleTurn && drawingTurn !== visibleTurn) {
@@ -1696,15 +1914,30 @@ async function renderBattleHud(battle, sourceAvatar, {
       } else if (battle.dataset.moveResult === 'settled') {
         const source = observedExchanges.get(`${visibleTurn}:1`);
         if (source?.boundary === 'terminal' && outcome?.duel) updateCombat(source);
-        else if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
-          status.value = '等待角色更換。';
-        } else {
-          const changed = ['player', 'opponent'].some(side => {
-            const roster = latest.roster?.[side];
-            const actual = roster?.cards[roster.activeIndex]?.cardId;
-            return Number.isInteger(actual) && actual !== encounter[`${side}CardIds`][0];
-          });
-          if (!changed) updateCombat(source);
+        else {
+          const { characterChange, lastCharacterChange } = latest;
+          const change = characterChange ?? lastCharacterChange;
+          if (change?.kind === 'movement' && change.turn === visibleTurn) {
+            if (characterChange && !characterChange.closed) {
+              if (battle.dataset.characterChangePresentation !== 'choosing') {
+                battle.dataset.characterChangePresentation = 'choosing';
+                showTable('change');
+                queueChangeCutInExit();
+              }
+              return;
+            }
+            startCharacterPresentation(visibleTurn);
+            if (characterChange || !characterPresentation.settled) return;
+          }
+          if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
+            status.value = '等待角色更換。';
+            return;
+          }
+          if (endCutIns && typeof source?.playerAttacks === 'boolean') void closeMoveCutIns()?.then(advance);
+          if (moveCutInExit) return;
+          const current = confirmedBattleActors(latest);
+          if (current && ['player', 'opponent'].every(side => current[side].cardId === actors[side].cardId
+            && current[side].index === actors[side].index)) updateCombat(source);
         }
       }
       return;
@@ -1720,10 +1953,9 @@ async function renderBattleHud(battle, sourceAvatar, {
   function receive(next) {
     if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
     latest = next.adventure.battle;
-    activeFace.updateConditions(latest.roster?.player?.cards?.[0]);
     damageScopes.sync();
     featPlayback.preload(latest.feats?.used);
-    skillPresentation.observe(latest, latest.exchange ?? (combatView && latest.exchangeHistory?.at(-1)));
+    observeCurrentSkills();
     if (battle.dataset.moveResult === 'settled') void featPlayback.play(latest.feats?.used, visibleTurn, null);
     const moveTurn = latest.ready?.turn ?? latest.turn;
     if (latest.result && Number.isInteger(moveTurn) && !observedMoves.has(moveTurn)) observedMoves.set(moveTurn, latest.result);

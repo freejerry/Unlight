@@ -12751,6 +12751,550 @@
       "width": 248,
       "height": 80,
       "sha256": "6aa54ff27f6c182f88ba237be8771fc8f53edede30f16682959b58cfcdfb9c91"
+    },
+    "quest-battle-change-panel.png": {
+      "source": "data/image/game/panel_change.swf",
+      "sourceSha256": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceDepth": 1,
+      "x": 172.0,
+      "y": 112.05,
+      "width": 416,
+      "height": 320,
+      "sha256": "d7149f273cd6b1fd66eb3379d75117f9ba9a309db757c8a1824baf41f6df8b50"
+    },
+    "quest-battle-change-choice-up.png": {
+      "source": "data/image/game/panel_change.swf",
+      "sourceSha256": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "ok_a",
+      "sourceState": "up",
+      "x": 204.0,
+      "y": 388.0,
+      "width": 160,
+      "height": 32,
+      "sha256": "3951ab3ec3339405ccfe03c45b5fda4eaafdd7a62c7331c388f9bb989b7703a6"
+    },
+    "quest-battle-change-choice-over.png": {
+      "source": "data/image/game/panel_change.swf",
+      "sourceSha256": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceInstance": "ok_a",
+      "sourceState": "over",
+      "x": 204.0,
+      "y": 388.0,
+      "width": 160,
+      "height": 32,
+      "sha256": "6b909c9fe3bd342096529ecc63cabb8a4d84ae73fe845b9111b7dda3ff2cc048"
+    },
+    "quest-battle-change-close-up.png": {
+      "source": "data/image/game/panel_change.swf",
+      "sourceSha256": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        9
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceInstance": "close",
+      "sourceState": "up",
+      "x": 563.0,
+      "y": 115.0,
+      "width": 18,
+      "height": 18,
+      "sha256": "d48dc6015614ccdcfe581a14a7c4ab4970d4e7cd27551bd47a74c76d8efd20bb"
+    },
+    "quest-battle-change-close-over.png": {
+      "source": "data/image/game/panel_change.swf",
+      "sourceSha256": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        11
+      ],
+      "bitmapIds": [
+        10
+      ],
+      "sourceInstance": "close",
+      "sourceState": "over",
+      "x": 563.0,
+      "y": 115.0,
+      "width": 18,
+      "height": 18,
+      "sha256": "bf7f934970dd6c5e2bf561c042dc9cc8ea3ad7cb76e687b71e2294c7623103b3"
+    },
+    "quest-battle-change-think-01.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 1,
+      "x": -53.25,
+      "y": -48.35,
+      "width": 107,
+      "height": 100,
+      "sha256": "339305de4cba6e35d5323c1b388e0fa7ea74ee11288165e5453f295abec25cd0"
+    },
+    "quest-battle-change-think-02.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 2,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 2,
+      "x": -61.8209884,
+      "y": -57.6070311275,
+      "width": 124,
+      "height": 119,
+      "sha256": "42fc383644da4e0366ab1bd90bdafca5cfb8e4f283928450f2336cf136db8c95"
+    },
+    "quest-battle-change-think-03.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 3,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 3,
+      "x": -68.17979427,
+      "y": -64.7610297725,
+      "width": 137,
+      "height": 133,
+      "sha256": "0806197f0c85502d6d83db5a84343180b144dc14b8b5eebd09cc0db47716f81e"
+    },
+    "quest-battle-change-think-04.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 4,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 4,
+      "x": -71.91847277250001,
+      "y": -69.36289040000001,
+      "width": 144,
+      "height": 143,
+      "sha256": "6fc63a4e4579f96e52fb59ecf5da03ec73cb9793104771f07148233fe4f099e4"
+    },
+    "quest-battle-change-think-05.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 5,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 5,
+      "x": -72.892124005,
+      "y": -71.2345365875,
+      "width": 146,
+      "height": 146,
+      "sha256": "ecc66ad58d00c02a68ac433996a4a616d463ae9101e0096b4e441cfc9e6962c6"
+    },
+    "quest-battle-change-think-06.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 6,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 6,
+      "x": -71.06682875250002,
+      "y": -70.3074842,
+      "width": 143,
+      "height": 144,
+      "sha256": "78aae20ae483b6750365f4ac335d8b121fd0071fadf8634afb49be71c08aa064"
+    },
+    "quest-battle-change-think-07.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 7,
+      "x": -66.509448525,
+      "y": -66.61412905,
+      "width": 134,
+      "height": 137,
+      "sha256": "5956f696b04be5fec512eee7a1bf196c008eff2f48937eff2d3cfcc82b6b3cfd"
+    },
+    "quest-battle-change-think-08.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 8,
+      "x": -59.396480955,
+      "y": -60.29779244499999,
+      "width": 119,
+      "height": 124,
+      "sha256": "da5164b981e6c20b1df8fd0c35f677f94c88e36ee8a07a87ff4b930e45e44c27"
+    },
+    "quest-battle-change-think-09.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 9,
+      "x": -50.0048751830855,
+      "y": -51.6045776367,
+      "width": 101,
+      "height": 107,
+      "sha256": "b3b7f4be07026430d8859ce871e8910e71b55dd9ecc222e3e5c46b243522b61e"
+    },
+    "quest-battle-change-think-10.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 10,
+      "x": -59.2562185325,
+      "y": -60.17022540000001,
+      "width": 119,
+      "height": 124,
+      "sha256": "00607a32c3a41a69898c144cf2e952cf73472838f02bd4defb68474730c8e972"
+    },
+    "quest-battle-change-think-11.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 11,
+      "x": -66.4102171775,
+      "y": -66.52903126999999,
+      "width": 133,
+      "height": 137,
+      "sha256": "ac8833be9940e741d1870eed093046b3ff44ba92d2794693491981c29a345d5e"
+    },
+    "quest-battle-change-think-12.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 12,
+      "x": -71.012075675,
+      "y": -70.26770777249999,
+      "width": 143,
+      "height": 144,
+      "sha256": "51f8828052e17b08c2e9d00c7074d8ab57238a406b67ade05cf7a3626ff6e473"
+    },
+    "quest-battle-change-think-13.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 13,
+      "x": -72.8845365875,
+      "y": -71.24212400500001,
+      "width": 146,
+      "height": 146,
+      "sha256": "3c0e9898e09044cb1192a2d12f7d39275d92b44ca0c52df1c8f8752d6e426314"
+    },
+    "quest-battle-change-think-14.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 14,
+      "x": -71.9567207,
+      "y": -69.416015625,
+      "width": 144,
+      "height": 143,
+      "sha256": "b6f01529781ee67505af9d2d61b253587b5a62da32f5253c57e7b9d504e91fea"
+    },
+    "quest-battle-change-think-15.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 15,
+      "x": -68.264180275,
+      "y": -64.85940039750001,
+      "width": 137,
+      "height": 134,
+      "sha256": "da1fa979e76a0e0efaf498b408f18ddbc8f3115dace7637fc8c5cbef1fbd2f20"
+    },
+    "quest-battle-change-think-16.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 16,
+      "x": -61.947029445,
+      "y": -57.74566836,
+      "width": 124,
+      "height": 119,
+      "sha256": "9aa070803ba5a61dba87e00dace93fe880ef46c94dc3a8c5899f43929d756f2b"
+    },
+    "quest-battle-change-think-17.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 1,
+      "x": -53.25,
+      "y": -48.35,
+      "width": 107,
+      "height": 100,
+      "sha256": "08359fe7f07be9f33e81a393e899a65b22d8f6e43533947262e5de080cfce84b"
+    },
+    "quest-battle-change-think-18.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 2,
+      "x": -61.8209884,
+      "y": -57.6070311275,
+      "width": 124,
+      "height": 119,
+      "sha256": "8d677a0a2a6a99f5ab02fc0c34ab63591cd117972f6d7bcdc57cf6ec297d4f93"
+    },
+    "quest-battle-change-think-19.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 3,
+      "x": -68.17979427,
+      "y": -64.7610297725,
+      "width": 137,
+      "height": 133,
+      "sha256": "6b1c0ed7a028e9b907a90c5caae73416252474c886e3ccd7c6b2346045fe64b9"
+    },
+    "quest-battle-change-think-20.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 4,
+      "x": -71.91847277250001,
+      "y": -69.36289040000001,
+      "width": 144,
+      "height": 143,
+      "sha256": "cfd119eb5d69f101c7b2bece8f0fee1b13142b07dce6cc199d8f11a457a71bea"
+    },
+    "quest-battle-change-think-21.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 5,
+      "x": -72.892124005,
+      "y": -71.2345365875,
+      "width": 146,
+      "height": 146,
+      "sha256": "63e198653017c1e281da459f372fee5e42503ad6d9a2aba6f45a8084e6f2a392"
+    },
+    "quest-battle-change-think-22.png": {
+      "source": "data/image/game/think.swf",
+      "sourceSha256": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+      "sourceFrame": 7,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1,
+        2
+      ],
+      "bitmapIds": [],
+      "spriteId": 4,
+      "sourceSpriteFrame": 6,
+      "x": -71.06682875250002,
+      "y": -70.3074842,
+      "width": 143,
+      "height": 144,
+      "sha256": "637305fafa8f03ba23471c716c3158fd6e81832b559226157b53613635f1216c"
+    },
+    "quest-battle-table-change-01.png": {
+      "source": "data/image/game/space.swf",
+      "sourceSha256": "8a8dcd9442e9eba116d7b2ca9a573e889975bd391107ce7e317e00063e452bf4",
+      "sourceFrame": 22,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        1
+      ],
+      "bitmapIds": [],
+      "sourceLabel": "change",
+      "sourceDepth": 1,
+      "spriteId": 191,
+      "x": 0.0,
+      "y": 314.0,
+      "width": 760,
+      "height": 22,
+      "sha256": "954f6a35f290fd39c2d6447048aef6f167634e3bb7dd65e7e57f1cedc760f6d1"
+    },
+    "quest-battle-reserve-tab-base.png": {
+      "source": "data/image/game/chara_status.swf",
+      "sourceSha256": "49737c6572cec62dc16ae5e0ad3115fe0ce870c27d259421e1d50a11ff440225",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceDepth": 1,
+      "x": 0.0,
+      "y": 0.0,
+      "width": 168,
+      "height": 32,
+      "sha256": "e4aac9995dda506c2b55f9a2ec560e780326d78f0abc50bcfe94feae359a2d8e"
+    },
+    "quest-battle-reserve-tab-dead.png": {
+      "source": "data/image/game/chara_status.swf",
+      "sourceSha256": "49737c6572cec62dc16ae5e0ad3115fe0ce870c27d259421e1d50a11ff440225",
+      "sourceFrame": 1,
+      "coordinateSpace": "stage",
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceInstance": "death",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 168,
+      "height": 32,
+      "sha256": "b52b12721508e8314b80b8e46578979d7456ed0ed30e0ae681716530fc3b50cd"
     }
   },
   "searchThumbnails": {
@@ -16343,6 +16887,17 @@
               "height": 18
             }
           ]
+        },
+        "change": {
+          "layers": [
+            {
+              "file": "quest-battle-table-change-01.png",
+              "x": 0.0,
+              "y": 314.0,
+              "width": 760,
+              "height": 22
+            }
+          ]
         }
       },
       "range": {
@@ -19139,6 +19694,347 @@
         "color": "#e0e0e0",
         "fontSize": 18,
         "letterSpacing": 2
+      },
+      "characterChange": {
+        "panel": {
+          "file": "quest-battle-change-panel.png",
+          "x": 172.0,
+          "y": 112.05,
+          "width": 416,
+          "height": 320
+        },
+        "left": {
+          "up": {
+            "file": "quest-battle-change-choice-up.png",
+            "x": 204.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "over": {
+            "file": "quest-battle-change-choice-over.png",
+            "x": 204.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "down": {
+            "file": "quest-battle-change-choice-over.png",
+            "x": 204.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "hit": [
+            204.0,
+            388.0,
+            159.95,
+            31.95
+          ]
+        },
+        "right": {
+          "up": {
+            "file": "quest-battle-change-choice-up.png",
+            "x": 396.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "over": {
+            "file": "quest-battle-change-choice-over.png",
+            "x": 396.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "down": {
+            "file": "quest-battle-change-choice-over.png",
+            "x": 396.0,
+            "y": 388.0,
+            "width": 160,
+            "height": 32
+          },
+          "hit": [
+            396.0,
+            388.0,
+            159.95,
+            31.95
+          ]
+        },
+        "close": {
+          "up": {
+            "file": "quest-battle-change-close-up.png",
+            "x": 563.0,
+            "y": 115.0,
+            "width": 18,
+            "height": 18
+          },
+          "over": {
+            "file": "quest-battle-change-close-over.png",
+            "x": 563.0,
+            "y": 115.0,
+            "width": 18,
+            "height": 18
+          },
+          "down": {
+            "file": "quest-battle-change-close-over.png",
+            "x": 563.0,
+            "y": 115.0,
+            "width": 18,
+            "height": 18
+          },
+          "hit": [
+            563.0,
+            115.0,
+            17.95,
+            17.95
+          ]
+        },
+        "animation": {
+          "openMs": 500,
+          "closeMs": 500
+        },
+        "think": {
+          "frames": [
+            {
+              "file": "quest-battle-change-think-01.png",
+              "x": -53.25,
+              "y": -48.35,
+              "width": 107,
+              "height": 100
+            },
+            {
+              "file": "quest-battle-change-think-02.png",
+              "x": -61.8209884,
+              "y": -57.6070311275,
+              "width": 124,
+              "height": 119
+            },
+            {
+              "file": "quest-battle-change-think-03.png",
+              "x": -68.17979427,
+              "y": -64.7610297725,
+              "width": 137,
+              "height": 133
+            },
+            {
+              "file": "quest-battle-change-think-04.png",
+              "x": -71.91847277250001,
+              "y": -69.36289040000001,
+              "width": 144,
+              "height": 143
+            },
+            {
+              "file": "quest-battle-change-think-05.png",
+              "x": -72.892124005,
+              "y": -71.2345365875,
+              "width": 146,
+              "height": 146
+            },
+            {
+              "file": "quest-battle-change-think-06.png",
+              "x": -71.06682875250002,
+              "y": -70.3074842,
+              "width": 143,
+              "height": 144
+            },
+            {
+              "file": "quest-battle-change-think-07.png",
+              "x": -66.509448525,
+              "y": -66.61412905,
+              "width": 134,
+              "height": 137
+            },
+            {
+              "file": "quest-battle-change-think-08.png",
+              "x": -59.396480955,
+              "y": -60.29779244499999,
+              "width": 119,
+              "height": 124
+            },
+            {
+              "file": "quest-battle-change-think-09.png",
+              "x": -50.0048751830855,
+              "y": -51.6045776367,
+              "width": 101,
+              "height": 107
+            },
+            {
+              "file": "quest-battle-change-think-10.png",
+              "x": -59.2562185325,
+              "y": -60.17022540000001,
+              "width": 119,
+              "height": 124
+            },
+            {
+              "file": "quest-battle-change-think-11.png",
+              "x": -66.4102171775,
+              "y": -66.52903126999999,
+              "width": 133,
+              "height": 137
+            },
+            {
+              "file": "quest-battle-change-think-12.png",
+              "x": -71.012075675,
+              "y": -70.26770777249999,
+              "width": 143,
+              "height": 144
+            },
+            {
+              "file": "quest-battle-change-think-13.png",
+              "x": -72.8845365875,
+              "y": -71.24212400500001,
+              "width": 146,
+              "height": 146
+            },
+            {
+              "file": "quest-battle-change-think-14.png",
+              "x": -71.9567207,
+              "y": -69.416015625,
+              "width": 144,
+              "height": 143
+            },
+            {
+              "file": "quest-battle-change-think-15.png",
+              "x": -68.264180275,
+              "y": -64.85940039750001,
+              "width": 137,
+              "height": 134
+            },
+            {
+              "file": "quest-battle-change-think-16.png",
+              "x": -61.947029445,
+              "y": -57.74566836,
+              "width": 124,
+              "height": 119
+            },
+            {
+              "file": "quest-battle-change-think-17.png",
+              "x": -53.25,
+              "y": -48.35,
+              "width": 107,
+              "height": 100
+            },
+            {
+              "file": "quest-battle-change-think-18.png",
+              "x": -61.8209884,
+              "y": -57.6070311275,
+              "width": 124,
+              "height": 119
+            },
+            {
+              "file": "quest-battle-change-think-19.png",
+              "x": -68.17979427,
+              "y": -64.7610297725,
+              "width": 137,
+              "height": 133
+            },
+            {
+              "file": "quest-battle-change-think-20.png",
+              "x": -71.91847277250001,
+              "y": -69.36289040000001,
+              "width": 144,
+              "height": 143
+            },
+            {
+              "file": "quest-battle-change-think-21.png",
+              "x": -72.892124005,
+              "y": -71.2345365875,
+              "width": 146,
+              "height": 146
+            },
+            {
+              "file": "quest-battle-change-think-22.png",
+              "x": -71.06682875250002,
+              "y": -70.3074842,
+              "width": 143,
+              "height": 144
+            }
+          ],
+          "framesPerSecond": 40.8,
+          "loopFrom": 6,
+          "fadeInMs": 500,
+          "fadeOutMs": 500,
+          "position": {
+            "playerX": [
+              288,
+              184,
+              80,
+              184
+            ],
+            "foeX": [
+              472,
+              576,
+              680,
+              576
+            ],
+            "y": 250
+          }
+        },
+        "reserveTab": {
+          "base": {
+            "file": "quest-battle-reserve-tab-base.png",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 168,
+            "height": 32
+          },
+          "dead": {
+            "file": "quest-battle-reserve-tab-dead.png",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 168,
+            "height": 32
+          },
+          "offsets": {
+            "player": [
+              0,
+              -32
+            ],
+            "foe": [
+              0,
+              240
+            ]
+          },
+          "labels": {
+            "name": [
+              8,
+              2,
+              130,
+              18
+            ],
+            "hp": [
+              138,
+              -2,
+              30,
+              25
+            ],
+            "level": [
+              14,
+              19,
+              19,
+              14
+            ],
+            "attack": [
+              61,
+              19,
+              19,
+              14
+            ],
+            "defense": [
+              100,
+              19,
+              19,
+              14
+            ],
+            "maxHp": [
+              150,
+              19,
+              19,
+              14
+            ]
+          }
+        }
       }
     },
     "opening": {

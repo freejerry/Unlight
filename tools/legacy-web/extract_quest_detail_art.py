@@ -80,6 +80,9 @@ SOURCE_DIGESTS = {
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
     "phase": "036bf094cb3399748e4da1a6d97ff25f44ccccdf0c6ecd7a58ee4ce856bcceda",
     "space": "8a8dcd9442e9eba116d7b2ca9a573e889975bd391107ce7e317e00063e452bf4",
+    "panel_change": "511414f09f03d2950aebb8aadfbee35f22f5e4592741cf85a05ccb976d51b010",
+    "think": "b324b23c2abe7567054fce28c1838b2d3c50b77700bdc5008b9d4f1e7594521b",
+    "chara_status": "49737c6572cec62dc16ae5e0ad3115fe0ce870c27d259421e1d50a11ff440225",
     "num_btl_p": "abc058c11d47d6c5c4909bf2839780490c1f3482cc180db6db0f9ad5ba4a2f35",
     "range_ch": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
     "time_base": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
@@ -120,7 +123,8 @@ BATTLE_SOURCE_DIRS = {
     **dict.fromkeys(("bg_btl00a", "bg_btl00a_far", "bg_btl00a_book", "bg_btl02a", "bg_btl03a",
                      "bg_btl07a", "bg_btl11a", "bg_btl11a_book"), "bg"),
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
-                     "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p"), "game"),
+                     "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p", "panel_change", "think",
+                     "chara_status"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
     **dict.fromkeys(("move_f_ch", "move_b_ch", "move_s_ch", "move_c_ch"), ""),
 }
@@ -828,7 +832,7 @@ def authored_primitives(source, placements, *, outline_behind_fill=False, preser
     return pieces, shapes
 
 
-def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
+def extract(asset_root, art, swfdump, move_faces=(), battle_stages=(), character_change=False):
     manifest_path = art / "sources.json"
     manifest = json.loads(manifest_path.read_text())
     if manifest["assetRevision"] != REVISION:
@@ -837,7 +841,7 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
     castle = manifest.get("battle", {}).get("stages", {}).get("0")
     castle_art = {name: layer for name, layer in manifest["layers"].items()
                   if castle and name.startswith("quest-battle-stage00-")}
-    if not move_faces and not battle_stages:
+    if not (move_faces or battle_stages or character_change):
         manifest["layers"] = {
             name: layer for name, layer in manifest["layers"].items()
             if not name.startswith(("quest-detail-", "quest-battle-"))
@@ -949,8 +953,10 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
                            sourceDepths=list(range(1, 8)))
         return dict(frame, depth=4)
 
-    def battle_art(source, filename, placements, frame=1, *, crop=None, outline_behind_fill=False, **evidence):
-        pieces, shape_ids = authored_primitives(source, placements, outline_behind_fill=outline_behind_fill)
+    def battle_art(source, filename, placements, frame=1, *, crop=None, outline_behind_fill=False,
+                   preserve_stroke_alpha=False, **evidence):
+        pieces, shape_ids = authored_primitives(source, placements, outline_behind_fill=outline_behind_fill,
+                                               preserve_stroke_alpha=preserve_stroke_alpha)
         if crop:
             x0, y0, x1, y1 = crop
             pieces = [piece for piece in pieces if piece.bounds[0] < x1 and piece.bounds[1] < y1
@@ -1046,6 +1052,81 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
         art["hit"] = [x0 / TWIPS, y0 / TWIPS, (x1 - x0) / TWIPS, (y1 - y0) / TWIPS]
         return art
 
+    def character_change_reserve():
+        source = movie("chara_status")
+        _, parts = next(timeline(source.root))
+        base, = [part for part in parts if not part.get("name")]
+        dead = source.instance("death")
+        return {"base": battle_art(source, "reserve-tab-base", [base], sourceDepth=1),
+                "dead": battle_art(source, "reserve-tab-dead", [dead], sourceInstance="death"),
+                "offsets": {"player": [0, -32], "foe": [0, 240]},
+                "labels": {"name": [8, 2, 130, 18], "hp": [138, -2, 30, 25], "level": [14, 19, 19, 14],
+                           "attack": [61, 19, 19, 14], "defense": [100, 19, 19, 14], "maxHp": [150, 19, 19, 14]}}
+
+    def character_change_art():
+        source = movie("panel_change")
+        _, placements = next(timeline(source.root))
+        (plate,) = [part for part in placements if not part.get("name")]
+        panel = battle_art(source, "change-panel", [plate], sourceDepth=1)
+        left_button = source.instance("ok_a")
+        right_button = source.instance("ok_b")
+        if left_button["idref"] != right_button["idref"]:
+            raise ValueError("Original character choice buttons use different art")
+
+        def exact_button(name, placement):
+            art = battle_button(source, name, placement)
+            (hit,) = source.state(placement, "hitTest")
+            x0, y0, x1, y1 = bounds(source.symbol(hit))
+            dx, dy = translation(hit["matrix"])
+            art["hit"] = [(x0 + dx) / TWIPS, (y0 + dy) / TWIPS, (x1 - x0) / TWIPS, (y1 - y0) / TWIPS]
+            return art
+
+        left = exact_button("change-choice", left_button)
+        left_x, left_y = translation(left_button["matrix"])
+        right_x, right_y = translation(right_button["matrix"])
+        dx, dy = (right_x - left_x) / TWIPS, (right_y - left_y) / TWIPS
+        right = {state: layer | {"x": layer["x"] + dx, "y": layer["y"] + dy}
+                 for state, layer in left.items() if state != "hit"}
+        x, y, width, height = left["hit"]
+        right["hit"] = [x + dx, y + dy, width, height]
+        close = exact_button("change-close", source.instance("close"))
+
+        source = movie("think")
+        root_frames = [parts for _, parts in timeline(source.root)]
+        (child,) = root_frames[0]
+        rotation = list(timeline(source.symbol(child)))
+        if len(root_frames) != 7 or len(rotation) != 17:
+            raise ValueError("Unexpected authored character change thinker timeline")
+        # MainTimeline stops on 7; child frame17 immediately plays frame1.
+        first_loop_index = len(root_frames) - 1
+        rotation_length = len(rotation) - 1
+        think_frames = []
+        for tick in range(first_loop_index + rotation_length):
+            root_frame = min(tick, first_loop_index)
+            child_frame = tick % rotation_length + 1
+            (part,) = root_frames[root_frame]
+            think_frames.append(battle_art(source, f"change-think-{tick + 1:02}",
+                                           [part | {"spriteFrame": child_frame}], root_frame + 1,
+                                           preserve_stroke_alpha=True,
+                                           spriteId=source.original_id(part), sourceSpriteFrame=child_frame))
+        return {"panel": panel, "left": left, "right": right, "close": close,
+                "animation": {"openMs": 500, "closeMs": 500},
+                "think": {"frames": think_frames, "framesPerSecond": QUEST_STAGE_FRAME_RATE, "loopFrom": first_loop_index,
+                          "fadeInMs": 500, "fadeOutMs": 500,
+                          "position": {"playerX": [288, 184, 80, 184], "foeX": [472, 576, 680, 576], "y": 250}},
+                "reserveTab": character_change_reserve()}
+
+    def character_change_table():
+        source = movie("space")
+        (frame, placements), = [(number, parts) for number, (label, parts) in enumerate(timeline(source.root), 1)
+                                if label == "change"]
+        (part,) = placements
+        child_frames = [parts for _, parts in timeline(source.symbol(part))]
+        if frame != 22 or source.original_id(part) != 191 or any(parts != child_frames[0] for parts in child_frames):
+            raise ValueError("Unexpected authored character change table")
+        return {"layers": [battle_art(source, "table-change-01", [part], frame, sourceLabel="change",
+                                      sourceDepth=1, spriteId=source.original_id(part))]}
+
     def move_face_art(card_ids):
         faces = {}
         for card_id in card_ids:
@@ -1071,13 +1152,17 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
                               "framesPerSecond": QUEST_STAGE_FRAME_RATE}
         return faces
 
-    if move_faces or battle_stages:
+    if move_faces or battle_stages or character_change:
         if move_faces:
             faces = manifest["battle"]["hud"]["movePresentation"]["cutIns"]
             faces.update(move_face_art(move_faces))
             faces.update({alias: faces[original] for alias, original in STAND_ALIASES.items()})
         if battle_stages:
             manifest["battle"]["stages"].update(stage_art(battle_stages))
+        if character_change:
+            hud = manifest["battle"]["hud"]
+            hud["characterChange"] = character_change_art()
+            hud["table"]["change"] = character_change_table()
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
         return
 
@@ -1230,12 +1315,14 @@ def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
         points = movie("num_btl_p")
         digits = [battle_art(points, f"combat-point-{number}", placements, number + 1)
                   for number, (_, placements) in enumerate(list(timeline(points.root))[:10])]
+        tables["change"] = character_change_table()
         return {
             "phase": {key: assets["frames"][-1] for key, assets in phase_animation.items()},
             "phaseAnimation": phase_animation,
             "phaseSound": "/public/sound/se/ulse12.mp3",
             "turn": turns,
             "table": tables,
+            "characterChange": character_change_art(),
             "range": ranges,
             "time": {
                 "base": time_base, "durationMs": 60000,
@@ -1398,5 +1485,7 @@ if __name__ == "__main__":
                         help="refresh only this cut-in in an existing output (repeatable)")
     parser.add_argument("--battle-stage", action="append", choices=("2", "3", "7", "11"),
                         help="refresh only this battle stage in an existing output (repeatable)")
+    parser.add_argument("--character-change", action="store_true",
+                        help="refresh only the source character change scene artwork")
     args = parser.parse_args()
-    extract(args.asset_root, args.art_dir, args.swfdump, args.move_face, args.battle_stage)
+    extract(args.asset_root, args.art_dir, args.swfdump, args.move_face, args.battle_stage, args.character_change)

@@ -5,7 +5,7 @@ import { getPreferences } from './preferences.js';
 const art = new URL('./quest-art/', import.meta.url);
 const directions = [
   ['back', '後退一格', 1], ['stay', '原地待機', 0],
-  ['change', '更換角色', null], ['forward', '前進一格', -1], ['done', '完成', null],
+  ['change', '更換角色', 3], ['forward', '前進一格', -1], ['done', '完成', null],
 ];
 const moveMs = 200 / 1.7;
 const sweepEase = 'linear(0, 0.35158, 0.57955, 0.72737, 0.82322, 0.88537, 0.92567, 0.95181, 0.96875, 0.97974, 0.98686, 0.99148, 0.99448, 0.99642, 0.99768, 0.99849, 1)';
@@ -233,6 +233,7 @@ export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands,
     if (error?.kind === 'quest-battle-uncertain') return combat ? '無法確認攻防操作。' : '無法確認移動操作。';
     if (error?.kind === 'quest-card-rejected') return '伺服器未接受這張牌的操作。';
     if (error?.kind === 'quest-direction-rejected') return '伺服器未接受這個移動方向。';
+    if (error?.kind === 'quest-character-unavailable') return '目前無法更換角色。';
     return '';
   }
 
@@ -296,11 +297,11 @@ export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands,
     button.dataset[combatButton ? 'combatCommand' : 'moveCommand'] = key;
     button.setAttribute('aria-label', name);
     position(button, ox + x, oy + y, width, height);
-    for (const [state, source] of [['up', up], ['over', over], ['down', down], ['disabled', key === 'change' ? null : disabled]]) {
+    for (const [state, source] of [['up', up], ['over', over], ['down', down], ['disabled', disabled]]) {
       skin(button, source, art, `quest-battle-art-${state}`, source?.x - x, source?.y - y);
     }
-    if (key !== 'change') button.addEventListener('click', () => {
-      if (button.hidden) return;
+    button.addEventListener('click', () => {
+      if (button.hidden || button.disabled) return;
       if (combatButton !== combat) return;
       if (key === 'done') return send('commit', undefined, button);
       return send('direction', value, button);
@@ -394,7 +395,7 @@ export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands,
   function updateControls() {
     if (!snapshot) return;
     const enabled = canSend();
-    const { direction, phase, operation, moveSubmitted } = snapshot;
+    const { direction, phase, operation, moveSubmitted, canRequestCharacterChange } = snapshot;
     battle.dataset.operation = operation ?? localAction ?? '';
     battle.dataset.direction = Number.isInteger(direction) ? String(direction) : '';
     const active = combat ? selectable() : phase === 'move' || phase === 'committing';
@@ -404,7 +405,8 @@ export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands,
       const selected = value !== null && value === direction;
       button.hidden = selected || (key === 'done' && (moveSubmitted || ['settling', 'moved'].includes(phase)));
       if (value !== null) button.setAttribute('aria-pressed', String(value === direction));
-      button.setAttribute('aria-disabled', String(combat || !enabled || key === 'change'));
+      if (key === 'change') button.disabled = canRequestCharacterChange !== true;
+      button.setAttribute('aria-disabled', String(combat || !enabled || button.disabled));
     }
     if (combatDone) {
       const ownDrop = combatTurn() && ['attack', 'defense', 'committing'].includes(snapshot.exchange.phase);
