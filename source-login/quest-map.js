@@ -525,7 +525,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
       if (layers?.length && encounter.stage === firstLand.stage) {
         mountingBattle = true;
         void mountQuestBattleEntry(view, get('.quest-map-board'), {
-          encounter, layers, timing: battleAssets.transition, signal,
+          encounter, layers, assets: battleAssets, signal, scene, loadCards,
           isCurrent: () => current().adventure?.encounter === encounter && current().adventure.state === 'encounter',
           onEncounter: stage => onEncounter?.({
             stage, isBoss: definition.kind === 2,

@@ -1208,6 +1208,7 @@ function questSceneAdventureSnapshot(current) {
     inventoryId, questId, deckIndex, state: current.state, slot: current.slot,
     progress: current.run.progress, encounter: current.encounter ?? null, finish: current.finish ?? null,
     emptyTerrain: current.emptyTerrain === true, fixedGemTreasure: current.fixedGemTreasure ?? null,
+    battle: current.state === 'encounter' ? current.battle.sceneSnapshot() : null,
   });
 }
 
@@ -1265,7 +1266,7 @@ function questRoster(cardIds, damage) {
   };
 }
 
-function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement) {
+function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange) {
   let phase = 'encounter';
   let turn = null;
   let startDistance = null;
@@ -1301,8 +1302,22 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   let readyParts = {};
   let readyStep = 0;
   let pending = null;
+  let opponentMoveCount = null;
+  let moveStartedAt = null;
   let moveDeadline;
   let settlementTimer;
+  let publishedPhase = phase;
+  let publishedTurn = turn;
+  let publishedOpponentMoveCount = opponentMoveCount;
+
+  function publishBattlePhase() {
+    if (!onStateChange || (phase === publishedPhase && turn === publishedTurn
+        && opponentMoveCount === publishedOpponentMoveCount)) return;
+    publishedPhase = phase;
+    publishedTurn = turn;
+    publishedOpponentMoveCount = opponentMoveCount;
+    onStateChange();
+  }
 
   async function loadStartingHp() {
     const ids = new Set(roster.player.cards.map((card) => card.cardId));
@@ -1355,10 +1370,12 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   function uncertain() {
     if (phase === 'closed') return;
     clearTimeout(settlementTimer);
+    opponentMoveCount = null;
     if (phase === 'moved' && exchange && exchange.phase !== 'complete' && exchange.phase !== 'terminal') {
       exchange.phase = 'uncertain';
     } else phase = 'uncertain';
     pending?.reject(new SessionError('quest-battle-uncertain'));
+    publishBattlePhase();
   }
 
   function receiveReady(reply) {
@@ -1387,7 +1404,9 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         break;
       case QUEST_MOVE_PHASE_START_REPLY:
         readQuestMovePhaseReply(reply);
+        moveStartedAt = performance.now();
         ready = readyParts;
+        if (onStateChange && ready.turn === 1) opponentMoveCount = 0;
         // Original SC44 then SC45 append to the same hand, after any survivors.
         hand ??= [];
         hand.push(...ready.action.cards, ...ready.event.cards.map((card) => ({ ...card, event: true })));
@@ -1398,7 +1417,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         direction = null;
         exchange = null;
         clearTimeout(settlementTimer);
-        moveDeadline = performance.now() + QUEST_MOVE_WAIT + TIMEOUT;
+        moveDeadline = moveStartedAt + QUEST_MOVE_WAIT + TIMEOUT;
         phase = 'move';
         completeCharacterChange();
         confirmActiveCharacters();
@@ -1432,11 +1451,26 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     return { fields, reply, source, destination, index, echoIndex: combat ? 0 : index, card, stage };
   }
 
-  function receiveCard(reply) {
+  function opponentHandCount() {
+    return opponentMoveCount === null ? null
+      : ready.action.opponentDrawCount + ready.event.opponentDrawCount - opponentMoveCount;
+  }
+
+  function receiveMoveCard(reply) {
+    if (opponentMoveCount === null || (phase !== 'move' && phase !== 'committing')) return receiveCard(reply);
+    const update = readQuestMoveCardReply(reply);
+    if (update.player) return receiveCard(reply, update);
+    if (update.index < 0) return; // Original failed transfer sentinel.
+    const adding = reply.command === QUEST_MOVE_CARD_ADD_REPLY;
+    if (update.index >= (adding ? opponentHandCount() : opponentMoveCount)) throw new SessionError('protocol');
+    opponentMoveCount += adding ? 1 : -1;
+  }
+
+  function receiveCard(reply, moveUpdate) {
     const expected = pending?.cardTransfer;
     const stage = exchange?.phase ?? phase;
     if (expected?.reply !== reply.command || pending.answered || expected.stage !== stage) return;
-    const update = stage === 'move' ? readQuestMoveCardReply(reply) : readQuestBattleCardReply(reply);
+    const update = moveUpdate ?? (stage === 'move' ? readQuestMoveCardReply(reply) : readQuestBattleCardReply(reply));
     if (!update.player) return;
     if (update.index === -1) {
       pending.answered = true;
@@ -1870,7 +1904,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         }
         case QUEST_MOVE_CARD_ADD_REPLY:
         case QUEST_MOVE_CARD_REMOVE_REPLY:
-          receiveCard(reply);
+          receiveMoveCard(reply);
           break;
         case QUEST_MOVE_PHASE_FINISH_REPLY:
           if (phase !== 'move' && phase !== 'committing') throw new SessionError('protocol');
@@ -1888,6 +1922,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           result = readQuestMoveResultReply(reply);
           consumePlayedCards(result.playerCards);
           moveTable.length = 0;
+          opponentMoveCount = null;
           clearTimeout(settlementTimer);
           phase = 'moved';
           openExchange(1);
@@ -1906,6 +1941,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
     } catch {
       uncertain();
+    } finally {
+      publishBattlePhase();
     }
   }
   let unsubscribe = socket.observe(replies, receiveReply);
@@ -1959,8 +1996,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       try {
         socket.send(command, cardTransfer?.fields ?? fields);
         sent = true;
-        if (kind === 'ready') phase = 'preparing';
-        else if (kind === 'commit') phase = 'committing';
+        if (kind === 'ready') {
+          phase = 'preparing';
+          publishBattlePhase();
+        } else if (kind === 'commit') phase = 'committing';
         else if (kind === 'battle-commit') exchange.phase = 'committing';
         else if (choosingCharacter) characterChange.requestedIndex = character.index;
         // A commit waits for both entrants or the source phase timer.
@@ -1995,6 +2034,17 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     get settlement() { return structuredClone(settlementSnapshot()); },
     get nextLands() { return nextLands(); },
     resume() { unsubscribe = socket.observe(replies, receiveReply); },
+    sceneSnapshot() {
+      const freezeCards = (cards) => Object.freeze(cards.map(({ id, up }) => Object.freeze({ id, up })));
+      const freezeRefill = ({ cards, opponentDrawCount }) => Object.freeze({ cards: freezeCards(cards), opponentDrawCount });
+      return Object.freeze({
+        phase, turn, startDistance: startDistance ?? encounter.duel.distance, moveStartedAt,
+        moveDurationMs: QUEST_MOVE_WAIT, opponentHandCount: opponentHandCount(), opponentMoveCount,
+        ready: ready && Object.freeze({ turn: ready.turn, action: freezeRefill(ready.action), event: freezeRefill(ready.event) }),
+        actionHand: hand && freezeCards(hand.filter((card) => !card.event)),
+        eventHand: hand && freezeCards(hand.filter((card) => card.event)),
+      });
+    },
     snapshot() {
       const choices = characterChoices();
       return structuredClone({
@@ -2502,7 +2552,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             if (initialData) publishAvatar();
             publishQuestScene(scene);
             return settlement;
-          });
+          }, () => publishQuestScene(scene));
         }, {
           firstLand, emptyTerrain: firstLand.emptyTerrain, fixedGemTreasure: firstLand.fixedGemTreasure,
           onArrival() {
@@ -2552,6 +2602,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         throw error;
       }
     });
+  }
+
+  async function readyQuestSceneBattle(scene, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open') throw new SessionError('network');
+    const { adventure } = scene;
+    if (adventure?.state !== 'encounter') throw new SessionError('quest-battle-unavailable');
+    await runQuestSceneOperation(scene, 'battle-ready', signal, async (socket, questSignal) => {
+      await adventure.battle.ready(questSignal);
+      questSignal.throwIfAborted();
+      socket.assertOpen();
+      if (scene.snapshot.adventure.battle.phase === 'uncertain') throw new SessionError('quest-battle-uncertain');
+    });
+    return scene.snapshot.adventure.battle;
   }
 
   function scheduleQuestDiscovery(scene) {
@@ -2951,6 +3015,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             selectDeck: (delta, { signal } = {}) => selectQuestSceneDeck(scene, delta, signal),
             start: (inventoryId, { signal } = {}) => startQuestScene(scene, inventoryId, signal),
             enterLand: (slot, { signal } = {}) => enterQuestSceneLand(scene, slot, signal),
+            readyBattle: ({ signal } = {}) => readyQuestSceneBattle(scene, signal),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then(async (reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');

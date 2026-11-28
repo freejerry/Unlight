@@ -117,6 +117,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 用不同的全新隔離測試角色加 `--quest-start-fault start` 或 `--quest-start-fault land` 重跑，以暫緩實際 Ruby 回覆驗證結果不明的狀態。首格案例放行 `SC128` 和 `SC37`，保留棋子的權威座標，缺少 `SC40` 時不會切到對戰畫面。[原版完整步驟和封包](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/README.md) · [新版腳本](../../../tools/legacy-web/check_source_lobby.py)
 
+### 重跑首戰開場、抽牌與首次移動畫面
+
+上一節的一般測試會從首格繼續進入戰鬥。完成開場後只發一次無參數 Quest `CS22`。測試暫緩 Ruby 的真 `SC46`，確認 Draw 已顯示回合，手牌與計時尚未開始。放行後，用實際 `SC44–45` 的 ID、方向與張數核對渲染，並以遮蔽的 `SC61–62` 核對 CPU 手中和桌上的牌背。另驗生命、60 秒畫面計時、階段音、發牌聲和戰鬥 BGM。
+
+以另一位全新隔離角色加 `--quest-start-fault ready`。保留 `SC43–45`，暫緩 `SC46` 至結果無法確認。之後放行同一份 Ruby 真回覆，檢查仍維持該狀態、未重送 Ready，手牌及計時保持空白。正常與遺失兩例都核對 AP、牌組鎖和同一條 Quest。[原版實跑及封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/README.md) · [自動驗收](../../../tools/legacy-web/check_source_lobby.py)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

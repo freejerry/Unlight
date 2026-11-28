@@ -117,8 +117,8 @@
 
 ### 後續驗收
 
-1. 補首戰開場、人物、牌面、HP 與控制。以原版開場完成後的自動 `CS22` 為節點驗抽牌與首回合。補其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版開場 Ready](../../../app/client/src/view/QuestView.as#L875) · [原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
-2. 從首格已確定的對戰狀態接上實際移動、攻防及換角，沿用同一 Quest、已鎖牌組及 Ruby 的實際遭遇資料。[Ruby 首格](../../../app/server/src/controller/quest_controller.rb#L117)
+1. 從首個已確認的移動階段接上方向、己方卡片的選取／旋轉／放置／收回、確認及超時。逐項核對鼠標、音效、亮起條件、SC60–62 己方回覆、SC47–48 揭露及距離結果。使用原 Quest、已鎖牌組與實際發牌結果。[原版移動處理](../../../app/client/src/view/scene/game/DuelTable.as#L520) · [Ruby 首格](../../../app/server/src/controller/quest_controller.rb#L117)
+2. 接續攻防、換角與其他回合。針對單卡與多卡分開驗證。補其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 接續局結果及任務結算，按持有 ID 驗證 `SC24`。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
 4. 首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。
 5. 測試延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。依隔離 Ruby 的 SQLite 查核持久化結果，測試紀錄只保存非敏感資料。早期原版、共享傳輸和暫停分支各自有測例，固定舞台狀態依本分支實跑結果更新。
@@ -132,9 +132,24 @@
 | 首格 | 滑入 `(225,125)` 顯示可走的高原狀態。點下送 `CS16(持有1,牌組1,格1)`。原版順序為 `SC128(1)`、`SC37`、`SC40`，並收到原版 `SC36`。對戰由實際收到的舞台 11、己方卡 21、對手卡 1004 與傷勢驅動。開始與首次踏入的 AP 都維持 4/5，庫存仍在同一筆，牌組仍鎖定。真正的格子進度在結算後才更新。[原版滑入](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/06-first-land-hover.png) · [封包記錄](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/wire.json) |
 | 戰鬥入場 | `SC128` 移動棋子，`SC37` 安排入場，`SC40` 確認配牌資料。原版用離場舞台截圖與 Perlin 雜訊逐幀擦除，露出戰鬥舞台，任務 BGM 兩秒淡出並由原版 `bgm000.mp3` 接續。[轉場原始碼](../../../app/client/src/view/scene/common/Transition.as) · [Quest 入場](../../../app/client/src/view/QuestView.as#L758) · [原版戰鬥初始背景](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/07-original-first-battle.png) |
 
-- 原版 Pawn 位移由 `0.9/SPEED` 計為約 529 ms。入場在 `SC37` 後等 1,100 ms，燃燒依 40.8 FPS 更新 34 次閾值。Ruffle 軟體合成的取樣較慢，另保留原版自動 `CS22` 與 `SC43–46` 抽牌證據。這一輪新版的終點是經過轉場的首戰背景，Ready 與回合流程接續驗收。[原版時序和雙向封包](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/README.md) · [原版自動抽牌](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/ready/03-auto-ready-draw-original.png)
+- 原版 Pawn 位移由 `0.9/SPEED` 計為約 529 ms。入場在 `SC37` 後等 1,100 ms，燃燒依 40.8 FPS 更新 34 次閾值。Ruffle 軟體合成會延長實際擷取間隔，40.8 FPS 是此動畫的原始計時參數。[原版時序和雙向封包](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/README.md) · [原版自動抽牌](/workspace/shared/unlight-web-port/flash-parity/quest-start-original/ready/03-auto-ready-draw-original.png)
 - 五張起始卡用原始 SWF 的透明插畫、框架、原版槽色星號、角色資料表、歷史 Mincho 與 Bradley 字型合成。另有 1,084 份來源插畫可由同一鏡像經 SHA-256 核驗解碼。鏡像缺少 40 個插畫引用，另有 102 筆母表卡片缺少其指定疊層幀，會保留可查閱的卡名及 ID。文字在瀏覽器的光柵化仍與 Flash 有細微差異。[卡面素材清單](../../../source-login/card-art/index.json) · [原始插畫清單](../../../source-login/card-art/illustration-sources.json)
-- 新版燃燒依來源時鐘與閾值，沿用五層 Perlin 雜訊參數逐步揭露原始戰鬥底圖。遮罩以半解析度採樣，亂數圖樣不會逐像素重現 Flash 的取樣。完整開場人物與動態戰鬥 HUD 待接入。[來源動畫與地形素材](../../../source-login/quest-art/sources.json) · [新版轉場](../../../source-login/quest-battle-entry.js)
+- 新版燃燒依來源時鐘與閾值，沿用五層 Perlin 雜訊參數逐步揭露原始戰鬥底圖。遮罩以半解析度採樣，亂數圖樣與 Flash 的取樣有差異。[來源動畫與地形素材](../../../source-login/quest-art/sources.json) · [新版轉場](../../../source-login/quest-battle-entry.js)
+
+### 首戰開場、抽牌與移動階段
+
+| 階段 | 原版規格與觀察 |
+| --- | --- |
+| 開場 | `QuestView.bring()` 依序等待開場動畫、主副名稱與角色卡，收起開場圖層，再顯示牌桌、立繪、生命與階段列，最後呼叫 `startOk`。落日大蝙蝠的 `SC37` 兩個開場對話欄為空。中距離立繪原版站在 x184、576，地面定位 y416。玩家卡 21 為古魯瓦爾多，生命 7/7。對手卡 1004 為蝙蝠，生命 1/1。左側開場虛擬人物及右下角對戰虛擬人物使用同一份已裝備部件。[開場原始碼](../../../app/client/src/view/QuestView.as#L862) · [虛擬人物座標](../../../app/client/src/view/scene/game/DuelAvatars.as#L72) |
+| HUD | 原版聊天底板為 `(168,560)` 起 336×88，All／Chat／Game 沿用來源標籤。五個手牌槽由 `(175,470)` 起每 60 px 一個，實際手牌在其上。技能列起於 `(168,439)`，古魯瓦爾多依原版技能母表顯示「猛擊」和攻擊圖示，蝙蝠沒有技能。開場虛擬人物以自身原點翻面，戰鬥右下角以 `(590,473)` 為原點。聊天底板、技能列與 Bonus 在此段呈現初始畫面，互動和後續狀態另驗。[聊天與標籤](../../../app/client/src/view/scene/game/ChatArea.as#L88) · [技能列](../../../app/client/src/view/scene/game/FeatInfo.as#L590) · [素材與座標](../../../source-login/quest-art/sources.json) |
+| Ready 與抽牌 | 該場原版只送一次無參數的 Quest `CS22`，同一連線收到 `SC43` 回合 1、`SC44` 行動卡、`SC45` 事件卡及 `SC46` 移動開始。記錄中的己方抽到五張行動卡與一張事件卡。牌 ID 與正反方向依回覆及遮罩，依原版順序排入手牌。對手回覆只含兩類張數。新一輪採用當次 Ruby 的實際發牌結果。[原版初始抽牌](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/03-first-draw-original.png) · [抽牌解碼](../../../app/client/src/net/server/QuestServer.as#L1035) · [Ruby 發牌](../../../app/server/src/controller/duel_controller.rb#L452) |
+| 第一個移動畫面 | 原版先完成 Draw，再顯示紫色 MOVE PHASE、原圖方向、確認鈕及綠色雙向計時帶。Flash 畫面綁定 `DuelTable` 的 60 秒。Ruby 的移動等待另為 120 秒，實際階段以伺服器回覆為準。該次原版未點任何牌，CPU 已自行送入兩個匿名牌背，`SC61` 遮住了牌 ID。牌背隨實際匿名通知更新。[原版移動畫面](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/05-first-move-idle.png) · [Flash 計時](../../../app/client/src/view/scene/game/DuelTable.as#L34) · [Ruby 等待](../../../app/server/src/constants/constants.rb#L41) |
+| 聲音 | 隔離原版混音比對出兩次階段聲 `ulse12.mp3` 及原版發牌聲 `ulse06.mp3`，舞台 BGM 持續使用 `bgm000.mp3`。每張牌對應原始發牌延遲。原版語音設定另受素材開關與稀有度條件控制。[階段音來源](../../../app/client/src/view/scene/game/PhaseArea.as#L201) · [發牌聲來源](../../../app/client/src/view/scene/game/BaseHand.as#L830) |
+
+- 新版從正式任務入口實跑。原版與新版皆使用舞台 11、起始牌 21、敵方卡 1004、距離 2。開場完成後只送一次 Ready。各自依 Ruby 發出的牌顯示本方牌面與對手張數，計時與階段音透過瀏覽器量測。生命、AP 4/5、同一任務和牌組鎖均經核對。[原版完整紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-opening-original/README.md) · [新版最終驗收封包](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/qa-final-first-move-wire.json)
+- 測試保留原版 `SC43–45` 並暫緩 `SC46`。新版先顯示 Draw 和回合一。收到原版回覆後才補牌及顯示 Move。另一場在回覆逾時後才放行相同的 Ruby 訊息，保持結果未確認，手牌和計時維持空白。同一連線只送一次 Ready。[暫緩 Draw](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/qa-03-draw-awaiting-sc46.png) · [結果未確認](/workspace/shared/unlight-web-port/flash-parity/quest-opening-live/qa-05-ready-reply-uncertain.png) · [重跑](qa.md#重跑首戰開場抽牌與首次移動畫面)
+
+目前移動畫面及牌面可檢查，方向、旋轉、放置、收回、確認和超時處置仍在下一段。範圍涵蓋有來源立繪的落日大蝙蝠首戰。右下虛擬人物的底座、角色特寫、回合數字顏色、卡面經驗條、計時警示動畫、聊天操作、其他距離與非空開場對白仍待補驗。Flash 和瀏覽器的文字光柵化也有細微差異。並排保留兩次實跑各自的亂數牌序與取樣時點。[舞台與 HUD 來源](../../../source-login/quest-art/sources.json) · [立繪與牌面來源](../../../source-login/battle-card-art/index.json)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

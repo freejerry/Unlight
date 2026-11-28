@@ -1,0 +1,538 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "stands": {
+    "21": {
+      "shadow": {
+        "file": "stand-21-shadow.png",
+        "x": -77,
+        "y": -3,
+        "width": 130,
+        "height": 46
+      },
+      "stand": {
+        "file": "stand-21-stand.png",
+        "x": -77,
+        "y": -204,
+        "width": 130,
+        "height": 209
+      },
+      "opening": {
+        "file": "stand-21-opening.png",
+        "x": -170,
+        "y": -442,
+        "width": 315,
+        "height": 442,
+        "origin": [
+          380.0,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            576.0
+          ],
+          [
+            0.9998932,
+            1.0,
+            -534.7,
+            576.0
+          ],
+          [
+            0.99990845,
+            1.0,
+            -475.7,
+            576.0
+          ],
+          [
+            0.9999237,
+            1.0,
+            -422.9,
+            576.0
+          ],
+          [
+            0.99993896,
+            1.0,
+            -376.25,
+            576.0
+          ],
+          [
+            0.9999542,
+            1.0,
+            -335.85,
+            576.0
+          ],
+          [
+            0.9999695,
+            1.0,
+            -301.65,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -273.65,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -251.9,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -236.45,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -227.1,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            0.99998474,
+            1.0,
+            -265.8,
+            576.0
+          ],
+          [
+            0.9999695,
+            1.0,
+            -307.55,
+            576.0
+          ],
+          [
+            0.9999542,
+            1.0,
+            -349.35,
+            576.0
+          ],
+          [
+            0.99993896,
+            1.0,
+            -391.1,
+            576.0
+          ],
+          [
+            0.9999237,
+            1.0,
+            -432.9,
+            576.0
+          ],
+          [
+            0.99990845,
+            1.0,
+            -474.65,
+            576.0
+          ],
+          [
+            0.9998932,
+            1.0,
+            -516.45,
+            576.0
+          ],
+          [
+            0.9998779,
+            1.0,
+            -558.2,
+            576.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            576.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    },
+    "1004": {
+      "shadow": {
+        "file": "stand-1004-shadow.png",
+        "x": -54,
+        "y": -9,
+        "width": 109,
+        "height": 21
+      },
+      "stand": {
+        "file": "stand-1004-stand.png",
+        "x": -60,
+        "y": -263,
+        "width": 120,
+        "height": 183
+      },
+      "opening": {
+        "file": "stand-1004-opening.png",
+        "x": -126,
+        "y": -510,
+        "width": 252,
+        "height": 302,
+        "origin": [
+          380.0,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.99980164,
+            0.99983215,
+            -600.0,
+            576.0
+          ],
+          [
+            0.99983215,
+            0.9998627,
+            -534.75,
+            576.0
+          ],
+          [
+            0.9998627,
+            0.9998932,
+            -475.75,
+            576.0
+          ],
+          [
+            0.9998932,
+            0.99990845,
+            -422.9,
+            576.0
+          ],
+          [
+            0.9999237,
+            0.99993896,
+            -376.25,
+            576.0
+          ],
+          [
+            0.99993896,
+            0.9999542,
+            -335.9,
+            576.0
+          ],
+          [
+            0.9999542,
+            0.9999695,
+            -301.75,
+            576.0
+          ],
+          [
+            0.9999695,
+            0.99998474,
+            -273.7,
+            576.0
+          ],
+          [
+            0.99998474,
+            0.99998474,
+            -251.95,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -236.45,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -227.1,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.0,
+            576.0
+          ],
+          [
+            0.99998474,
+            0.99998474,
+            -265.8,
+            576.0
+          ],
+          [
+            0.9999542,
+            0.9999695,
+            -307.55,
+            576.0
+          ],
+          [
+            0.99993896,
+            0.99993896,
+            -349.35,
+            576.0
+          ],
+          [
+            0.99990845,
+            0.9999237,
+            -391.1,
+            576.0
+          ],
+          [
+            0.9998932,
+            0.99990845,
+            -432.9,
+            576.0
+          ],
+          [
+            0.9998627,
+            0.9998932,
+            -474.65,
+            576.0
+          ],
+          [
+            0.9998474,
+            0.9998627,
+            -516.45,
+            576.0
+          ],
+          [
+            0.9998169,
+            0.9998474,
+            -558.2,
+            576.0
+          ],
+          [
+            0.99980164,
+            0.99983215,
+            -600.0,
+            576.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    }
+  },
+  "actionFrames": {
+    "front": {
+      "file": "action-front.png",
+      "width": 56,
+      "height": 86
+    },
+    "back": {
+      "file": "action-back.png",
+      "width": 56,
+      "height": 86
+    },
+    "back-large": {
+      "file": "action-back-large.png",
+      "width": 172,
+      "height": 242
+    },
+    "back-locked": {
+      "file": "action-back-locked.png",
+      "width": 56,
+      "height": 86
+    },
+    "back-large-locked": {
+      "file": "action-back-large-locked.png",
+      "width": 172,
+      "height": 242
+    }
+  },
+  "actionValues": {
+    "1": {
+      "file": "value-1.png",
+      "columns": 4,
+      "frameCount": 20
+    },
+    "2": {
+      "file": "value-2.png",
+      "columns": 4,
+      "frameCount": 20
+    },
+    "3": {
+      "file": "value-3.png",
+      "columns": 4,
+      "frameCount": 20
+    },
+    "4": {
+      "file": "value-4.png",
+      "columns": 4,
+      "frameCount": 20
+    },
+    "5": {
+      "file": "value-5.png",
+      "columns": 4,
+      "frameCount": 20
+    },
+    "6": {
+      "file": "value-6.png",
+      "columns": 4,
+      "frameCount": 5
+    }
+  },
+  "eventValues": {
+    "card_ev_100.swf": {
+      "file": "card_ev_100.png",
+      "frame": 1
+    },
+    "card_ev_110.swf": {
+      "file": "card_ev_110.png",
+      "frame": 1
+    },
+    "card_ev_130.swf": {
+      "file": "card_ev_130.png",
+      "frame": 1
+    }
+  },
+  "provenance": {
+    "stand-21-shadow.png": {
+      "source": "public/image/standchara/standchara03.swf",
+      "sourceSha256": "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f",
+      "sha256": "07ec27f0701ee0b28045372228f6932ac9d3480418aff9f11ac7c20ba866be39",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-21-stand.png": {
+      "source": "public/image/standchara/standchara03.swf",
+      "sourceSha256": "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f",
+      "sha256": "03d1671bc27fc31cfd233d03214c5c01a2787bcb4fb27f977f512858a8507b19",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-21-opening.png": {
+      "source": "public/image/standchara/standchara03.swf",
+      "sourceSha256": "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f",
+      "sha256": "e8b57bbcbb41b2a0fcf214f22e648ca842894edc7652527c98f3d8e7cfdfbed6",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-1004-shadow.png": {
+      "source": "public/image/standchara/standmon002_00.swf",
+      "sourceSha256": "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e",
+      "sha256": "ab799ea7e90159d9a6e7faf9cf6bb7e68eb02813e84229eac197d84c4962e70e",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-1004-stand.png": {
+      "source": "public/image/standchara/standmon002_00.swf",
+      "sourceSha256": "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e",
+      "sha256": "9e4c288bca1a40696e315c59c7f742268a3af570c1e186c41992d4a6df0ff998",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-1004-opening.png": {
+      "source": "public/image/standchara/standmon002_00.swf",
+      "sourceSha256": "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e",
+      "sha256": "64fee9761d365ec62583bcfece768d2d2bd8aa9407adb3b89932a9e4921ca1d0",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "action-front.png": {
+      "source": "data/image/game/acframe.swf",
+      "sourceSha256": "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9",
+      "sha256": "c2412cf73252cd1da6dd2435dec218cda352040ff78f6bf6e0e7596764fd5c4b",
+      "sourceFrame": 1
+    },
+    "action-back.png": {
+      "source": "data/image/game/acframe.swf",
+      "sourceSha256": "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9",
+      "sha256": "51866eb411b514edf0ed0c3a6f637fa539f41abef6eb4be0be12399ebb9cb7c1",
+      "sourceFrame": 2
+    },
+    "action-back-large.png": {
+      "source": "data/image/game/acframe.swf",
+      "sourceSha256": "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9",
+      "sha256": "c84e13c9a778b50cb8b8f832b9660e8ecace909412ea7cfe048362c4a22f3003",
+      "sourceFrame": 3
+    },
+    "action-back-locked.png": {
+      "source": "data/image/game/acframe.swf",
+      "sourceSha256": "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9",
+      "sha256": "ef9ad22d65f692937533003bb74de2c657b4a8a853952e96a2190dd763b80843",
+      "sourceFrame": 4
+    },
+    "action-back-large-locked.png": {
+      "source": "data/image/game/acframe.swf",
+      "sourceSha256": "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9",
+      "sha256": "d6eddd2a59ef5a82541ebcd1948e17a564064b6068bab241a44b8711d81be96e",
+      "sourceFrame": 5
+    },
+    "value-1.png": {
+      "source": "data/image/game/acswd.swf",
+      "sourceSha256": "5ff0efceca5172942e75086d7e9afe8fadc93f1e8c6737cfe8c2c4c17fcc558a",
+      "sha256": "eb1698a3084bbe9eb74312eaf18116bc7a69a0a105a90f74a17ad26c8a7a07a7",
+      "sourceFrames": 20
+    },
+    "value-2.png": {
+      "source": "data/image/game/acbow.swf",
+      "sourceSha256": "e1067ace938650908ed1928d25b1f221c822570a077f8fd2bf28e2e3df1a6f1c",
+      "sha256": "1435b1f18a09556256a376244291aeee2a1f879becd22951e57c196982549d9a",
+      "sourceFrames": 20
+    },
+    "value-3.png": {
+      "source": "data/image/game/acdef.swf",
+      "sourceSha256": "781c11f438fce6cda971ce20a304dff87039d5a8fe412da37a7210a84620d8f1",
+      "sha256": "66317982abf7d6918e303dd668b6f83c63c8c6a89c9b8aa940fc1898cadc94d6",
+      "sourceFrames": 20
+    },
+    "value-4.png": {
+      "source": "data/image/game/acmove.swf",
+      "sourceSha256": "932720486c28fca32cec2cc75c17f96c40e2de89b10b24296353c532d54674a3",
+      "sha256": "4bde876109bd2f74407a00145ec6a7439d3bcd93ede1bf3e47061c004c571c9d",
+      "sourceFrames": 20
+    },
+    "value-5.png": {
+      "source": "data/image/game/acstar.swf",
+      "sourceSha256": "7a4ee5ce1752ab436e6e46c17528d6b8ec240c991c2ccb57e49b619e99fa2a89",
+      "sha256": "ba1038612ca2f19284a097e55eed558c829e65b68f3d395d88be9526eb3e4a61",
+      "sourceFrames": 20
+    },
+    "value-6.png": {
+      "source": "data/image/game/acchance.swf",
+      "sourceSha256": "c89edb994cac01fe12748e607cf8d220506fdded5ace01ab3e89183eb3a904d7",
+      "sha256": "4de6d53c577286b7bbff3efb2f4f922cbe4b9ff1cb9779ccdc9859a063655f2d",
+      "sourceFrames": 5
+    },
+    "card_ev_100.png": {
+      "source": "public/image/card_event/card_ev_100.swf",
+      "sourceSha256": "bdf74d43abfbba00b4d1484a97591c5eac862dbe86bbbc369f97e645bec6e095",
+      "sha256": "05fe9548c722662fb51068d46e5066fbc96894cba44e6f5774d7640f7219d35d",
+      "sourceFrame": 1
+    },
+    "card_ev_110.png": {
+      "source": "public/image/card_event/card_ev_110.swf",
+      "sourceSha256": "e2ad6f0981fcb4eb782432777e4cfe357a2c87aba03e32c74110b650e3d9a66a",
+      "sha256": "4edae1b6212126fd13a7d2bb8e9b4a764364d81428d812cd1ee022ea416baee4",
+      "sourceFrame": 1
+    },
+    "card_ev_130.png": {
+      "source": "public/image/card_event/card_ev_130.swf",
+      "sourceSha256": "45d1d30b19d0748256efd6c5599d51e8affb2f4d45a6fd20eef575c1af8d872b",
+      "sha256": "f31ad56721642697e3e6a1e0388532f78243f94bc1d7278013f08ec198d895cb",
+      "sourceFrame": 1
+    }
+  }
+}

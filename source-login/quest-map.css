@@ -23,8 +23,62 @@
   mask-repeat: no-repeat;
 }
 
-#quest-map-battle { z-index: 1; }
-#quest-map-battle > img { position: absolute; pointer-events: none; }
+#quest-map-battle { z-index: 1; width: 760px; overflow: hidden; }
+:is(#quest-map-battle, .quest-battle-layer) > img {
+  position: absolute;
+  pointer-events: none;
+}
+
+.quest-battle-layer { position: absolute; inset: 0; pointer-events: none; }
+.quest-battle-layer :is(canvas, output, button, ol, li, .quest-battle-time-gauge, .quest-battle-opening-name) {
+  position: absolute;
+}
+.quest-battle-layer button { padding: 0; border: 0; background: none; }
+.quest-battle-layer button img { position: absolute; }
+#quest-battle-intro .quest-battle-avatar { z-index: 7; transform-origin: left top; }
+#quest-battle-intro .quest-battle-character-card { z-index: 9; }
+.quest-battle-hp, .quest-battle-deck-count, .quest-battle-opening-name {
+  color: #fff;
+  text-shadow: 0 0 2px #111, 0 0 2px #111;
+}
+.quest-battle-hp { width: 150px; color: #aaa; font: 18px/40px "Bradley Gratis", Georgia, serif; }
+.quest-battle-hp strong { color: #fff; font-size: 36px; font-weight: normal; }
+#quest-battle-opponent-hp { text-align: right; }
+.quest-battle-deck-count { width: 163px; text-align: center; font: 22px/40px "Bradley Gratis", Georgia, serif; }
+.quest-battle-bonus {
+  text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000, 0 0 2px #000;
+  font-family: "Bradley Gratis", Georgia, serif;
+  line-height: 23px;
+}
+.quest-battle-opening-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 220px;
+  padding-inline: 3px;
+  font: 700 12px/16px "Noto Serif TC", Georgia, serif;
+}
+.quest-battle-opening-name small { color: #d0c0b0; font: inherit; }
+.quest-battle-chat-log { position: absolute; }
+.quest-battle-chat-label, .quest-battle-skill-name { position: absolute; text-align: center; }
+.quest-battle-chat-label { font: 14px/24px "Bradley Gratis", Georgia, serif; }
+.quest-battle-skill-name {
+  overflow: hidden;
+  color: #c0c0c0;
+  font: 15px/18px "Noto Serif TC", Georgia, serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quest-battle-hands ol { inset: 0; margin: 0; padding: 0; list-style: none; }
+.quest-battle-hand-card, .quest-battle-dealt-back { width: 56px; height: 86px; margin: -43px 0 0 -28px; }
+.quest-battle-hand-card > canvas { width: 100%; height: 100%; }
+.quest-battle-status {
+  width: 404px;
+  padding: 6px 10px;
+  color: #fff;
+  background: rgb(0 0 0 / 80%);
+  text-align: center;
+}
 
 .quest-map-world,
 .quest-map-world img,

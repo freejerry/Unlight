@@ -9,6 +9,11 @@ const sceneTracks = {
 };
 // DuelBGM.as uses the same castle track for stage IDs 0, 10, and 11.
 const duelTracks = ["000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "000", "000", "010"];
+const questCueFiles = new Map([
+  ["deal", "ulse06.mp3"], ["phase", "ulse12.mp3"],
+]);
+const questCueAudio = new Map();
+const playingQuestCues = new Map();
 let duelTrack = duelTracks[0];
 const titleMusic = createAudio(theme, audioVolume("bgm"));
 const clickSound = createAudio("/public/sound/se/ulse01.mp3", audioVolume("se"));
@@ -185,6 +190,37 @@ function requestMusic() {
 
 export function selectQuestDuelMusic(stageNumber, isBoss) {
   duelTrack = isBoss ? duelTracks[12] : duelTracks[stageNumber] ?? duelTracks[0];
+  for (const [cue, file] of questCueFiles) {
+    if (!questCueAudio.has(cue)) questCueAudio.set(cue, createAudio(`/public/sound/se/${file}`, audioVolume("se")));
+  }
+}
+
+export function playQuestBattleEffect(cue, signal) {
+  const base = questCueAudio.get(cue);
+  const volume = audioVolume("se");
+  if (!active || !base || base.error || !volume || signal?.aborted) return;
+  // The original multi-play permits successive dealt cards to overlap.
+  const audio = playingQuestCues.has(base) ? base.cloneNode() : base;
+  audio.volume = volume;
+  audio.currentTime = 0;
+  const listeners = new AbortController();
+  function finish() {
+    playingQuestCues.delete(audio);
+    listeners.abort();
+    signal?.removeEventListener("abort", stop);
+  }
+  function stop() {
+    audio.pause();
+    finish();
+  }
+  playingQuestCues.set(audio, stop);
+  audio.addEventListener("ended", finish, { once: true, signal: listeners.signal });
+  audio.addEventListener("error", finish, { once: true, signal: listeners.signal });
+  signal?.addEventListener("abort", stop, { once: true });
+  playAudio(audio, () => {}, error => {
+    finish();
+    reportAudioError(error);
+  });
 }
 
 function playSceneMusic() {
@@ -367,6 +403,7 @@ window.addEventListener("pagehide", () => {
     music.pause();
   }
   clickSound.pause();
+  for (const stop of playingQuestCues.values()) stop();
   const playback = alertPlayback;
   alertPlayback = null;
   void playback?.context.close().catch(reportAudioError);
@@ -387,6 +424,7 @@ subscribePreferences((next, previous) => {
   if (next.se !== previous.se) {
     clickSound.volume = audioVolume("se");
     if (alertPlayback) alertPlayback.gain.gain.value = audioVolume("se");
+    for (const audio of playingQuestCues.keys()) audio.volume = audioVolume("se");
   }
 });
 

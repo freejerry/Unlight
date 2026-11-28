@@ -21,9 +21,10 @@ from hashlib import sha256
 from io import BytesIO
 from math import ceil
 from pathlib import Path
-from struct import unpack_from
+from struct import pack, unpack_from
+from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
-from zlib import decompress
+from zlib import compress, decompress
 
 from PIL import Image
 
@@ -70,8 +71,32 @@ SOURCE_DIGESTS = {
     "bg_btl11a": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
     "bg_btl11a_book": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
+    "phase": "036bf094cb3399748e4da1a6d97ff25f44ccccdf0c6ecd7a58ee4ce856bcceda",
+    "space": "8a8dcd9442e9eba116d7b2ca9a573e889975bd391107ce7e317e00063e452bf4",
+    "range_ch": "6be85aa381b5f4f81a021a305debf917886ca01c716f145dbfe694c7332a5b26",
+    "time_base": "a16ffb0cb4bc501b5d7f78ecbb87bc59bf4ab183e62e74550dec3ba5d050cbd4",
+    "life_base": "217aa172fbd85e2fb7d64345f6281092936572ca8a7d6bdd3301a9ebe4734fda",
+    "card_base": "59c6cd2e1637dc302e2ae423092d3c92314b17b32bb7c276568fb910a81ca29e",
+    "cardempty": "943d74df0c7faf73380ede1e5df57aad429af53cc33b0ea9ce158878abba9607",
+    "ok": "1f922ef2962b911de12634d77093e354e0b91b7c5366e5f0fa44c491aeb2dbe9",
+    "move_f_ch": "98f7db32be64da08584cf3c2ff9d0a8e45a667cae94b08ed8be84643da92ad1b",
+    "move_b_ch": "dba99568071ad722a4f7996186041a21da1c8d92789d48983db3083ae3187165",
+    "move_s_ch": "a55557039b4eeb0479d0ae1cc58454a142e7ec399b779eafe34fbf8c08f4828e",
+    "move_c_ch": "54a06dda09947e654f121b85dfca50fee32acc66721741dd050f919bc2dc85a0",
+    "op_hukidashi": "c0b01b089a7063a6f16745856cfefff8cdb5db5ee884e73fa89753155f882dd8",
+    "op_up": "8f4bf50b306088735ace0106c0dff5b9c21d9ead42d90f77e70e8a54e38774dd",
+    "op_down": "bd53b99f51594d8198d31ab5239b19801367161540603242dce6365bfc7d5dd1",
+    "op_name": "124e52af274046f3830d6499f72db87390ade8fe3a7c91d7de761f9206c15694",
+    "chat_base": "44b00703d2ae7ffb6d9c10eb655d3dbf95070509cbb35e0509dfb3be25cb947b",
+    "skill_base": "00a20be5b6ef005c8d2b734296f769f2c002acda3e942ad6e788cc38c66c9d6a",
 }
-BATTLE_SOURCE_DIRS = {"bg_btl11a": "bg", "bg_btl11a_book": "bg", "base": "game"}
+BATTLE_SOURCE_DIRS = {
+    "bg_btl11a": "bg", "bg_btl11a_book": "bg",
+    **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
+                     "chat_base", "skill_base"), "game"),
+    **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
+    **dict.fromkeys(("move_f_ch", "move_b_ch", "move_s_ch", "move_c_ch"), ""),
+}
 
 # Source vector order in MapStageImage.as. Stages 8, 9 and 12 use the lake SWF.
 TERRAIN = (
@@ -112,7 +137,7 @@ def timeline(container):
     label = None
     for tag in container:
         name = kind(tag)
-        if name == "PlaceObject2":
+        if name in ("PlaceObject2", "PlaceObject3"):
             depth = int(tag.attrib["depth"])
             display[depth] = display.get(depth, {}) | tag.attrib
         elif name == "RemoveObject2":
@@ -122,6 +147,94 @@ def timeline(container):
         elif name == "ShowFrame":
             yield label, [display[depth] for depth in sorted(display)]
             label = None
+
+
+def nested_tags(data):
+    offset = 4  # DefineSprite ID and frame count
+    while offset + 2 <= len(data):
+        header = unpack_from("<H", data, offset)[0]
+        offset += 2
+        tag, size = header >> 6, header & 63
+        if size == 63:
+            size = unpack_from("<I", data, offset)[0]
+            offset += 4
+        if tag == 0:
+            return
+        yield tag, data[offset:offset + size]
+        offset += size
+
+
+def color_flags(tag, data):
+    flags = data[0]
+    if not flags & 8:
+        raise ValueError("SWF dump claims a color transform missing from PlaceObject")
+    offset = 4 if tag == 70 else 3
+    if tag == 70 and (data[1] & 8 or (data[1] & 16 and flags & 2)):
+        offset = data.index(b"\0", offset) + 1  # optional class name
+    if flags & 2:
+        offset += 2  # optional character ID
+    bit = offset * 8
+
+    def read(count):
+        nonlocal bit
+        result = 0
+        for _ in range(count):
+            result = result * 2 + ((data[bit // 8] >> (7 - bit % 8)) & 1)
+            bit += 1
+        return result
+
+    if flags & 4:
+        for _ in range(2):  # optional scale and rotation
+            if read(1):
+                size = read(5)
+                bit += 2 * size
+        size = read(5)
+        bit += 2 * size  # translation
+        bit = ((bit + 7) // 8) * 8
+    return read(2)  # HasAddTerms, HasMultTerms
+
+
+def restore_empty_color_transforms(container, raw_tags):
+    placements = [tag for tag in container if kind(tag) in ("PlaceObject2", "PlaceObject3")]
+    if not any(tag.get("cxform") == "0r+0 0g+0 0b+0 0a+0" for tag in placements):
+        return
+    originals = ((tag, data) for tag, data in raw_tags if tag in (26, 70))
+    for node, (tag, data) in zip(placements, originals, strict=True):
+        if node.get("cxform") == "0r+0 0g+0 0b+0 0a+0" and color_flags(tag, data) == 0:
+            # swfdump prints zero multipliers for omitted terms. In SWF they mean identity.
+            node.set("cxform", "256r+0 256g+0 256b+0 256a+0")
+
+
+CHAT_DUPLICATE_BITMAPS = {7: 5, 14: 12, 21: 19}
+
+
+def chat_dump(source, raw_tags, swfdump):
+    """Disambiguate Flex's duplicate bitmap objects without altering any visible pixels."""
+    raw = source.read_bytes()
+    body = decompress(raw[8:]) if raw[:3] == b"CWS" else raw[8:]
+    first_tag = (5 + 4 * (body[0] >> 3) + 7) // 8 + 4
+    xrgb = {unpack_from("<H", data)[0]: data for tag, data in raw_tags if tag == 20}
+    contents = bytearray(body[:first_tag])
+    for tag, data in raw_tags:
+        if tag == 20:
+            symbol = unpack_from("<H", data)[0]
+            if symbol in CHAT_DUPLICATE_BITMAPS:
+                duplicate = xrgb[CHAT_DUPLICATE_BITMAPS[symbol]]
+                if data[2] != 5 or data[2:] != duplicate[2:]:
+                    raise ValueError("Unexpected original chat bitmap alias")
+                pixels = bytearray(decompress(data[7:]))
+                pixels[0] ^= 1  # XRGB's reserved first byte is not a displayed channel.
+                data = data[:7] + compress(pixels)
+        size = len(data)
+        contents.extend(pack("<H", (tag << 6) | min(size, 63)))
+        if size >= 63:
+            contents.extend(pack("<I", size))
+        contents.extend(data)
+    contents.extend(b"\0\0")  # End tag
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / source.name
+        path.write_bytes(b"FWS" + raw[3:4] + pack("<I", 8 + len(contents)) + contents)
+        return subprocess.check_output([swfdump, "-encode", path])
 
 
 @dataclass(frozen=True)
@@ -140,7 +253,9 @@ class Movie:
         self.digest = sha256(source.read_bytes()).hexdigest()
         if self.digest != SOURCE_DIGESTS[name]:
             raise ValueError(f"Incorrect pinned digest for {self.path}")
-        self.root = ElementTree.fromstring(subprocess.check_output([swfdump, "-encode", source]))
+        raw_tags = list(tags(source))
+        layout = chat_dump(source, raw_tags, swfdump) if name == "chat_base" else subprocess.check_output([swfdump, "-encode", source])
+        self.root = ElementTree.fromstring(layout)
         self.symbols = {tag.get("id"): tag for tag in self.root if "id" in tag.attrib}
         self.classes = {
             tag.attrib["className"]: tag.attrib["idref"]
@@ -149,19 +264,22 @@ class Movie:
         self.bitmaps, self.binary_ids = {}, {}
         # Flex renumbers display IDs in land_event.swf. Keep original binary IDs in the manifest.
         xml_definitions = (tag for tag in self.root if kind(tag) in DEFINITION_TAGS.values())
-        binary_definitions = ((tag, data) for tag, data in tags(source) if tag in DEFINITION_TAGS)
+        binary_definitions = ((tag, data) for tag, data in raw_tags if tag in DEFINITION_TAGS)
         for node, (tag, data) in zip(xml_definitions, binary_definitions, strict=True):
             if kind(node) != DEFINITION_TAGS[tag]:
                 raise ValueError(f"Definition order differs in SWF dump of {self.path}")
             xml_id = node.attrib["id"]
             self.binary_ids[xml_id] = unpack_from("<H", data)[0]
+            if tag == 39:
+                restore_empty_color_transforms(node, nested_tags(data))
             if tag not in (6, 20, 35, 36):
                 continue
             if tag in (20, 36):
                 if data[2] == 5:
                     original = decompress(data[7:])
-                elif tag == 20 and data[2] == 3:
-                    original = decompress(data[8:])[3 * (data[7] + 1):]  # XML omits the original palette.
+                elif data[2] == 3:
+                    color_bytes = 4 if tag == 36 else 3
+                    original = decompress(data[8:])[color_bytes * (data[7] + 1):]
                 else:
                     raise ValueError(f"Unsupported lossless bitmap in {self.path}")
             elif tag == 35:
@@ -170,9 +288,12 @@ class Movie:
             else:
                 original = data[2:]
             xml_bytes = b"".join(b64decode(line) for line in node.text.split())
+            if name == "chat_base" and self.binary_ids[xml_id] in CHAT_DUPLICATE_BITMAPS:
+                xml_bytes = bytes([xml_bytes[0] ^ 1]) + xml_bytes[1:]
             if original != xml_bytes:
                 raise ValueError(f"Bitmap contents differ in SWF dump of {self.path}")
             self.bitmaps[xml_id] = (tag, data)
+        restore_empty_color_transforms(self.root, raw_tags)
 
     @cache
     def bitmap(self, bitmap_id):
@@ -190,7 +311,8 @@ class Movie:
             size = unpack_from("<HH", data, 3)
             if data[2] == 3:
                 original_id = self.binary_ids[bitmap_id]
-                return Image.open(BytesIO(indexed_png(self.source, size=size, bitmap_id=original_id))).convert("RGBA")
+                return Image.open(BytesIO(indexed_png(self.source, size=size, bitmap_id=original_id,
+                                                       with_alpha=(tag == 36)))).convert("RGBA")
             argb = decompress(data[7:])
             if tag == 20:
                 return Image.frombytes("RGB", size, argb, "raw", "XRGB").convert("RGBA")
@@ -254,7 +376,7 @@ class Movie:
         name = kind(shape)
         if name == "DefineMorphShape":
             return [morph_start(shape, offset)]
-        if name not in ("DefineShape", "DefineShape3", "DefineShape4"):
+        if name not in ("DefineShape", "DefineShape2", "DefineShape3", "DefineShape4"):
             raise ValueError(f"Unsupported detail shape {name}")
         x0, y0, x1, y1 = bounds(shape)
         dx, dy = offset
@@ -262,16 +384,19 @@ class Movie:
         pieces = []
         for style, path in shape_paths(shape):
             if kind(style) == "linestyle":
-                if style.attrib["flags"] != "320":
+                flags = style.get("flags", "0")
+                if flags not in ("0", "320"):
                     raise ValueError(f"Unexpected line style {style.attrib}")
+                stroke = 'stroke-linecap="butt"' if flags == "320" else 'stroke-linecap="round" stroke-linejoin="round"'
                 markup = (
                     f'<path d="{path}" fill="none" stroke="{style.attrib["color"][:7]}" '
-                    f'stroke-width="{int(style.attrib["width"])}" stroke-linecap="butt" transform="translate({dx} {dy})"/>'
+                    f'stroke-width="{int(style.attrib["width"])}" {stroke} '
+                    f'transform="translate({dx} {dy})"/>'
                 )
             elif style.attrib["type"] == "0":
                 markup = color_path(path, style.attrib["color"], dx, dy)
-            elif style.attrib["type"] == "16":
-                markup = linear_gradient_path(path, style.attrib, dx, dy)
+            elif style.attrib["type"] in ("16", "18"):
+                markup = gradient_path(path, style.attrib, dx, dy)
             elif style.attrib["type"] == "67":
                 bitmap_id = style.attrib["idref"]
                 image = self.bitmap(bitmap_id)
@@ -372,23 +497,26 @@ def color_path(path, color, dx, dy):
     )
 
 
-def linear_gradient_path(path, style, dx, dy):
-    # The stage 11 NearBG shape places its Flash gradient along a rotated x axis.
-    matrix = re.fullmatch(r"s([\d.-]+),([\d.-]+) r([\d.-]+),([\d.-]+) (t-?\d+,-?\d+)", style["matrix"])
-    if not matrix:
-        raise ValueError("Unexpected stage 11 gradient transform")
-    sx, sy, rotate_y, rotate_x = matrix.groups()[:4]
-    x, y = translation(matrix[5])
+def gradient_path(path, style, dx, dy):
+    matrix = " ".join(str(value) for value in swf_affine(style["matrix"]))
+    radial = style["type"] == "18"
+    tag = "radialGradient" if radial else "linearGradient"
+    geometry = 'cx="0" cy="0" r="16384"' if radial else 'x1="-16384" y1="0" x2="16384" y2="0"'
+    gradient = f"gradient-{sha256(repr(style).encode()).hexdigest()[:12]}"
     stops = style["gradient"].split()
     markup = "".join(
-        f'<stop offset="{int(position) / 255}" stop-color="{color[:7]}" stop-opacity="{int(color[7:9], 16) / 255}"/>'
+        f'<stop offset="{int(position) / 255}" stop-color="{color[:7]}" stop-opacity="{hex_alpha(color)}"/>'
         for position, color in zip(stops[::2], stops[1::2], strict=True)
     )
     return (
-        f'<g transform="translate({dx} {dy})"><defs><linearGradient id="near-gradient" gradientUnits="userSpaceOnUse" '
-        f'x1="-16384" y1="0" x2="16384" y2="0" gradientTransform="matrix({sx} {rotate_y} {rotate_x} {sy} {x} {y})">'
-        f'{markup}</linearGradient></defs><path fill="url(#near-gradient)" d="{path}"/></g>'
+        f'<g transform="translate({dx} {dy})"><defs><{tag} id="{gradient}" gradientUnits="userSpaceOnUse" '
+        f'{geometry} gradientTransform="matrix({matrix})">{markup}</{tag}></defs>'
+        f'<path fill="url(#{gradient})" d="{path}"/></g>'
     )
+
+
+def hex_alpha(color):
+    return int(color[7:9], 16) / 255 if len(color) == 9 else 1
 
 
 def morph_start(shape, offset):
@@ -501,6 +629,101 @@ def transformed(primitives, sx, sy, dx, dy):
         yield Primitive((x0, y0, x1, y1), markup, primitive.bitmap_id)
 
 
+def swf_affine(matrix):
+    kwargs = {term[0]: tuple(map(float, term[1:].split(","))) for term in matrix.split()}
+    if set(kwargs) - {"s", "r", "t"}:
+        raise ValueError(f"Unsupported HUD transform {matrix}")
+    a, d = kwargs.get("s", (1, 1))
+    b, c = kwargs.get("r", (0, 0))
+    x, y = kwargs.get("t", (0, 0))
+    return a, b, c, d, x, y
+
+
+def placed_primitives(primitives, matrix):
+    if matrix == "t0,0":
+        return primitives
+    a, b, c, d, dx, dy = swf_affine(matrix)
+    if b == c == 0:
+        return list(transformed(primitives, a, d, dx, dy))
+    markup_matrix = f"matrix({a} {b} {c} {d} {dx} {dy})"
+    result = []
+    for primitive in primitives:
+        left, top, right, bottom = primitive.bounds
+        corners = [(a * x + c * y + dx, b * x + d * y + dy) for x in (left, right) for y in (top, bottom)]
+        xx, yy = zip(*corners, strict=True)
+        markup = f'<g transform="{markup_matrix}">{primitive.markup}</g>'
+        result.append(Primitive((min(xx), min(yy), max(xx), max(yy)), markup, primitive.bitmap_id))
+    return result
+
+
+def color_transform(pieces, attributes):
+    channels = re.fullmatch(r"(-?\d+)r([+-]\d+) (-?\d+)g([+-]\d+) (-?\d+)b([+-]\d+) (-?\d+)a([+-]\d+)", attributes)
+    if not channels:
+        raise ValueError(f"Unsupported HUD color transform {attributes}")
+    values = tuple(map(int, channels.groups()))
+    if values[6:] == (0, 0):
+        return []
+    if values[:6] == (256, 0, 256, 0, 256, 0) and values[7] == 0:
+        if values[6] == 256:
+            return pieces
+        start, end = f'<g opacity="{values[6] / 256}">', "</g>"
+    else:
+        identifier = f"cx-{sha256(attributes.encode()).hexdigest()[:12]}"
+        transfers = "".join(
+            f'<feFunc{letter} type="linear" slope="{slope / 256}" intercept="{offset / 255}"/>'
+            for letter, slope, offset in zip("RGBA", values[::2], values[1::2], strict=True)
+        )
+        start = (f'<defs><filter id="{identifier}" color-interpolation-filters="sRGB">'
+                 f'<feComponentTransfer>{transfers}</feComponentTransfer></filter></defs>'
+                 f'<g filter="url(#{identifier})">')
+        end = "</g>"
+    return [Primitive(piece.bounds, f"{start}{piece.markup}{end}", piece.bitmap_id) for piece in pieces]
+
+
+def authored_primitives(source, placements):
+    """Resolve HUD sprites and Flash depth masks, preserving color transforms."""
+    pieces, shapes = [], []
+    clip = None
+    for part in placements:
+        symbol = source.symbol(part)
+        depth = int(part["depth"])
+        if clip and depth > clip[0]:
+            clip = None
+        if "clipDepth" in part:
+            svg_matrix = " ".join(str(value) for value in swf_affine(part["matrix"]))
+            paths = "".join(f'<path d="{path}" transform="matrix({svg_matrix})"/>' for _, path in shape_paths(symbol))
+            name = f"mask-{source.original_id(part)}-{depth}"
+            clip = (int(part["clipDepth"]), name,
+                    f'<defs><clipPath id="{name}" clipPathUnits="userSpaceOnUse">{paths}</clipPath></defs>')
+            shapes.append(source.original_id(part))
+            continue
+        symbol_kind = kind(symbol)
+        if symbol_kind == "DefineSprite":
+            child_frame = part.get("spriteFrame", 1)
+            children = list(timeline(symbol))[child_frame - 1][1]
+            originals, nested_shapes = authored_primitives(source, children)
+            shapes.extend(nested_shapes)
+        elif symbol_kind == "DefineButton2":
+            children = [button.attrib for button in symbol if kind(button) == "buttonRecord"
+                        and part.get("buttonState", "up") in button.attrib["states"].split(",")]
+            originals, nested_shapes = authored_primitives(source, children)
+            shapes.extend(nested_shapes)
+        elif symbol_kind == "DefineText" and all(hex_alpha(text.attrib["color"]) == 0 for text in symbol):
+            continue
+        else:
+            originals = source.shape(symbol, (0, 0))
+            shapes.append(source.original_id(part))
+        transformed_parts = placed_primitives(originals, part["matrix"])
+        if "cxform" in part:
+            transformed_parts = color_transform(transformed_parts, part["cxform"])
+        if clip:
+            _, name, definitions = clip
+            transformed_parts = [Primitive(piece.bounds, f'{definitions}<g clip-path="url(#{name})">{piece.markup}</g>',
+                                           piece.bitmap_id) for piece in transformed_parts]
+        pieces.extend(transformed_parts)
+    return pieces, shapes
+
+
 def extract(asset_root, art, swfdump):
     manifest_path = art / "sources.json"
     manifest = json.loads(manifest_path.read_text())
@@ -578,6 +801,180 @@ def extract(asset_root, art, swfdump):
         frame = add_pieces(source, "base-frame", pieces, shapes, "stage", 1, "battle", crop=(0, 0, 15200, 13600),
                            sourceDepths=list(range(1, 8)))
         return dict(frame, depth=4)
+
+    def battle_art(source, filename, placements, frame=1, *, crop=None, **evidence):
+        pieces, shape_ids = authored_primitives(source, placements)
+        if crop:
+            x0, y0, x1, y1 = crop
+            pieces = [piece for piece in pieces if piece.bounds[0] < x1 and piece.bounds[1] < y1
+                      and piece.bounds[2] > x0 and piece.bounds[3] > y0]
+        if not pieces:
+            return None
+        return add_pieces(source, filename, pieces, shape_ids, "stage", frame, "battle", crop=crop, **evidence)
+
+    def opening_art():
+        opening = {}
+        for key, name in (("up", "op_up"), ("down", "op_down")):
+            source = movie(name)
+            unique = {}
+            track = []
+            for frame, (_, placements) in enumerate(list(timeline(source.root))[:-1], 1):
+                # Quest's Opening(false) hides the opposing avatar's smear.
+                layers = [part for part in placements if part.get("name") != "blood_e"]
+                signature = repr(layers)
+                if signature not in unique:
+                    unique[signature] = battle_art(source, f"opening-{key}-{frame:02}", layers, frame,
+                                                    crop=(0, 0, 15200, 1120 if key == "up" else 13600))
+                track.append(unique[signature])
+            opening[key] = {"frames": track, "framesPerSecond": QUEST_STAGE_FRAME_RATE}
+        source = movie("op_hukidashi")
+        _, placements = next(timeline(source.root))
+        opening["bubbles"] = {
+            key: battle_art(source, f"opening-bubble-{key}", [{k: v for k, v in part.items() if k != "cxform"}],
+                            sourceInstance=part["name"])
+            for key, part in zip(("player", "foe"), placements, strict=True)
+        }
+        opening["dialogue"] = {
+            "player": {"x": 50, "y": 30, "width": 290, "height": 180, "delayMs": 300},
+            "foe": {"x": 435, "y": 30, "width": 290, "height": 180, "delayMs": 500},
+        }
+        source = movie("op_name")
+        timeline_frames = list(timeline(source.root))
+        opening["names"] = {}
+        for key, number in (("3on3", 26), ("1on1", 55)):
+            _, placements = timeline_frames[number - 1]
+            lines = [part | {"spriteFrame": 6} if kind(source.symbol(part)) == "DefineSprite" else part
+                     for part in placements]
+            opening["names"][key] = battle_art(source, f"opening-name-{key}", lines, number, sourceLabel=key)
+        return opening
+
+    def chat_art():
+        source = movie("chat_base")
+        chat = source.instance("chat_base")
+        _, contents = next(timeline(source.symbol(chat)))
+        # Quest constructs ChatArea(false), hiding the three separate input buttons.
+        (plate,) = (part for part in contents if int(part["depth"]) == 1)
+        return {
+            "base": battle_art(source, "chat-base", [source.offset(plate, chat)], sourceInstance="chat_base"),
+            "log": {"x": 168, "y": 560, "width": 285, "height": 68, "color": "#000000", "opacity": 0.63},
+            "labels": [{"text": label, "x": 450, "y": y, "width": 60, "height": 20, "color": color}
+                       for label, y, color in (("All", 565, "#ff3030"), ("Chat", 588, "#000000"),
+                                               ("Game", 611, "#000000"))],
+        }
+
+    def skill_art():
+        source = movie("skill_base")
+        base = source.instance("base")
+        icon = source.instance("type")
+        types = {}
+        for label in ("atk", "deff", "mov"):
+            frame, layers = source.frame(icon, label)
+            types[label] = battle_art(source, f"skill-type-{label}", layers, frame,
+                                      sourceInstance="type", sourceLabel=label)
+
+        return {
+            "base": battle_art(source, "skill-base", [base], sourceInstance="base", sourceLabel="dis"),
+            "types": types,
+            "player": {"x": 168, "y": 439, "step": 148}, "foe": {"x": 444, "y": 32, "step": -148},
+            "labelOffset": {"x": 12, "y": 2, "width": 130, "height": 30},
+        }
+
+    def battle_hud():
+        phase = movie("phase")
+        phase_frames = list(timeline(phase.root))
+        phase_animation = {}
+        for key, start, end in (("blk", 1, 1), ("drw", 2, 13), ("mov", 14, 25)):
+            refs = [battle_art(phase, f"phase-{key}-{frame:02}", phase_frames[frame - 1][1], frame,
+                               crop=(2640, 1160, 12560, 1480), sourceLabel=key) for frame in range(start, end + 1)]
+            phase_animation[key] = {"frames": refs, "framesPerSecond": QUEST_STAGE_FRAME_RATE}
+
+        space = movie("space")
+        tables = {}
+        for frame, (key, placements) in enumerate(timeline(space.root), 1):
+            if key not in ("blank", "drw_act", "drw_evt", "mov", "mov3on3"):
+                continue
+            layers = []
+            for placement in placements:
+                depth = int(placement["depth"])
+                image = battle_art(space, f"table-{key}-{depth:02}", [placement], frame,
+                                   sourceLabel=key, sourceDepth=depth)
+                if image is not None:
+                    if placement.get("blendmode") == "13":
+                        image["blend"] = "overlay"
+                    elif "blendmode" in placement:
+                        raise ValueError("Unsupported Quest table blend mode")
+                    layers.append(image)
+            tables[key] = {"layers": layers}
+
+        range_movie = movie("range_ch")
+        middle = range_movie.instance("middle") | {"spriteFrame": 17}
+        range_art = battle_art(range_movie, "range-middle", [middle], 17, sourceInstance="middle",
+                               spriteId=range_movie.original_id(middle))
+
+        timer = movie("time_base")
+        time_base = battle_art(timer, "time-base", [timer.instance("time_base")], sourceInstance="time_base")
+        life = movie("life_base")
+        _, contents = next(timeline(life.root))
+        health_base = battle_art(life, "health-base", contents)
+        base = movie("base")
+        turn = base.instance("turn")
+        turn_one = battle_art(base, "turn-01", [turn], sourceInstance="turn", spriteId=base.original_id(turn))
+
+        hand = movie("card_base")
+        _, contents = list(timeline(hand.root))[1]
+        hand_base = battle_art(hand, "hand-base", contents, 2, sourceLabel="dis")
+        empty = movie("cardempty")
+        _, contents = next(timeline(empty.root))
+        hand_slot = battle_art(empty, "hand-empty-slot", contents, sourceLabel="normal")
+
+        done_movie = movie("ok")
+        _, contents = next(timeline(done_movie.root))
+        plate, done_button = contents
+        done = {
+            "plate": battle_art(done_movie, "done-plate", [plate]),
+            **{state: battle_art(done_movie, f"done-{state}", [done_button | {"buttonState": state}],
+                                  sourceInstance="button_ok", sourceState=state) for state in ("up", "over")},
+        }
+        buttons = {}
+        for direction, key, x1, x3 in (("forward", "f", 412, 440), ("back", "b", 300, 272),
+                                       ("stay", "s", 356, 328), ("change", "c", -1000, 384)):
+            source = movie(f"move_{key}_ch")
+            (_, (enabled,)), (_, (disabled,)) = list(timeline(source.root))[:2]
+            buttons[direction] = {
+                **{state: battle_art(source, f"button-{direction}-{state}", [enabled | {"buttonState": state}],
+                                      sourceState=state) for state in ("up", "over")},
+                "disabled": battle_art(source, f"button-{direction}-disabled", [disabled], 2, sourceState="disabled"),
+                "x1v1": x1, "x3v3": x3, "y": 258,
+            }
+        return {
+            "phase": {key: assets["frames"][-1] for key, assets in phase_animation.items()},
+            "phaseAnimation": phase_animation,
+            "phaseSound": "/public/sound/se/ulse12.mp3",
+            "turn": {"1": turn_one},
+            "table": tables,
+            "range": {"middle": range_art},
+            "time": {
+                "base": time_base, "durationMs": 60000,
+                "gauges": [{"x": x, "y": 338, "width": 353, "height": 2, "direction": direction}
+                           for x, direction in ((355, -1), (405, 1))],
+                "colors": ["#64ff32", "#ffcd32", "#ff0000"], "colorStops": [0, 0.6, 0.9], "warningAt": 0.33,
+            },
+            "health": {
+                "base": health_base,
+                "gauges": [{"x": x, "y": 436, "width": 354, "height": 3, "direction": direction}
+                           for x, direction in ((0, 1), (760, -1))],
+                "labels": {"player": {"x": 10, "y": 397, "width": 150, "height": 40, "align": "left"},
+                           "foe": {"x": 600, "y": 397, "width": 150, "height": 40, "align": "right"}},
+                "color": "#ff0000",
+            },
+            "hand": {"base": hand_base, "slot": hand_slot},
+            "done": done,
+            "moveButtons": buttons,
+            "chat": chat_art(),
+            "skills": skill_art(),
+            "bonus": {"initial": 0, "x": 10, "y": 150, "width": 170, "height": 100,
+                      "color": "#e0e0e0", "fontSize": 18, "letterSpacing": 2},
+        }
     def hit_rect(source, placement):
         x0, y0, x1, y1 = bounds(source.symbol(placement))
         dx, dy = translation(placement["matrix"])
@@ -687,6 +1084,8 @@ def extract(asset_root, art, swfdump):
         },
         "common": [battle_static_frame()],
         "commonEntry": {"durationMs": 500, "easing": "sine-out"},
+        "hud": battle_hud(),
+        "opening": opening_art(),
         "transition": {
             "source": "app/client/src/view/scene/common/Transition.as",
             "width": 760, "height": 680, "framesPerSecond": QUEST_STAGE_FRAME_RATE,

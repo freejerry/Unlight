@@ -64,6 +64,10 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
     "public/sound/se/ulse01.mp3": "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
     "public/sound/se/ulse02.mp3": "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
 }
+SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
+    "public/sound/se/ulse06.mp3": "b0655a05ef946fe47671a2bbf67768545ed02a59f084c93d3f951773a57abde0",
+    "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
+}
 SOURCE_SCENE_TRACKS = {
     "public/sound/bgm/ulbgm02.mp3": "7ed9b16414f8691f080cc592830f0d120b372bb3aa77f183106a8c7fe6bbfbfd",
     "public/sound/bgm/ulbgm03.mp3": "ebb719112de8cc37999a487ebe13f69c5dd84f77fbc96a7adfc64df453d34ab8",
@@ -282,6 +286,7 @@ def native_action_card_catalog():
                 "upper": {"type": int(row["u_type"]), "value": int(row["u_value"])},
                 "lower": {"type": int(row["b_type"]), "value": int(row["b_value"])},
                 "caption": row["caption"],
+                "image": row["image"] or "",
                 "eventNo": event_no,
                 "stockEventFiller": card_id in filler_ids and event_no == 0,
             }
@@ -297,6 +302,21 @@ def native_quest_character_card_catalog():
 def native_deck_character_card_catalog():
     with (SERVER_CSV / "ja/Charactors.csv").open(encoding="utf-8-sig", newline="") as source:
         parents = {int(row["id"]): int(row["parent_id"] or 0) for row in DictReader(source)}
+
+    # CharaCard#feats_id uses FeatInventory order. Feat.as derives the type from the caption phase.
+    phase_types = {"攻撃": "atk", "防御": "deff", "移動": "mov"}
+    feats = {}
+    with (SERVER_CSV / "ja/Feats.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in DictReader(source):
+            name = row["name_tcn"] or row["name"]
+            caption = row["caption_tcn"] or row["caption"]
+            phase = caption.partition("[")[2].partition("]")[0].partition(":")[0]
+            feats[int(row["id"])] = {"name": name, "kind": phase_types.get(phase, "atk")}
+    skills = {}
+    with (SERVER_CSV / "ja/FeatInventories.csv").open(encoding="utf-8-sig", newline="") as source:
+        for row in sorted(DictReader(source), key=lambda row: int(row["id"])):
+            if feat := feats.get(int(row["feat_id"])):
+                skills.setdefault(int(row["chara_card_id"]), []).append(feat)
 
     cards = {}
     with (SERVER_CSV / "ja/CharaCards.csv").open(encoding="utf-8-sig", newline="") as source:
@@ -314,6 +334,8 @@ def native_deck_character_card_catalog():
             cards[card_id] = {
                 "id": card_id,
                 "name": name,
+                "abName": row["ab_name_tcn"] or "",
+                "skills": skills.get(card_id, []),
                 "kind": kind,
                 "level": int(row["level"]),
                 "slot": int(row["slot"]),
@@ -552,7 +574,7 @@ def create_app(
                 if path is None:
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
-            for filename, digest in SOURCE_SCENE_TRACKS.items():
+            for filename, digest in (SOURCE_SCENE_TRACKS | SOURCE_QUEST_BATTLE_SOUND_EFFECTS).items():
                 if path := pinned_native_asset(assets, filename, digest):
                     app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
             for target, (filename, digest, decode, content_type) in SOURCE_SCENE_ART.items():
@@ -582,7 +604,7 @@ def create_app(
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
-                "character-card.js",
+                "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
@@ -610,6 +632,10 @@ def create_app(
             for artifact in sorted(card_art.glob("*")):
                 if artifact.suffix in (".png", ".woff"):
                     app.router.add_get(f"/source-login/card-art/{artifact.name}", serve_file(artifact))
+            battle_card_art = SOURCE_LOGIN_ROOT / "battle-card-art"
+            app.router.add_get("/source-login/battle-card-art/index.json", serve_file(battle_card_art / "index.json"))
+            for artifact in sorted(battle_card_art.glob("*.png")):
+                app.router.add_get(f"/source-login/battle-card-art/{artifact.name}", serve_file(artifact))
 
             illustration_hashes = {}
             with suppress(OSError):
@@ -726,7 +752,7 @@ def create_app(
                 card = {"id": card_id, "hp": character_hp[card_id]}
                 definition = definitions.get(card_id)
                 if definition:
-                    for field in ("name", "kind", "level", "slot", "ap", "dp"):
+                    for field in ("name", "abName", "kind", "level", "slot", "ap", "dp"):
                         card[field] = definition[field]
                 cards.append(card)
             return web.json_response({"cards": cards}, headers={"Cache-Control": "no-store"})
