@@ -173,6 +173,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 沿用本頁 `--quest-start-user` 的啟動方式。空地用 `--quest-peaceful empty`。Gem 用 `--quest-peaceful gem` 進格 5，或以另一位新角色加 `--quest-peaceful-gem-slot 3`。空地暫緩真實 `SC19`，Gem 暫緩真實 `SC25`，接著各暫緩同一 Quest 的 Pong。核對棋子、可進格與餘額何時更新。Gem 翻牌後才啟用本機 OK，且翻牌音只播一次。兩條路徑再暫緩 `SC40`，核對同一任務、Deck 1、實際傷勢和唯一一次 Ready。道路戰場檢查兩張可循環的原始遠景及 `bgm002.mp3`。泥潭戰場檢查靜止原始底圖及 `bgm003.mp3`。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [任務原版規格](quest-pve.md#非戰鬥地形與續戰)
 
+### 重跑道路終局與右線四次寶箱
+
+「山丘矮人」勝利與敗北使用不同測試角色，在 `--quest-peaceful empty` 後加 `--quest-peaceful-complete win` 或 `defeat`。起始傷勢各為 `[1,0,0]` 和 `[4,0,0]`。「紫色泥沼澤2」用 `--quest-peaceful gem --quest-peaceful-complete win`，從傷勢 `[1,0,0]` 開始。可在限定角色的隔離 Ruby 對局初始化前使用種子 0，保留原版計時與真實判定。根據 `SC44`、`SC45` 檢查手牌，再依原版距離和先手執行移動、攻守。格 10 同時核對正值 `SC77` 在第一組防禦前回復生命。[原版種子、出牌與資料庫測例](/workspace/shared/unlight-web-port/flash-parity/quest-branch-model/README.md)
+
+右線依次核對格 1、5、8、10 的 30、30、50、30 Gem，使用實際 `SC25` 和各格確認，保留牌組和傷勢。末戰的寶物餘額與可能的成就後總餘額各自核對。暫緩真實 `SC25`、Pong、`SC40` 或末戰 `SC24` 時，分別核對腳本標記的畫面及輸入狀態。最後依序確認戰果、寶箱、通關，在原世界地圖按 Back，確認唯一 `CS2` 只關閉 Quest。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [原版路徑與待驗項](quest-pve.md#道路終局與泥潭後續格)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

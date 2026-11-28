@@ -235,7 +235,7 @@ function setupDialog(dialog, view, origin, signal, { slide = false, dismissOnEsc
   };
 }
 
-function showGemReceipt(view, treasure, inventoryId, slot, signal, confirmDismiss) {
+function showGemReceipt(view, treasure, inventoryId, slot, signal, confirmDismiss, onDismiss) {
   const dialog = document.createElement('dialog');
   dialog.id = 'quest-map-treasure';
   dialog.className = 'quest-map-dialog stage-panel';
@@ -249,8 +249,14 @@ function showGemReceipt(view, treasure, inventoryId, slot, signal, confirmDismis
   dialog.querySelector('#quest-map-treasure-gem').textContent = `${treasure.amount} Gem`;
   dialog.querySelector('#quest-map-treasure-balance').textContent = `Gem 餘額 ${treasure.balance}`;
   view.append(dialog);
-  signal.addEventListener('abort', () => dialog.remove(), { once: true });
-  setupDialog(dialog, view, [120, 96], signal, { dismissOnEscape: false, confirmDismiss }).show();
+  const lifetime = new AbortController();
+  const visual = AbortSignal.any([signal, lifetime.signal]);
+  visual.addEventListener('abort', () => dialog.remove(), { once: true });
+  dialog.addEventListener('close', () => {
+    lifetime.abort();
+    if (!signal.aborted) onDismiss?.();
+  }, { once: true });
+  setupDialog(dialog, view, [120, 96], visual, { dismissOnEscape: false, confirmDismiss }).show();
 }
 
 function showQuestSettlement(view, settlement, assets, signal, onDismiss) {
@@ -597,6 +603,31 @@ function setupQuestDetails(view, {
     return Math.max(0, terrainEventDelay - (performance.now() - adventure.terrainReceivedAt));
   }
 
+  function presentGemTreasure({ treasure, inventoryId, slot, visual, confirm, onDismiss }) {
+    const artwork = loadResultAssets();
+    const elapsed = Number.isFinite(treasure.receivedAt) ? performance.now() - treasure.receivedAt : 0;
+    const timer = setTimeout(async () => {
+      const assets = await artwork;
+      if (visual.aborted) return;
+      const panel = mountQuestTreasurePanel(view, {
+        treasure, land: { inventoryId, slot }, assets, signal: visual, onSound: onBattleSound,
+        async onConfirm() {
+          if (visual.aborted || await confirm?.() === false) return false;
+          if (onDismiss && !visual.aborted) {
+            panel.dispose();
+            onDismiss();
+          }
+          return true;
+        },
+      });
+      if (!(await panel.ready.catch(() => false)) && !visual.aborted) {
+        panel.dispose();
+        showGemReceipt(view, treasure, inventoryId, slot, visual, confirm, onDismiss);
+      }
+    }, Math.max(0, terrainTreasureDelay - elapsed));
+    visual.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  }
+
   function syncTerrainReward(adventure) {
     if (adventure?.state !== 'terrain-reward' || !adventure.fixedGemTreasure) {
       if (terrainReward) {
@@ -606,22 +637,19 @@ function setupQuestDetails(view, {
       }
       return;
     }
-    if (terrainReward || !scene?.confirmTerrainReward) return;
+    if (terrainReward || activeBattle || !scene?.confirmTerrainReward) return;
     const { fixedGemTreasure: treasure, inventoryId, slot } = adventure;
     const lifetime = terrainReward = new AbortController();
     const visual = AbortSignal.any([signal, lifetime.signal]);
     board.inert = true;
-    const artwork = loadResultAssets();
     const eventTimeLeft = terrainEventTimeLeft(adventure);
     if (eventTimeLeft > 0) {
       const hideEvent = setTimeout(refresh, eventTimeLeft);
       visual.addEventListener('abort', () => clearTimeout(hideEvent), { once: true });
     }
-    const elapsed = Number.isFinite(treasure.receivedAt) ? performance.now() - treasure.receivedAt : 0;
-    const timer = setTimeout(async () => {
-      const assets = await artwork;
-      if (visual.aborted) return;
-      async function onConfirm() {
+    presentGemTreasure({
+      treasure, inventoryId, slot, visual,
+      async confirm() {
         if (visual.aborted) return false;
         focusNextLand = document.activeElement?.matches(':focus-visible') === true;
         try {
@@ -631,16 +659,8 @@ function setupQuestDetails(view, {
           focusNextLand = false;
           return false;
         }
-      }
-      const panel = mountQuestTreasurePanel(view, {
-        treasure, land: { inventoryId, slot }, assets, signal: visual, onSound: onBattleSound, onConfirm,
-      });
-      if (!(await panel.ready.catch(() => false)) && !visual.aborted) {
-        panel.dispose();
-        showGemReceipt(view, treasure, inventoryId, slot, visual, onConfirm);
-      }
-    }, Math.max(0, terrainTreasureDelay - elapsed));
-    visual.addEventListener('abort', () => clearTimeout(timer), { once: true });
+      },
+    });
   }
 
   function refresh() {
@@ -649,6 +669,8 @@ function setupQuestDetails(view, {
     view.dataset.startState = startState ?? 'unavailable';
     if (adventure) view.dataset.adventureState = adventure.state;
     else delete view.dataset.adventureState;
+    const ownAdventure = adventure?.inventoryId === selectedId ? adventure : null;
+    syncTerrainReward(ownAdventure);
     if (!selectedId) return;
     const row = rows.find(item => item.inventoryId === selectedId);
     if (!row || !detailStatuses.has(row.status)) {
@@ -684,8 +706,6 @@ function setupQuestDetails(view, {
           (startState !== 'ready' && !(emptyDeck && startState === 'unavailable'));
       }
     }
-    const ownAdventure = adventure?.inventoryId === selectedId ? adventure : null;
-    syncTerrainReward(ownAdventure);
     route.inert = terrainInputTimer !== undefined || ownAdventure?.state === 'terrain-reward';
     const progress = ownAdventure?.progress ?? null;
     if (Number.isInteger(progress)) detail.dataset.progress = String(progress);
@@ -695,7 +715,10 @@ function setupQuestDetails(view, {
     if (!route.inert && ownAdventure?.state === 'between-lands') {
       for (const next of ownAdventure.nextLands ?? []) {
         const land = positions?.find(({ slot, id, stage }) => slot === next.slot && id === next.id && stage === next.stage);
-        if (readyBattleStage(land)) reachableSlots.add(land.slot);
+        const gem = land?.fixedGemTreasure;
+        const quietGem = land?.enemyId === 0 && gem && next.fixedGemTreasure?.treasureId === gem.treasureId &&
+          next.fixedGemTreasure.value === gem.value && !!assets?.terrain?.[land.stage]?.hit;
+        if (quietGem || readyBattleStage(land)) reachableSlots.add(land.slot);
       }
     }
     const reachableKey = [...reachableSlots].join(',');
@@ -731,15 +754,17 @@ function setupQuestDetails(view, {
             const restoreFocus = document.activeElement?.matches(':focus-visible');
             const settlement = await scene.returnFromBattle({ signal: battleSignal, encounterKey: encounter.key });
             if (battleSignal.aborted || activeBattle !== lifetime || !settlement?.canReturn) return false;
-            const continuing = settlement.state === 'land-cleared' && current().adventure?.state === 'between-lands'
-              && current().adventure.inventoryId === settlement.inventoryId;
+            const returned = current().adventure;
+            const continuing = settlement.state === 'land-cleared' && returned?.inventoryId === settlement.inventoryId &&
+              ['between-lands', 'terrain-reward'].includes(returned.state);
             if (!continuing && !settlement.quest) return false;
-            const award = settlement.receipt?.treasure;
-            const treasure = settlement.quest?.result === 0 && award?.card?.cardId === award?.value &&
+            const award = settlement.quest?.result === 0 ? settlement.receipt?.treasure : null;
+            const gem = award?.type === 5 && Number.isInteger(award.amount) && award.value === award.amount ? award : null;
+            const cardTreasure = award?.card?.cardId === award?.value &&
               Number.isInteger(award?.value) ? award : null;
             const [assets, treasureCards] = await Promise.all([
               continuing ? null : settlementArt,
-              treasure ? loadCards([treasure.value]) : null,
+              cardTreasure ? loadCards([cardTreasure.value]) : null,
             ]);
             if (battleSignal.aborted || activeBattle !== lifetime) return false;
             lifetime.abort();
@@ -750,9 +775,9 @@ function setupQuestDetails(view, {
             onBattleReturn?.();
             if (continuing) {
               setHover(null);
-              board.inert = false;
+              board.inert = returned.state === 'terrain-reward';
               refresh();
-              if (restoreFocus) route.querySelector('button.quest-map-detail-land')?.focus({ preventScroll: true });
+              if (restoreFocus && !board.inert) route.querySelector('button.quest-map-detail-land')?.focus({ preventScroll: true });
               return true;
             }
             pawn.hidden = true;
@@ -768,16 +793,18 @@ function setupQuestDetails(view, {
                 get('#quest-map-back').focus({ preventScroll: true });
               });
             };
-            if (!treasure) showClear();
-            else {
-              const panel = mountQuestTreasurePanel(view, { treasure, card: treasureCards.get(treasure.value), assets, signal,
+            if (gem) {
+              presentGemTreasure({ treasure: gem, inventoryId: settlement.inventoryId, slot: ownAdventure.slot,
+                visual: signal, onDismiss: showClear });
+            } else if (cardTreasure) {
+              const panel = mountQuestTreasurePanel(view, { treasure: cardTreasure, card: treasureCards.get(cardTreasure.value), assets, signal,
                 onConfirm: showClear, onSound: onBattleSound });
               void panel.ready.catch(() => false).then(ready => {
                 if (ready) return;
                 panel.dispose();
                 showClear();
               });
-            }
+            } else showClear();
             return true;
           },
         });
@@ -817,9 +844,9 @@ function setupQuestDetails(view, {
   async function enterLand(slot, target) {
     if (!scene?.enterLand || entering || activeBattle || !rendered?.reachableSlots.has(slot) || signal.aborted || view.inert) return;
     entering = true;
-    const first = rendered.definition.firstLand;
-    if (first.slot === slot && (first.emptyTerrain || first.fixedGemTreasure)) {
-      focusNextLand = !!first.emptyTerrain && target === document.activeElement && target.matches(':focus-visible');
+    const selectedLand = rendered.definition.positions?.find(land => land.slot === slot);
+    if (selectedLand?.emptyTerrain || selectedLand?.fixedGemTreasure) {
+      focusNextLand = !!selectedLand.emptyTerrain && target === document.activeElement && target.matches(':focus-visible');
       terrainInputTimer = setTimeout(() => {
         terrainInputTimer = undefined;
         refresh();

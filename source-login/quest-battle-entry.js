@@ -800,6 +800,10 @@ async function renderBattleHud(battle, sourceAvatar, {
   const skills = renderSkills(battle, hud.skills, definitions.get(player), definitions.get(encounter.opponentCardIds[0]));
   const chat = renderChatDecoration(battle, hud.chat);
   const updateHealth = renderHealth(main, assets, encounter, definitions, signal);
+  const healthIndicators = [
+    ['player', main.querySelector('#quest-battle-player-hp')],
+    ['opponent', main.querySelector('#quest-battle-opponent-hp')],
+  ];
   const rangeNames = ['short', 'middle', 'long', 'hiding'];
   let range = sprite(main, hud.range?.[rangeNames[encounter.duel.distance - 1]]);
   const phaseSprites = layer(main, 'quest-battle-phase', 0);
@@ -856,6 +860,17 @@ async function renderBattleHud(battle, sourceAvatar, {
   let resultStatus;
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
 
+  async function updateHp(hitPoints) {
+    if (signal.aborted || !isCurrent()) return;
+    await updateHealth(hitPoints);
+    if (signal.aborted || !isCurrent()) return;
+    const card = definitions.get(player);
+    const hp = hitPoints.player;
+    if (card && Number.isInteger(hp) && hp <= card.hp) {
+      await renderCharacterCard(activeFace.canvas, card, { signal, damage: card.hp - hp });
+    }
+  }
+
   async function presentMove(result) {
     if (presentedMove) return;
     presentedMove = true;
@@ -871,6 +886,17 @@ async function renderBattleHud(battle, sourceAvatar, {
     receipt.dataset.opponentLocked = String(result.opponentLocked);
     receipt.value = `${['近距離', '中距離', '遠距離', '距離不明'][result.distance - 1] ?? ''}，${result.playerInitiative ? '我方先攻' : '對手先攻'}`;
     status.value = receipt.value;
+    if (result.healing) {
+      const healed = {};
+      for (const [side, indicator] of healthIndicators) {
+        const amount = result.healing[side];
+        if (!Number.isInteger(amount) || amount <= 0) continue;
+        receipt.dataset[`${side}Healing`] = String(amount);
+        if (indicator) healed[side] = Math.min(Number(indicator.dataset.max), Number(indicator.dataset.hp) + amount);
+      }
+      await updateHp(healed);
+      if (signal.aborted || !isCurrent()) return;
+    }
     await revealMoveCards(hands, result, signal);
     if (signal.aborted || !isCurrent()) return;
     await showMoveArrows(battle, hud.movePresentation, result, signal);
@@ -891,7 +917,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     battle.dataset.distance = String(result.distance);
     battle.dataset.initiative = result.playerInitiative ? 'player' : 'opponent';
     await Promise.all([...shifts, endCutIns?.()]);
-    if (!signal.aborted) {
+    if (!signal.aborted && isCurrent()) {
       hands.playerTable.hidden = true;
       hands.opponentTable.hidden = true;
       controls.hidden = true;
@@ -956,19 +982,8 @@ async function renderBattleHud(battle, sourceAvatar, {
           active.settled = true;
           advance();
         },
-        async updateHp(hitPoints) {
-          await updateHealth(hitPoints);
-          if (signal.aborted || !isCurrent()) return;
-          const card = definitions.get(player);
-          const hp = hitPoints.player;
-          if (card && Number.isInteger(hp) && hp <= card.hp) {
-            void renderCharacterCard(activeFace.canvas, card, { signal, damage: card.hp - hp });
-          }
-        },
-        initialHp: {
-          player: Number(main.querySelector('#quest-battle-player-hp')?.dataset.hp),
-          opponent: Number(main.querySelector('#quest-battle-opponent-hp')?.dataset.hp),
-        },
+        updateHp,
+        initialHp: Object.fromEntries(healthIndicators.map(([side, indicator]) => [side, Number(indicator?.dataset.hp)])),
         drawOpponent: count => {
           hands.opponentTable.hidden = false;
           if (opponentRevealKey) {

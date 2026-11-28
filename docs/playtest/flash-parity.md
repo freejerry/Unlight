@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群兩戰、固定蝙蝠卡寶箱與首區解鎖。新版落日大蝙蝠實跑 18 回合和局。空地與 30 Gem 寶箱已沿原路線進入道路或泥潭戰鬥。**部分**戰鬥 HUD 與其他獎勵。 | 繁中 Flash 和局、換角、道路終局與泥潭兩支線的後續地形和報酬。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝敗、大蝙蝠之群兩戰及蝙蝠卡寶箱、山丘矮人勝利及紫色泥沼澤2右線兩戰與四筆 Gem 寶箱。新版另實跑落日大蝙蝠 18 回合和局與山丘矮人敗北。**部分**戰鬥 HUD 與其他獎勵。 | 繁中 Flash 和局、山丘矮人敗北與通關底欄時點、紫色泥沼澤2左線的舞台 0 與先鋒卡寶箱、換角。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -127,3 +127,7 @@
 ### 空地與固定 Gem 接續戰鬥
 
 - 原版與新版都實跑「山丘矮人」首格空地至道路戰鬥，以及「紫色泥沼澤2」30 Gem 寶箱至泥潭戰鬥。新版另實跑 Gem 寶箱的右支線道路戰鬥。實機驗到兩種原始 BGM、同一 Quest、牌組鎖、既有傷勢和每場唯一一次 Ready。寶箱在首次戰鬥前也會播放原始翻牌音，按 OK 後開放已確認的路線。[道路戰場並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q4-stage2-comparison.png) · [Gem 寶箱並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q32-gem-comparison.png) · [泥潭戰場並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-live/q32-stage3-comparison.png) · [逐項規格](flash-parity/quest-pve.md#非戰鬥地形與續戰)
+
+### 道路終局與泥潭右線
+
+- 繁中 Flash 與新版已實跑山丘矮人勝利和返回，以及紫色泥沼澤2右線 `1→5→8→10`。右線四筆各自的寶箱為 30、30、50、30 Gem。戰果、寶箱、通關依序各按一次 OK。末戰選「原地」後 HP 由 3 回到 4，再承受 3 點傷害。兩版核對同一套 Ruby 結算中的持有列、通關紀錄、AP 和牌組解鎖。新版另實跑山丘矮人敗北。[山丘矮人通關並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-complete-live/q4-clear-comparison.png) · [50 Gem 寶箱並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-complete-live/q32-slot8-gem-comparison.png) · [右線通關並排](/workspace/shared/unlight-web-port/flash-parity/quest-peaceful-complete-live/q32-clear-comparison.png) · [逐項規格](flash-parity/quest-pve.md#道路終局與泥潭後續格)

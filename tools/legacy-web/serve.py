@@ -231,8 +231,11 @@ def native_quest_catalog():
                     # QuestLand#treasure_genre uses the master type and falls back to the stored ID.
                     contents["treasureType"] = treasure_types.get(treasure_id, treasure_id)
                     contents["emptyTerrain"] = (enemy_id, treasure_id, event_id) == (0, 0, 0)
-                    if enemy_id == 0 and event_id == 0 and treasure_id in fixed_gem_treasures:
-                        contents["fixedGemTreasure"] = fixed_gem_treasures[treasure_id]
+                    if event_id == 0 and (gem_treasure := fixed_gem_treasures.get(treasure_id)):
+                        if enemy_id == 0:
+                            contents["fixedGemTreasure"] = gem_treasure
+                        elif gem_treasure["slotType"] == 1:
+                            contents["fixedBattleGemTreasure"] = gem_treasure
                     if treasure_id in fixed_character_treasures:
                         contents["fixedCharacterTreasure"] = fixed_character_treasures[treasure_id]
     quests = {}

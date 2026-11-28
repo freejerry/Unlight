@@ -134,6 +134,8 @@ async function prepareGemFace(face, gem, amount) {
   const caption = add(face, 'span', 'quest-map-treasure-gem-caption');
   put(caption, gem.caption);
   Object.assign(caption.style, glow, { font: '24px "Bradley Gratis", serif', whiteSpace: 'nowrap' });
+  // GemCardClip's centered Flash caption begins with one Bradley space before the larger number.
+  add(caption, 'span').textContent = '\u00a0';
   const number = add(caption, 'span', 'quest-map-treasure-gem-amount');
   number.style.fontSize = '50px';
   number.textContent = String(amount);
