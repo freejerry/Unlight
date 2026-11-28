@@ -9,6 +9,7 @@ import {
 } from './quest-preview-data.js';
 
 const art = '/source-login/quest-art/';
+const resultArt = '/source-login/quest-result-art/';
 const rowStatus = ['new', '', 'active', '', 'wait', '', 'present'];
 const rowStatusNames = ['新任務', '未完成', '進行中', '已完成', '搜尋中', '失敗', '受贈'];
 const rowKind = ['adventure', 'treasure', 'boss'];
@@ -155,7 +156,7 @@ function image(file, className) {
   return img;
 }
 
-function setupDialog(dialog, view, origin, signal, { slide = false, onDismiss } = {}) {
+function setupDialog(dialog, view, origin, signal, { slide = false, dismissOnEscape = true, onDismiss } = {}) {
   const closeButton = dialog.querySelector('button');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const sineOut = 'linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1)';
@@ -196,7 +197,7 @@ function setupDialog(dialog, view, origin, signal, { slide = false, onDismiss } 
   closeButton.addEventListener('click', dismiss, { signal });
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
-    void dismiss();
+    if (dismissOnEscape) void dismiss();
   }, { signal });
   window.addEventListener('resize', position, { signal });
   window.addEventListener('scroll', position, { signal, passive: true });
@@ -216,6 +217,58 @@ function setupDialog(dialog, view, origin, signal, { slide = false, onDismiss } 
     },
     dismiss,
   };
+}
+
+function showQuestSettlement(view, settlement, assets, signal, onDismiss) {
+  const dialog = document.createElement('dialog');
+  dialog.id = 'quest-map-settlement';
+  dialog.className = 'quest-map-dialog';
+  const result = settlement.quest.result === 0 ? 'clear' : 'failed';
+  dialog.dataset.result = result;
+  dialog.dataset.inventoryId = String(settlement.inventoryId);
+  dialog.setAttribute('aria-labelledby', 'quest-map-settlement-title');
+  const title = document.createElement('h2');
+  title.id = 'quest-map-settlement-title';
+  title.className = 'sr-only';
+  title.textContent = result === 'clear' ? '任務完成' : '任務失敗';
+  dialog.append(title);
+  const button = document.createElement('button');
+  button.id = 'quest-map-settlement-ok';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'OK');
+  button.className = 'quest-map-art-button';
+  const { panel, ok } = assets?.quest?.[result] ?? {};
+  function appendArt(parent, asset, className = '', x = 0, y = 0) {
+    const img = document.createElement('img');
+    img.className = className;
+    img.src = resultArt + asset.file;
+    img.alt = '';
+    place(img, [asset.x - x, asset.y - y, asset.width, asset.height]);
+    parent.append(img);
+  }
+  if (panel && ok?.up && ok?.hit) {
+    appendArt(dialog, panel);
+    place(button, ok.hit);
+    appendArt(button, ok.up, '', ok.hit[0], ok.hit[1]);
+    if (ok.over) appendArt(button, ok.over, 'quest-map-art-over', ok.hit[0], ok.hit[1]);
+  } else {
+    dialog.dataset.art = 'unavailable';
+    title.className = '';
+    button.textContent = 'OK';
+  }
+  dialog.append(button);
+  view.append(dialog);
+  const lifetime = new AbortController();
+  const cleanup = () => lifetime.abort();
+  signal.addEventListener('abort', cleanup, { once: true });
+  const { show } = setupDialog(dialog, view, [0, 0], lifetime.signal, { dismissOnEscape: false });
+  dialog.addEventListener('close', () => {
+    signal.removeEventListener('abort', cleanup);
+    cleanup();
+    dialog.remove();
+    if (!signal.aborted) onDismiss();
+  }, { once: true });
+  show();
 }
 
 function placeWorldImage(layer, className) {
@@ -375,7 +428,9 @@ function paintDetailRoute(route, positions, assets, setHover, reachableSlot, ent
   }
 }
 
-function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, loadCards, current, onAlert, onEncounter }) {
+function setupQuestDetails(view, {
+  scene, signal, definitions, loadDefinitions, loadCards, current, onAlert, onEncounter, onBattleFinish, onBattleReturn, onBattleSound,
+}) {
   const get = selector => view.querySelector(selector);
   const detail = get('#quest-map-detail');
   const world = get('#quest-map-world');
@@ -395,7 +450,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
   let acknowledging;
   let starting = false;
   let entering = false;
-  let mountingBattle = false;
+  let activeBattle;
   let pawnCard;
   let pawnOrigin;
   let rendered;
@@ -417,7 +472,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     appendTerrainArt(panelArt, assets, land, 512, 403);
   }
 
-  function close() {
+  function close(restoreFocus = true) {
     if (current().adventure) return;
     const closed = selectedId;
     selectedId = undefined;
@@ -433,7 +488,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     route.replaceChildren();
     const row = get(`#quest-map-inventory > li[data-inventory-id="${closed}"]`);
     row?.querySelector('.quest-map-row-open')?.removeAttribute('aria-current');
-    (row?.querySelector('.quest-map-row-open') ?? picker).focus({ preventScroll: true });
+    if (restoreFocus) (row?.querySelector('.quest-map-row-open') ?? picker).focus({ preventScroll: true });
   }
 
   function drawPawn(adventure, deck, firstLand) {
@@ -480,7 +535,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     if (!selectedId) return;
     const row = rows.find(item => item.inventoryId === selectedId);
     if (!row || !detailStatuses.has(row.status)) {
-      close();
+      if (!activeBattle) close();
       return;
     }
     const definition = definitions.get(row.questId);
@@ -519,17 +574,42 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
       paintDetailRoute(route, definition?.positions, assets, setHover, reachableSlot, enterLand);
     }
     drawPawn(ownAdventure, selectedDeck, firstLand);
-    if (!mountingBattle && stageReady && ownAdventure?.state === 'encounter' && ownAdventure.encounter) {
+    if (!activeBattle && stageReady && ownAdventure?.state === 'encounter' && ownAdventure.encounter) {
       const { encounter } = ownAdventure;
       const layers = battleAssets.stages[encounter.stage]?.layers;
       if (layers?.length && encounter.stage === firstLand.stage) {
-        mountingBattle = true;
-        void mountQuestBattleEntry(view, get('.quest-map-board'), {
-          encounter, layers, assets: battleAssets, signal, scene, loadCards,
+        const lifetime = activeBattle = new AbortController();
+        const battleSignal = AbortSignal.any([lifetime.signal, signal]);
+        const board = get('.quest-map-board');
+        const settlementArt = getCatalog(`${resultArt}index.json`, null, battleSignal).catch(() => null);
+        void mountQuestBattleEntry(view, board, {
+          encounter, layers, assets: battleAssets, signal: battleSignal, scene, loadCards,
           isCurrent: () => current().adventure?.encounter === encounter && current().adventure.state === 'encounter',
           onEncounter: stage => onEncounter?.({
             stage, isBoss: definition.kind === 2,
           }),
+          onBattleFinish, onBattleSound,
+          async returnToMap() {
+            const assets = await settlementArt;
+            if (battleSignal.aborted || activeBattle !== lifetime || view.inert) return false;
+            const settlement = await scene.returnFromBattle({ signal: battleSignal });
+            if (battleSignal.aborted || activeBattle !== lifetime || !settlement?.canReturn || !settlement.quest) return false;
+            lifetime.abort();
+            activeBattle = undefined;
+            get('#quest-map-battle')?.remove();
+            pawn.hidden = true;
+            pawn.replaceChildren();
+            pawnCard = pawnOrigin = undefined;
+            close(false);
+            board.style.maskImage = '';
+            board.hidden = false;
+            onBattleReturn?.();
+            showQuestSettlement(view, settlement, assets, signal, () => {
+              board.inert = false;
+              get('#quest-map-back').focus({ preventScroll: true });
+            });
+            return true;
+          },
         });
       }
     }
@@ -582,7 +662,7 @@ function setupQuestDetails(view, { scene, signal, definitions, loadDefinitions, 
     }
   }
 
-  localBack.addEventListener('click', close, { signal });
+  localBack.addEventListener('click', () => close(), { signal });
   void getCatalog(`${art}sources.json`, null, signal).then(({ detail: source, battle }) => {
     if (signal.aborted || !source) return;
     assets = source;
@@ -829,24 +909,35 @@ async function mountQuestRegions(view, snapshot, signal, search) {
   }
   if (signal.aborted) return;
 
-  const normal = ordinaryQuestRegions(snapshot.questFlag).map(region => ({
-    ...region, type: 'normal', geography: geography.normal.find(page => page.index === region.index),
-  }));
-  const tutorial = { ...tutorialQuestRegion(snapshot.tutorialQuestFlag), type: 'tutorial', geography: geography.tutorial };
-  tutorial.mapIds ??= [];
-
   const pickerPanel = setupDialog(picker, view, [32, 64], signal, { slide: true });
   const openPreview = setupSearchPreview(view, geography.searchThumbnails ?? {}, signal, search);
   opener.addEventListener('click', () => pickerPanel.show(opener), { signal });
   opener.disabled = false;
 
   const menu = new Map();
+  let current = snapshot;
+  let normal;
+  let tutorial;
   function pick(region) {
     if (region !== activeRegion) void showRegion(region);
     void pickerPanel.dismiss();
   }
-  for (const region of normal) menu.set(region, addPickerButton(options, region, region.index, 'normal', signal, pick));
-  menu.set(tutorial, addPickerButton(options, tutorial, 0, 'tutorial', signal, pick));
+
+  function updateRegions(next) {
+    const previous = current;
+    current = next;
+    normal = ordinaryQuestRegions(next.questFlag).map(region => ({
+      ...region, type: 'normal', geography: geography.normal.find(page => page.index === region.index),
+    }));
+    tutorial = { mapIds: [], ...tutorialQuestRegion(next.tutorialQuestFlag), type: 'tutorial', geography: geography.tutorial };
+    menu.clear();
+    options.replaceChildren();
+    for (const region of normal) menu.set(region, addPickerButton(options, region, region.index, 'normal', signal, pick));
+    menu.set(tutorial, addPickerButton(options, tutorial, 0, 'tutorial', signal, pick));
+    const destination = activeRegion?.type === 'tutorial' ? tutorial
+      : next.questFlag === previous.questFlag ? normal[activeRegion?.index] ?? normal.at(-1) : normal.at(-1);
+    return showRegion(destination);
+  }
 
   function changeRegion(region, direction) {
     void showRegion(region);
@@ -888,9 +979,9 @@ async function mountQuestRegions(view, snapshot, signal, search) {
     }
     world.hidden = false;
 
-    const progressId = type === 'tutorial' ? tutorialQuestProgressMap(snapshot.tutorialQuestFlag)
-      : ordinaryQuestProgressMap(snapshot.questFlag);
-    const count = type === 'tutorial' ? snapshot.tutorialQuestClearNum : snapshot.questClearNum;
+    const progressId = type === 'tutorial' ? tutorialQuestProgressMap(current.tutorialQuestFlag)
+      : ordinaryQuestProgressMap(current.questFlag);
+    const count = type === 'tutorial' ? current.tutorialQuestClearNum : current.questClearNum;
     const mapped = await Promise.all(Array.from(areas, async ([id, button]) => {
       const map = await readMap(id);
       if (signal.aborted || activeRegion !== region) return false;
@@ -909,7 +1000,14 @@ async function mountQuestRegions(view, snapshot, signal, search) {
     else updateState('ready');
   }
 
-  await showRegion(normal.at(-1));
+  const initial = updateRegions(snapshot);
+  search.scene?.subscribe?.(next => {
+    if (Object.hasOwn(next, 'questFlag') &&
+        ['questFlag', 'questClearNum', 'tutorialQuestFlag', 'tutorialQuestClearNum'].some(key => next[key] !== current[key])) {
+      void updateRegions(next);
+    }
+  }, { signal });
+  await initial;
 }
 
 function formatTimer(milliseconds) {
@@ -1029,7 +1127,7 @@ async function paintDeck(view, selected, signal, loadCards) {
   }
 }
 
-export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert, onEncounter }) {
+export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert, onEncounter, onBattleFinish, onBattleReturn, onBattleSound }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -1055,6 +1153,7 @@ export function mountQuestMap(host, { session, snapshot, scene, onBack, onAlert,
   let selectingDeck = false;
   const details = setupQuestDetails(view, {
     scene, signal, definitions, loadDefinitions, loadCards, current: () => latest, onAlert, onEncounter,
+    onBattleFinish, onBattleReturn, onBattleSound,
   });
 
   const updateTimers = () => {

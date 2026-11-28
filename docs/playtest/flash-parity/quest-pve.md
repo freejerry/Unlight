@@ -6,7 +6,7 @@
 
 | 項目 | 整合分支 | 後續範圍及診斷證據 |
 | --- | --- | --- |
-| `/source-login/` | 大廳「任務」接固定舞台與 Quest 連線。已接地圖、搜尋、持有清單、詳情、地形預覽、牌組切換及起始牌卡面。落日大蝙蝠已從開始驗至第一格與原版舞台 11 背景。 | 好友贈送等其他狀態、道具、完整開場與戰鬥回合待移植或驗收。歷史暫停分支 `8595426`、`b04db83` 可參考共用傳輸。 |
+| `/source-login/` | 大廳「任務」接固定舞台與 Quest 連線。已接地圖、搜尋、持有清單、詳情、地形預覽、牌組切換及起始牌卡面。落日大蝙蝠已從開始實跑至戰鬥勝利、報酬及同一任務地圖返回。 | 好友贈送、道具、完整戰鬥狀態與多地形待移植或驗收。歷史暫停分支 `8595426`、`b04db83` 可參考共用傳輸。 |
 | `/web-client/` 診斷實作（原生根入口） | 共享 `web-client/session.js`／`quest-data.js` 已可讀原版 Quest、搜尋、開始、地形、真實 Ruby AI 對戰、結算和返回清單。診斷入口的一般唯讀、搜尋和開始用短 Quest 連線，進入第一格後留住原版 socket。`startQuestSearch()` 目前固定使用 `questFlag+1` 的 1–35 普通地圖以及計時選項 1。 | 多段實際 Chromium、Ruby 和 SQLite 驗收留在 `docs/playtest/README.md`。此處的結果證明傳輸與遊戲行為可複用。固定舞台版面須另驗收。 |
 | 原版 Ruffle | 原版對照可使用既有隔離 Ruby 與 Flash 載入流程。 | 地圖、首關戰鬥、兩個結果確認及通關進度已有瀏覽器截圖和隔離資料核對。 |
 | Rust 倒數示範與 68 事件回放 | 各自獨立驗證工具，可維持現有用途。 | 具有倒數或播放 UI。首關的 Ruby 持有紀錄、AP、地形和對局仍由 Quest 服務管理。 |
@@ -117,10 +117,10 @@
 
 ### 後續驗收
 
-1. 從實跑確定的第二回合 Move 繼續到落日大蝙蝠的勝敗。分別驗本方首攻、非空攻擊結算、再後續回合，以及進入同一任務的結算與返回。以原版實跑核對結束條件、音樂淡出與畫面交接。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
+1. 落日大蝙蝠已實跑勝利、兩次 OK 與返回。接續實跑敗北與和局，核對結果圖、音效、報酬、兩次確認、任務歸檔及牌組解鎖。和局使用自己的戰鬥結果圖，地圖結算使用任務失敗圖。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
 2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
-3. 接續局結果及任務結算，按持有 ID 驗證 `SC24`。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
-4. 首先跑原版與固定舞台同一區域 q1 落日大蝙蝠，覆蓋登入→進區→搜尋→同一 Quest→戰鬥→結算→任務地圖→Lobby。再跑 q3 大蝙蝠之群（slots1→4）雙戰、q4 山丘矮人（slot1空地→4真戰）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格真戰）。另選一張單卡與真正兩卡可換角牌組、升級，以及確實受理的敗或和。量測 AP、持有 ID/狀態、clear log、牌組鎖、Gem/Exp/掉卡和 socket 數。截圖核對互動時序和場景聲音。
+3. 核對有獎勵骰的終局，依實際 Ruby 獎勵流程驗證高低選擇、取消、重試及獎勵交接。其餘原版搜尋索引、區域和特殊分支按各自的可達狀態驗收。
+4. 在原版與固定舞台跑 q3 大蝙蝠之群（slot1→4）雙戰、q4 山丘矮人（slot1 空地→4 戰鬥）、q32 紫色泥沼澤2（首格固定 30 Gem，下一格戰鬥）。先核對非末格獲勝後同一 Quest、同一持有 ID、原牌組鎖和已清格位元，再輸入下一個有效格。另選單卡與真正兩卡可換角牌組。量測 AP、持有 ID、狀態、通關記錄、牌組鎖、Gem、Exp、掉卡和連線數。保存畫面及聲音時序。
 5. 測試延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。依隔離 Ruby 的 SQLite 查核持久化結果，測試紀錄只保存非敏感資料。早期原版、共享傳輸和暫停分支各自有測例，固定舞台狀態依本分支實跑結果更新。
 
 | 首組之後的狀態 | 下一段原版驗收依據 |
@@ -203,7 +203,25 @@
 - 新版自動實跑同為遠距離、先防禦再攻擊。第二組開場的對方 `SC82` 牌 ID 為空，遮罩仍是 7，點數為 1。本方回覆的點數為 0。數字依真實點數顯示，當牌 ID 和遮罩一致時才標記卡片。第二組空攻擊只回傳一顆防禦骰，11 次擲骰音全屬第一組。第二回合只補入同一張上半面朝上的事件牌 259，等真正的 `SC46` 才開放新 Move。再按後退送出 `CS23`，由同一條 Quest 的 `SC60` 確認。[第二組攻擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-03-second-attack.png) · [暫緩 Move](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-04-next-draw-awaiting-move.png) · [原始方向確認](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-06-next-move-direction-confirmed.png) · [新版真實封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-native-next-turn-wire.json)
 - 獨立指標試玩核對近距離斬擊和遠距離槍擊。在兩場真實 `SC73` 回覆中，扣 3 點、扣 1 點分別把生命值更新為 4/7 和 6/7，並延續到第二回合。四組命中素材與 18 個普通回合標示由固定的 SWF 擷取，保留每格的座標、順序和透明度。回合數以原版白色填色覆蓋黑邊。修正後的最終畫面另外核對點數圖與 OK 可見性。[第二組攻擊並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/second-attack-comparison.png) · [第二回合 Move 並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-two-move-comparison.png) · [新版斬擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root/root-02c-exchange-1-slash.png) · [新版槍擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-02c-exchange-1-bullet.png) · [最終實跑封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-exchange-two-wire.json) · [來源素材與字圖驗證](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-glyph-validation.json)
 
-原版可分別在 `SC44` 和 `SC45` 到達時排入補牌，新版在刻意分開封包的驗收中保留最後確認的手牌直到 `SC46`。正常 Ruby 回覆實跑已核對補牌順序。原版短暫白色斜面濾鏡、換角畫面、戰鬥日誌及終局另列後續驗收。[原版補牌入列](../../../app/client/src/net/server/QuestServer.as#L1033) · [可重跑步驟](qa.md#重跑同回合攻守互換與次回合)
+原版可分別在 `SC44` 和 `SC45` 到達時排入補牌，新版在刻意分開封包的驗收中保留最後確認的手牌直到 `SC46`。正常 Ruby 回覆實跑已核對補牌順序。原版短暫白色斜面濾鏡、換角畫面及戰鬥日誌另列後續驗收。[原版補牌入列](../../../app/client/src/net/server/QuestServer.as#L1033) · [可重跑步驟](qa.md#重跑同回合攻守互換與次回合)
+
+### 單格任務的勝敗、報酬與返回
+
+| 階段 | 原版規格與分項驗收 |
+| --- | --- |
+| 戰鬥結果 | `SC41` 帶勝／敗／和、基礎 Gem、基礎 Exp、Exp 加成、兩種倍率、兩項最終報酬及獎勵骰旗標。落日大蝙蝠的普通戰鬥由 `QuestResultScene` 顯示，先退場手牌和戰鬥 HUD、停止戰鬥 BGM，再播放勝利 `ulse16.mp3` 或敗北／和局 `ulse15.mp3`、結果圖與原始繁中報酬欄位。動作素材及站位用原始角色圖。升級與獎勵骰依各自旗標及資料。[Ruby 戰鬥報酬](../../../app/server/src/controller/quest_controller.rb#L608) · [原版退場](../../../app/client/src/view/QuestView.as#L934) · [原版結果序列](../../../app/client/src/view/scene/game/QuestResultScene.as#L54) |
+| 任務權威結算 | 單格勝利會寫入原任務清除資料、解開牌組並推送刪除及同持有 ID 的 `SC24`。敗北及和局皆收到任務敗北，戰鬥和局畫面仍用自己的結果。保留原版實收的角色 Gem、Exp、等級、區域旗標和通關數。收不到匹配的刪除與結算，維持待確認的結果畫面；驗收讀取原版 SQLite，檢查同一任務只產生一筆記錄。[Ruby 任務終局](../../../app/server/src/controller/quest_controller.rb#L644) · [狀態和牌組保存](../../../app/server/src/model/avatar.rb#L3295) |
+| 戰鬥畫面 OK | 普通結果序列完成後，原版按鈕在 `(576,600)` 顯示。按下播放 `ulse01.mp3`，收起戰鬥結果並重新掛回同一任務地圖，從頭播放任務曲。Lobby 沿原連線發出角色刷新。按鈕既有的指標位置及轉場需保留。[結果按鈕](../../../app/client/src/view/scene/game/ResultScene.as#L584) · [原版回到地圖](../../../app/client/src/view/QuestView.as#L994) · [Lobby 刷新](../../../app/client/src/controller/LobbyCtrl.as#L619) |
+| 地圖結算 OK 和 Back | `SC24` 經原版 1.5 秒的排程準備結算面板。回到地圖時顯示該任務的清除／失敗圖。同一舞台保留地圖、清單、角色和牌組，面板開啟期間鎖住地圖指標。第二次 OK 只關閉面板並恢復地圖操作。之後手動按 Back 才送出 Quest `CS2`，四條原登入連線繼續使用。[SC24 顯示排程](../../../app/client/src/net/server/QuestServer.as#L750) · [原始結算面板](../../../app/client/src/view/image/quest/QuestClearPanel.as#L71) · [地圖操作恢復](../../../app/client/src/view/QuestView.as#L618) |
+| 畫格、座標和指標 | 結果圖為 `(220,94)` 起 320×312，依原版加速後的 40.8 fps 播放，Win／Lose／Draw 各保留自身最後一張畫格。地圖結算圖為 `(48,184)` 起 368×144，OK 的有效區從 `(152.05,288)` 起。兩處 OK 的平時及滑入底圖沿用各自的原始元件。85 張圖的來源、座標、停格及兩次擷取驗證隨清單保存。[原始素材清單](../../../source-login/quest-result-art/index.json) · [素材及取樣驗證](/workspace/shared/unlight-web-port/flash-parity/quest-result-art/asset-validation.json) |
+
+- 原版繁中固定舞台在第一回合遠距離先攻，依真實手牌旋轉並打出槍牌 12、8，攻守各擲 8、5 顆，蝙蝠受到 1 點傷害。戰鬥 `SC41` 為勝利，基礎 9 Gem、5 Exp、加成 10 Exp，倍率皆 100，合計 9 Gem／15 Exp。原版結果保留 Win 圖、角色姿勢、Lv2 提示及實測中心為 `(657,616)` 的 OK。SQLite 核對升到 Lv2、AP 6/6、Deck 1 解鎖、任務歸檔、區域進度 1/3，以及實際發放的一張角色卡。[原版勝利及報酬](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/11-original-duel-reward.png) · [原版實跑封包與畫面時間](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/README.md)
+- 同一繁中 SWF 再跑一場，第二回合用當場補入的事件牌 259 擲六顆攻擊骰，對方四顆防禦骰，蝙蝠扣 1 點。Ruby 實發 12 Gem、5 Exp，角色維持 Lv1、AP 4/5。依序點 `(657,616)` 的戰鬥 OK、`(233,308)` 的地圖結算 OK、`(735,15)` 的 Back，三處都實測到 Ruffle 的指標狀態。兩次 OK 前後，原版 SQLite 的報酬、歸檔與任務進度一致。原 Quest 保留到 Back，原版中繼只見一次 `CS22`、一次 `CS2`。原版混音與勝利音效的最高相關為 0.966，第一次 OK 後開始的任務曲為 1.000。[原版畫面與封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/wire.json) · [中繼封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/relay-wire.json) · [原版音訊取樣](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/audio-samples.json)
+- 普通任務只排入一次升級提示，文案採原版「已升等級減升級級數再加 1」。一次跨兩級時，結果畫面顯示第一個跨過的等級，角色數值保留 Ruby 確認的最終等級。升級文字使用現有 Noto Serif TC 模擬原版繁中 Mincho。獎勵骰場景的連續升級畫面另驗。[原版普通任務結果](../../../app/client/src/view/scene/game/QuestResultScene.as#L121) · [升級文字及時序](../../../app/client/src/view/image/game/ResultAvatarLevelUpImage.as#L142)
+- 新版自動驗收用真實 Ruby 打贏落日大蝙蝠。該場獲 10 Gem／5 Exp、一張角色卡，保留 Lv1 及 AP 4/5。先暫緩匹配的 `SC24`，確認 Win、報酬和原版 OK 仍在同一畫面。放行後依序確認勝利畫面與任務完成面板，恢復原 Quest 地圖且進度為 1/3、清單為 0/4。點地圖 Back 後只關閉該 Quest，清楚觀察到正常關閉碼 1000。[新版勝利及報酬](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-02-confirmed-duel-reward.png) · [新版通關面板](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-03-quest-clear.png) · [新版任務地圖](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-04-quest-map-return.png) · [實跑封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-native-terminal-wire.json)
+- 獨立試玩以正常動畫及未延遲的 Ruby 回覆驗到 Win 圖留在結果畫面、手牌退出、戰鬥曲淡出與 `ulse16` 播放一次。第一次 OK 播放 `ulse01` 後重開任務曲，第二次 OK 恢復地圖操作，Back 再關閉原有 Quest。SQLite 驗證報酬、歸檔、牌組及通關紀錄。[新版完整動畫結果](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-01-original-duel-result.png) · [封包與音軌](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-wire.json) · [來源素材驗證](/workspace/shared/unlight-web-port/flash-parity/quest-result-art/asset-validation.json)
+- 兩版並排採同樣 780×680 舞台與角色配件。原版除錯字樣、角色動態取樣與每場的 Gem 數各依該次實跑畫面保存。[勝利結果並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/duel-result-comparison.png) · [任務結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-clear-comparison.png) · [地圖返回並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-map-comparison.png)
+- 另一場真實勝利已在 SQLite 保存 12 Gem／15 Exp、Lv2 及一張角色卡。刻意把當場 `SC24` 保留超過 8 秒，畫面繼續保有該場勝利報酬，標記結算未確認。釋放遲到的原始回覆並重按，仍無返回或重送。未收到結算期間的保留策略與原版正常封包順序分開驗證。[實際結算回覆逾時](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-06-terminal-quest-reply-uncertain.png) · [重跑終局](qa.md#重跑單格任務終局)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

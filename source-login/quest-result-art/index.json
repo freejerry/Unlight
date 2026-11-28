@@ -1,0 +1,1752 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "renderer": "JPEXS FFDec 26.6.0",
+  "rendererSha256": "3f1b1993a8ab34d4910192931236074d2c69db23e23d69cd16848c851b1995c3",
+  "outcomes": {
+    "win": {
+      "frames": [
+        {
+          "file": "win-01.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-02.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-03.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-04.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-05.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-06.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-07.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-08.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-09.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "win-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        }
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": true
+    },
+    "lose": {
+      "frames": [
+        {
+          "file": "lose-01.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-02.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-03.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-04.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-05.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-06.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-07.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-08.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-09.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-11.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-12.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-13.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-14.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-15.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-16.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-17.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-19.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-20.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-21.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-22.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-23.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-23.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-23.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "lose-23.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        }
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": true
+    },
+    "draw": {
+      "frames": [
+        {
+          "file": "draw-01.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-02.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-03.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-04.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-05.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-06.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-07.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-08.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-09.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-10.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-11.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-12.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-13.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-14.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-15.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-16.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-17.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        },
+        {
+          "file": "draw-18.png",
+          "x": 220,
+          "y": 94,
+          "width": 320,
+          "height": 312
+        }
+      ],
+      "framesPerSecond": 40.8,
+      "holdLast": true
+    }
+  },
+  "rewards": {
+    "plate": {
+      "file": "reward-plate.png",
+      "x": 0,
+      "y": 585,
+      "width": 760,
+      "height": 96
+    },
+    "labels": {
+      "gems": [
+        {
+          "x": 83,
+          "y": 597,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 161,
+          "y": 597,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 225,
+          "y": 597,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 305,
+          "y": 597,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 378,
+          "y": 587,
+          "width": 170,
+          "height": 40
+        }
+      ],
+      "exp": [
+        {
+          "x": 83,
+          "y": 642,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 161,
+          "y": 642,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 225,
+          "y": 642,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 305,
+          "y": 642,
+          "width": 60,
+          "height": 40
+        },
+        {
+          "x": 378,
+          "y": 632,
+          "width": 170,
+          "height": 40
+        }
+      ]
+    }
+  },
+  "ok": {
+    "up": {
+      "file": "duel-ok-up.png",
+      "x": 576,
+      "y": 600,
+      "width": 160,
+      "height": 32
+    },
+    "over": {
+      "file": "duel-ok-over.png",
+      "x": 576,
+      "y": 600,
+      "width": 160,
+      "height": 32
+    },
+    "down": {
+      "file": "duel-ok-over.png",
+      "x": 576,
+      "y": 600,
+      "width": 160,
+      "height": 32
+    },
+    "hit": [
+      576,
+      600,
+      159.95,
+      31.95
+    ]
+  },
+  "quest": {
+    "clear": {
+      "panel": {
+        "file": "quest-clear.png",
+        "x": 48,
+        "y": 184,
+        "width": 368,
+        "height": 144
+      },
+      "ok": {
+        "up": {
+          "file": "quest-ok-up.png",
+          "x": 152.05,
+          "y": 288,
+          "width": 160,
+          "height": 40
+        },
+        "over": {
+          "file": "quest-ok-over.png",
+          "x": 152.05,
+          "y": 288,
+          "width": 160,
+          "height": 40
+        },
+        "down": {
+          "file": "quest-ok-over.png",
+          "x": 152.05,
+          "y": 288,
+          "width": 160,
+          "height": 40
+        },
+        "hit": [
+          152.05,
+          288,
+          159.95,
+          39.95
+        ]
+      }
+    },
+    "failed": {
+      "panel": {
+        "file": "quest-failed.png",
+        "x": 48,
+        "y": 208,
+        "width": 368,
+        "height": 104
+      },
+      "ok": {
+        "up": {
+          "file": "quest-ok-up.png",
+          "x": 152.05,
+          "y": 272,
+          "width": 160,
+          "height": 40
+        },
+        "over": {
+          "file": "quest-ok-over.png",
+          "x": 152.05,
+          "y": 272,
+          "width": 160,
+          "height": 40
+        },
+        "down": {
+          "file": "quest-ok-over.png",
+          "x": 152.05,
+          "y": 272,
+          "width": 160,
+          "height": 40
+        },
+        "hit": [
+          152.05,
+          272,
+          159.95,
+          39.95
+        ]
+      }
+    }
+  },
+  "levelUp": {
+    "frames": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      {
+        "file": "level-up-06.png",
+        "x": 308,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-07.png",
+        "x": 269,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-08.png",
+        "x": 238,
+        "y": 448,
+        "width": 383,
+        "height": 48
+      },
+      {
+        "file": "level-up-09.png",
+        "x": 213,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-10.png",
+        "x": 195,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-11.png",
+        "x": 184,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-12.png",
+        "x": 188,
+        "y": 441,
+        "width": 384,
+        "height": 55
+      },
+      {
+        "file": "level-up-13.png",
+        "x": 187,
+        "y": 427,
+        "width": 385,
+        "height": 69
+      },
+      {
+        "file": "level-up-14.png",
+        "x": 180,
+        "y": 420,
+        "width": 392,
+        "height": 76
+      },
+      {
+        "file": "level-up-15.png",
+        "x": 173,
+        "y": 413,
+        "width": 399,
+        "height": 83
+      },
+      {
+        "file": "level-up-16.png",
+        "x": 170,
+        "y": 410,
+        "width": 402,
+        "height": 86
+      },
+      {
+        "file": "level-up-17.png",
+        "x": 166,
+        "y": 406,
+        "width": 406,
+        "height": 112
+      },
+      {
+        "file": "level-up-18.png",
+        "x": 163,
+        "y": 403,
+        "width": 418,
+        "height": 129
+      },
+      {
+        "file": "level-up-19.png",
+        "x": 160,
+        "y": 400,
+        "width": 425,
+        "height": 139
+      },
+      {
+        "file": "level-up-20.png",
+        "x": 157,
+        "y": 397,
+        "width": 432,
+        "height": 149
+      },
+      {
+        "file": "level-up-21.png",
+        "x": 151,
+        "y": 391,
+        "width": 440,
+        "height": 158
+      },
+      {
+        "file": "level-up-22.png",
+        "x": 151,
+        "y": 391,
+        "width": 442,
+        "height": 161
+      },
+      {
+        "file": "level-up-23.png",
+        "x": 159,
+        "y": 389,
+        "width": 436,
+        "height": 167
+      },
+      {
+        "file": "level-up-24.png",
+        "x": 188,
+        "y": 389,
+        "width": 409,
+        "height": 170
+      },
+      {
+        "file": "level-up-25.png",
+        "x": 188,
+        "y": 394,
+        "width": 411,
+        "height": 168
+      },
+      {
+        "file": "level-up-26.png",
+        "x": 188,
+        "y": 390,
+        "width": 414,
+        "height": 178
+      },
+      {
+        "file": "level-up-27.png",
+        "x": 188,
+        "y": 390,
+        "width": 414,
+        "height": 178
+      },
+      {
+        "file": "level-up-28.png",
+        "x": 188,
+        "y": 400,
+        "width": 406,
+        "height": 167
+      },
+      {
+        "file": "level-up-29.png",
+        "x": 188,
+        "y": 411,
+        "width": 384,
+        "height": 123
+      },
+      {
+        "file": "level-up-30.png",
+        "x": 188,
+        "y": 411,
+        "width": 384,
+        "height": 90
+      },
+      {
+        "file": "level-up-31.png",
+        "x": 188,
+        "y": 423,
+        "width": 384,
+        "height": 78
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      },
+      {
+        "file": "level-up-32.png",
+        "x": 188,
+        "y": 448,
+        "width": 384,
+        "height": 48
+      }
+    ],
+    "framesPerSecond": 40.8,
+    "holdLast": true,
+    "waitMs": 3360
+  },
+  "provenance": {
+    "win-01.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "09dbd8429f03e0435b8ddc8c035e474b16863a56f8a585f56b94adec0b217659",
+      "sourceFrame": 1,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-02.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "d27611069c79b08e3cd2c875dc927fd1999a9168df4d4b95a93fef853b078f16",
+      "sourceFrame": 2,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-03.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f261b6e656f3d86c6bb576f97fc35e10d29e31c323b514964294a72ef1aef1e4",
+      "sourceFrame": 3,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-04.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "4d1f54a934e3413a88b77a208922a66bdda774b246f05c4b0030a981d5b3aad7",
+      "sourceFrame": 4,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-05.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "467bdc88ae9dad2475e8db29d1d4683b21c18efe7482088f11215762c86737f0",
+      "sourceFrame": 5,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-06.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "658c6bc93ebce062b42d7eb1093d8251d8ce1917a8f211896d2ad5a4d30d88a6",
+      "sourceFrame": 6,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-07.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "bccf844341b4a8cde40f8b2a4a5aff49f41e1846cd19fb3a41bc71024591d5da",
+      "sourceFrame": 7,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-08.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "38d4b3b667ff712aa5504af29e3cf559a4139b7b32c0c65cd3a02e3b2ef24829",
+      "sourceFrame": 8,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-09.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "6ec1a1c3880936929f1f4ba5e31614639c43386648205a16d69285f481edd53e",
+      "sourceFrame": 9,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "win-10.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "50c3ab495fee01ae88b1f72fce1dd57898a5869efed58852bb0565c72cfeb19a",
+      "sourceFrame": 10,
+      "sourceInstance": "win",
+      "sourceSprite": 18
+    },
+    "lose-01.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "09dbd8429f03e0435b8ddc8c035e474b16863a56f8a585f56b94adec0b217659",
+      "sourceFrame": 1,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-02.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "d27611069c79b08e3cd2c875dc927fd1999a9168df4d4b95a93fef853b078f16",
+      "sourceFrame": 2,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-03.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f261b6e656f3d86c6bb576f97fc35e10d29e31c323b514964294a72ef1aef1e4",
+      "sourceFrame": 3,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-04.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f369887c1ec7502ce45fc1d329193ace3bcab20b9251f62107232a3dab341f5c",
+      "sourceFrame": 4,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-05.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "1f38105333a9832d21fc876c94c2afd4b61804b78d9773df1a033100996f97ae",
+      "sourceFrame": 5,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-06.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "276b87a963a3b3deec3b1533c0c4d644213fa5dd818cd32afb98eb323e87a581",
+      "sourceFrame": 6,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-07.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "3ff91636702c3f8936ab3830b8da07e6af39fb41a232095c2bf0a513a958d56d",
+      "sourceFrame": 7,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-08.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "cd21f86ba6fd485433af445729563c7721c315d4e103da5c1d2ac38ca7e6d371",
+      "sourceFrame": 8,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-09.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "71009ebb05f8932d0bc693aa5a2955c62f86200988424a5b2a53951ba4ea7111",
+      "sourceFrame": 9,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-10.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "efa36f6275c6daaacb112e226a7c5f8ad54770c64cc308dd7d9629e011c40c63",
+      "sourceFrame": 10,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-11.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "4c2b809d9a7c47288f0196dc25e1ad29c56f79251ebb460121093576ef029061",
+      "sourceFrame": 11,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-12.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "8e2f5a9a8a05b897134ef2228259ec14e9084ab774e251e8ae5fd93edf2b9214",
+      "sourceFrame": 12,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-13.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "b702f0008d1e96a1bedec7345c0eb1d8f943f91004abed0fc3a7237238c11204",
+      "sourceFrame": 13,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-14.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "d731b471189fb275b3adc1364ddd235e6ff17839afee7ba2158c645500aaca13",
+      "sourceFrame": 14,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-15.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "8c02c91d527263c7e9d3e7830497b45bf2301ed68b08433c25ff680626f1a25f",
+      "sourceFrame": 15,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-16.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "ebcb348d6bec8b3497e7873eaefac68cf269bd454b61a7d981bc25bd2ca6f7c2",
+      "sourceFrame": 16,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-17.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "9365d5fb30922cae69dd1465106fea8b5e6229c0f6348e82bf4ea26c079855db",
+      "sourceFrame": 17,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-18.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "fbf6133e0b8192039e5519429711a2c7590fd93283849e5dc1fe1ca52dfb41a9",
+      "sourceFrame": 18,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-19.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "b90e8baf8514a6d73e292f6f42131e008e60662f1588f86fae93c77e5e0a961f",
+      "sourceFrame": 19,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-20.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "4f4cdcb12d1624244d163b5ad79982d7c6b47508d9b28715e1d5815e58a18d40",
+      "sourceFrame": 20,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-21.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f91fef712a4c0781465f0a480d230a86af948f0df3e8823caa0169e44efc9b36",
+      "sourceFrame": 21,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-22.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "b087678ca03332fe4189a2f850a9df43a0b5bf59cae3ef404b33a7909f0b21eb",
+      "sourceFrame": 22,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "lose-23.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "24265ae2be74b1bc1ee933d346e1a75c8d3a80394681b52d0392595923a7f332",
+      "sourceFrame": 23,
+      "sourceInstance": "lose",
+      "sourceSprite": 34
+    },
+    "draw-01.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "09dbd8429f03e0435b8ddc8c035e474b16863a56f8a585f56b94adec0b217659",
+      "sourceFrame": 1,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-02.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "d27611069c79b08e3cd2c875dc927fd1999a9168df4d4b95a93fef853b078f16",
+      "sourceFrame": 2,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-03.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f261b6e656f3d86c6bb576f97fc35e10d29e31c323b514964294a72ef1aef1e4",
+      "sourceFrame": 3,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-04.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "a258431747221292bda5c03ddd9ed74cc164c16f663c4526071909a9161fd543",
+      "sourceFrame": 4,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-05.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "8447e087d88fa73de4c2e02543b0af194354b182cadf8513b3b999c6ca923d55",
+      "sourceFrame": 5,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-06.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "928f45bb8e87e88e68c088a1bd248de777a2df0d62b0569a74ab4693547010a0",
+      "sourceFrame": 6,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-07.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "79f8ebd7626f73606f9367331a8e63c58b52fe29ea900d7f1d126c6a461b9c99",
+      "sourceFrame": 7,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-08.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "a0c5d3d0e9db79085432c7f89b3ee0daf251fe8492e52db5bbebf95a2c3f7912",
+      "sourceFrame": 8,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-09.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "f5b631418135f19c1102ca5f8cfa39cc4b359ca4a7d7def0c72d0f417b63e3b7",
+      "sourceFrame": 9,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-10.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "6a5ae5527d9a95391b7848c776d848004d2e25afbfc02c848e916df999dc1789",
+      "sourceFrame": 10,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-11.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "7575f6fee2d9d8af8390604fc05800e11b3380f9892e986912d7893707a97c5c",
+      "sourceFrame": 11,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-12.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "79f45a4ed8ca206ab30e1df33806a65981ac5f0d28d0fed98f9af598cb96aca2",
+      "sourceFrame": 12,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-13.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "673865c4427aebd6dbc115b34399f61d515c7adf5025623cf94223f6135e6db9",
+      "sourceFrame": 13,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-14.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "343fa536f99e6cf30cc502a03801e54731463e89b6339f5cc34d18a0e76554d1",
+      "sourceFrame": 14,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-15.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "669c809b9322af9600e2c297689ba73475a9010b9a226d87fb3990d74ac962d8",
+      "sourceFrame": 15,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-16.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "023e3c6ff85dcd5c111ef5e087c73fed55e8a099b3188d670cc63fa4ecbdb5b4",
+      "sourceFrame": 16,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-17.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "c15666803ea002fd41b4672147d1c0c133a148fd5a73d26dc53e3720b38bb71a",
+      "sourceFrame": 17,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "draw-18.png": {
+      "source": "data/image/game/result/maincall.swf",
+      "sourceSha256": "2a29d06ae9bb830ffee6c22ba33a79ee7e21cb9a602390ecd5d2620080552f86",
+      "sha256": "ed0846b42a5f4f2c05286e64cb1af9b8c11dae161ee4d0140741628669bcf221",
+      "sourceFrame": 18,
+      "sourceInstance": "draw",
+      "sourceSprite": 43
+    },
+    "level-up-06.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "a52ca8ec5c24bfc889b2eca53c65b314539a16b24163cdbd35950d1e57c4d392",
+      "sourceFrame": 6,
+      "sourceSprite": 0
+    },
+    "level-up-07.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "75cf7b9d3e91ea506f734ea376b556a24aa01065c7478b77a88e25d940c75a00",
+      "sourceFrame": 7,
+      "sourceSprite": 0
+    },
+    "level-up-08.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "b7633e22a753dd6a209bfa3d047c9ad0c59d8d8d1523ebc797ecf823c818700f",
+      "sourceFrame": 8,
+      "sourceSprite": 0
+    },
+    "level-up-09.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "9548936fda7233a9635587fab70c1319f84f878dcca40f6cf5d8319ce40d6e80",
+      "sourceFrame": 9,
+      "sourceSprite": 0
+    },
+    "level-up-10.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "a54c415fac4ed9e98e4d4dfb4d700612fc53ec4bdad85f1f7251113143e0407c",
+      "sourceFrame": 10,
+      "sourceSprite": 0
+    },
+    "level-up-11.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "7a00f1d4605c0f3430bd0f9721d66eb95956eb027bb94007166b19b6dab1da59",
+      "sourceFrame": 11,
+      "sourceSprite": 0
+    },
+    "level-up-12.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "25cf1943b16d60155f6bad1aa7c4f2b8df5d8a88be6a3935ed701118f6afe3e3",
+      "sourceFrame": 12,
+      "sourceSprite": 0
+    },
+    "level-up-13.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "4010a9dbf3d44888720253e29283d96227d09a0274e3f4e0629d5993de2843a2",
+      "sourceFrame": 13,
+      "sourceSprite": 0
+    },
+    "level-up-14.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "45f6eba89d25a80bf952a5416146f9e448c76cc1f71afe3fccf1bf7c12ab7cb0",
+      "sourceFrame": 14,
+      "sourceSprite": 0
+    },
+    "level-up-15.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "a2dc7bc6ca63fbb73419a30e85ddd4cd74abede267f93eb58c7e237112350ab4",
+      "sourceFrame": 15,
+      "sourceSprite": 0
+    },
+    "level-up-16.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "81f086970a5e1e1cb578b335cb5a3f9bc4d6d1a79507ee09e2a955fa93b03516",
+      "sourceFrame": 16,
+      "sourceSprite": 0
+    },
+    "level-up-17.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "f3a0a7b3124321ad8002ff5abd4d571bbaed0962e2d5c6b882dd72d9accb3f14",
+      "sourceFrame": 17,
+      "sourceSprite": 0
+    },
+    "level-up-18.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "6ce59e919af0e1e7c26b8beb5f606382e83c1222785adb25089b5f08adf9a41d",
+      "sourceFrame": 18,
+      "sourceSprite": 0
+    },
+    "level-up-19.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "8f88cb366564a5a9e4c37ff230933405c2555eaf0d5ba542908adbc4369d3b22",
+      "sourceFrame": 19,
+      "sourceSprite": 0
+    },
+    "level-up-20.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "376c3ba3c97fd96fbce789075b632256483b63f2cac5b99129ec96799931f584",
+      "sourceFrame": 20,
+      "sourceSprite": 0
+    },
+    "level-up-21.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "99899c6a6384af0d9425374382914929f0e7aea70f0c7943d99636025b4ce127",
+      "sourceFrame": 21,
+      "sourceSprite": 0
+    },
+    "level-up-22.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "339293b3b0d71d776ad8dc5eb06fc90319098761d23c83a5ace92a8e4f89cf9e",
+      "sourceFrame": 22,
+      "sourceSprite": 0
+    },
+    "level-up-23.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "9ad7152cc750ac58378d34221611a4ceaa40bd3a3a4b57f0b947afce1c7e167a",
+      "sourceFrame": 23,
+      "sourceSprite": 0
+    },
+    "level-up-24.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "7d2b9f3df9287a9532cc77a6c785406497339fd3fd55910c54ae05b1dd85b38f",
+      "sourceFrame": 24,
+      "sourceSprite": 0
+    },
+    "level-up-25.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "6cbff43d71a5533889d53a6f38e6b6941a5462c5a01ed53cd09bf54cfd6a47ee",
+      "sourceFrame": 25,
+      "sourceSprite": 0
+    },
+    "level-up-26.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "5d71c64ce3a348c07a6bd5433f9da4c476f7833526bb9ab2896ad3e7704601a3",
+      "sourceFrame": 26,
+      "sourceSprite": 0
+    },
+    "level-up-27.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "0291ad0641858e062cf450d1fe0b38d437508488ee5c9610ed24f120a794d840",
+      "sourceFrame": 27,
+      "sourceSprite": 0
+    },
+    "level-up-28.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "333564be3eeb86c15cd31eb26bc50cbb581f5923cf2e49ae99828d3ab99ea4f4",
+      "sourceFrame": 28,
+      "sourceSprite": 0
+    },
+    "level-up-29.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "aa6d1923a45b82aba1268af0a1b76c50935381de37cf009a27943bef3d449119",
+      "sourceFrame": 29,
+      "sourceSprite": 0
+    },
+    "level-up-30.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "cb4b7a85bd3f44ddd0480cfbc068c8d912893df1c4970a6c23c256e1496dab80",
+      "sourceFrame": 30,
+      "sourceSprite": 0
+    },
+    "level-up-31.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "5303a1620008f372736137a7f0ae0959b8bb53be9f58048a6c5c6807978c365a",
+      "sourceFrame": 31,
+      "sourceSprite": 0
+    },
+    "level-up-32.png": {
+      "source": "data/image/game/result/lvup_avatar.swf",
+      "sourceSha256": "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8",
+      "sha256": "7a00f1d4605c0f3430bd0f9721d66eb95956eb027bb94007166b19b6dab1da59",
+      "sourceFrame": 32,
+      "sourceSprite": 0
+    },
+    "reward-plate.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "b084415bd435c0ecc42bb4a59ae458d3beb5c256ea90fefd0a54a8cd9e35911e",
+      "sourceBitmap": 59,
+      "sourceInstance": "text_result",
+      "sourceSprite": 61,
+      "sourceFrame": 1
+    },
+    "duel-ok-up.png": {
+      "source": "data/image/game/result/result_ok.swf",
+      "sourceSha256": "313d69ab0e025130b96dcf836cb7d52d9b4cf7e4241acf34b0124777e5def82a",
+      "sha256": "3951ab3ec3339405ccfe03c45b5fda4eaafdd7a62c7331c388f9bb989b7703a6",
+      "sourceBitmap": 1,
+      "sourceButton": 5,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "duel-ok-over.png": {
+      "source": "data/image/game/result/result_ok.swf",
+      "sourceSha256": "313d69ab0e025130b96dcf836cb7d52d9b4cf7e4241acf34b0124777e5def82a",
+      "sha256": "6b909c9fe3bd342096529ecc63cabb8a4d84ae73fe845b9111b7dda3ff2cc048",
+      "sourceBitmap": 3,
+      "sourceButton": 5,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "quest-ok-up.png": {
+      "source": "data/image/quest/quest_result_ch.swf",
+      "sourceSha256": "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32",
+      "sha256": "824ba582b09c7f9bb41ee7fc92761fef7b3109b59169b9fa59bc8bcdfd0b3a0c",
+      "sourceBitmap": 3,
+      "sourceButton": 7,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "quest-ok-over.png": {
+      "source": "data/image/quest/quest_result_ch.swf",
+      "sourceSha256": "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32",
+      "sha256": "f35704741daa3af2240222108e55bbe019abd924de8e8516d115f471aeab2b54",
+      "sourceBitmap": 5,
+      "sourceButton": 7,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "quest-clear.png": {
+      "source": "data/image/quest/quest_result_ch.swf",
+      "sourceSha256": "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32",
+      "sha256": "633535ca149a6c0250743ce6758bc377febacc7f0b54be079a1f83907c58c722",
+      "sourceBitmap": 9,
+      "sourceInstance": "clear",
+      "sourceSprite": 11,
+      "sourceFrame": 1
+    },
+    "quest-failed.png": {
+      "source": "data/image/quest/quest_result_ch.swf",
+      "sourceSha256": "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32",
+      "sha256": "e5bc453effa80b97ed79851ecdcb68fe9a17769760d663e8c77c1e41e366e3bb",
+      "sourceBitmap": 1,
+      "sourceInstance": "failed",
+      "sourceSprite": 8,
+      "sourceFrame": 1
+    }
+  }
+}

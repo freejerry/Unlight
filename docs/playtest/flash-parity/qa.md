@@ -141,6 +141,14 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 讓真正的次回合 `SC43–45` 通過，暫緩 `SC46`，確認 Draw、倖存手牌及暫不可操作的 Move。放行後核對新增牌的 ID、朝向、順序、第二回合字圖和原始 60 秒時間條。實際按方向，等待本方 `SC60` 後再確認方向改變。同一 Quest、原來四條服務連線、唯一 `CS22`、AP 與牌組鎖均應保留。使用不同測試角色，完整保留 Ruby 真結果。[原版封包和取樣](/workspace/shared/unlight-web-port/flash-parity/quest-exchange-two-original/wire.json) · [固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py)
 
+### 重跑單格任務終局
+
+以有起始牌組、空任務清單的隔離角色，沿用 `--quest-start-user` 的啟動方式，加上 `--quest-terminal return`。讀取 Ruby 當場發牌，以實際距離挑選劍／槍牌，使用原本旋轉、出牌與確認。從原封包核對結果及七個報酬欄位、勝利音效、同一持有 ID 的刪除和 `SC24`，並用原版 SQLite 核對歸檔、解鎖、報酬及一筆通關紀錄。兩次按 OK 後檢查原本任務地圖及五條連線，按 Back 再檢查只關閉 Quest。
+
+另用全新角色加上 `--quest-terminal late`。保留第一次 `SC41` 和 Ruby 的實際處理，延遲同一份 `SC24` 至逾時。確認戰鬥勝敗與報酬仍可讀取，地圖返回維持待確認，晚回覆及重按均維持已知狀態。實機保留原始封包、畫面及資料庫結果。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py)
+
+原版使用繁中 SWF `2a375905`，在 780×680、DPR 1 啟動隔離 Ruby `ee38622`。依原版實際手牌打到普通任務終局，分別點擊 `(657,616)`、`(233,308)` 和 `(735,15)`。三處各保存指標、畫面和時間，結算前及兩次 OK 後以唯讀 SQLite 核對同一筆任務。原版 Web Audio 混音以 `check_quest_mix.py` 的取樣比對原始 MP3，新版另記錄實際播放事件及音軌交接。[原版操作紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/wire.json) · [原版音訊取樣](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/return-proof/audio-samples.json) · [新版完整動畫試玩](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-wire.json)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

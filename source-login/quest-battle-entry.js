@@ -3,6 +3,7 @@ import { BATTLE_CARD_ART, battleCardControls, battleExchangeArt, battleStands, r
 import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
 import { createQuestBattleMove } from './quest-battle-move.js';
+import { mountQuestDuelResult } from './quest-battle-result.js';
 import { playQuestDiceRoll } from './quest-dice-roll.js';
 import { playQuestAttackPose, playQuestHitEffect } from './quest-hit-effect.js';
 
@@ -585,7 +586,7 @@ function startMoveTimer(parent, time, signal, onTimeout, combat = false) {
 }
 
 function createHands(battle) {
-  const hands = layer(battle, 'quest-battle-hands', 25);
+  const root = layer(battle, 'quest-battle-hands', 25);
   const player = document.createElement('ol');
   player.id = 'quest-battle-player-hand';
   player.setAttribute('aria-label', '我方手牌');
@@ -598,8 +599,8 @@ function createHands(battle) {
   const opponentTable = document.createElement('div');
   opponentTable.id = 'quest-battle-opponent-table';
   opponentTable.setAttribute('role', 'img');
-  hands.append(opponent, opponentTable, playerTable, player);
-  return { player, opponent, opponentTable, playerTable };
+  root.append(opponent, opponentTable, playerTable, player);
+  return { root, player, opponent, opponentTable, playerTable };
 }
 
 function renderChatDecoration(battle, chat) {
@@ -756,7 +757,9 @@ function showMoveArrows(battle, assets, result, signal) {
   });
 }
 
-async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene, definitions, stands, signal, isCurrent }) {
+async function renderBattleHud(battle, sourceAvatar, {
+  assets, encounter, scene, definitions, stands, signal, isCurrent, onBattleFinish, onBattleSound, returnToMap,
+}) {
   const { hud } = assets;
   const standees = layer(battle, 'quest-battle-standees', 2);
   drawStands(standees, stands, encounter);
@@ -805,6 +808,7 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   const roster = layer(battle, 'quest-battle-roster', 30);
   const activeFace = character(roster, definitions.get(player), player, encounter.playerDamage[0], 0, 440, 1, signal);
   const hands = createHands(battle);
+  const battleChrome = [standees, base, skills, handPlate, avatar, main, chat, roster].filter(Boolean);
   const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
   status.setAttribute('role', 'status');
   status.tabIndex = -1;
@@ -827,6 +831,9 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   let tableLoop;
   let combatView;
   let opponentRevealKey;
+  let terminalTask;
+  let duelResult;
+  let resultStatus;
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
 
   async function presentMove(result) {
@@ -981,6 +988,47 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
     combatView = undefined;
   }
 
+  function updateDuelOutcome(outcome) {
+    battle.dataset.outcomeState = outcome.state;
+    duelResult?.setLevelUp?.(outcome.receipt);
+    duelResult?.setCanReturn(outcome.canReturn === true);
+    if (!resultStatus) return;
+    resultStatus.value = {
+      'awaiting-settlement': '正在等待任務結算確認。',
+      uncertain: '無法確認任務結算。',
+      'bonus-pending': '正在等待獎勵結算。',
+      'land-cleared': '此任務仍有後續地形。',
+    }[outcome.state] ?? '';
+    resultStatus.className = ['uncertain', 'bonus-pending', 'land-cleared'].includes(outcome.state) ? 'quest-battle-status' : 'sr-only';
+  }
+
+  async function presentDuelResult() {
+    onBattleFinish?.();
+    const { duel, receipt, canReturn } = latest.outcome;
+    renderedState = 'terminal';
+    battle.dataset.phase = 'terminal';
+    stopTimer?.();
+    combatControls.hidden = controls.hidden = true;
+    move.setCombatRole(undefined);
+    if (!reduced()) await wait(1500, signal);
+    if (signal.aborted || !isCurrent()) return;
+    const pieces = [...battleChrome, hands.root];
+    for (const node of pieces) node.inert = true;
+    await Promise.all(pieces.map(node => animate(node, [{ opacity: 1 }, { opacity: 0 }], 500 / 1.7, signal)));
+    if (signal.aborted || !isCurrent()) return;
+    for (const node of pieces) node.hidden = true;
+    showTable('blank');
+    duelResult = mountQuestDuelResult(battle, {
+      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound,
+      onReturn: () => !signal.aborted && isCurrent() && latest.outcome?.canReturn === true && returnToMap?.(),
+    });
+    resultStatus = output(layer(battle, 'quest-battle-settlement-message', 50), 'quest-battle-settlement-status', 'sr-only', 178, 24);
+    resultStatus.setAttribute('role', 'status');
+    battle.querySelector('#quest-battle-result')?.setAttribute('aria-describedby', resultStatus.id);
+    signal.addEventListener('abort', () => duelResult.dispose(), { once: true });
+    updateDuelOutcome(latest.outcome);
+  }
+
   function paint(phase) {
     if (phase === renderedState || signal.aborted) return;
     renderedState = phase;
@@ -1041,11 +1089,22 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
 
   function advance() {
     if (!latest || signal.aborted || !isCurrent()) return;
+    const outcome = latest.outcome;
+    if (outcome) updateDuelOutcome(outcome);
+    if (terminalTask) return;
+    if (!combatView && latest.phase === 'terminal' && outcome?.duel) {
+      terminalTask = presentDuelResult();
+      return;
+    }
     if (combatView) {
       const active = combatView;
       const source = observedExchanges.get(active.key);
       updateCombat(source);
       if (!active.settled) return;
+      if (source?.boundary === 'terminal' && outcome?.duel) {
+        terminalTask = presentDuelResult();
+        return;
+      }
       const nextExchange = source?.boundary === 'next-attack' && observedExchanges.get(`${active.turn}:2`);
       if (nextExchange) {
         archiveCombat();
@@ -1084,7 +1143,8 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
         void presentMove(result);
       } else if (battle.dataset.moveResult === 'settled') {
         const source = observedExchanges.get(`${visibleTurn}:1`);
-        if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
+        if (source?.boundary === 'terminal' && outcome?.duel) updateCombat(source);
+        else if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
           status.value = '等待角色更換。';
         } else {
           const changed = ['player', 'opponent'].some(side => {
@@ -1121,7 +1181,7 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
 
   paint('opening');
   battle.dataset.intro = 'bring-on';
-  const bringOn = [standees, base, skills, handPlate, avatar, main, chat, roster].map(node => animate(node,
+  const bringOn = battleChrome.map(node => animate(node,
     [{ opacity: 0 }, { opacity: 1 }], 500 / 1.7, signal));
   await Promise.all([activeFace.ready, ...bringOn]);
   if (signal.aborted || !isCurrent()) return;
@@ -1133,7 +1193,9 @@ async function renderBattleHud(battle, sourceAvatar, { assets, encounter, scene,
   });
 }
 
-export async function mountQuestBattleEntry(view, board, { encounter, layers, assets, signal, scene, loadCards, isCurrent, onEncounter }) {
+export async function mountQuestBattleEntry(view, board, {
+  encounter, layers, assets, signal, scene, loadCards, isCurrent, onEncounter, onBattleFinish, onBattleSound, returnToMap,
+}) {
   const { transition: timing } = assets;
   const delay = timing.delayAfterDetermineMs - (performance.now() - encounter.receivedAt);
   await wait(delay, signal);
@@ -1173,5 +1235,7 @@ export async function mountQuestBattleEntry(view, board, { encounter, layers, as
   const sourceAvatar = board.querySelector('#quest-map-avatar');
   await runOpening(battle, sourceAvatar, { assets, encounter, definitions, stands, signal });
   if (signal.aborted || view.inert || !isCurrent()) return;
-  await renderBattleHud(battle, sourceAvatar, { assets, encounter, scene, definitions, stands, signal, isCurrent });
+  await renderBattleHud(battle, sourceAvatar, {
+    assets, encounter, scene, definitions, stands, signal, isCurrent, onBattleFinish, onBattleSound, returnToMap,
+  });
 }

@@ -71,6 +71,8 @@ SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse09.mp3": "1e9ccf21bdb3c9f9c937fc31dfeb08838b29c1e570eefca2034477027e8f2395",
     "public/sound/se/ulse10_f.mp3": "25992bf771fbd92beb3d7a44b4241721121105119959a7d20f60c76926844d61",
     "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
+    "public/sound/se/ulse15.mp3": "d97f878eaa31eee16dd00f478d1889da16b662673f422d4a0e7e1c2f2e796203",
+    "public/sound/se/ulse16.mp3": "493b8b0ed2c64cff4fbf401f44d4fce971518e5a23106267ec4edfdbace7bea3",
     "public/sound/se/ulse28.mp3": "6345735fa4f8686ac3c1bd093e008bcbc5d6308bbf86539c7d055c42f3de0024",
     "public/sound/se/ulse29.mp3": "78623927f2591f3ff6fe5afac445e7e6c661f485b02638a7bb49f539d3c4052a",
 }
@@ -611,6 +613,7 @@ def create_app(
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
                 "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
+                "quest-battle-result.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
@@ -647,6 +650,11 @@ def create_app(
             app.router.add_get("/source-login/quest-hit-art/index.json", serve_file(quest_hit_art / "index.json"))
             for image in sorted(quest_hit_art.glob("*.png")):
                 app.router.add_get(f"/source-login/quest-hit-art/{image.name}", serve_file(image))
+            quest_result_art = SOURCE_LOGIN_ROOT / "quest-result-art"
+            app.router.add_get("/source-login/quest-result-art/index.json", serve_file(quest_result_art / "index.json"))
+            for artifact in sorted(quest_result_art.glob("*")):
+                if artifact.suffix in (".png", ".woff"):
+                    app.router.add_get(f"/source-login/quest-result-art/{artifact.name}", serve_file(artifact))
 
             illustration_hashes = {}
             with suppress(OSError):

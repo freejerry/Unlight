@@ -221,11 +221,16 @@ def observe_session_codec(page, origin):
           const bytes = new DataView(body.buffer, body.byteOffset, body.byteLength);
           const data = reply.command === 32 && body.byteLength >= 6 ? [bytes.getInt32(2)]
             : reply.command === 4 && body.byteLength === 10 ? [bytes.getInt32(2)]
+            : [7, 8, 10, 22, 26, 28].includes(reply.command) && body.byteLength === 6 ? [bytes.getInt32(2)]
             : reply.command === 17 && body.byteLength === 11 ? [bytes.getInt32(2), bytes.getInt8(6), bytes.getInt32(7)]
+            : [13, 19].includes(reply.command) && body.byteLength === 10 ? [bytes.getInt32(2), bytes.getInt32(6)]
+            : reply.command === 20 && body.byteLength === 7 ? Array.from({length: 5}, (_, n) => bytes.getInt8(2 + n))
+            : reply.command === 24 && body.byteLength === 7 ? [bytes.getInt8(2), bytes.getInt32(3)]
             : reply.command === 128 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : reply.command === 37 && body.byteLength >= 9 ? encounterFields(body)
             : reply.command === 40 && body.byteLength === 7 ? [...body.slice(2)]
-            : reply.command === 41 && body.byteLength === 32 ? [bytes.getInt8(2), bytes.getInt8(31)]
+            : reply.command === 41 && body.byteLength === 32 ? [bytes.getInt8(2),
+              ...Array.from({length: 7}, (_, n) => bytes.getInt32(3 + n * 4)), bytes.getInt8(31)]
             : reply.command === 43 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : (reply.command === 44 || reply.command === 45) && body.byteLength >= 11 ? refillFields(body)
             : reply.command === 48 && body.byteLength >= 24 ? movementResultFields(body)
@@ -1790,7 +1795,226 @@ def check_quest_next_turn(page, stage, directory, initial_hand):
     return actions, [[23, 1]]
 
 
-def check_quest_start(page, origin, database, name, password, directory, fault, *, next_turn=False):
+def check_terminal_movement(page, stage, directory, turn):
+    battle = page.locator("#quest-map-battle")
+    expect(battle).to_have_attribute("data-ready-turn", str(turn), timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-phase", "move", timeout=TIMEOUT)
+    since = len(read_movement_trace(page)["replies"])
+    stay = battle.locator('button[data-move-command="stay"]')
+    stay.click()
+    expect(battle).to_have_attribute("data-direction", "0")
+    battle.locator('button[data-move-command="done"]').click()
+    expect(battle).to_have_attribute("data-move-result", "settled", timeout=TIMEOUT)
+    replies = read_movement_trace(page)["replies"][since:]
+    (move,) = [packet for packet in replies if packet[0] == 48]
+    assert move[4] == [] and [60, 4, 1, 0] in replies, move
+    capture(stage, directory, f"25-{turn}-terminal-authentic-move.png")
+    return [[23, 0], [26, "", ""]]
+
+
+def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_attack):
+    hand = battle.locator("#quest-battle-player-hand .quest-battle-hand-card")
+    table = battle.locator("#quest-battle-player-table")
+    definitions = action_card_definitions()
+    actions = []
+    placed = []
+
+    def points(card, face, kind):
+        fields = definitions[card]
+        prefix = "u" if face else "b"
+        return int(fields[f"{prefix}_value"]) if int(fields[f"{prefix}_type"]) == kind else 0
+
+    current = hand.evaluate_all("cards => cards.map(({dataset}) => [+dataset.cardId, dataset.up === 'true', dataset.kind])")
+    candidates = [(card, up) for card, up, kind in current if kind == "action"]
+    reserved = None
+    if reserve_attack and candidates:
+        reserved = max(candidates, key=lambda entry: max(points(entry[0], face, attack_type) for face in (True, False)))[0]
+    kind = attack_type if player_attacks else 3
+    for card, current_face in candidates:
+        face = max((current_face, not current_face), key=lambda choice: points(card, choice, kind))
+        if card == reserved or not points(card, face, kind):
+            continue
+        position = next(slot for slot, row in enumerate(current) if row[0] == card)
+        card_row = hand.and_(battle.locator(f'[data-card-id="{card}"]'))
+        if face != current_face:
+            rotate = card_row.locator(".quest-battle-card-rotate")
+            expect(rotate).to_be_enabled()
+            rotate.press("Enter")
+            expect(card_row).to_have_attribute("data-up", str(face).lower())
+            actions.append([32, card, 0, position, int(face)])
+            assert [63, 10, 1, 0, position, card, int(face)] in read_movement_trace(page)["replies"]
+        card_row.locator(".quest-battle-card-primary").click(position={"x": 27, "y": 18})
+        expect(table.locator(f'[data-card-id="{card}"][data-zone="combat"]')).to_be_visible()
+        actions.append([28 if player_attacks else 30, card, position if player_attacks else 0, int(face)])
+        placed.append([card, face])
+        current.pop(position)
+    return actions, placed
+
+
+def play_terminal_combat(page, stage, directory):
+    battle = page.locator("#quest-map-battle")
+    done = battle.locator('button[data-combat-command="done"]')
+    actions = []
+    for turn in range(1, 4):
+        actions.extend(check_terminal_movement(page, stage, directory, turn))
+        move = [packet for packet in read_movement_trace(page)["replies"] if packet[0] == 48][-1]
+        attack_type = 1 if move[3] == 1 else 2
+        for index, following in ((1, 51), (2, 46)):
+            count = (turn - 1) * 2 + index
+            page.wait_for_function("""count => window.qaQuestWire.sockets.at(-1).replies
+              .filter(([command]) => command === 51).length === count""", arg=count, timeout=TIMEOUT)
+            phase = [payload for payload in read_movement_trace(page)["replies"] if payload[0] == 51][-1]
+            assert phase in ([51, 3, 0], [51, 3, 1]), phase
+            player_attacks = bool(phase[2])
+            role = "attack" if player_attacks else "defense"
+            expect(battle).to_have_attribute("data-exchange-index", str(index), timeout=TIMEOUT)
+            expect(battle).to_have_attribute("data-exchange-phase", role, timeout=TIMEOUT)
+            card_actions, placed = place_terminal_cards(page, battle, attack_type, player_attacks,
+                                                        reserve_attack=not player_attacks and index == 1)
+            actions.extend(card_actions)
+            capture(stage, directory, f"26-{turn}-{index}-terminal-{role}.png")
+            command = 33 if player_attacks else 34
+            hold_movement_reply(page, command, done.click, before=[24, following])
+            actions.append([command, "", ""])
+            trace = read_movement_trace(page)
+            last_reveal = [payload for payload in trace["replies"] if payload[0] == 55][-1]
+            assert last_reveal[2] == placed, (last_reveal, placed)
+            if page.evaluate("window.qaQuestWire.actionHold.blocked") == 24:
+                return actions, trace, turn
+            release_movement_reply(page)
+    outcomes = [packet for packet in trace["replies"] if packet[0] in (51, 56, 73)]
+    raise AssertionError(f"Stock Quest did not end during three turns: {outcomes}")
+
+
+def owned_character_cards(database, avatar_id):
+    return set(query(database, """
+        SELECT i.id, i.chara_card_id FROM card_inventories i JOIN chara_card_decks d ON d.id = i.chara_card_deck_id
+        WHERE d.avatar_id = ?
+    """, avatar_id))
+
+
+def check_terminal_storage(database, player_id, inventory_id, deck, before, cards_before, replies):
+    (duel,) = [packet for packet in replies if packet[0] == 41]
+    assert len(duel) == 11 and duel[1] == 32 and duel[-1] == 0, duel
+    result = duel[2]
+    assert result in (0, 1, 2)
+    win = result == 0
+    terminal = replies[replies.index(duel):]
+    (deletion,) = [packet for packet in terminal if packet[0] == 22]
+    assert deletion == [22, 6, inventory_id]
+    progress = 2 if win else 0
+    progress_packets = [packet for packet in terminal if packet[0] == 19]
+    assert progress_packets == ([[19, 10, inventory_id, progress]] if win else [])
+    deck_updates = [packet for packet in terminal if packet[0] == 20]
+    assert len(deck_updates) == (2 if win else 1) and deck_updates[-1] == [20, 7, 1, 2, 0, 0, 0]
+    assert terminal.index(deck_updates[-1]) < terminal.index(deletion)
+    if win:
+        assert terminal.index(progress_packets[0]) < terminal.index(deck_updates[0])
+    avatar_id = before[0]
+    assert query(database, """
+        SELECT quest_id, avatar_id, before_avatar_id, status, progress, deck_index, hp0, hp1, hp2
+        FROM avatar_quest_inventories WHERE id = ?
+    """, inventory_id) == [(1, 0, avatar_id, 3 if win else 5, progress, 1, 0, 0, 0)]
+    assert query(database, """
+        SELECT quest_inventory_id, finish_point, result, chara_card_id_0, chara_card_id_1, chara_card_id_2
+        FROM quest_clear_logs WHERE avatar_id = ?
+    """, avatar_id) == [(inventory_id, 1, result, STARTER_CARD, None, None)]
+    assert quest_inventory(database, avatar_id) == []
+    assert quest_deck(database, avatar_id) == deck
+    assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [(0, int(win))]
+    projection = {packet[0]: packet[2] for packet in terminal if packet[0] in (7, 8, 10, 26, 28)}
+    actual = avatar(database, player_id)[0]
+    assert actual[2:5] == tuple(projection.get(command, before[index]) for index, command in ((2, 8), (3, 10), (4, 7)))
+    assert projection.get(26, 0) == 0 and projection.get(28, 0) == int(win)
+    awards = [(packet[2], packet[3]) for packet in terminal if packet[0] == 13]
+    assert len(awards) == len(set(awards)) and owned_character_cards(database, avatar_id) == cards_before | set(awards)
+    return duel, actual
+
+
+def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel, profile, starting_level, held):
+    battle = page.locator("#quest-map-battle")
+    result = battle.locator("#quest-battle-result")
+    settle_status = battle.locator("#quest-battle-settlement-status")
+    duel_ok = result.locator("#quest-battle-result-ok")
+    settlement = page.locator("#quest-map-settlement")
+    back = page.locator("#quest-map-back")
+    won = duel[2] == 0
+    assert not any(packet[0] == 24 for packet in held["replies"]), held["replies"]
+    expect(battle).to_have_attribute("data-outcome-state", "awaiting-settlement", timeout=TIMEOUT)
+    expect(battle).to_have_attribute("data-phase", "terminal", timeout=TIMEOUT)
+    expect(result).to_be_visible(timeout=TIMEOUT)
+    expect(result).to_have_attribute("data-result", str(duel[2]))
+    expect(result).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    emblem = result.locator("#quest-battle-result-call")
+    expected_emblem = ("win-10.png", "lose-23.png", "draw-18.png")[duel[2]]
+    expect(emblem).to_have_attribute("src", re.compile(f"/{re.escape(expected_emblem)}$"))
+    expect(emblem).to_be_visible()
+    assert emblem.evaluate("image => image.complete && image.naturalWidth > 0")
+    expect(battle.locator(".quest-battle-hands")).to_be_hidden()
+    awards = result.locator("#quest-battle-result-awards")
+    expect(awards.locator('img[src$="reward-plate.png"]')).to_be_visible()
+    source_fields = ("gems", "exp", "expBonus", "gemsPow", "expPow", "totalGems", "totalExp")
+    for field, value in zip(source_fields, duel[3:10], strict=True):
+        expect(awards.locator(f'[data-award="{field}"]')).to_have_attribute("data-value", str(value))
+    expect(result.locator("#quest-battle-result-level")).to_be_hidden()
+    health = [packet for packet in held["replies"] if packet[0] in (73, 74, 79)]
+    check_combat_hp(battle, {"player": 7, "opponent": 1}, health)
+    expect(duel_ok).to_be_disabled()
+    expect(settlement).to_have_count(0)
+    expect(back).to_be_hidden()
+    target = duel_ok.bounding_box()
+    if target:
+        page.mouse.click(target["x"] + target["width"] / 2, target["y"] + target["height"] / 2)
+        expect(settlement).to_have_count(0)
+    capture(stage, directory, "27-duel-result-awaiting-quest-reply.png")
+
+    if mode == "late":
+        expect(battle).to_have_attribute("data-outcome-state", "uncertain", timeout=TIMEOUT)
+        expect(settle_status).to_have_text("無法確認任務結算。")
+        expect(settle_status).to_be_visible()
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-outcome-state", "uncertain")
+        expect(duel_ok).to_be_disabled()
+        expect(settlement).to_have_count(0)
+        expect(back).to_be_hidden()
+        capture(stage, directory, "28-terminal-quest-reply-uncertain.png")
+    else:
+        release_movement_reply(page)
+        expect(battle).to_have_attribute("data-outcome-state", "settled", timeout=TIMEOUT)
+        expect(duel_ok).to_be_enabled()
+        if profile[2] > starting_level:
+            expect(result.locator("#quest-battle-result-level")).to_contain_text(f"等級提升為{starting_level + 1}")
+        capture(stage, directory, "28-verified-duel-result.png")
+        duel_ok.click()
+        expect(settlement).to_be_visible(timeout=TIMEOUT)
+        expect(settlement).to_have_attribute("open", "")
+        expect(settlement).to_have_attribute("data-inventory-id", str(inventory_id))
+        expect(settlement).to_have_attribute("data-result", "clear" if won else "failed")
+        expect(result).to_be_hidden()
+        capture(stage, directory, "29a-original-quest-clear.png")
+        page.locator("#quest-map-settlement-ok").click()
+        expect(settlement).to_be_hidden()
+        expect(back).to_be_enabled()
+        expect(back).to_be_visible()
+        expect(back).to_be_focused()
+        expect(page.locator("#quest-map-inventory > li")).to_have_count(0)
+        expect(page.locator("#quest-map-capacity")).to_have_text("0/4")
+        expect(page.locator("#quest-map-progress")).to_have_text("1/3" if won else "0/3")
+        expect(page.locator("#quest-map-level")).to_have_text(str(profile[2]))
+        expect(page.locator("#quest-map-gems")).to_have_text(str(profile[3]))
+        expect(page.locator("#quest-map-exp")).to_have_text(str(profile[4]))
+        expect(page.locator('#quest-map-deck[data-deck-index="1"] li[data-card-id="21"][data-position="0"]')).to_be_visible()
+        expect(page.locator("#quest-map-deck-next")).to_be_enabled()
+        music(page, "quest", "ulbgm03.mp3")
+        capture(stage, directory, "29b-original-quest-map-return.png")
+
+    trace = read_movement_trace(page)
+    quest_result = 0 if won else 1
+    assert [packet for packet in trace["replies"] if packet[0] == 24] == [[24, 7, quest_result, inventory_id]]
+    assert [packet for packet in trace["sent"] if packet[0] != 3] == [packet for packet in held["sent"] if packet[0] != 3]
+
+
+def check_quest_start(page, origin, database, name, password, directory, fault, *, next_turn=False, terminal=None):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
     avatar_id = profile[0]
@@ -1873,6 +2097,8 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
     expected_movement = []
     expected_combat = []
     next_movement = []
+    terminal_actions = []
+    terminal_turn = None
 
     if fault == "start":
         expect(view).to_have_attribute("data-start-state", "uncertain", timeout=TIMEOUT)
@@ -1932,8 +2158,16 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
                 stage.screenshot(path=directory / "16f-character-intro.png", scale="css")
             initial_hand = check_quest_opening(page, stage, directory, drop_reply=fault == "ready")
             if initial_hand is not None:
-                expected_movement = check_quest_movement(page, stage, directory, initial_hand, drop_reply=fault == "move")
-                if fault in (None, "combat"):
+                if terminal:
+                    page.emulate_media(reduced_motion="reduce")
+                    cards_before = owned_character_cards(database, avatar_id)
+                    terminal_actions, held_trace, terminal_turn = play_terminal_combat(page, stage, directory)
+                    duel, after = check_terminal_storage(database, player_id, inventory_id, original_deck, updated,
+                                                         cards_before, held_trace["replies"])
+                    check_terminal_presentation(page, stage, directory, terminal, inventory_id, duel, after, updated[2], held_trace)
+                else:
+                    expected_movement = check_quest_movement(page, stage, directory, initial_hand, drop_reply=fault == "move")
+                if not terminal and fault in (None, "combat"):
                     assert avatar(database, player_id) == [updated]
                     assert quest_inventory(database, avatar_id) == [started] and quest_deck(database, avatar_id) == locked
                     if next_turn:
@@ -1963,23 +2197,25 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
     if ready_requested:
         assert len(encounter[2]) == 7 and encounter[2][1] == 7 and encounter[2][-2:] == [2, 1]
         ready = [reply for reply in trace["replies"] if 43 <= reply[0] <= 46]
-        assert [reply[0] for reply in ready] == [43, 44, 45, 46] * (2 if next_turn else 1)
+        assert [reply[0] for reply in ready] == [43, 44, 45, 46] * (terminal_turn or (2 if next_turn else 1))
         assert ready[-1] == [46, 2], ready
         assert len(trace["readySends"]) == 1
-    assert trace["movement"] == expected_movement + next_movement, trace["movement"]
     movement_sizes = {23: 6, 24: 11, 25: 10, 26: 9, 32: 12}
+    combined_movement = expected_movement + next_movement + [row for row in terminal_actions if row[0] in movement_sizes]
+    assert trace["movement"] == combined_movement, trace["movement"]
     assert [packet for packet in trace["sent"] if packet[0] in movement_sizes] == [
-        [command, movement_sizes[command]] for command, *_ in expected_movement + next_movement
+        [command, movement_sizes[command]] for command, *_ in combined_movement
     ]
-    assert trace["combat"] == expected_combat, trace["combat"]
     combat_sizes = {28: 11, 29: 10, 30: 11, 31: 10, 33: 9, 34: 9}
+    combined_combat = expected_combat + [row for row in terminal_actions if row[0] in combat_sizes]
+    assert trace["combat"] == combined_combat, trace["combat"]
     assert [packet for packet in trace["sent"] if packet[0] in combat_sizes] == [
-        [command, combat_sizes[command]] for command, *_ in expected_combat
+        [command, combat_sizes[command]] for command, *_ in combined_combat
     ]
     assert [command for command, _ in trace["sent"] if command not in {0, 1, 3}] == [
         5, 12, *(command for command, *_ in actions), *([22] if ready_requested else []),
         *(command for command, *_ in expected_movement), *(command for command, *_ in expected_combat),
-        *(command for command, *_ in next_movement),
+        *(command for command, *_ in next_movement), *(command for command, *_ in terminal_actions),
     ]
     assert [packet for packet in trace["sent"] if packet[0] in {13, 16}] == [
         [command, 10 if command == 13 else 11] for command, *_ in actions
@@ -1996,6 +2232,14 @@ def check_quest_start(page, origin, database, name, password, directory, fault, 
         trace = page.evaluate("window.qaQuestWire.sockets.at(-1)")
         assert trace["close"] == [1000, True] and trace["sent"][-1] == [2, 5]
         assert [peer for peer in live if not peer.is_closed()] == core
+    if terminal == "return":
+        page.locator("#quest-map-back").click()
+        screen(stage, "lobby")
+        trace = read_movement_trace(page)
+        assert trace["sent"][-1] == [2, 5] and trace["close"] == [1000, True]
+        assert [peer for peer in live if not peer.is_closed()] == core and len(live) == 5
+        expect(page.locator("#lobby-quest-load")).to_be_focused()
+        capture(stage, directory, "30-terminal-original-lobby-return.png")
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
     assert not errors, errors
@@ -2588,6 +2832,8 @@ def main():
                         help="Withhold the genuine reply to one original request through its timeout")
     parser.add_argument("--quest-next-turn", action="store_true",
                         help="Hold the genuine role switch and next Move through two exchanges on the same Quest")
+    parser.add_argument("--quest-terminal", choices=("return", "late"),
+                        help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()
     if (args.refresh_user is None) != (args.refresh_password_file is None):
         parser.error("--refresh-user and --refresh-password-file must be supplied together")
@@ -2599,6 +2845,8 @@ def main():
         parser.error("--quest-start-fault requires --quest-start-user")
     if args.quest_next_turn and (args.quest_start_user is None or args.quest_start_fault is not None):
         parser.error("--quest-next-turn requires --quest-start-user without --quest-start-fault")
+    if args.quest_terminal and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn):
+        parser.error("--quest-terminal requires --quest-start-user and its own case")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -2622,8 +2870,13 @@ def main():
                 else:
                     check_quest_start(page, origin, args.database, args.quest_start_user,
                                       args.quest_start_password_file.read_text().rstrip("\r\n"),
-                                      args.screens, args.quest_start_fault, next_turn=args.quest_next_turn)
-                    mode = "next Draw/Move" if args.quest_next_turn else args.quest_start_fault or "first combat exchange"
+                                      args.screens, args.quest_start_fault, next_turn=args.quest_next_turn,
+                                      terminal=args.quest_terminal)
+                    mode = args.quest_start_fault or "first combat exchange"
+                    if args.quest_next_turn:
+                        mode = "next Draw/Move"
+                    if args.quest_terminal:
+                        mode = f"terminal {args.quest_terminal}"
                     print(f"Real Quest start and combat passed ({mode}).")
                 return
             for number, selected_parts in enumerate(STARTER_CHOICES, 1):

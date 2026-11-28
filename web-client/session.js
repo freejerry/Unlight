@@ -1222,6 +1222,15 @@ function questSceneAdventureSnapshot(current, operation) {
   });
 }
 
+function freezeQuestReceipt(receipt) {
+  const { avatar, map, cards, deltas, deckRestored } = receipt;
+  return Object.freeze({
+    ...receipt, avatar: Object.freeze(avatar), map: Object.freeze(map),
+    cards: Object.freeze(cards.map((card) => Object.freeze({ ...card }))), deltas: Object.freeze(deltas),
+    deckRestored: deckRestored && Object.freeze(deckRestored),
+  });
+}
+
 function freezeQuestEncounter(encounter) {
   const { playerCardIds, opponentCardIds, playerDamage, opponentDamage, duel } = encounter;
   return Object.freeze({
@@ -1300,6 +1309,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   const stockEventCards = new Map();
   const loadingEventCards = new Set();
   let duelFinish = null;
+  let outcomeDuel = null;
+  let outcomeState = null;
+  let outcomeReceipt = null;
+  let outcomeDeadline;
   let questFinish = null;
   let questDeleted = false;
   let settlement = null;
@@ -1835,6 +1848,33 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     return { ...settlement, bonusPending, canReturn: bonusPending === false && duelResult === settlement.result };
   }
 
+  function outcomeSnapshot() {
+    if (!outcomeState) return null;
+    return Object.freeze({
+      inventoryId, questId, state: outcomeState, duel: outcomeDuel,
+      quest: questFinish && Object.freeze({ ...questFinish }), receipt: outcomeReceipt,
+      canReturn: outcomeState === 'settled',
+    });
+  }
+
+  function failQuestOutcome() {
+    clearTimeout(outcomeDeadline);
+    outcomeState = 'uncertain';
+    if (!duelFinish) uncertain();
+    publishBattlePhase(true);
+  }
+
+  function markDuelFinished() {
+    if (exchange) {
+      exchange.duelFinish = duelFinish;
+      finishCombat('terminal');
+    } else if (onStateChange) {
+      clearTimeout(settlementTimer);
+      phase = 'terminal';
+      pending?.reject(new SessionError('quest-battle-unavailable'));
+    } else uncertain();
+  }
+
   function nextLands() {
     if (!routeReceiptReady()) return [];
     return nextBattleLands(run.positions, slot, progress);
@@ -1859,29 +1899,41 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   }
 
   function receiveSettlement(reply) {
-    if (settlement) return;
+    if (settlement || outcomeState === 'uncertain') return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
-      duelFinish ??= readQuestDuelFinishReply(reply);
-      if (exchange) {
-        exchange.duelFinish = duelFinish;
-        finishCombat('terminal');
-      } else uncertain();
+      if (!duelFinish) {
+        if (onStateChange) {
+          outcomeDuel = Object.freeze(readQuestDuelFinishReply(reply, { awards: true }));
+          const { result, bonus } = outcomeDuel;
+          duelFinish = { result, bonus };
+          outcomeState = bonus ? 'bonus-pending' : 'awaiting-settlement';
+          outcomeDeadline = setTimeout(failQuestOutcome, TIMEOUT);
+        } else duelFinish = readQuestDuelFinishReply(reply);
+        markDuelFinished();
+      }
       return;
     }
 
     switch (reply.command) {
       case QUEST_DELETED_REPLY:
-        if (readQuestDeletedReply(reply) === inventoryId) questDeleted = true;
+        if (readQuestDeletedReply(reply) === inventoryId) {
+          if (onStateChange && !duelFinish) return failQuestOutcome();
+          questDeleted = true;
+        }
         break;
       case QUEST_FINISH_REPLY: {
         const finish = readQuestFinishReply(reply);
         // Original battle settlement sends win or loss; draw is a quest loss.
-        if (finish.inventoryId !== inventoryId || (finish.result !== 0 && finish.result !== 1)) return;
+        if (finish.inventoryId !== inventoryId) return;
+        if (onStateChange && (!duelFinish || !questDeleted || finish.result !== (duelFinish.result === 0 ? 0 : 1))) {
+          return failQuestOutcome();
+        }
+        if (finish.result !== 0 && finish.result !== 1) return;
         questFinish ??= finish;
         if (exchange) {
           exchange.questFinish = questFinish;
           finishCombat('terminal');
-        } else uncertain();
+        } else if (!onStateChange) uncertain();
         break;
       }
       case QUEST_PROGRESS_REPLY: {
@@ -1899,6 +1951,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (progress !== null && !questDeleted && update.deckIndex === deckIndex && update.status === QUEST_IN_PROGRESS) {
           arrivedDamage ??= update.damage;
           run.damage = arrivedDamage;
+          if (outcomeState === 'awaiting-settlement' && run.positions?.get(slot)?.nextMask > 0) {
+            clearTimeout(outcomeDeadline);
+            outcomeState = 'land-cleared';
+          }
           queueMicrotask(() => { if (routeReceiptReady()) loadRoute(); });
         }
         break;
@@ -1923,6 +1979,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         ...questFinish, questId, avatar: { ...settlementAvatar }, map: { ...settlementMap, progress },
         cards: [...awards.values()],
       });
+      if (onStateChange) {
+        clearTimeout(outcomeDeadline);
+        outcomeReceipt = freezeQuestReceipt(settlement);
+        outcomeState = duelFinish.bonus ? 'bonus-pending' : 'settled';
+      }
     }
   }
 
@@ -2027,9 +2088,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if (sceneCombat?.nextAttackPoints && reply.command !== QUEST_POINT_UPDATE_REPLY
           && reply.command !== QUEST_ATTACK_PHASE_START_REPLY) sceneCombat.nextAttackPoints = null;
       if (QUEST_SETTLEMENT_REPLIES.includes(reply.command)) {
+        const beforeOutcome = outcomeState;
+        const beforeReceipt = outcomeReceipt;
         receiveSettlement(reply);
-        combatChanged = sceneCombat?.exchange === exchange
-          && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_FINISH_REPLY);
+        combatChanged = outcomeState !== beforeOutcome || outcomeReceipt !== beforeReceipt
+          || (sceneCombat?.exchange === exchange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_FINISH_REPLY));
         return;
       }
       if (phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return;
@@ -2167,7 +2230,9 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           break;
       }
     } catch {
-      uncertain();
+      if (onStateChange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_DELETED_REPLY
+          || reply.command === QUEST_FINISH_REPLY)) failQuestOutcome();
+      else uncertain();
     } finally {
       publishBattlePhase(combatChanged);
     }
@@ -2175,10 +2240,13 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   let unsubscribe = socket.observe(replies, receiveReply);
   void loadStartingHp().catch(() => {});
   loadRoute();
-  void socket.closed.then(() => {
-    catalogRequests.abort();
-    uncertain();
-  });
+  // A retained scene already stops its current battle on peer closure and can reuse the socket.
+  if (!onStateChange) {
+    void socket.closed.then(() => {
+      catalogRequests.abort();
+      uncertain();
+    });
+  }
 
   async function send(kind, command, fields, signal, details = {}) {
     if (signal?.aborted) throw new SessionError('cancelled');
@@ -2297,6 +2365,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
 
   return {
     get busy() { return pending !== null; },
+    get outcome() { return outcomeSnapshot(); },
     get settlement() { return structuredClone(settlementSnapshot()); },
     get nextLands() { return nextLands(); },
     resume() { unsubscribe = socket.observe(replies, receiveReply); },
@@ -2318,6 +2387,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         }),
         exchange: (duelFinish || questFinish || (phase !== 'between-turns' && phase !== 'preparing')) ? sceneExchangeSnapshot() : null,
         exchangeHistory, previousExchange: exchangeHistory.at(-1) ?? null,
+        outcome: outcomeSnapshot(),
         roster: Object.freeze({ player: freezeSide(roster.player), opponent: freezeSide(roster.opponent) }),
         characterChange: characterChange && Object.freeze({
           kind: characterChange.kind, playerDone: characterChange.playerDone, opponentDone: characterChange.opponentDone,
@@ -2355,6 +2425,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       catalogRequests.abort();
       if (exchange) exchange.phase = 'closed';
       clearTimeout(settlementTimer);
+      clearTimeout(outcomeDeadline);
       unsubscribe();
       const action = pending;
       if (action) {
@@ -2617,6 +2688,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       : inAdventure || deckSelectionUncertain || !readyDeck ? 'unavailable'
       : scene.operation ? 'busy' : 'ready';
     const battleOperation = scene.operation?.kind.startsWith('battle-') ? scene.operation.kind.slice(7) : null;
+    const adventureSnapshot = questSceneAdventureSnapshot(scene.adventure, battleOperation);
     const snapshot = Object.freeze({
       ...questData,
       rows: Object.freeze(questData.rows.map((row) => questSceneRow(scene, row))),
@@ -2629,7 +2701,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       energy: initialData.avatar.energy,
       searchState,
       startState,
-      adventure: questSceneAdventureSnapshot(scene.adventure, battleOperation),
+      adventure: adventureSnapshot,
+      outcome: adventureSnapshot?.battle?.outcome ?? scene.lastOutcome ?? null,
     });
     scene.snapshot = snapshot;
     for (const { listener } of scene.subscriptions) {
@@ -2791,6 +2864,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         if (result.rejection !== undefined) scene.energyOwned = ownedEnergy;
         const started = applyQuestStart(index, selected, readyDeck, result);
         scene.adventure = { selected: started.row, deck, state: 'started', slot: null, run: questRun() };
+        scene.lastOutcome = null;
         publishAvatar();
         return { ...started, row: questSceneRow(scene, started.row) };
       } catch (error) {
@@ -2833,7 +2907,6 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           current.battle = observeQuestBattle(socket, selected, slot, encounter, run, (receipt) => {
             const settlement = reconcileQuestSettlement(selected, receipt);
             if (initialData) publishAvatar();
-            publishQuestScene(scene);
             return settlement;
           }, () => publishQuestScene(scene));
         }, {
@@ -2909,6 +2982,24 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       }
     }, deadline);
     return scene.snapshot.adventure.battle;
+  }
+
+  async function returnFromQuestSceneBattle(scene, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (questScene !== scene || scene.state !== 'open' || !initialData) throw new SessionError('network');
+    const current = scene.adventure;
+    if (scene.operation || current?.battle?.busy) throw new SessionError('busy');
+    const outcome = current?.battle?.outcome;
+    if (outcome?.state === 'uncertain') throw new SessionError('quest-return-uncertain');
+    if (!outcome?.canReturn || current.state !== 'encounter') throw new SessionError('quest-return-unavailable');
+    scene.channel.socket.assertOpen();
+    const stopBattle = current.battle.stop('closed');
+    scene.adventure = null;
+    scene.lastOutcome = outcome;
+    scheduleQuestDiscovery(scene);
+    publishQuestScene(scene);
+    await stopBattle;
+    return outcome;
   }
 
   function scheduleQuestDiscovery(scene) {
@@ -3341,6 +3432,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             },
             commitBattle: ({ signal, exchangeKey } = {}) => runQuestSceneBattle(scene, 'combat-commit', signal,
               (battle, active) => battle.commitBattle(active), exchangeKey),
+            returnFromBattle: ({ signal } = {}) => returnFromQuestSceneBattle(scene, signal),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then(async (reason) => {
               if (scene.closeTask) return scene.closeTask.then(() => 'closed', () => 'network');

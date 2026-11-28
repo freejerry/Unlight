@@ -452,15 +452,14 @@ export function readQuestDuelStartReply(reply) {
   return { deckSize, playerEventDeckSize, opponentEventDeckSize, distance, multi: multi === 1 };
 }
 
-export function readQuestDuelFinishReply(reply) {
+export function readQuestDuelFinishReply(reply, { awards = false } = {}) {
   if (reply.command !== QUEST_DUEL_FINISH_REPLY) throw new Error('Unexpected quest duel finish reply.');
   const result = reply.byte();
-  // The seven integer fields carry duel award amounts and multipliers.
-  for (let field = 0; field < 7; field += 1) reply.int();
+  const [gems, exp, expBonus, gemsPow, expPow, totalGems, totalExp] = Array.from({ length: 7 }, () => reply.int());
   const bonus = readDuelBoolean(reply);
   reply.done();
   if (result < 0 || result > 2) throw new Error('Invalid quest duel result.');
-  return { result, bonus };
+  return awards ? { result, gems, exp, expBonus, gemsPow, expPow, totalGems, totalExp, bonus } : { result, bonus };
 }
 
 function readDuelCardIds(reply) {

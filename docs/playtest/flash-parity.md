@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋與到期、任務詳情、牌組切換、起始卡面、空牌組警告，及落日大蝙蝠首戰的開場、兩組攻防、次回合抽牌與移動。**部分**戰鬥 HUD。 | 從正常戰鬥走到勝敗和任務結算，另驗換角、技能與報酬。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合，以及落日大蝙蝠勝利、報酬、任務結算和返回。**部分**戰鬥 HUD。 | 接續敗北／和局的兩版實跑、換角、技能及多地形任務。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -107,3 +107,8 @@
 
 - 原版與新版都從落日大蝙蝠的遠距離防禦走到回合 1 的我方攻擊。空攻擊略過擲骰視覺及聲音，實際進入 Draw／Move。新版保持同一條 Quest，正確顯示第二組初始點數 0 與 1、原始回合字圖，並把同場實際補入的事件牌 259 接到剩餘手牌後方。暫緩 `SC51`、`SC46` 及本方方向 `SC60` 的實跑均核對到輸入交接和單次 Ready。[攻守互換並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/second-attack-comparison.png) · [第二回合 Move 並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/turn-two-move-comparison.png) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/qa-native-next-turn-wire.json) · [重跑](flash-parity/qa.md#重跑同回合攻守互換與次回合)
 - 近距離和遠距離試玩保留原始攻擊姿勢、斬擊、槍擊、血花及音效。兩場各扣 3 點和 1 點，生命值在動畫中更新並延續到第二回合。下一段核對勝敗、換角及結算後回任務地圖。[新版斬擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root/root-02c-exchange-1-slash.png) · [新版槍擊](/workspace/shared/unlight-web-port/flash-parity/quest-next-turn-live/root-final/root-02c-exchange-1-bullet.png) · [原版規格及分項驗收](flash-parity/quest-pve.md#同回合攻守互換與次回合)
+
+### 單格任務勝利、報酬與返回
+
+- 原版與新版均用原始 Ruby 完成落日大蝙蝠勝利、戰鬥 OK、任務結算 OK 及地圖 Back。新版沿用原始 Win 圖、角色動作、報酬框、升級動畫及兩處按鈕圖。兩次確認維持同一條 Quest，直到地圖 Back 才關閉。SQLite 驗證報酬、任務歸檔、區域進度 1/3 和牌組解鎖。另有原版 Lv2 升級畫面及正常新版播放紀錄。[勝利並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/duel-result-comparison.png) · [任務結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-clear-comparison.png) · [返回地圖並排](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/quest-map-comparison.png) · [原版升級](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-original/11-original-duel-reward.png) · [新版音訊和封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/root-full-motion/root-terminal-wire.json)
+- 正常案例及真 `SC24` 逾時案例各有實跑。正常回覆啟用返回，頁面使用 Ruby 的實際報酬及任務進度。逾時時保留勝利結果和最後可確認的狀態。敗北、和局與獎勵骰的實機分支在矩陣繼續驗證。[正常及逾時封包](/workspace/shared/unlight-web-port/flash-parity/quest-terminal-live/qa-native-terminal-wire.json) · [逐項規格](flash-parity/quest-pve.md#單格任務的勝敗報酬與返回) · [重跑終局](flash-parity/qa.md#重跑單格任務終局)

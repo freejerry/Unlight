@@ -466,6 +466,10 @@ button.quest-map-detail-land {
 .quest-map-dialog::backdrop { background: transparent; }
 .quest-map-dialog > img:first-of-type { position: absolute; top: 0; left: 0; pointer-events: none; }
 
+#quest-map-settlement { width: 760px; height: 680px; }
+#quest-map-settlement[data-art="unavailable"] { padding: 184px 48px 0; }
+#quest-map-settlement[data-art="unavailable"] > button { position: static; padding: 4px 16px; color: inherit; background: #252525; }
+
 #quest-map-region-picker { width: 384px; height: 384px; }
 #quest-map-region-close { top: 12px; left: 332px; width: 24px; height: 24px; }
 .quest-map-region-option > img { top: -8px; left: -12px; width: 80px; height: 80px; }

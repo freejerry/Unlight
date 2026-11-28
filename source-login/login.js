@@ -1,5 +1,5 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
-import { fadeTitleMusic, playBackClick, playLobbyClick, playTitleAlert, selectQuestDuelMusic } from './bgm.js';
+import { fadeTitleMusic, playBackClick, playLobbyClick, playQuestBattleEffect, playTitleAlert, selectQuestDuelMusic } from './bgm.js';
 import { mountLobby } from './lobby.js';
 import { mountOnboarding } from './onboarding.js';
 import { mountOptions } from './options.js';
@@ -329,6 +329,19 @@ async function openQuest(session) {
         if (questRoute !== route || route.leaving || stage.dataset.soundscape === 'quest-duel') return;
         selectQuestDuelMusic(duelStage, isBoss);
         changeSoundscape('quest-duel');
+      },
+      onBattleFinish() {
+        if (questRoute === route && !route.leaving) changeSoundscape('silent');
+      },
+      onBattleReturn() {
+        if (questRoute !== route || route.leaving) return;
+        session.refreshLobbyAvatar?.();
+        changeSoundscape('quest');
+      },
+      onBattleSound(cue) {
+        if (questRoute !== route || route.leaving) return;
+        if (cue === 'confirm') playBackClick();
+        else playQuestBattleEffect(cue, signal);
       },
       onAlert(kind, message, focus) {
         if (questRoute !== route || route.leaving || loginAlert.open) return;
