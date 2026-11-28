@@ -14,6 +14,7 @@ from secrets import token_hex
 from subprocess import run
 from time import monotonic
 from urllib.parse import urljoin, urlsplit
+from zlib import decompress
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect, sync_playwright
@@ -287,6 +288,9 @@ def observe_session_codec(page, origin):
       export function readReply(body) {
         const reply = read(body);
         const startup = window.qaQuestWire?.readingStartupData;
+        if (startup && reply.command === 7 && window.qaQuestWire.recordBootstrap) {
+          window.qaQuestWire.recordBootstrap.push(Array.from(body.subarray(2)));
+        }
         if (startup && [6, 22, 23, 24, 25].includes(reply.command)) {
           // Data SC22/23/24/25 use Lobby SC51/52/53/56's record shapes.
           const metadata = {22: 51, 23: 52, 24: 52, 25: 56}[reply.command];
@@ -350,12 +354,13 @@ def observe_session_codec(page, origin):
     """))
 
 
-def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lobby_energy=False):
+def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lobby_energy=False, lobby_record=False):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
       if ({str(lobby_achievements).lower()}) wire.lobby.achievement = {{sent: [], replies: [], sockets: 0, closed: 0, timeline: []}};
       if ({str(startup_data).lower()}) wire.startupData = [];
       if ({str(lobby_energy).lower()}) wire.lobby.energy = [];
+      if ({str(lobby_record).lower()}) wire.recordBootstrap = [];
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -2230,13 +2235,14 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
 
 
 def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achievements=False, startup_records=False,
-                       q3_bootstrap_record=False, startup_directory=None, defer_lobby_notices=False):
+                       q3_bootstrap_record=False, startup_directory=None, defer_lobby_notices=False,
+                       lobby_record=False):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
     observe_session_codec(page, origin)
     observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records,
-                       startup_data=lobby_achievements or startup_records)
+                       startup_data=lobby_achievements or startup_records or lobby_record, lobby_record=lobby_record)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
@@ -2714,19 +2720,44 @@ def release_lobby_reply(page):
     }""")
 
 
-def wait_lobby_achievement_check(page, number, *, since=0):
-    page.wait_for_function("""({number, since}) => {
+def lobby_check_reply_offset(trace, number):
+    timeline = trace["timeline"]
+    starts = [index for index, event in enumerate(timeline) if event == ["lobby", "send", 35]]
+    return sum(event[:2] == ["lobby", "reply"] for event in timeline[:starts[number - 1]])
+
+
+LOBBY_CHECK_PONG_OFFSET = """number => {
       const trace = window.qaQuestWire.lobby.achievement;
-      return trace.sent.filter(([opcode]) => opcode === 35).length >= number
-        && trace.replies.slice(since).some(([opcode, size]) => opcode === 35 && size === 2);
-    }""", arg={"number": number, "since": since}, timeout=TIMEOUT)
+      const pending = [];
+      let checks = 0;
+      let replyIndex = 0;
+      let nextProbe = null;
+      for (const [offset, [peer, direction, opcode]] of trace.timeline.entries()) {
+        if (peer !== 'lobby') continue;
+        if (direction === 'send') {
+          if (opcode === 35) nextProbe = ++checks;
+          else if (opcode === 3) {
+            pending.push(nextProbe);
+            nextProbe = null;
+          }
+        } else if (direction === 'reply') {
+          const [, size] = trace.replies[replyIndex++];
+          // The original empty Pong carries no request ID. Match ordered probes on this peer.
+          if (opcode === 35 && size === 2 && pending.shift() === number) return offset;
+        }
+      }
+      return -1;
+    }"""
+
+
+def wait_lobby_achievement_check(page, number):
+    page.wait_for_function(f"number => ({LOBBY_CHECK_PONG_OFFSET})(number) >= 0", arg=number, timeout=TIMEOUT)
     trace = read_lobby_achievement_trace(page)
     sends = trace["sent"]
     checks = [index for index, packet in enumerate(sends) if packet[0] == 35]
     assert len(checks) == number, sends
     assert all(sends[index:index + 2] == [[35, 6, 1, "lobby", "ready"], [3, 5, None, "lobby", "ready"]]
                for index in checks), sends
-    assert [reply for reply in trace["replies"] if reply[0] == 35] == [[35, 2]] * number, trace["replies"]
     assert trace["sockets"] == 1 and trace["closed"] == 0
     return trace
 
@@ -2839,6 +2870,257 @@ def lobby_achievement_states(database, avatar_id):
 
 def pending_selectable_record(database, avatar_id):
     return any("26:2" in body.split("|") for (body,) in query(database, "SELECT body FROM avatar_notices WHERE avatar_id = ?", avatar_id))
+
+
+def read_record_bootstrap(page):
+    page.wait_for_function("() => window.qaQuestWire.recordBootstrap.length > 0", timeout=TIMEOUT)
+    (packet,) = page.evaluate("window.qaQuestWire.recordBootstrap.splice(0)")
+    payload = decompress(bytes(packet))
+    vectors = []
+    offset = 0
+    # Data SC7 has five U32 UTF lengths inside the original zlib stream.
+    for index in range(5):
+        (length,) = struct.unpack_from("!I", payload, offset)
+        offset += 4
+        assert offset + length <= len(payload)
+        if index < 4:
+            vectors.append(payload[offset:offset + length].decode("utf-8"))
+        offset += length
+    assert offset == len(payload)
+    ids, states, progress, deadlines = vectors
+    rows = {int(achievement): {"state": int(state), "progress": value, "deadline": deadline}
+            for achievement, state, value, deadline in zip(ids.split(","), states.split(","), progress.split("_"),
+                                                           deadlines.split(","), strict=True)}
+    assert len(rows) == len(ids.split(",")), rows
+    return rows
+
+
+def lobby_record_states(database, avatar_id):
+    return dict(query(database, "SELECT achievement_id, state FROM achievement_inventories WHERE avatar_id = ?", avatar_id))
+
+
+def choose_record_category(panel, category):
+    panel.locator("#lobby-record-category").click()
+    panel.locator(f'#lobby-record-category-menu [role="option"][data-category="{category}"]').click()
+    expect(panel).to_have_attribute("data-category", category)
+
+
+def check_q3_record_projection(page, stage, directory, *, finished):
+    before = read_lobby_achievement_trace(page)["sent"]
+    trigger = page.locator("#lobby-record-open")
+    trigger.click()
+    panel = page.locator("#lobby-record-shell[open] #lobby-record")
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    tab = "finished" if finished else "active"
+    if finished:
+        panel.locator("#lobby-record-tab-finished").click()
+    expect(panel).to_have_attribute("data-tab", tab)
+    for category, record in (("avatar", 2), ("quest", 31)):
+        choose_record_category(panel, category)
+        row = panel.locator(f'#lobby-record-rows [data-achievement-id="{record}"]')
+        row.click()
+        expect(panel.locator("#lobby-record-detail")).to_have_attribute("data-achievement-id", str(record))
+        capture(stage, directory, f"lobby-book-{tab}-{record}.png", animations="allow")
+    panel.locator("#lobby-record-close").click()
+    expect(panel).to_have_count(0)
+    expect(trigger).to_be_focused()
+    assert read_lobby_achievement_trace(page)["sent"] == before
+
+
+def observe_record_motion(page):
+    page.evaluate("""() => {
+      window.qaRecordMotion = [];
+      function sample() {
+        const dialog = document.getElementById('lobby-record');
+        const state = dialog?.dataset.state || 'closed';
+        const prior = window.qaRecordMotion.at(-1);
+        if (prior?.state === state) return;
+        window.qaRecordMotion.push({state, at: performance.now(), durations: dialog?.getAnimations({subtree: true})
+          .map(animation => animation.effect.getTiming().duration) ?? []});
+      }
+      new MutationObserver(sample).observe(document.getElementById('stage'), {
+        childList: true, subtree: true, attributes: true, attributeFilter: ['data-state', 'open'],
+      });
+    }""")
+
+
+def check_lobby_record(page, origin, database, name, password, directory):
+    ((player_id, flags),) = player(database, name)
+    (profile,) = avatar(database, player_id)
+    avatar_id = profile[0]
+    assert flags == 0 and profile[2] == 1, "Use a signed-out level 1 fixture with original bootstrap completed"
+    traffic = {}
+
+    def count_websocket(peer):
+        service = urlsplit(peer.url).path
+        packets = traffic.setdefault(service, [])
+        peer.on("framesent", lambda _payload: packets.append(None))
+
+    page.on("websocket", count_websocket)
+    page.emulate_media(reduced_motion="no-preference")
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True,
+                                            lobby_record=True)
+    expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
+    wire = read_record_bootstrap(page)
+    stored = lobby_record_states(database, avatar_id)
+    assert {identifier: row["state"] for identifier, row in wire.items()} == stored, (wire, stored)
+    assert {identifier: stored.get(identifier) for identifier in (1, 2, 31)} == {1: 1, 2: 0, 31: 0}
+    assert wire[2]["progress"] == "1", wire[2]
+    before = {service: len(packets) for service, packets in traffic.items()}
+    assert set(before) == SESSION_PORTS and len(live) == 4
+    observe_record_motion(page)
+
+    trigger = page.locator("#lobby-record-open")
+    outer, button = stage.bounding_box(), trigger.bounding_box()
+    assert outer and button
+    assert (button["x"] - outer["x"], button["y"] - outer["y"], button["width"], button["height"]) == (712, 480, 48, 32)
+    trigger.click()
+    panel = page.locator("#lobby-record-shell[open] #lobby-record")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-tab", "active")
+    expect(panel).to_have_attribute("data-category", "all")
+    box = panel.bounding_box()
+    assert box
+    actual = (box["x"] - outer["x"], box["y"] - outer["y"], box["width"], box["height"])
+    assert all(abs(value - expected) < 1 for value, expected in zip(actual, (52, 100, 648, 520))), actual
+
+    category = panel.get_by_role("combobox")
+    expect(panel.locator("#lobby-record-close")).to_be_focused()
+    category_box = category.bounding_box()
+    assert category_box
+    category_rect = (category_box["x"] - outer["x"], category_box["y"] - outer["y"], category_box["width"], category_box["height"])
+    assert all(abs(value - expected) < 1 for value, expected in zip(category_rect, (532, 127, 160, 18))), category_rect
+    rows = panel.locator("#lobby-record-rows [data-achievement-id]")
+    page_number = panel.locator("#lobby-record-page")
+    page_text = page_number.inner_text().strip()
+    match = re.fullmatch(r"1\s*/\s*([1-9][0-9]*)", page_text)
+    assert match, page_text
+    first = rows.evaluate_all("rows => rows.map(row => Number(row.dataset.achievementId))")
+    assert first and len(first) <= 16 and all(stored[identifier] == 0 for identifier in first), first
+    row_origins = rows.evaluate_all("rows => rows.map(node => node.getBoundingClientRect().top)")
+    assert all(abs(origin - outer["y"] - 163 - index * 16) < 1 for index, origin in enumerate(row_origins)), row_origins
+    capture(stage, directory, "01-record-active.png", animations="allow")
+    if int(match[1]) > 1:
+        assert len(first) == 16
+        panel.locator("#lobby-record-next").click()
+        expect(page_number).to_have_text(re.compile(r"^2\s*/"))
+        second = rows.evaluate_all("rows => rows.map(row => Number(row.dataset.achievementId))")
+        assert second and not set(first).intersection(second) and all(stored[row] == 0 for row in second), second
+        capture(stage, directory, "02-record-second-page.png", animations="allow")
+        panel.locator("#lobby-record-prev").press("Enter")
+        expect(page_number).to_have_text(page_text)
+        assert rows.evaluate_all("rows => rows.map(row => Number(row.dataset.achievementId))") == first
+
+    category.press("Enter")
+    menu = panel.locator("#lobby-record-category-menu")
+    expect(menu).to_be_visible()
+    expect(category).to_have_attribute("aria-expanded", "true")
+    assert menu.get_by_role("option").all_text_contents() == ["ALL", "Avatar", "Duel", "Quest", "Event", "Friend"]
+    capture(stage, directory, "02a-record-categories-open.png", animations="allow")
+    category.press("Escape")
+    expect(menu).to_be_hidden()
+    expect(category).to_be_focused()
+    expect(panel).to_have_attribute("data-category", "all")
+    choose_record_category(panel, "avatar")
+    active = rows.and_(page.locator('[data-achievement-id="2"]'))
+    expect(active).to_have_attribute("data-progress", wire[2]["progress"])
+    active.press("Enter")
+    expect(active).to_have_attribute("aria-pressed", "true")
+    detail = panel.locator("#lobby-record-detail")
+    expect(detail).to_have_attribute("data-achievement-id", "2")
+    expect(detail.locator("#lobby-record-detail-title")).to_have_text("虛擬人物Lv到達3")
+    condition = detail.locator("#lobby-record-detail-conditions")
+    expect(condition).to_contain_text("虛擬人物Lv")
+    expect(condition).to_contain_text(re.compile(r"1\s*/\s*3"))
+    expect(detail.locator("#lobby-record-detail-deadline")).to_contain_text("---")
+    capture(stage, directory, "03-record-avatar-active-detail.png", animations="allow")
+
+    background = page.locator("#lobby-option-open").bounding_box()
+    assert background
+    page.mouse.click(background["x"] + background["width"] / 2, background["y"] + background["height"] / 2)
+    expect(panel).to_have_attribute("data-state", "open")
+    expect(stage).to_have_attribute("data-screen", "lobby")
+    choose_record_category(panel, "quest")
+    expect(detail.locator("#lobby-record-detail-title")).to_be_empty()
+    quest_record = rows.and_(page.locator('[data-achievement-id="31"]'))
+    expect(quest_record).to_contain_text("突破初期地區")
+    quest_record.click()
+    expect(detail).to_have_attribute("data-achievement-id", "31")
+    expect(detail.locator("#lobby-record-detail-explanation")).to_have_text("突破「魔女山谷」")
+    capture(stage, directory, "04-record-quest-active-detail.png", animations="allow")
+
+    panel.locator("#lobby-record-tab-finished").click()
+    expect(panel).to_have_attribute("data-tab", "finished")
+    if 2 in stored.values():
+        choose_record_category(panel, "all")
+        failed = rows.and_(page.locator('[data-state="2"]')).first
+        if failed.count():
+            failed_id = failed.get_attribute("data-achievement-id")
+            assert stored[int(failed_id)] == wire[int(failed_id)]["state"] == 2
+            expect(failed.locator(".lobby-record-row-name")).to_have_css("opacity", "0.3")
+            failed.click()
+            expect(detail).to_have_attribute("data-achievement-id", failed_id)
+            expect(detail.locator("#lobby-record-detail-deadline .lobby-record-red")).to_have_css("color", "rgb(255, 0, 0)")
+            capture(stage, directory, "05a-record-failed-detail.png", animations="allow")
+    choose_record_category(panel, "avatar")
+    expect(rows.and_(page.locator('[data-achievement-id="2"]'))).to_have_count(0)
+    finished = rows.and_(page.locator('[data-achievement-id="1"]'))
+    finished.click()
+    expect(detail).to_have_attribute("data-achievement-id", "1")
+    expect(detail.locator("#lobby-record-detail-title")).to_have_text("創立虛擬人物")
+    capture(stage, directory, "05-record-avatar-finished-detail.png", animations="allow")
+
+    close = panel.locator("#lobby-record-close")
+    close.press("Enter")
+    expect(panel).to_have_count(0)
+    expect(trigger).to_be_focused()
+    motion = page.evaluate("window.qaRecordMotion")
+    by_state = {event["state"]: event for event in motion}
+    for start, finish, duration in (("opening", "open", 300), ("closing", "closed", 150)):
+        elapsed = by_state[finish]["at"] - by_state[start]["at"]
+        assert elapsed >= duration * 0.8, motion
+        if by_state[start]["durations"]:
+            assert duration in by_state[start]["durations"], motion
+    after = {service: len(packets) for service, packets in traffic.items()}
+    assert before == after and len(live) == 4 and all(not peer.is_closed() for peer in live), (before, after)
+    assert lobby_record_states(database, avatar_id) == stored and not errors, errors
+    capture(stage, directory, "06-record-closed-focus-returned.png", animations="allow")
+
+    music(page, "lobby", "ulbgm02.mp3")
+    clock = stage.locator('audio[data-bgm-scene="lobby"]').evaluate("""audio => {
+      window.qaRecordMusic = audio;
+      return audio.currentTime;
+    }""")
+    page.locator("#lobby-option-open").click()
+    screen(stage, "options")
+    expect(page.locator("#options-avatar")).to_have_attribute("data-avatar-state", "ready")
+    options_before = {service: len(packets) for service, packets in traffic.items()}
+    options_trigger = page.locator("#options-record-open")
+    options_trigger.press("Enter")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready")
+    expect(panel).to_have_attribute("data-tab", "finished")
+    expect(panel).to_have_attribute("data-category", "avatar")
+    panel.locator("#lobby-record-tab-active").click()
+    expect(panel).to_have_attribute("data-tab", "active")
+    rows.and_(page.locator('[data-achievement-id="2"]')).click()
+    expect(detail).to_have_attribute("data-achievement-id", "2")
+    expect(condition).to_contain_text(re.compile(r"1\s*/\s*3"))
+    capture(stage, directory, "07-options-record-avatar-detail.png", animations="allow")
+    close.click()
+    expect(panel).to_have_count(0)
+    expect(options_trigger).to_be_focused()
+    audio = stage.locator('audio[data-bgm-scene="lobby"]')
+    assert audio.evaluate("(audio, clock) => audio === window.qaRecordMusic && !audio.paused && audio.currentTime > clock", clock)
+    options_after = {service: len(packets) for service, packets in traffic.items()}
+    assert options_before == options_after and len(live) == 4 and all(not peer.is_closed() for peer in live)
+    assert lobby_record_states(database, avatar_id) == stored and not errors, errors
+    if directory is not None:
+        evidence = {"dataSC7": wire, "storedStates": stored, "beforeFrames": before, "afterFrames": after,
+                    "optionsFramesBefore": options_before, "optionsFramesAfter": options_after,
+                    "motion": motion, "panel": actual, "category": category_rect}
+        (directory / "lobby-record-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
 
 
 def open_selectable_lobby(page, origin, player_id, name, password):
@@ -3060,8 +3342,10 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
     wait_held_lobby_reply(page)
     held = read_lobby_achievement_trace(page)
     try:
-        raw = held["replies"][len(first_trace["replies"]):]
-        assert len([p for p in raw if p[:2] == [51, 22]]) == 4 and not any(p[0] == 35 for p in raw), raw
+        first_return_reply = lobby_check_reply_offset(held, 2)
+        raw = held["replies"][first_return_reply:]
+        assert len([p for p in raw if p[:2] == [51, 22]]) == 4, raw
+        assert page.evaluate(LOBBY_CHECK_PONG_OFFSET, 2) == -1
         assert not held["notices"] and not held["noticeAudio"]
         assert lobby_achievement_states(database, avatar_id) == {2: 1, 31: 1}
         expect(page.locator("#lobby-gems")).to_have_text(str(before["profile"][3] + 3000), timeout=2000)
@@ -3069,9 +3353,7 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
         capture(stage, directory, "42-lobby-records-awaiting-actual-pong.png", animations="allow")
     finally:
         release_lobby_reply(page)
-    trace = wait_lobby_achievement_check(page, 2, since=len(first_trace["replies"]))
-    check_offsets = [index for index, event in enumerate(trace["timeline"]) if event == ["lobby", "send", 35]]
-    first_return_reply = sum(event[:2] == ["lobby", "reply"] for event in trace["timeline"][:check_offsets[1]])
+    trace = wait_lobby_achievement_check(page, 2)
     battle_replies = trace["replies"][len(first_trace["replies"]):first_return_reply]
     battle_gems = [p for p in battle_replies if p[0] == 25]
     assert battle_gems and battle_gems[-1] == [25, 6, before["profile"][3]], battle_gems
@@ -3146,8 +3428,7 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
     flips = [row[:5] for row in settled["notices"] if row[-1] == "flipping"]
     assert flips == seen, settled["notices"]
     first_record = next(index for index, event in enumerate(settled["timeline"]) if event[:2] == ["ui", "record"])
-    pong_offsets = [index for index, event in enumerate(settled["timeline"]) if event == ["lobby", "reply", 35]]
-    assert pong_offsets[-1] < first_record
+    assert 0 <= page.evaluate(LOBBY_CHECK_PONG_OFFSET, 2) < first_record
     assert settled["noticeAudio"] == [
         {"file": "ulse23.mp3", "receipt": receipt, "state": "flipping", "playback": "played"} for receipt in seen
     ], settled["noticeAudio"]
@@ -3159,7 +3440,7 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
     expect(page.locator("#quest-map-view")).to_have_attribute("data-map-id", "2", timeout=TIMEOUT)
     page.locator("#quest-map-back").click()
     screen(stage, "lobby")
-    final = wait_lobby_achievement_check(page, 3, since=len(settled["replies"]))
+    final = wait_lobby_achievement_check(page, 3)
     duplicate = final["replies"][len(settled["replies"]):]
     assert not any(p[0] in (27, 31, 51) for p in duplicate), duplicate
     assert not any(p[0] in (37, 52) for p in final["sent"]), final["sent"]
@@ -3186,7 +3467,7 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
 
 
 def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land, complete=False,
-                         lobby_achievements=False):
+                         lobby_achievements=False, lobby_record=False):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
     avatar_id = profile[0]
@@ -3224,7 +3505,8 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
         page.close()
 
         page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1, reduced_motion="reduce")
-        stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=True)
+        stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=True,
+                                                lobby_record=lobby_record)
         first_lobby = wait_lobby_achievement_check(page, 1)
         assert len(startup_peers) == len(live) == 4 and all(peer not in startup_peers for peer in live)
         warm_data = page.evaluate("window.qaQuestWire.startupData")
@@ -3238,6 +3520,10 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
         assert commands[commands.index(35) - 1] == 17
         assert not any(p[0] == 51 and p[2] in (2, 31) for p in first_lobby["replies"]), first_lobby
         assert lobby_achievement_states(database, avatar_id) == {2: 0, 31: 0}
+        if lobby_record:
+            before_record = read_record_bootstrap(page)
+            assert {identifier: before_record[identifier]["state"] for identifier in (2, 31)} == {2: 0, 31: 0}
+            check_q3_record_projection(page, stage, directory, finished=False)
     page.locator("#lobby-quest-load").click()
     screen(stage, "quest-map")
     expect(page.locator("#quest-map-view")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
@@ -3306,6 +3592,15 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     if lobby_achievements:
         achievement_trace = check_q3_lobby_achievement(page, stage, directory, database, player_id, live, before=before_back,
                                                        first_trace=first_lobby)
+        if lobby_record:
+            deltas = {}
+            first_return = achievement_trace["firstReturn"]
+            for code, _, *vectors in first_return["replies"][lobby_check_reply_offset(first_return, 2):]:
+                if code == 56:
+                    deltas.update(zip(*vectors, strict=True))
+            assert {key: deltas.get(key) for key in (2, 31)} == {2: 1, 31: 1}, deltas
+            check_q3_record_projection(page, stage, directory, finished=True)
+            achievement_trace["recordProjection"] = {"bootstrap": before_record, "liveStates": deltas}
         if directory is not None:
             (directory / "lobby-achievement-wire.json").write_text(json.dumps(achievement_trace, indent=2) + "\n")
     assert page.reload(wait_until="domcontentloaded").ok
@@ -4879,7 +5174,8 @@ def check_lobby_hover(page, stage, directory):
         expect(over).to_be_hidden()
         clip = entry.bounding_box()
         resting = page.screenshot(clip=clip, scale="css", animations="disabled")
-        entry.hover()
+        target = lobby.locator("#lobby-record-open") if symbol == "record" else entry
+        target.hover()
         expect(up).to_be_hidden()
         expect(over).to_be_visible()
         if symbol in LOBBY_HOVER_TIMELINES:
@@ -5180,7 +5476,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     parts = equipped_parts(database, profile[0])
     first_portrait = check_avatar_canvas(page, stage, parts, responses)
     assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
-        "lobby-option-open", "lobby-quest-load",
+        "lobby-ap-gauge", "lobby-option-open", "lobby-quest-load", "lobby-record-open",
     ]
     assert len(sockets) == first + 5 and all(not socket.is_closed() for socket in live[first:first + 4])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
@@ -5407,7 +5703,7 @@ def check_ap_recovery(page, origin, database, name, password, directory):
     page.wait_for_function(f"length => {sc17}.length > length", arg=len(original), timeout=TIMEOUT)
     page.locator("#options-back").click()
     screen(stage, "lobby")
-    second = wait_lobby_achievement_check(page, 2, since=len(initial["replies"]))
+    second = wait_lobby_achievement_check(page, 2)
     shortened = page.evaluate(sc17)
     short = shortened[len(original):]
     assert short and all(energy == 4 and 1 <= remaining <= 14 for energy, remaining in short), short
@@ -5477,6 +5773,8 @@ def main():
                         help="Extend the original boss fixture through native Lobby record awards and a second Return")
     parser.add_argument("--lobby-selectable", action="store_true",
                         help="Verify the pending original Record 2 choice and saved physical Binder card")
+    parser.add_argument("--lobby-record", action="store_true",
+                        help="Verify the native read-only Record book using a warm level 1 original fixture")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
@@ -5523,6 +5821,10 @@ def main():
                                   or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
                                   or args.quest_peaceful or args.quest_high_low):
         parser.error("--lobby-selectable requires --quest-start-user with an unclaimed Record 2 fixture")
+    if args.lobby_record and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
+                              or args.quest_terminal or args.quest_next_land or (args.quest_complete_q3 and not args.lobby_achievements)
+                              or args.quest_peaceful or args.quest_high_low or args.lobby_selectable):
+        parser.error("--lobby-record requires --quest-start-user with a warm level 1 fixture or --lobby-achievements")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -5547,6 +5849,10 @@ def main():
                     check_lobby_selectable(page, origin, args.database, args.quest_start_user,
                                            args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Lobby Record 2 selection, held claim, Binder storage, and re-login passed.")
+                elif args.lobby_record and not args.lobby_achievements:
+                    check_lobby_record(page, origin, args.database, args.quest_start_user,
+                                       args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Original Data SC7 matched the Lobby Record book and local browsing sent no packets.")
                 elif args.quest_high_low:
                     page_errors = []
                     page.on("pageerror", lambda error: page_errors.append(str(error)))
@@ -5580,7 +5886,7 @@ def main():
                     check_preowned_quest(page, origin, args.database, args.quest_start_user,
                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
                                          continue_land=args.quest_next_land or args.quest_complete_q3, complete=args.quest_complete_q3,
-                                         lobby_achievements=args.lobby_achievements)
+                                         lobby_achievements=args.lobby_achievements, lobby_record=args.lobby_record)
                     mode = "authorized next land" if args.quest_next_land else "one-HP defeat"
                     if args.quest_complete_q3:
                         mode = "two wins, verified fixed treasure and map unlock"

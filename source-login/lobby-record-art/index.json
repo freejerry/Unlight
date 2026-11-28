@@ -1,0 +1,621 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "origin": [
+    52,
+    100
+  ],
+  "panel": {
+    "file": "panel.png",
+    "x": 0,
+    "y": 0,
+    "width": 648,
+    "height": 520
+  },
+  "tabs": [
+    {
+      "up": {
+        "file": "tab-ongoing-up.png",
+        "x": 8,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "over": {
+        "file": "tab-ongoing-over.png",
+        "x": 8,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "down": {
+        "file": "tab-ongoing-over.png",
+        "x": 8,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "hit": [
+        8,
+        24,
+        95.95,
+        23.95
+      ]
+    },
+    {
+      "up": {
+        "file": "tab-finished-up.png",
+        "x": 104,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "over": {
+        "file": "tab-finished-over.png",
+        "x": 104,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "down": {
+        "file": "tab-finished-over.png",
+        "x": 104,
+        "y": 24,
+        "width": 95.95,
+        "height": 23.95
+      },
+      "hit": [
+        104,
+        24,
+        95.95,
+        23.95
+      ]
+    }
+  ],
+  "buttons": {
+    "close": {
+      "up": {
+        "file": "close-up.png",
+        "x": 624,
+        "y": 0,
+        "width": 23.892990112304688,
+        "height": 23.892990112304688
+      },
+      "over": {
+        "file": "close-over.png",
+        "x": 624,
+        "y": 0,
+        "width": 23.892990112304688,
+        "height": 23.892990112304688
+      },
+      "down": {
+        "file": "close-over.png",
+        "x": 624,
+        "y": 0,
+        "width": 23.892990112304688,
+        "height": 23.892990112304688
+      },
+      "hit": [
+        624,
+        0,
+        23.892990112304688,
+        23.892990112304688
+      ]
+    },
+    "previous": {
+      "up": {
+        "file": "previous-up.png",
+        "x": 592.1998924255371,
+        "y": 327.95,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "over": {
+        "file": "previous-over.png",
+        "x": 592.1998924255371,
+        "y": 327.9998435974121,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "down": {
+        "file": "previous-over.png",
+        "x": 592.1998924255371,
+        "y": 327.9998435974121,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "hit": [
+        592.1998924255371,
+        327.9998435974121,
+        15.90010757446289,
+        15.90010757446289
+      ]
+    },
+    "next": {
+      "up": {
+        "file": "next-up.png",
+        "x": 608.1,
+        "y": 327.9998435974121,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "over": {
+        "file": "next-over.png",
+        "x": 608.1498435974121,
+        "y": 327.95,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "down": {
+        "file": "next-over.png",
+        "x": 608.1498435974121,
+        "y": 327.95,
+        "width": 15.90010757446289,
+        "height": 15.90010757446289
+      },
+      "hit": [
+        608.1498435974121,
+        327.95,
+        15.90010757446289,
+        15.90010757446289
+      ]
+    }
+  },
+  "categoryTitles": [
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    },
+    {
+      "file": "category-title.png",
+      "x": 8,
+      "y": 344,
+      "width": 632,
+      "height": 32
+    }
+  ],
+  "rows": {
+    "icons": [
+      {
+        "file": "row-category-1.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-2.png",
+        "x": 0.05,
+        "y": 0.05,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-3.png",
+        "x": 0.05,
+        "y": 0.05,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-4.png",
+        "x": 0.05,
+        "y": 0.05,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-5.png",
+        "x": 0.05,
+        "y": 0.05,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-6.png",
+        "x": 0.05,
+        "y": 0.0,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-7.png",
+        "x": 0.05,
+        "y": 0.05,
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "row-category-8.png",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 32,
+        "height": 16
+      }
+    ],
+    "panel": {
+      "up": null,
+      "over": {
+        "file": "row-over.png",
+        "x": 32.0,
+        "y": 0.0,
+        "width": 576,
+        "height": 16
+      },
+      "down": {
+        "file": "row-over.png",
+        "x": 32.0,
+        "y": 0.0,
+        "width": 576,
+        "height": 16
+      },
+      "hit": [
+        32,
+        0,
+        576,
+        16
+      ],
+      "blendMode": "screen"
+    },
+    "selected": {
+      "file": "row-selected.png",
+      "x": 31.0,
+      "y": -1.0,
+      "width": 578,
+      "height": 18
+    }
+  },
+  "catalogue": "catalogue.json",
+  "font": {
+    "file": "record-device.woff"
+  },
+  "provenance": {
+    "panel.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "96b7a1719bae878a8d9731a79331b36323404ad5e19ca4111aa13ec0be8157a2",
+      "sourceBitmap": 1,
+      "sourceShape": 2,
+      "sourceDepth": 1,
+      "sourceFrame": 1
+    },
+    "category-title.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "70c23b546b139eec018f1e0357e849612b63362a7edc1fa0e6ce4b44f8a03690",
+      "sourceBitmap": 3,
+      "sourceBitmaps": [
+        3,
+        5,
+        7,
+        9,
+        11,
+        13,
+        15,
+        17
+      ],
+      "sourceShapes": [
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18
+      ],
+      "sourceInstance": "recordname",
+      "sourceSprite": 19,
+      "sourceFrames": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    "tab-ongoing-up.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "3d4e02029a654c6ce524368a421010f0511a735a08a22495cc6265fb9cd4c08a",
+      "sourceBitmap": 25,
+      "sourceInstance": "tab_a",
+      "sourceButton": 29,
+      "sourceShape": 26,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "tab-ongoing-over.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "1efa3a89a4ff4c62c4bf5757e74d095b497d6565713b66c051783dd7e9af61fd",
+      "sourceBitmap": 27,
+      "sourceInstance": "tab_a",
+      "sourceButton": 29,
+      "sourceShape": 28,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "tab-finished-up.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "0ab7f9c7f486bb90a162babe1cf75ec6e1a217f055a1119dc4102de1cba02267",
+      "sourceBitmap": 20,
+      "sourceInstance": "tab_b",
+      "sourceButton": 24,
+      "sourceShape": 21,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "tab-finished-over.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "3c5f3ccae32ce9b887e79a864ccfbe82a7f641ca07157ac7a6cd786c73f4af96",
+      "sourceBitmap": 22,
+      "sourceInstance": "tab_b",
+      "sourceButton": 24,
+      "sourceShape": 23,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "close-up.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "b46b1b7ace1ffdc3bb80d049f6728d325db75be8c0465ce5bd0915a706fa3486",
+      "sourceBitmap": 30,
+      "sourceInstance": "btn_close",
+      "sourceButton": 34,
+      "sourceShape": 31,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "close-over.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "f799bb4892b2bea7c590df3713b988f696ee060654d03d4d5d4eac5ae0b711e8",
+      "sourceBitmap": 32,
+      "sourceInstance": "btn_close",
+      "sourceButton": 34,
+      "sourceShape": 33,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "previous-up.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "9c0c7875894f711e36eb08c408ba32df5638d5fac6080c2312f0600f29099de6",
+      "sourceBitmap": 35,
+      "sourceInstance": "btn_back",
+      "sourceButton": 39,
+      "sourceShape": 36,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "previous-over.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "10db7f3d82050df1a54e6c9bdd9f239ae6c8f465a986b70b5a5b2e387b9f6841",
+      "sourceBitmap": 37,
+      "sourceInstance": "btn_back",
+      "sourceButton": 39,
+      "sourceShape": 38,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "next-up.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "a73dddf24207791ba605705e2532c9d508eb69dcdc63277e6acce3ac03ebe2c6",
+      "sourceBitmap": 40,
+      "sourceInstance": "btn_next",
+      "sourceButton": 44,
+      "sourceShape": 41,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "next-over.png": {
+      "source": "data/image/achievement/achievement_ch.swf",
+      "sourceSha256": "a13595f7e7224c67d465b3d71a037265c5fd4eca2ab702bdb80fcd18dc58b31e",
+      "sha256": "66a3e3f0534fc65e3c546bbd41aba78b9a71bb48051d40eb8f5f98656d211906",
+      "sourceBitmap": 42,
+      "sourceInstance": "btn_next",
+      "sourceButton": 44,
+      "sourceShape": 43,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "row-category-1.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "e7acd5a1ccaeba608d611f5fc862b33cc7e58d3ffd318d8ca2ae3f03fd21f860",
+      "sourceShapes": [
+        2
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 1
+    },
+    "row-category-2.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "424b35f58650bc7505d7f3fab8569e15fd1e58d925335f6ef6afee0ee9a40951",
+      "sourceShapes": [
+        4
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 2
+    },
+    "row-category-3.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "d79ed2768ef4794a34934e76d5dfa5ddc7d4247a5df75eb75b37d539394032fd",
+      "sourceShapes": [
+        6
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 3
+    },
+    "row-category-4.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "37d5b9605f760ec0bc467e29cd3387c5f021247d80b8dfa668fc2dbfa770483f",
+      "sourceShapes": [
+        8
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 4
+    },
+    "row-category-5.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "2aeb02a549fd1d56a2ef6c670161ef145c107aff230672207b97e0bc8f01c0e3",
+      "sourceShapes": [
+        10
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 5
+    },
+    "row-category-6.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "63879cd6fb0b31d678c2600cb0e1bf73caf202571c4fd3ba1dc2cda9c6abbafb",
+      "sourceShapes": [
+        12
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 6
+    },
+    "row-category-7.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "0329bcecb134784dcd42710a665296888f673b38ef7e8f67a89c8704ac8ce615",
+      "sourceShapes": [
+        14
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 7
+    },
+    "row-category-8.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "efaaa4f43976b471fd43074b91bdb29b0490a2356381f26aefb32a5d369a471a",
+      "sourceShapes": [
+        16
+      ],
+      "sourceInstance": "icon_category",
+      "sourceSprite": 17,
+      "sourceFrame": 8
+    },
+    "row-over.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "7d5d3c29fc05ad97934784ecfcf7044a15fa0653367eb330fb5c1fbe2de3ebac",
+      "sourceShapes": [
+        19
+      ],
+      "sourceButton": 21,
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceBlendMode": 4
+    },
+    "row-selected.png": {
+      "source": "data/image/achievement/achievement_list.swf",
+      "sourceSha256": "59788994a394463cdba4a96a29ce6fda001ff85cce0cc6afbcc5ffba7f24922c",
+      "sha256": "915f16859691870ba2b56d46ad3e409fbe0753e71b86c83012f4db9284994f39",
+      "sourceShapes": [
+        22
+      ],
+      "sourceInstance": "select",
+      "sourceSprite": 23
+    },
+    "catalogue.json": {
+      "source": "app/client/src/model/utils/ConstData.as",
+      "sourceSha256": "25650a53f776cfa60c175d70fb977d86c6942e45099cb58e65ccb858d9e1e798",
+      "sha256": "4103adf11a5981d4e854f64189387435813ad70609159bfff86766032e237cd8",
+      "sourceTable": "ACHIEVEMENT_DATA"
+    },
+    "record-device.woff": {
+      "source": "res/data/cwming.ttf",
+      "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
+      "sha256": "27ed42adfe6239a1bae75a10ae636d116b1d98512387149493baad849d8c1c49",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "codepoints": 927,
+      "missingGlyphs": "・数発髪"
+    }
+  }
+}

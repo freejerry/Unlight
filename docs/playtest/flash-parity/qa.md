@@ -195,6 +195,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 測例核對 21 個原始索引、空選擇、鍵盤與滑鼠、選擇和翻牌音效、領取前重新登入、領取時連點及底層場景互斥。暫緩實際 `SC72` 直到 `SC31` 抵達，確認畫面仍在等候。放行後核對情報、回到大廳、SQLite 唯一 Binder 卡片及再次登入無重複。原版對照用獨立的 `ee38622` Ruby 和固定繁中 Ruffle，留存原命令與實際 SQLite 結果。[自動驗收](../../../tools/legacy-web/check_source_lobby.py) · [原版試跑](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-original/README.md)
 
+### 重跑右側紀錄清單
+
+用獨立 Ruby 準備已完成教學且走過成就初始化的 Lv1 角色。以原版 `Avatar.regist`、`avatar.init` 及 `avatar.get_avatar_info_set` 準備角色。確認 #1 完成，#2 與 #31 進行中，然後以相同 offset 啟動原版或新版 gateway。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user record-view --quest-start-password-file /path/to/disposable-password \
+  --lobby-record --screens /tmp/unlight-record-view
+```
+
+腳本獨立解壓原始 Data `SC7`，比對 SQLite，再從大廳與設定驗證分頁、分類、進度、關閉焦點、面板動畫及既有 BGM。瀏覽清單前後比對四條登入連線的送出計數與資料庫。用另一位原版 q3 測試角色加 `--quest-complete-q3 --lobby-achievements --lobby-record`，核對從同一 Lobby 收到的 `SC56`，以及 #2 與 #31 從進行中切到完成。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [紀錄來源](lobby-views.md#右側紀錄清單)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

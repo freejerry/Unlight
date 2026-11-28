@@ -3,6 +3,7 @@ import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
 import { playLobbyClick, playQuestBattleEffect } from './bgm.js';
 import { mountLobbyAchievementNotices } from './lobby-achievement.js';
 import { mountLobbyApTooltip } from './lobby-ap-tooltip.js';
+import { mountLobbyRecord } from './lobby-record.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -39,6 +40,7 @@ const layout = `
     </div>
     <div class="lower-slot chat" aria-hidden="true"></div>
     <button id="lobby-ap-gauge" type="button" aria-label="AP" aria-describedby="lobby-ap-tooltip"></button>
+    <button id="lobby-record-open" class="source-record-open" type="button" aria-label="紀錄" aria-haspopup="dialog" disabled></button>
     <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
@@ -116,9 +118,15 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     onSelectableClaimed: details => onSelectableClaimed?.(details, signal),
     onIdle: presentNotices,
   });
+  const recordTrigger = view.querySelector('#lobby-record-open');
+  const record = mountLobbyRecord(view, {
+    session, trigger: recordTrigger, signal,
+    canOpen: () => ready && !checkingAchievements && !news.open && !achievements.hasPending(),
+    onClose: presentNotices,
+  });
 
   function presentNotices() {
-    if (!ready || checkingAchievements || signal.aborted || news.open) return;
+    if (!ready || checkingAchievements || signal.aborted || news.open || record.isOpen()) return;
     if (waitingNotices.length) {
       achievements.enqueue(waitingNotices.splice(0));
     } else if (newsAvailable && !newsSeen.has(session.playerId) && !achievements.hasPending() &&
@@ -161,6 +169,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     ready = true;
     options.disabled = !canOpenOptions;
     quest.disabled = !canOpenQuest;
+    recordTrigger.disabled = false;
     if (document.activeElement === title) focus.focus({ preventScroll: true });
     session.refreshLobbyAvatar?.();
     session.subscribeLobbyAchievementEvents(event => {

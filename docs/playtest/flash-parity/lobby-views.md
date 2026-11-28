@@ -48,7 +48,7 @@
 ## 道具與外觀
 
 - `btn_e` 是整頁 `ItemView`。繁中 `item_inventory_ch.swf` 置於 `(0,0)`，`item_panel`／`item_base` 支援分類、列表、卡格及操作。道具／身體／衣服／飾品，預設第一頁。道具列表 `(24,104)`、部件數 `(449,630)`，共用 `PL_AVATAR_QUEST`。入退場 tween 約 470.6ms，入場程式在 join 之後才掛主容器，不能直接據該值推斷每層可見順序。 [ItemView.as](../../../app/client/src/view/ItemView.as#L74) · [ItemView.as](../../../app/client/src/view/ItemView.as#L220) · [ItemInventoryImage.as](../../../app/client/src/view/image/item/ItemInventoryImage.as#L23) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L55)
-- 右側 `btn_map_item` 另開 `WindowItemListPanel` 速查，`x798→498`、`y107`、0.2s Quad.easeOut 滑入，0.15s sine-out 退出，背景暫停 click。使用道具有確認，裝備／卸下／丟棄及使用期限由 Lobby 原命令和原回覆更新角色及庫存。唯讀清單、裝備和消耗各是獨立驗收範圍。 [ItemListButton.as](../../../app/client/src/view/image/common/ItemListButton.as#L78) · [ItemListView.as](../../../app/client/src/view/ItemListView.as#L66) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L147) · [BodyListPanel.as](../../../app/client/src/view/scene/item/BodyListPanel.as#L477) · [LobbyCtrl.as](../../../app/client/src/controller/LobbyCtrl.as#L404)
+- 右側 `btn_map_item` 另開 `WindowItemListPanel`。大廳與設定取虛擬人物類物品，每頁六格，箭頭循環翻頁。窗體 208×360，沿 `x798→498`、`y107` 在 200 ms Quad-out 滑入，150 ms sine-out 退出。選取播放 `ulse01` 並顯示物品詳情。速查的 Use 直接送出選定的實體庫存 ID，收到 `SC28` 才移除並提示成功。整頁道具介面另有確認視窗。原始視窗素材已在高低獎勵骰道具窗驗過，另待補拍大廳實際入口與同帳號持有物。[原版道具入口](../../../app/client/src/view/image/common/ItemListButton.as#L78) · [速查窗操作](../../../app/client/src/view/scene/item/WindowItemListPanel.as#L193) · [整頁確認](../../../app/client/src/view/scene/item/ItemListPanel.as#L147)
 
 ## 商店與暗房
 
@@ -64,8 +64,9 @@
 
 ### 右側紀錄清單
 
-- 原始面板 `achievement_ch.swf` 在 `(52,100)` 為 648×520。160×18 的分類選單在 `(532,127)`，16 列自 `y=163` 起每隔 16 px 排列，頁碼位於 `(372,428)`。進行中與完成分頁共用六個分類，標題依 `recordname` 畫格切換，選列展開條件、期限、說明及達成代碼。場景沿用大廳或設定的 BGM，開關、翻頁及選取無專屬音效。原版展開和詳情的實玩家畫面尚待補拍。[面板滑入滑出](../../../app/client/src/view/AchievementListView.as#L65) · [清單與詳情](../../../app/client/src/view/scene/common/AchievementListContainer.as#L131)
-- 原版清單操作就地使用已認證的成就存檔。登入的 Data `SC7` 傳送壓縮資料，後續 Data、Lobby、Quest 增量更新以成就 ID 合併。既有唯讀 `CS39` 可取得 `SC56`，原版清單開啟不發送這個請求。完成或失敗由原始狀態決定，失敗歸在完成頁並淡顯，從清單移除另有事件。下一階段用真實 q3 通關前後的成就存檔核對選單、分頁和狀態更新。[原版清單開啟](../../../app/client/src/view/AchievementListView.as#L81) · [Ruby 已有入口](../../../app/server/src/controller/lobby_controller.rb#L385)
+- 原始面板 `achievement_ch.swf` 在 `(52,100)` 為 648×520。160×18 的分類選單在 `(532,127)`，16 列自 `y=163` 起每隔 16 px 排列，頁碼位於 `(372,428)`。進行中與完成分頁共用六個分類，標題依 `recordname` 畫格切換，選列展開條件、期限、說明及達成代碼。原版實跑入口在大廳和設定，開啟用 300 ms Quad-out，關閉用 150 ms sine-out。場景沿用大廳 BGM，開關、翻頁及選取無專屬音效。[面板滑入滑出](../../../app/client/src/view/AchievementListView.as#L65) · [清單與詳情](../../../app/client/src/view/scene/common/AchievementListContainer.as#L131) · [原版實玩家畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-record-list-live/original/04-original-record-selected.png)
+- 原版清單操作就地使用已認證的成就存檔。登入的 Data `SC7` 傳送壓縮資料，後續 Data、Lobby、Quest 增量更新以成就 ID 合併。既有唯讀 `CS39` 可取得 `SC56`，原版清單開啟不發送這個請求。完成或失敗由原始狀態決定，失敗歸在完成頁並淡顯，從清單移除另有事件。新版依原始狀態與 1,205 筆公開的繁中定義顯示紀錄。原版 `cwming.ttf` 可用的字元以 WOFF 子集載入。[原版清單開啟](../../../app/client/src/view/AchievementListView.as#L81) · [素材來源](../../../source-login/lobby-record-art/index.json) · [資料解碼](../../../web-client/achievement-data.js)
+- 已實跑同一登入內通關 q3、回到大廳、讀取 `SC56` 及再次開啟清單。#2、#31 從進行中移至完成，#3、#32 仍進行中。清單實跑的完整啟動快照來自已有角色的登入。首次創角同一登入的完整資料仍待驗收。[原版與新版完成詳情](/workspace/shared/unlight-web-port/flash-parity/lobby-record-list-live/q3-finished-region-comparison.png) · [同一登入的封包與存檔](/workspace/shared/unlight-web-port/flash-parity/lobby-record-list-live/native-q3/lobby-achievement-wire.json)
 
 ### 大廳成就的直接獎勵
 

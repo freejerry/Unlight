@@ -1,6 +1,7 @@
 import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
 import { playBackClick } from './bgm.js';
 import { getPreferences, setPreference, subscribePreferences } from './preferences.js';
+import { mountLobbyRecord } from './lobby-record.js';
 
 const volumes = [['bgm', 'BGM'], ['se', 'SE'], ['cv', 'VOICE']];
 const layout = `
@@ -32,6 +33,7 @@ const layout = `
       <img src="/source-login/option-art/back.png" width="48" height="32" alt="">
       <img class="options-back-over" src="/source-login/option-art/back-over.png" width="48" height="32" alt="">
     </button>
+    <button id="options-record-open" class="source-record-open" type="button" aria-label="紀錄" aria-haspopup="dialog"></button>
   </section>`;
 
 export function mountOptions(host, { session, onBack }) {
@@ -71,6 +73,7 @@ export function mountOptions(host, { session, onBack }) {
   }, { signal });
 
   host.append(view);
+  mountLobbyRecord(view, { session, trigger: view.querySelector('#options-record-open'), signal });
   void prepareLobbyArt(view, signal);
   view.querySelector('#options-title').focus({ preventScroll: true });
 

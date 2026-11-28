@@ -1,0 +1,248 @@
+@font-face {
+  font-family: 'Unlight Record Ming';
+  src: url('./lobby-record-art/record-device.woff') format('woff');
+  font-display: swap;
+}
+
+#lobby-record-shell {
+  position: fixed;
+  inset: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: clip;
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+
+#lobby-record-shell::backdrop { background: transparent; }
+
+#lobby-record {
+  position: absolute;
+  isolation: isolate;
+  color: #fff;
+  font: 12px 'Unlight Record Ming', serif;
+}
+
+#lobby-record [hidden] { display: none !important; }
+
+.lobby-record-art {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lobby-record-button {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lobby-record-button:focus-visible,
+#lobby-record-category:focus-visible {
+  outline: 1px solid #82e1f9;
+  outline-offset: 1px;
+}
+
+.lobby-record-button > :is(.lobby-record-skin-over, .lobby-record-skin-down, .lobby-record-selected),
+.lobby-record-button:is(:hover, :active, :focus-visible) > .lobby-record-skin-up,
+.lobby-record-button:active > .lobby-record-skin-over,
+.lobby-record-button:is(#lobby-record-tab-active, #lobby-record-tab-finished)[aria-pressed="true"] > .lobby-record-art {
+  visibility: hidden;
+}
+
+.lobby-record-button:is(:hover, :focus-visible):not(:active) > .lobby-record-skin-over,
+.lobby-record-button:active > .lobby-record-skin-down,
+.lobby-record-row[aria-pressed="true"] > .lobby-record-selected {
+  visibility: visible;
+}
+
+#lobby-record :is(#lobby-record-tab-active, #lobby-record-tab-finished)[aria-pressed="true"] { cursor: default; }
+
+#lobby-record-heading,
+#lobby-record-rows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lobby-record-row {
+  pointer-events: auto;
+  color: #171717;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.lobby-record-row > :is(.lobby-record-skin-over, .lobby-record-skin-down) {
+  mix-blend-mode: var(--record-row-blend);
+}
+
+.lobby-record-row[data-state="2"] > :is(span, .lobby-record-art) { opacity: .3; }
+
+.lobby-record-row > span {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.lobby-record-red { color: #f00; }
+
+.lobby-record-category-frame {
+  position: absolute;
+  left: 480px;
+  top: 27px;
+  z-index: 1;
+  width: 160px;
+  height: 18px;
+}
+
+#lobby-record-category {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 1px solid #101010;
+  padding: 0 5px;
+  background: linear-gradient(#ededed, #a2a09f);
+  color: #151515;
+  font: 11px 'Unlight Record Ming', serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+#lobby-record-category-menu {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  width: 160px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #171717;
+  font-size: 11px;
+}
+
+#lobby-record-category-menu > button {
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#lobby-record-category-menu > .lobby-record-category-active { background: #ff8080; }
+
+#lobby-record-status {
+  position: absolute;
+  top: 50px;
+  right: 14px;
+  font-size: 11px;
+}
+
+#lobby-record-page {
+  position: absolute;
+  left: 320px;
+  top: 328px;
+  width: 24px;
+  height: 20px;
+  color: #171717;
+  font: 10px/16px 'Unlight Record Ming', serif;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#lobby-record-detail {
+  position: absolute;
+  top: 340px;
+  left: 0;
+  width: 648px;
+  height: 180px;
+  pointer-events: none;
+}
+
+#lobby-record-detail-title,
+#lobby-record-detail-explanation,
+#lobby-record-detail-conditions,
+#lobby-record-detail-deadline,
+#lobby-record-detail-code {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  overflow: hidden;
+}
+
+#lobby-record-detail-title {
+  left: 40px;
+  top: 8px;
+  width: 580px;
+  height: 30px;
+  padding: 1px 2px 0;
+  color: #171717;
+  font: 18px/24px 'Unlight Record Ming', serif;
+  white-space: nowrap;
+}
+
+#lobby-record-detail-explanation {
+  left: 20px;
+  top: 40px;
+  width: 600px;
+  height: 50px;
+  padding: 2px;
+  color: rgb(255 255 255 / .5);
+  font: 12px/16px sans-serif;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#lobby-record-detail-conditions {
+  left: 27px;
+  top: 83px;
+  width: 597px;
+  line-height: 16px;
+}
+
+#lobby-record-detail-conditions > div,
+#lobby-record-detail-deadline {
+  display: flex;
+  justify-content: space-between;
+  padding-inline: 2px;
+}
+
+#lobby-record-detail-deadline,
+#lobby-record-detail-code {
+  top: 147px;
+  width: 278px;
+  height: 20px;
+  line-height: 18px;
+}
+
+#lobby-record-detail-deadline { left: 345px; }
+
+#lobby-record-detail-code {
+  left: 20px;
+  padding-inline: 2px;
+  color: #ff0;
+  white-space: pre;
+}
