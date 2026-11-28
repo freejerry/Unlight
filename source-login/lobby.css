@@ -230,6 +230,20 @@
 }
 .avatar-layer .avatar-free-duel-stars { display: block; }
 
+#lobby-ap-gauge {
+  position: absolute;
+  left: 659px;
+  top: 615px;
+  width: 90px;
+  height: 65px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+#lobby-ap-gauge:focus-visible { outline: 1px solid #e9dbc0; outline-offset: -1px; }
+
 .source-lobby-button {
   min-block-size: 28px;
   padding: 3px 11px;

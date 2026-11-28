@@ -666,6 +666,7 @@ def create_app(
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "lobby-achievement.js", "lobby-achievement.css",
+                "lobby-ap-tooltip.js", "lobby-ap-tooltip.css",
                 "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
                 "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
@@ -674,6 +675,8 @@ def create_app(
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            app.router.add_get("/source-login/lobby-ap-tooltip.woff",
+                               serve_file(SOURCE_LOGIN_ROOT / "lobby-ap-tooltip.woff", {"Content-Type": "font/woff"}))
             for name in (
                 "ap", "ap-fill", "ap-frame", "ap-mask", "background", "entrances", "favorite", "friend", "header",
                 "item", "ranking", "record", "status", *(f"duel-stars-{count}" for count in range(4)),

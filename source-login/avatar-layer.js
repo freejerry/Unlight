@@ -30,6 +30,7 @@ function avatarMarkup(idPrefix) {
     </div>
     <div id="${idPrefix}-deck-row" hidden><dt>牌組</dt><dd id="${idPrefix}-deck-name"></dd></div>
   </dl>
+  ${idPrefix === 'lobby' ? '<span id="lobby-ap-tooltip" role="tooltip" data-visible="false"></span>' : ''}
   <span id="${idPrefix}-player-id" hidden></span>
   <span id="${idPrefix}-avatar-id" hidden></span>`;
 }

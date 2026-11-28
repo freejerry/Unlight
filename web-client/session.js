@@ -77,6 +77,7 @@ const LOBBY_GEMS_REPLY = 25;
 const LOBBY_ITEM_GRANTED_REPLY = 27;
 const LOBBY_CHARACTER_GRANTED_REPLY = 31;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
+const LOBBY_RECOVERY_INTERVAL_REPLY = 45;
 const LOBBY_ACHIEVEMENT_CLEAR_REPLY = 51;
 const LOBBY_ACHIEVEMENT_NEW_REPLY = 52;
 const LOBBY_NOTICE_REPLY = 54;
@@ -512,6 +513,11 @@ function observeLobbyAvatar(reply, publish) {
       case LOBBY_ENERGY_MAX_REPLY: {
         const energyMax = reply.int();
         if (energyMax > 0) patch = { energyMax };
+        break;
+      }
+      case LOBBY_RECOVERY_INTERVAL_REPLY: {
+        const energyRecoveryInterval = reply.int();
+        if (energyRecoveryInterval > 0) patch = { energyRecoveryInterval };
         break;
       }
       case LOBBY_GEMS_REPLY: {

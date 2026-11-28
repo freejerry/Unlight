@@ -2,6 +2,7 @@ import { readNews } from '/news.js';
 import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
 import { playLobbyClick, playQuestBattleEffect } from './bgm.js';
 import { mountLobbyAchievementNotices } from './lobby-achievement.js';
+import { mountLobbyApTooltip } from './lobby-ap-tooltip.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -37,6 +38,7 @@ const layout = `
       <div class="lower-slot ranking" role="img" aria-label="排行榜外框" data-source="entrance_rank.swf"></div>
     </div>
     <div class="lower-slot chat" aria-hidden="true"></div>
+    <button id="lobby-ap-gauge" type="button" aria-label="AP" aria-describedby="lobby-ap-tooltip"></button>
     <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
       <header class="source-lobby-dialog-heading">
         <h2 id="lobby-news-title" class="stage-panel-title">最新消息</h2>
@@ -97,6 +99,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
   const news = view.querySelector('#lobby-news');
   const avatarArrival = mountAvatarLayer(view.querySelector('.avatar-layer'), { session, signal });
   host.append(view);
+  mountLobbyApTooltip(view, { session, signal });
   const waitingNotices = [];
   let ready = false;
   let checkingAchievements = false;

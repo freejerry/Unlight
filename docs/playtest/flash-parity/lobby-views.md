@@ -25,6 +25,11 @@
 
 [全場景入口與返回](../../../app/client/src/view/LobbyView.as#L484) · [設定與牌組](../../../app/client/src/view/LobbyView.as#L784) · [道具與商店](../../../app/client/src/view/LobbyView.as#L915) · [暗房與圖書館](../../../app/client/src/view/LobbyView.as#L1060) · [序號與事件資訊入口](../../../app/client/src/view/scene/lobby/Entrance.as#L763)
 
+## 大廳 AP 懸停與到期
+
+- 原版 `social_ap.swf` 提供 AP 心形。提示由 ActionScript 建立，舞台固定右緣 `x=760`、上緣 `y=610`、高 20 px，依滿值、秒、分、時使用寬 120、158、176、196 px。使用原版 `minchoB` 10 px、1 px 字距、黑底與淺灰邊。滑入與滑出都以 200 ms sine-out 淡變，沒有播放音效，也不依全域工具提示開關改變。新版保留心形圖層並提供鍵盤焦點。[原版尺寸及動作](../../../app/client/src/view/image/common/ActionPointGauge.as#L268) · [原版樣式](../../../app/client/data/css/UL.css.cn#L1378) · [新版樣式](../../../source-login/lobby-ap-tooltip.css)
+- 倒數以已驗證的時間快照為錨，每秒更新文字。原版 `SC17` 回傳現有 AP 及整秒剩餘時間，`SC18` 提供上限，`SC45` 提供回復間隔。滿值或溢出顯示「現在的AP是最大值。」到零仍未回復時暫顯原版回復間隔。Ruby 截去小數秒，新版以該次回覆起算再等過最後一秒，沿用 2 秒節流送 `CS17`。只在 Ruby 回覆後改變數字和心形。[原版大廳更新入口](../../../app/client/src/controller/LobbyCtrl.as#L619) · [Ruby 回復規則](../../../app/server/src/model/avatar.rb#L1611) · [新版倒數](../../../source-login/lobby-ap-tooltip.js)
+
 ## 設定
 
 - `Option` 標題基點 `(15,5)`，繁中「選項設定」偏移 `(+85,+7)`。背景用 `option/config.swf`，鏡像繁中 `option/config_ch.swf`，73,595 bytes、SHA-256 `2e9e56e2e17697194309e6fe37f73fcff5d6e5c460a18d8841e79f59ca65f077`。容器有背景、HelpPanel、SoundPanel 和共用 `PL_AVATAR_MATCH`。Back 按下播放 Click、轉 `STATE_LOBBY`。原標題淡入 470.6ms，退出標題及容器 1 秒 sine-out，再清理 avatar 和 listeners。 [OptionView.as](../../../app/client/src/view/OptionView.as#L65) · [OptionView.as](../../../app/client/src/view/OptionView.as#L149) · [Options BG.as](../../../app/client/src/view/image/option/BG.as#L18)
@@ -56,6 +61,11 @@
 - 好友 `friend/btn_f_list.swf → friend/friendlist.swf`，`x125,y−120→150`、0.3s Quad.easeOut，關閉 0.15s sine-out。好友、申請待處理、封鎖、搜尋四 tab，搜尋停刷新且須驗名稱最短限制，等回覆暫停輸入。Data 搜尋、Lobby 更新／申請／確認／刪除，5 分鐘檢查、限流後延 3s 更新，關閉停 timer。寄任務是另一個僅開好友 tab 的模式。不能以本機假結果代替權限、回覆或失敗提示。 [FriendListButton.as](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L250) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L398) · [FriendListContainer.as](../../../app/client/src/view/scene/common/FriendListContainer.as#L148) · [Lobby Ruby controller](../../../app/server/src/controller/lobby_controller.rb#L235)
 - 右側「紀錄」實為 `AchievementListView`，`achievement/achievement.swf`，`x52,y−120→100`、0.3s Quad.easeOut，關閉 0.15s sine-out。顯示真正成就狀態及條件，開啟會刷新本機列表。另有 `LogListView`（`x152,y150`，須 `activate`）及 AvatarDetailBase 的 `log` 符號被隱藏。與右側成就、原生獨立戰鬥紀錄皆為不同入口。 [AchievementListButton.as](../../../app/client/src/view/image/common/AchievementListButton.as#L51) · [AchievementListView.as](../../../app/client/src/view/AchievementListView.as#L45) · [AchievementListContainer.as](../../../app/client/src/view/scene/common/AchievementListContainer.as#L255) · [LogListView.as](../../../app/client/src/view/LogListView.as#L63)
 - 原版每次大廳進場序列完成後，另以同一 Lobby 連線送 `CS35(true)` 檢查成就。新版已接上就緒時的檢查、直接獎勵通知、實體道具和卡片，以及 Gem 絕對餘額。q568 先前原版試跑在終局返回後也發放「突破初期地區」的道具 3 和 3,000 Gem。[原版進場順序](../../../app/client/src/view/LobbyView.as#L319) · [Ruby 成就檢查](../../../app/server/src/controller/lobby_controller.rb#L351) · [q568 大廳成就紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/lobby-grant-proof.json)
+
+### 右側紀錄清單
+
+- 原始面板 `achievement_ch.swf` 在 `(52,100)` 為 648×520。160×18 的分類選單在 `(532,127)`，16 列自 `y=163` 起每隔 16 px 排列，頁碼位於 `(372,428)`。進行中與完成分頁共用六個分類，標題依 `recordname` 畫格切換，選列展開條件、期限、說明及達成代碼。場景沿用大廳或設定的 BGM，開關、翻頁及選取無專屬音效。原版展開和詳情的實玩家畫面尚待補拍。[面板滑入滑出](../../../app/client/src/view/AchievementListView.as#L65) · [清單與詳情](../../../app/client/src/view/scene/common/AchievementListContainer.as#L131)
+- 原版清單操作就地使用已認證的成就存檔。登入的 Data `SC7` 傳送壓縮資料，後續 Data、Lobby、Quest 增量更新以成就 ID 合併。既有唯讀 `CS39` 可取得 `SC56`，原版清單開啟不發送這個請求。完成或失敗由原始狀態決定，失敗歸在完成頁並淡顯，從清單移除另有事件。下一階段用真實 q3 通關前後的成就存檔核對選單、分頁和狀態更新。[原版清單開啟](../../../app/client/src/view/AchievementListView.as#L81) · [Ruby 已有入口](../../../app/server/src/controller/lobby_controller.rb#L385)
 
 ### 大廳成就的直接獎勵
 

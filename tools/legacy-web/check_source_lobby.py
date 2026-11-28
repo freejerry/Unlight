@@ -296,6 +296,10 @@ def observe_session_codec(page, origin):
         if (lobby && reply.command === 9 && body.byteLength === 6) {
           lobby.replies.push([9, body.byteLength, new DataView(body.buffer, body.byteOffset, body.byteLength).getInt32(2)]);
         }
+        if (lobby?.energy && reply.command === 17 && body.byteLength === 10) {
+          const fields = read(body);
+          lobby.energy.push([fields.int(), fields.int()]);
+        }
         if (lobby?.achievement && [25, 27, 31, 35, 51, 52, 54, 56, 71, 72].includes(reply.command)) {
           lobby.achievement.replies.push([reply.command, body.byteLength, ...achievementFields(body, reply.command)]);
           lobby.achievement.timeline.push(['lobby', 'reply', reply.command]);
@@ -346,11 +350,12 @@ def observe_session_codec(page, origin):
     """))
 
 
-def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False):
+def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lobby_energy=False):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
       if ({str(lobby_achievements).lower()}) wire.lobby.achievement = {{sent: [], replies: [], sockets: 0, closed: 0, timeline: []}};
       if ({str(startup_data).lower()}) wire.startupData = [];
+      if ({str(lobby_energy).lower()}) wire.lobby.energy = [];
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -5299,6 +5304,40 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     return first_portrait
 
 
+def set_ap_fixture_timer(server, name, remaining, *, authenticated):
+    # Save only the original recovery timer of the disposable 4/5 AP actor.
+    run(["ruby", "-e", """
+        $SERVER_NAME = 'legacy-lobby-refresh-check'
+        require ARGV.shift
+        name, remaining, authenticated = ARGV
+        include Unlight
+        player = Player.first(name: name)
+        abort 'Unexpected fixture session state.' unless player && (player.state & 1) == Integer(authenticated)
+        avatar = Avatar.first(player_id: player.id)
+        abort 'Expected exactly 4/5 AP.' unless avatar&.energy == 4 && avatar.energy_max == 5
+        avatar.last_recovery_at = Time.now.utc - avatar.get_recovery_interval + Integer(remaining)
+        avatar.save_changes
+    """, "--", str(Path(__file__).resolve().parents[1] / "legacy-server/isolated_server.rb"), name,
+        str(remaining), str(int(authenticated))],
+        cwd=server, env={**os.environ, "UNLIGHT_LEGACY_STAGE": str(server), "TZ": "UTC"}, check=True, timeout=30)
+
+
+def check_ap_tooltip(stage, tooltip, kind):
+    width, caption = {
+        "seconds": (158, r"到下一次回復還剩[0-9]+秒。"),
+        "minutes": (176, r"到下一次回復還剩[0-9]+分鐘[0-9]+秒。"),
+        "full": (120, r"現在的AP是最大值。"),
+    }[kind]
+    expect(tooltip).to_have_attribute("data-kind", kind, timeout=TIMEOUT)
+    expect(tooltip).to_have_attribute("data-visible", "true")
+    expect(tooltip).to_have_css("opacity", "1")
+    expect(tooltip).to_have_text(re.compile(caption))
+    outer, box = stage.bounding_box(), tooltip.bounding_box()
+    assert outer and box
+    assert abs(box["x"] + box["width"] - outer["x"] - 760) < 1 and abs(box["y"] - outer["y"] - 610) < 1, box
+    assert abs(box["width"] - width) < 1 and abs(box["height"] - 20) < 1, box
+
+
 def check_ap_recovery(page, origin, database, name, password, directory):
     server = database.parent.parent
     if database != server / "data/game_dev2.db" or not (server / ".legacy-server-staging").is_file():
@@ -5306,9 +5345,14 @@ def check_ap_recovery(page, origin, database, name, password, directory):
     ((player_id, flags),) = player(database, name)
     (before,) = avatar(database, player_id)
     assert flags == 0 and before[5:7] == (4, 5), "Use a signed-out --playtest-first-quest fixture"
+    (interval,) = query(database, "SELECT recovery_interval FROM avatars WHERE id = ?", before[0])[0]
+    assert interval > 120, interval
+    set_ap_fixture_timer(server, name, 120, authenticated=False)
     sockets = []
     page.on("websocket", lambda socket: sockets.append(socket))
     observe_session_codec(page, origin)
+    observe_quest_wire(page, lobby_achievements=True, startup_data=True, lobby_energy=True)
+    page.emulate_media(reduced_motion="no-preference")
 
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
@@ -5317,49 +5361,92 @@ def check_ap_recovery(page, origin, database, name, password, directory):
     page.locator("#password").fill(password)
     page.locator("#login-submit").click()
     screen(stage, "lobby")
-    close_lobby_news(page, stage, None)
-    expect(page.locator("#lobby-energy")).to_have_text("4/5")
+    if [22, 22, 1, 3, 9, 3, 0] in page.evaluate("window.qaQuestWire.startupData"):
+        close_q3_startup_record(page, stage, origin, None)
+    else:
+        close_lobby_news(page, stage, None)
+    initial = wait_lobby_achievement_check(page, 1)
+    energy = page.locator("#lobby-energy")
+    gauge = page.locator("#lobby-ap-gauge")
+    tooltip = page.locator("#lobby-ap-tooltip")
+    expect(energy).to_have_text("4/5")
+    expect(gauge).to_have_attribute("aria-describedby", "lobby-ap-tooltip")
+    expect(tooltip).to_have_attribute("data-visible", "false")
+    assert "0.2s" in tooltip.evaluate("node => getComputedStyle(node).transitionDuration.split(', ')")
     (before,) = avatar(database, player_id)
     assert before[5:7] == (4, 5)
     parts = equipped_parts(database, before[0])
     portrait = page.locator("#lobby-avatar")
     expect(portrait).to_have_attribute("data-avatar-state", "ready")
     image = portrait_sha(portrait)
-    wait_refresh_cooldown(page)
+    sc17 = "window.qaQuestWire.lobby.energy"
+    original = page.evaluate(sc17)
+    assert original and all(energy == 4 and 60 <= remaining <= 120 for energy, remaining in original), original
+    page.mouse.move(705, 646)
+    check_ap_tooltip(stage, tooltip, "minutes")
+    capture(stage, directory, "ap-recovery-minutes.png", animations="allow")
+    page.mouse.move(640, 645)
+    expect(tooltip).to_have_attribute("data-visible", "false")
+    page.locator("#lobby-title").focus()
+    for _ in range(3):
+        page.keyboard.press("Tab")
+    expect(gauge).to_be_focused()
+    check_ap_tooltip(stage, tooltip, "minutes")
+    capture(stage, directory, "ap-recovery-keyboard.png", animations="allow")
+    gauge.press("Tab")
+    expect(tooltip).to_have_attribute("data-visible", "false")
+    assert [p for p in read_lobby_achievement_trace(page)["sent"] if p[0] == 17] == [p for p in initial["sent"] if p[0] == 17]
+    assert page.evaluate(sc17) == original
 
-    # Only arm the existing Ruby recovery rule. The next authenticated Lobby command restores AP.
-    run(["ruby", "-e", """
-        $SERVER_NAME = 'legacy-lobby-refresh-check'
-        require ARGV.shift
-        include Unlight
-        player = Player.first(name: ARGV.fetch(0))
-        abort 'Expected an authenticated fixture player.' unless player && (player.state & 1) == 1
-        avatar = Avatar.first(player_id: player.id)
-        abort 'Expected exactly 4/5 AP.' unless avatar&.energy == 4 && avatar.energy_max == 5
-        seconds = avatar.get_recovery_interval
-        abort 'Missing original recovery interval.' unless seconds > 0
-        avatar.last_recovery_at = Time.now.utc - seconds - 2
-        avatar.save_changes
-    """, "--", str(Path(__file__).resolve().parents[1] / "legacy-server/isolated_server.rb"), name],
-        cwd=server, env={**os.environ, "UNLIGHT_LEGACY_STAGE": str(server), "TZ": "UTC"}, check=True, timeout=30)
-    assert avatar(database, player_id) == [before]
-    capture(stage, directory, "ap-recovery-before.png")
-    page.evaluate("() => { window.refreshQASends = []; }")
+    # Rebase the short duration with the ordinary Options entry request on the same Ruby peer.
+    set_ap_fixture_timer(server, name, 14, authenticated=True)
+    page.emulate_media(reduced_motion="reduce")
     page.locator("#lobby-option-open").click()
     screen(stage, "options")
-    expect(page.locator("#options-energy")).to_have_text("5/5", timeout=TIMEOUT)
-    assert page.evaluate("window.refreshQASends") == [LOBBY_REFRESH]
-    portrait = page.locator("#options-avatar")
+    expect(page.locator("#options-energy")).to_have_text("4/5", timeout=TIMEOUT)
+    page.wait_for_function(f"length => {sc17}.length > length", arg=len(original), timeout=TIMEOUT)
+    page.locator("#options-back").click()
+    screen(stage, "lobby")
+    second = wait_lobby_achievement_check(page, 2, since=len(initial["replies"]))
+    shortened = page.evaluate(sc17)
+    short = shortened[len(original):]
+    assert short and all(energy == 4 and 1 <= remaining <= 14 for energy, remaining in short), short
+    page.emulate_media(reduced_motion="no-preference")
+    hold_lobby_reply(page, 17, 17, 10)
+    page.mouse.move(705, 646)
+    check_ap_tooltip(stage, tooltip, "seconds")
+    capture(stage, directory, "ap-recovery-seconds.png", animations="allow")
+    wait_held_lobby_reply(page)
+    try:
+        page.wait_for_timeout(2200)
+        held = read_lobby_achievement_trace(page)
+        assert [p[:3] for p in held["sent"][len(second["sent"]):] if p[0] == 17] == [[17, 5, None]], held
+        assert page.evaluate(sc17) == shortened
+        expect(energy).to_have_text("4/5")
+        check_ap_tooltip(stage, tooltip, "minutes")
+        expect(tooltip).to_have_text(f"到下一次回復還剩{interval // 60}分鐘{interval % 60}秒。")
+        assert avatar(database, player_id) == [before[:5] + (5,) + before[6:]]
+        capture(stage, directory, "ap-recovery-before.png", animations="allow")
+    finally:
+        release_lobby_reply(page)
+
+    expect(energy).to_have_text("5/5", timeout=TIMEOUT)
+    check_ap_tooltip(stage, tooltip, "full")
+    capture(stage, directory, "ap-recovery-full.png", animations="allow")
     expect(portrait).to_have_attribute("data-avatar-state", "ready")
     assert portrait_sha(portrait) == image
     assert avatar(database, player_id) == [before[:5] + (5,) + before[6:]]
     assert equipped_parts(database, before[0]) == parts
     assert len(sockets) == 4 and {urlsplit(socket.url).path for socket in sockets} == SESSION_PORTS
     assert all(not socket.is_closed() for socket in sockets)
-    capture(stage, directory, "ap-recovery-options.png")
-    page.locator("#options-back").click()
-    screen(stage, "lobby")
-    expect(page.locator("#lobby-energy")).to_have_text("5/5")
+    after = read_lobby_achievement_trace(page)
+    assert [p for p in held["sent"] if p[0] == 17] == [p for p in after["sent"] if p[0] == 17]
+    packets = page.evaluate(sc17)
+    recovered = packets[len(shortened):]
+    assert 1 <= len(recovered) <= 3 and all(packet == [5, 0] for packet in recovered), packets
+    if directory is not None:
+        evidence = {"beforeDue": second, "held": held, "after": after, "sc17": packets}
+        (directory / "ap-recovery-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
 
@@ -5372,7 +5459,7 @@ def main():
     parser.add_argument("--screens", type=Path, help="Save verified 780×680 screenshots in this directory")
     parser.add_argument("--chromium", default="/usr/bin/chromium")
     fixture = parser.add_mutually_exclusive_group()
-    fixture.add_argument("--refresh-user", help="Only check AP recovery for a --playtest-first-quest fixture at 4/5 AP")
+    fixture.add_argument("--refresh-user", help="Verify the AP tooltip and recovery on a disposable 4/5 AP fixture")
     fixture.add_argument("--quest-user", help="Only check Quest entry and cancel for a disposable discovered/pending fixture")
     fixture.add_argument("--quest-start-user", help="Check start through first combat exchange for a disposable empty Quest fixture")
     parser.add_argument("--refresh-password-file", type=Path, help="Private password file for --refresh-user")
@@ -5451,7 +5538,7 @@ def main():
                 if args.refresh_user:
                     check_ap_recovery(page, origin, args.database, args.refresh_user,
                                       args.refresh_password_file.read_text().rstrip("\r\n"), args.screens)
-                    print("Original Ruby AP recovered from 4/5 to 5/5 on the existing Lobby connection.")
+                    print("Original Lobby tooltip and same-peer AP recovery from 4/5 to 5/5 passed.")
                 elif args.quest_user:
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)

@@ -1,0 +1,45 @@
+/* Original minchoB, res/data/wt004.ttf at UnlightCloud/shell 4e7b49ea. */
+@font-face {
+  font-family: "Unlight AP Mincho";
+  src: url("./lobby-ap-tooltip.woff") format("woff");
+  font-display: swap;
+}
+
+/* ActionPointGauge reparents its Flex TextArea to the shared avatar container. */
+#lobby-ap-tooltip {
+  position: absolute;
+  z-index: 1;
+  top: 610px;
+  right: 20px;
+  box-sizing: border-box;
+  width: 120px;
+  height: 20px;
+  border: 1px solid #b7babc;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font: 10px/14px "Unlight AP Mincho", serif;
+  font-kerning: normal;
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1),
+    visibility 0ms linear 200ms;
+}
+
+#lobby-ap-tooltip[data-kind="seconds"] { width: 158px; }
+#lobby-ap-tooltip[data-kind="minutes"] { width: 176px; }
+#lobby-ap-tooltip[data-kind="hours"] { width: 196px; }
+
+#lobby-ap-tooltip[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lobby-ap-tooltip { transition: none; }
+}

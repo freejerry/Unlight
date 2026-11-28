@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復、首次登入成就 #1 及新挑戰、q3 返回的四筆直接獎勵、Lv3 可選角色卡實體入庫。**部分**其餘成就及大廳入口。 | AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳 AP 滑入倒數與到期刷新、首次登入成就 #1 及新挑戰、q3 返回的四筆直接獎勵、Lv3 可選角色卡實體入庫。**部分**其餘成就及大廳入口。 | 右側「紀錄」清單的原版展開、角色狀態、分頁與返回。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝敗、大蝙蝠之群兩戰及蝙蝠卡寶箱、山丘矮人勝利、紫色泥沼澤2左右線及左線先鋒卡。q568 已實跑獎勵骰敗猜、重擲、補正、終局空獎品 Exit、直接 Get 與返回。新版另實跑落日大蝙蝠 18 回合和局與山丘矮人敗北。**部分**戰鬥 HUD 與其他高低獎勵。 | 終局實體獎品、繁中 Flash 落日大蝙蝠和局、山丘矮人敗北與 AP 更新時點、攻防開場時序及換角。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -60,7 +60,8 @@
 ### 大廳角色與 AP 刷新
 
 - 原版與新版都在開啟設定時用已登入的 Lobby 執行 Ruby 恢復檢查，從 `4/5` 回復至 `5/5`。新版暫緩真 `SC17` 時可進入設定且保持 `4/5`，放行後同時更新數字和心形。驗收保留原四條連線、BGM 播放和原裝備。約 328 ms 返回大廳未再送請求，約 2115 ms 返回時只再送一次無參數 `CS17`。[階段畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/ap-refresh-comparison.png) · [封包與時序](/workspace/shared/unlight-web-port/flash-parity/lobby-refresh/qa-native-refresh-evidence.json)
-- 原版有一次設定進出時心形滿值但數字暫留 `4/5`，回大廳後為 `5/5`。新版取同一次已確認更新繪製數字和心形。原版 AP 滑入提示的繁中文字與畫面已留存，倒數及到期檢查仍待移植。[原版重跑及差異](flash-parity/options-reference.md#原版-ap-回復的顯示差異) · [重跑設定頁 AP 回復](flash-parity/qa.md#重跑設定頁-ap-回復)
+- 原版有一次設定進出時心形滿值但數字暫留 `4/5`，回大廳後為 `5/5`。新版取同一次已確認更新繪製數字和心形。[原版重跑及差異](flash-parity/options-reference.md#原版-ap-回復的顯示差異)
+- 兩版實跑大廳右下心形的分鐘及秒數提示、移開後收合及自然回復。滿值提示的外框、黑底與文字外接框在 780×680 正式舞台取樣一致。新版另從鍵盤進入提示，倒數到期送一筆 `CS17`，在真 `SC17` 暫緩期間保持 `4/5`，放行後顯示 `5/5`。原版共用 AP 提示在設定與任務畫面的移植仍待驗收。[秒數並排](/workspace/shared/unlight-web-port/flash-parity/lobby-ap-tooltip-live/countdown-seconds-comparison.png) · [滿值並排](/workspace/shared/unlight-web-port/flash-parity/lobby-ap-tooltip-live/full-ap-comparison.png) · [重跑大廳 AP](flash-parity/qa.md#重跑大廳-ap-懸停與到期)
 
 ### 第一張普通任務地圖
 

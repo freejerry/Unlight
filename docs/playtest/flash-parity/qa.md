@@ -52,9 +52,9 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 相容 SWF 對照須另標明同一台機器目前的 `Unlight-local-runtime.swf` 為 `263647832e0132f07a17f1d547913dab8c45a26ffff2b9ceace6fd428c8103b9`，與 `602db88d` 歷史畫面來源不同。原版 SWF 的完整 SHA 為 `2a375905f3effc06476cd99f578f48d3040a2e9eecbbc6cfd33ce5d5f34ddc44`。素材版本 `0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e`。原版首戰可在新副本的 `--playtest-user` 加 `--playtest-first-quest`，兩端配對可用相同 `--news` 檔案。固定標題預設三則斷言需保留預設 XML。 [SWF 建置版本](../../../tools/legacy-build/README.md) · [原版量測、首戰及相容版設定](../../../tools/legacy-web/README.md)
 
-### 重跑設定頁 AP 回復
+### 重跑大廳 AP 懸停與到期
 
-在新的隔離 Ruby 副本以 `--playtest-user apqa --playtest-first-quest` 準備角色，確認起始 AP 為 `4/5`。將該測試帳號的密碼置於只有擁有者可讀的檔案，再啟動上例的新版 gateway。測例登入後會用原版 Ruby 模型調整該測試角色的恢復時間。角色的 AP 由下一次 `CS17` 觸發的原版 Ruby 規則恢復。測例只接受 `run.py` 建立的隔離資料目錄。[隔離測例](../../../tools/legacy-web/check_source_lobby.py)
+在新的隔離 Ruby 副本以 `--playtest-user apqa --playtest-first-quest` 準備角色，確認起始 AP 為 `4/5`。將該測試帳號的密碼置於只有擁有者可讀的檔案，再啟動上例的新版 gateway。測例使用原版回復間隔，以 Ruby 模型調整測試角色的起算時間，再接收實際的分鐘和秒數回覆。原版服裝資料會把間隔限制在 1,800 秒以內，小時格式依 ActionScript 保留。測例只接受 `run.py` 建立的隔離資料目錄。[隔離測例](../../../tools/legacy-web/check_source_lobby.py)
 
 ```bash
 python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
@@ -62,6 +62,8 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
   --refresh-user apqa --refresh-password-file "$proof_dir/apqa-password" \
   --screens "$proof_dir/native-ap-recovery"
 ```
+
+核對懸停、滑出及鍵盤操作都不觸發 AP 查詢，在同一條 Lobby 經設定返回重新取得短倒數，然後讓倒數自然到期。暫緩真 `SC17`，驗證 Ruby 已保存 5/5、固定舞台仍為 4/5，放行後才更新滿值文字、心形和數字。保留四條原有登入連線以及當場角色的裝備。[大廳 AP 規格](lobby-views.md#大廳-ap-懸停與到期)
 
 ### 重跑任務地圖的庫存及返回
 
