@@ -11,12 +11,16 @@ from xml.etree import ElementTree
 
 from PIL import Image, ImageChops
 
-from extract_character_card_art import DisplayList, REVISION, bitmap, checked_source, matrix, timeline
+from extract_character_card_art import DisplayList, FRAME as CHARACTER_FRAME, REVISION, bitmap, checked_source, matrix, timeline
 from extract_quest_detail_art import STAND_ALIASES, kind, png_bytes, rasterize_svg
 
 
 STANDS = {
+    "1": ("public/image/standchara/standchara01.swf", "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d"),
     "21": ("public/image/standchara/standchara03.swf", "eae5c64037ec904ed201848294505ef9b063eaf8aa53047785c1fff17a28d09f"),
+    "31": ("public/image/standchara/standchara04.swf", "08e4852fae9b535e48d64cd8f1947bc827c92ccb24b1cba60b2fc692ef591d56"),
+    "101": ("public/image/standchara/standchara11.swf", "4f5c75140959ab31e0ed94f2633fac47b619475fa39367b452addbbdcc4bf6c2"),
+    "111": ("public/image/standchara/standchara12.swf", "834bb986487b05085ee91a90d36a260701027527c6383382ffd2e7b64ca85ad1"),
     "1004": ("public/image/standchara/standmon002_00.swf", "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e"),
     "1001": ("public/image/standchara/standmon001_00.swf", "c5a506de29a9f7b20267dc2bbc8a45b4219cf3f212dc05867ecab63c1a58dd6c"),
     "1007": ("public/image/standchara/standmon003_00.swf", "0a19be4040f63c9d9084c45eb950845b1fbefbca263fbeda77e2cc0074817133"),
@@ -24,6 +28,7 @@ STANDS = {
     "94": ("public/image/standchara/standchara10.swf", "78f0cdbec2ed5a1bd1d40222daced9a471503458ff8711a9eca11dbf24316496"),
     "1033": ("public/image/standchara/standmon012_02.swf", "63c711be1ef980383a840ab2ab6b4722ef22430dd435a9c11e9b1eac7b6a6331"),
     "1034": ("public/image/standchara/standmon011_00.swf", "e7461ee4e85f105e0dd55b40a27fc9ed123fcbaa195a907c1513070bc03c49e5"),
+    "1050": ("public/image/standchara/standmon017_01.swf", "1c45b58505ec493aa092c29c84861d1104d14751da09f5e822a4d7ec4ba9b2c8"),
 }
 FRAME = ("data/image/game/acframe.swf", "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9")
 CONTROLS = ("data/image/cardaction.swf", "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220")
@@ -75,6 +80,41 @@ def positive(image):
     if not image.getbbox():
         raise ValueError("An authored battle artwork layer was unexpectedly empty")
     return image
+
+
+def character_reverse(movie, save):
+    bounds = (0, 0, 168, 240)
+    root = movie.frame(movie.movie, 1)
+    tab = next(item for item in root if item.get("name") == "tab0")
+    frames = [movie.frame(movie.symbols[tab["idref"]], number) for number in (1, 2)]
+
+    def art(name, placements, frame):
+        image = positive(render(movie, placements, bounds))
+        x, y, right, bottom = image.getbbox()
+        return {"file": save(f"chara-reverse-{name}.png", image.crop((x, y, right, bottom)), CHARACTER_FRAME,
+                             sourceFrame=frame), "x": x, "y": y, "width": right - x, "height": bottom - y}
+
+    def icon(name, frame):
+        placement = next(item for item in frames[0] if item.get("name") == name)
+        _, _, _, _, x, y = matrix(placement["matrix"])
+        positioned = []
+        for item in movie.frame(movie.symbols[placement["idref"]], frame):
+            sx, skew_x, skew_y, sy, child_x, child_y = matrix(item["matrix"])
+            if (sx, skew_x, skew_y, sy) != (1, 0, 0, 1):
+                raise ValueError("Unexpected transform in character feat icon")
+            positioned.append(dict(item, matrix=f"t{x + child_x},{y + child_y}"))
+        return art(f"{name}-{frame}", positioned, frame)
+
+    return {
+        "plate": art("plate", [item for item in root if not item.get("name")], 1),
+        "tab": {
+            "up": art("tab-up", [item for item in frames[0] if item["idref"] != "24" and not item.get("name")], 1),
+            "selected": art("tab-selected", [item for item in frames[1] if not item.get("name")], 2),
+            "phases": {kind: icon("icon_phase", number) for number, kind in enumerate(("atk", "deff", "mov"), 1)},
+            "ranges": {key: [icon(f"icon_range{n}", frame) for frame in (1, 2)]
+                       for n, key in enumerate(("近", "中", "遠"))},
+        },
+    }
 
 
 def atlas(frames, bounds):
@@ -243,7 +283,7 @@ def dice_hit(args, movie, sprite, normal, save):
 def generate(args):
     args.output.mkdir(parents=True, exist_ok=True)
     index_path = args.output / "index.json"
-    if args.stand:
+    if args.stand or args.character_reverse:
         index = json.loads(index_path.read_text())
         if index.get("assetRevision") != REVISION:
             raise ValueError("Battle art manifest uses a different asset revision")
@@ -264,6 +304,11 @@ def generate(args):
 
     def open_movie(pin):
         return DisplayList(checked_source(args.assets, pin), args.swfdump)
+
+    if args.character_reverse:
+        index["characterReverse"] = character_reverse(open_movie(CHARACTER_FRAME), save)
+        index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+        return
 
     def save_actor(id, name, movie, pin, shapes, **details):
         # Opening portraits may extend outside the old 510px actor view.
@@ -353,6 +398,7 @@ def generate(args):
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "stands": stands, "actionFrames": action_frames,
              "actionValues": values, "eventValues": events, "actionControls": controls,
+             "characterReverse": character_reverse(open_movie(CHARACTER_FRAME), save),
              "exchange": {"diceResult": dice_result, "diceRoll": dice_roll, "damage": damage},
              "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n")
@@ -364,9 +410,12 @@ if __name__ == "__main__":
     parser.add_argument("output", type=Path)
     parser.add_argument("--swfdump", type=Path, required=True)
     parser.add_argument("--ffdec", type=Path, help="ffdec.jar from the JPEXS 26.6.0 ZIP release")
-    parser.add_argument("--stand", action="append", choices=STANDS,
-                        help="refresh only this actor in an existing output (repeatable)")
+    partial = parser.add_mutually_exclusive_group()
+    partial.add_argument("--stand", action="append", choices=STANDS,
+                         help="refresh only this actor in an existing output (repeatable)")
+    partial.add_argument("--character-reverse", action="store_true",
+                         help="refresh the authored character reverse art in an existing output")
     args = parser.parse_args()
-    if not args.stand and args.ffdec is None:
+    if not (args.stand or args.character_reverse) and args.ffdec is None:
         parser.error("--ffdec is required for a full export")
     generate(args)

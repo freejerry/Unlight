@@ -1,0 +1,1360 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "renderer": "JPEXS FFDec 26.6.0",
+  "rendererSha256": "3f1b1993a8ab34d4910192931236074d2c69db23e23d69cd16848c851b1995c3",
+  "stage": [
+    760,
+    680
+  ],
+  "depth": 33,
+  "otherMirrorX": 760,
+  "cue": "/public/sound/se/ulse13.mp3",
+  "feats": {
+    "25": {
+      "name": "猛擊",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        null,
+        {
+          "file": "bash-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "bash-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "bash-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "bash-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-17.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-25.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-26.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-28.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-31.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-32.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "bash-33.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "bash-34.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "bash-35.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "bash-36.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceChildStops": {
+        "21": 4,
+        "25": 3
+      }
+    },
+    "26": {
+      "name": "猛擊",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        null,
+        {
+          "file": "bash-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "bash-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "bash-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "bash-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-17.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-25.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-26.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-27.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-28.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-29.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-30.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-31.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "bash-32.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "bash-33.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "bash-34.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "bash-35.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "bash-36.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceChildStops": {
+        "21": 4,
+        "25": 3
+      }
+    },
+    "1": {
+      "name": "精密射擊",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        {
+          "file": "precision-02.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "precision-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "precision-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "precision-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-17.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-25.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "precision-26.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "precision-27.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "precision-28.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "precision-29.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceChildStops": {
+        "20": 4
+      }
+    },
+    "2": {
+      "name": "精密射擊",
+      "framesPerSecond": 24,
+      "frames": [
+        null,
+        {
+          "file": "precision-02.png",
+          "x": 47,
+          "y": 0,
+          "width": 368,
+          "height": 240
+        },
+        {
+          "file": "precision-03.png",
+          "x": 47,
+          "y": 0,
+          "width": 397,
+          "height": 464
+        },
+        {
+          "file": "precision-04.png",
+          "x": 47,
+          "y": 0,
+          "width": 422,
+          "height": 661
+        },
+        {
+          "file": "precision-05.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-06.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-07.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-08.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-09.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-10.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-11.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-12.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-13.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-14.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-15.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-16.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-17.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-18.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-19.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-20.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-21.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-22.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-23.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-24.png",
+          "x": 47,
+          "y": 0,
+          "width": 431,
+          "height": 680
+        },
+        {
+          "file": "precision-25.png",
+          "x": 105,
+          "y": 0,
+          "width": 315,
+          "height": 680
+        },
+        {
+          "file": "precision-26.png",
+          "x": 150,
+          "y": 0,
+          "width": 224,
+          "height": 680
+        },
+        {
+          "file": "precision-27.png",
+          "x": 182,
+          "y": 0,
+          "width": 160,
+          "height": 680
+        },
+        {
+          "file": "precision-28.png",
+          "x": 202,
+          "y": 0,
+          "width": 121,
+          "height": 680
+        },
+        {
+          "file": "precision-29.png",
+          "x": 208,
+          "y": 0,
+          "width": 109,
+          "height": 680
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "holdLast": false,
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceChildStops": {
+        "20": 4
+      }
+    }
+  },
+  "provenance": {
+    "bash-03.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 3,
+      "sha256": "8110df7a47097aa0de94edad2c9ed098d81f9d896a722d333391ef23b6346e7b"
+    },
+    "bash-04.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 4,
+      "sha256": "bd4736b1003504930e464c716ff596584e4fa5c62ef87c11501ef00b6c26d031"
+    },
+    "bash-05.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 5,
+      "sha256": "ad748462bdcbbd7a3ec53ccf085d83b36fd3a12be09acae32b5d5d978cc0702a"
+    },
+    "bash-06.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 6,
+      "sha256": "86f4dae537302ab7f0d6936acfae3c04ec9457a3986291a0f760b5a51efa6e54"
+    },
+    "bash-07.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 7,
+      "sha256": "ada0a63fedd44e599c663f2fdb9deb07ddd0e06ec6485fc0a78e5b80ddab7edb"
+    },
+    "bash-08.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 8,
+      "sha256": "84c736463510b02f56dcf5c21aa0443d9e018e1cc98af1752fb2565067ec2395"
+    },
+    "bash-09.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 9,
+      "sha256": "b5bfe35e9df5730ed9f9472258e6ed5d30365baa1f44fa8712bd0b8674218013"
+    },
+    "bash-10.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 10,
+      "sha256": "aabc3472d0c87f7d55043ea058b67b4b1a54fbc1feb64c61299a0fd7216d265c"
+    },
+    "bash-11.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 11,
+      "sha256": "545f103371393640f278dee4d5d32a96d24db28d6b8b3af030f3c7523ab4d5a0"
+    },
+    "bash-12.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 12,
+      "sha256": "b9714785a10897fc95e6db9bbfdb6c519dd6d3da54efa0837123f02c8f78091d"
+    },
+    "bash-13.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 13,
+      "sha256": "cd63016f81b1f3c52c106bb47694d68162bfe9a5b4d1be92410eeb6bfcbae886"
+    },
+    "bash-14.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 14,
+      "sha256": "d59774ad32db4b61a5351e2d92cfceaba147403e2738830f11e25d09f7e89527"
+    },
+    "bash-15.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 15,
+      "sha256": "3222fed879b01139b419e54bb024661c1b47bbd967feadb73a88871263090a82"
+    },
+    "bash-16.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 16,
+      "sha256": "2da0a6c236eefa50896304c542e0c51677566139d14927879fdfb9d758c2483b"
+    },
+    "bash-17.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 17,
+      "sha256": "6cbebcb4f8a7259837a1f7a9706babdde45cae23300aa19b8e86135be7716825"
+    },
+    "bash-18.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 18,
+      "sha256": "d00cf34b2152ccbb98f31dfcb61148787d29cfca8d8d097e4824b827ed39871b"
+    },
+    "bash-19.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 19,
+      "sha256": "e95c556b7e9c5ba2fb53ad24b39793635e1c1f909502bc7e73db1c4c0a999f4e"
+    },
+    "bash-20.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 20,
+      "sha256": "7318cd1c9fa1b7cfe009c86cb6cc95be4864adeea882b5064cc1f50eaa2f777c"
+    },
+    "bash-21.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 21,
+      "sha256": "71c7be4f3634b83d1b0e1046c0cd5e98736cbe3c51d19931f5a46b2f69e6ff12"
+    },
+    "bash-22.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 22,
+      "sha256": "743ae64b897c6fe73bf7298a51f38d6c26037c6c368e55da414d5584b4282e02"
+    },
+    "bash-23.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 23,
+      "sha256": "d52f8f2c8d1b0ce47a7f4bf2d79caf1f413b2a00f71a5b3a104e29255e38fa6a"
+    },
+    "bash-24.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 24,
+      "sha256": "304c501ff13e5892d75699b4733e526ff15bbb141e9d81a9b83e9b4e70849e1c"
+    },
+    "bash-25.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 25,
+      "sha256": "186850e2a07255042d0c0aaf421204a480391cf341f5a1b4ad3fa192aebd3cae"
+    },
+    "bash-26.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 26,
+      "sha256": "0dfed5ecb3ddc47af8697c286b5c812535386f9bccb020ec8a14ec3264b194f0"
+    },
+    "bash-27.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 27,
+      "sha256": "64738b622a585785152458ddca132e226799d01ab42cd33ca26a04835ea90016"
+    },
+    "bash-28.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 28,
+      "sha256": "baa682548ea8b0b0a94e896ef7430bc1d70771966f15abe5a50e9c3ed10164bb"
+    },
+    "bash-29.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 29,
+      "sha256": "1fff61b2678901637162abc61f452b5914e7d5b5de125eaee0f2cfdb290ac522"
+    },
+    "bash-30.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 30,
+      "sha256": "d86bb1dc7f6329b77015636cc6d182e54cbb6f5371aac7ba6118fd06f70a7ee3"
+    },
+    "bash-31.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 31,
+      "sha256": "de0961ece2843a2284e9216e9d9135938da6b931ecc0a21c41e2bd12da83282b"
+    },
+    "bash-32.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 32,
+      "sha256": "a0d8fbb0d6f67e6281bddbe9ddd1228df07619ec94bbcf1fa77a929437f378bf"
+    },
+    "bash-33.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 33,
+      "sha256": "92371a53e1c1d5fa931cf66c7b7a88b5a54885617fb468a2287173b850d7847c"
+    },
+    "bash-34.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 34,
+      "sha256": "cf68c2a15e36d09e4af002dc5421e1d78f523f185ded7b04beb591731034e3d7"
+    },
+    "bash-35.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 35,
+      "sha256": "87edecfa1f4b14b5661db363c7267f6cb22d02fa27abb5687fd75b5917e8e729"
+    },
+    "bash-36.png": {
+      "source": "public/image/cutinchara03_skl00.swf",
+      "sourceSha256": "59b8e17c44df7521e4887c7c2a0dda21d77a1fca1753263eb68f97c330eddf59",
+      "sourceFrame": 36,
+      "sha256": "5b6efd68f899fad614c1f75b6f266c2bbb4ce07f645c3b189ff103a56d9d428c"
+    },
+    "precision-02.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 2,
+      "sha256": "8110df7a47097aa0de94edad2c9ed098d81f9d896a722d333391ef23b6346e7b"
+    },
+    "precision-03.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 3,
+      "sha256": "bd4736b1003504930e464c716ff596584e4fa5c62ef87c11501ef00b6c26d031"
+    },
+    "precision-04.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 4,
+      "sha256": "85d3858f645daa60d9a5864d97b39d703339b78ddc5d6f37243bfc4350347b31"
+    },
+    "precision-05.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 5,
+      "sha256": "959b137c03650d4751cb607dcf8d887d0cb61b25612c9c78c1bf5be0aabd8693"
+    },
+    "precision-06.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 6,
+      "sha256": "88bb15ed3bd506bde82b5bebef702fe930fe37c731ef3f8487bf94dc6deb044e"
+    },
+    "precision-07.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 7,
+      "sha256": "706996239e39193fac4c2cec9212eabef7c8afdb38294c91acbe1e7272af55de"
+    },
+    "precision-08.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 8,
+      "sha256": "5232c6ba7a449a09e3a5f9ccdbc0ac7627123454af7681e1945ff4605466f329"
+    },
+    "precision-09.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 9,
+      "sha256": "50ecfed19806cff0dca7a9c530eb0a9d2aa8a15689af9b20bf8c60573aa03e4b"
+    },
+    "precision-10.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 10,
+      "sha256": "736d137cf925c19c0f28f9bf7ecfcb231c8712505030931a81a5f351901962a0"
+    },
+    "precision-11.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 11,
+      "sha256": "74bb0f93bfe8be07800078000310dadfc6b1ebb89cb9eb7eac456e843e43637d"
+    },
+    "precision-12.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 12,
+      "sha256": "8a7c93dfb78b8143789bb330392f672780a526311a05f063ee76bd516fbd397f"
+    },
+    "precision-13.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 13,
+      "sha256": "78354056a6f09eefbce0caea123e9e9a1b37675fa38e351c2ae1abd8aa7f881c"
+    },
+    "precision-14.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 14,
+      "sha256": "2e40f7cb59b6fe7d74e2daf8dfbcbd5867588a65cb0db3fc212f163b933068c3"
+    },
+    "precision-15.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 15,
+      "sha256": "df18e99de173ca0d906dfc9918299fe4fd64b807afd598fe35bf1214f9deae3e"
+    },
+    "precision-16.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 16,
+      "sha256": "905ec54d4e7787810ebd48199106a4d116a751d46ad2c596e84cfe82677c633f"
+    },
+    "precision-17.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 17,
+      "sha256": "85d03b3c489dcb59c4f6e594733244938397ad25803d44f1b79c076fdb82693b"
+    },
+    "precision-18.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 18,
+      "sha256": "edd19520b9989a2b1e2798fd468755fd7c9e9e5c52e513ab9d10dd582a94a06d"
+    },
+    "precision-19.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 19,
+      "sha256": "9bf851888f4c3a2b37784880746592a2f14aa99496452dda9dbaac041ffeb8f2"
+    },
+    "precision-20.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 20,
+      "sha256": "a587a141d628b0c9be5985ce28dd35762a273c26d4351c08fade1019b5107180"
+    },
+    "precision-21.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 21,
+      "sha256": "241b84a9e0151d7c8833e0dd75b2af750642ef2316c40e53c841d31e033edd30"
+    },
+    "precision-22.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 22,
+      "sha256": "733686c0bdd43bd30aa421dc2ae9f8a577d6589441d82e90233468ab1f07e509"
+    },
+    "precision-23.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 23,
+      "sha256": "555bf635d99183186c5b81d30c659cc5504de7f677b4e4ffa81b812412196bd2"
+    },
+    "precision-24.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 24,
+      "sha256": "e684040a2d58f746cd58e7b0a31107dedc01f848045d36023685c8ff63d28d1a"
+    },
+    "precision-25.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 25,
+      "sha256": "d61e5d95d63dbc83e066442226c099d87d879e0cff9717f274f427dd3ee8bedf"
+    },
+    "precision-26.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 26,
+      "sha256": "010ba53daae460d35bbe5add3c5db4b35f99d88c3fca849e6da8335fe6d9467c"
+    },
+    "precision-27.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 27,
+      "sha256": "1582a9b84060923e2aed017997be8cb29c8750f80638a97ce1ce3d99d70559cd"
+    },
+    "precision-28.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 28,
+      "sha256": "2bd44f8bfa72bfac3e53d871f5a43a4d3bc3a786a53ce13a160dfe738e53ad78"
+    },
+    "precision-29.png": {
+      "source": "public/image/cutinchara01_skl00.swf",
+      "sourceSha256": "c7f34bfef8024daa333ede7e566e4e76900e2463b9fed22df4e36043590ccfb7",
+      "sourceFrame": 29,
+      "sha256": "cc46aa07590041db1bf31c95fe4a40ead3846b5a339624bcde5399f0bdd859bb"
+    }
+  }
+}

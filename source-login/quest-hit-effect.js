@@ -234,7 +234,8 @@ export async function playQuestAttackPose({ battle, playerAttacks, signal }) {
   void loadHitArt();
   let node;
   try {
-    const art = (await waitForPose(battleStands(signal), signal))?.[actor.dataset.cardId]?.opening;
+    const artId = actor.dataset.standSourceCardId ?? actor.dataset.cardId;
+    const art = (await waitForPose(battleStands(signal), signal))?.[artId]?.opening;
     const frame = art?.frames?.[art.settledFrame - 1];
     if (!frame || signal?.aborted) return false;
     const picture = await waitForPose(imageFor(standArt, art.file), signal);

@@ -111,6 +111,7 @@ SOURCE_DIGESTS = {
     "standchara10_f": "455ec578878e539508cad752907fbfc9702abf930c4d0356c766640cd6cd2659",
     "standmon012_02_f": "de21836f609c798ec5990d44fc97277a9ba4292842d150cca9304ea083afa264",
     "standmon011_00_f": "b84a9dde353d2ecb9de6c5a78b9303d202510f2e247b3b28598e16cd33a03971",
+    "standmon017_01_f": "dc179911a7c8218c1b5aa16d9646c29b3d7f647756b92783c2e3e7b162df687f",
 }
 BATTLE_SOURCE_DIRS = {
     **dict.fromkeys(("bg_btl00a", "bg_btl00a_far", "bg_btl00a_book", "bg_btl02a", "bg_btl03a",
@@ -126,6 +127,7 @@ MOVE_FACE_SOURCES = {
     "1001": "standmon001_00_f", "1007": "standmon003_00_f",
     "1079": "standmon028_00_f", "94": "standchara10_f",
     "1033": "standmon012_02_f", "1034": "standmon011_00_f",
+    "1050": "standmon017_01_f",
 }
 # The original CharaCards.csv uses standchara03 for all three Grunwald variants.
 STAND_ALIASES = {"25": "21", "30": "21"}

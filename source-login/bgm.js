@@ -12,6 +12,7 @@ const duelTracks = ["000", "001", "002", "003", "004", "005", "006", "007", "008
 const questCueFiles = new Map([
   ["deal", "ulse06.mp3"], ["dice", "ulse07.mp3"], ["rotate", "ulse08.mp3"],
   ["slash", "ulse09.mp3"], ["bullet", "ulse10_f.mp3"], ["phase", "ulse12.mp3"],
+  ["feat", "ulse13.mp3"],
   ["lose", "ulse15.mp3"], ["win", "ulse16.mp3"],
   ["bonus-select", "ulse17.mp3"], ["bonus-success", "ulse18.mp3"], ["bonus-failure", "ulse19.mp3"],
   ["lobby-choice", "ulse22.mp3"], ["flip", "ulse23.mp3"],

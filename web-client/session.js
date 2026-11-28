@@ -25,7 +25,7 @@ import {
   QUEST_CHARA_CHANGE_START_REPLY, QUEST_CHARA_CHANGE_FINISH_REPLY, QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
   QUEST_CHARA_CHANGE_REQUEST, QUEST_CHARA_CHANGE_REPLY, QUEST_ROSTER_HP_REPLIES, QUEST_CHARA_REVIVE_REPLY,
   QUEST_CHARA_TRANSFORM_REPLY,
-  QUEST_HAND_EFFECT_REPLIES,
+  QUEST_HAND_EFFECT_REPLIES, QUEST_FEAT_REPLIES,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY,
   QUEST_REWARD_HIGH_REQUEST, QUEST_REWARD_LOW_REQUEST, QUEST_REWARD_NEXT_REQUEST, QUEST_REWARD_TAKE_REQUEST,
@@ -40,7 +40,7 @@ import {
   readQuestDirectionReply, readQuestMoveCardReply, readQuestMoveResultReply, readQuestAttackPhaseReply,
   readQuestDefencePhaseReply, readQuestBattleCardReply, readQuestBattleCardsReply, readQuestBattleDiceReply,
   readQuestDuelFinishReply, readQuestCombatBoundaryReply,
-  readQuestHandEffectReply,
+  readQuestHandEffectReply, readQuestFeatReply,
   readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
   readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply, readQuestItemReply,
   readAvatarPartGrantReply, readAvatarPartEquipReply, readAvatarPartVanishReply,
@@ -169,6 +169,7 @@ const CHANNELS = [
 const TIMEOUT = 8000;
 const QUEST_MOVE_WAIT = 120_000; // Original Ruby INIT_WAIT_TIME.
 const QUEST_COMBAT_WAIT = 120_000; // Original Ruby BATTLE_WAIT_TIME.
+const QUEST_FEAT_HISTORY_LIMIT = 64;
 const QUEST_COMBAT_COMMANDS = {
   attack: { add: QUEST_ATTACK_CARD_ADD_REQUEST, remove: QUEST_ATTACK_CARD_REMOVE_REQUEST, done: QUEST_ATTACK_DONE_REQUEST },
   defense: { add: QUEST_DEFENCE_CARD_ADD_REQUEST, remove: QUEST_DEFENCE_CARD_REMOVE_REQUEST, done: QUEST_DEFENCE_DONE_REQUEST },
@@ -1933,6 +1934,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     opponent: questRoster(encounter.opponentCardIds, encounter.opponentDamage),
   };
   const changedHp = new Set();
+  const readyFeats = new Set();
+  const usedFeats = [];
+  const unrevealedFeats = [];
+  let featSequence = 0;
   const catalogRequests = new AbortController();
   const stockEventCards = new Map();
   const loadingEventCards = new Set();
@@ -2340,13 +2345,45 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     waitForCombat(QUEST_ATTACK_PHASE_FINISH_REPLY, QUEST_COMBAT_WAIT + TIMEOUT);
   }
 
-  function revealOpponentSelection(reveal) {
+  function closeOpponentSelection(reveal) {
     if (sceneCombat?.exchange !== exchange) return;
     if (sceneCombat.opponentTableCount !== null) {
       sceneCombat.opponentSelectedCount = sceneCombat.opponentTableCount;
       if (sceneCombat.opponentSelectedCount !== reveal.opponentCards.length) opponentHeldCount = null;
     }
-    sceneCombat.opponentTableCount = null;
+  }
+
+  function revealUsedFeats() {
+    if (unrevealedFeats.length === 0) return;
+    usedFeats.push(...unrevealedFeats.splice(0));
+    if (usedFeats.length > QUEST_FEAT_HISTORY_LIMIT) usedFeats.splice(0, usedFeats.length - QUEST_FEAT_HISTORY_LIMIT);
+  }
+
+  function receiveFeat(reply) {
+    const { kind, player, featId } = readQuestFeatReply(reply);
+    if (kind === 'sealed') {
+      if (!player || !readyFeats.size) return false;
+      readyFeats.clear();
+      return true;
+    }
+    if (kind === 'on') {
+      if (readyFeats.has(featId)) return false;
+      if (readyFeats.size >= QUEST_FEAT_HISTORY_LIMIT) throw new SessionError('protocol');
+      readyFeats.add(featId);
+      return true;
+    }
+    if (kind === 'off') return readyFeats.delete(featId);
+    const readyChanged = player && readyFeats.delete(featId);
+    const combat = phase === 'moved' && exchange?.playerAttacks != null;
+    const exchangeKey = combat ? `${turn}:${exchange.index}` : null;
+    if (unrevealedFeats.length >= QUEST_FEAT_HISTORY_LIMIT) throw new SessionError('protocol');
+    unrevealedFeats.push(Object.freeze({ sequence: ++featSequence, player, featId, turn, exchangeKey }));
+    // Publish use in source order only once the associated result permits the reveal.
+    if (combat ? exchange.cards : phase === 'moved' && result) {
+      revealUsedFeats();
+      return true;
+    }
+    return readyChanged;
   }
 
   function beginNextTurn() {
@@ -2403,6 +2440,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       const update = applied[side];
       if (!update) continue;
       const selected = roster[side].cards[update.index];
+      if (side === 'player' && (roster.player.activeIndex !== update.index || selected.cardId !== update.cardId)) readyFeats.clear();
       if (selected.cardId !== update.cardId) {
         selected.cardId = update.cardId;
         selected.hp = null;
@@ -2812,7 +2850,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
       case QUEST_ATTACK_PHASE_FINISH_REPLY:
         exchange.attackCards = readQuestBattleCardsReply(reply);
-        if (!exchange.playerAttacks) revealOpponentSelection(exchange.attackCards);
+        if (!exchange.playerAttacks) closeOpponentSelection(exchange.attackCards);
         if (!closeCombatDrop()) break;
         exchange.phase = 'awaiting-defense';
         waitForCombat(QUEST_DEFENCE_PHASE_START_REPLY);
@@ -2830,7 +2868,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
       case QUEST_DEFENCE_PHASE_FINISH_REPLY:
         exchange.defenceCards = readQuestBattleCardsReply(reply);
-        if (exchange.playerAttacks) revealOpponentSelection(exchange.defenceCards);
+        if (exchange.playerAttacks) closeOpponentSelection(exchange.defenceCards);
         if (!closeCombatDrop()) break;
         exchange.phase = 'resolving';
         waitForCombat(QUEST_BATTLE_CARDS_REPLY);
@@ -2839,6 +2877,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         exchange.cards = readQuestBattleCardsReply(reply);
         if (sceneCombat?.exchange === exchange && sceneCombat.opponentSelectedCount !== null
             && sceneCombat.opponentSelectedCount !== exchange.cards.opponentCards.length) opponentHeldCount = null;
+        if (sceneCombat?.exchange === exchange) sceneCombat.opponentTableCount = null;
+        revealUsedFeats();
         consumePlayedCards(exchange.cards.playerCards);
         exchange.battleTable.length = 0;
         waitForCombat(QUEST_BATTLE_DICE_REPLY);
@@ -2860,7 +2900,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     QUEST_BATTLE_CARD_ADD_REPLY, QUEST_BATTLE_CARD_REMOVE_REPLY, ...QUEST_COMBAT_REPLIES, ...QUEST_SETTLEMENT_REPLIES,
     ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
     ...(onStateChange ? [QUEST_MOVE_SUBMITTED_REPLY, QUEST_ATTACK_SUBMITTED_REPLY, QUEST_DEFENCE_SUBMITTED_REPLY,
-      QUEST_POINT_UPDATE_REPLY] : []),
+      QUEST_POINT_UPDATE_REPLY, ...QUEST_FEAT_REPLIES] : []),
     ...(fixedTreasure || bonusGameTreasure ? [QUEST_TREASURE_REPLY] : []),
     ...(bonusGameTreasure ? QUEST_REWARD_REPLIES : []),
   ];
@@ -2868,6 +2908,12 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     if (phase === 'closed') return;
     let combatChanged = false;
     try {
+      if (QUEST_FEAT_REPLIES.includes(reply.command)) {
+        if (turn !== null && phase !== 'uncertain' && exchange?.phase !== 'uncertain' && !duelFinish && !questFinish) {
+          combatChanged = receiveFeat(reply);
+        }
+        return;
+      }
       if (reward?.received(reply)) return;
       if (QUEST_REWARD_REPLIES.includes(reply.command)) return failQuestOutcome();
       if (sceneCombat?.nextAttackPoints && reply.command !== QUEST_POINT_UPDATE_REPLY
@@ -3010,6 +3056,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         case QUEST_MOVE_RESULT_REPLY:
           if (phase !== 'settling') throw new SessionError('protocol');
           result = readQuestMoveResultReply(reply);
+          revealUsedFeats();
           if (moveHealing) result.healing = Object.freeze(moveHealing);
           consumePlayedCards(result.playerCards);
           moveTable.length = 0;
@@ -3146,8 +3193,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   function sceneExchangeSnapshot() {
     if (!sceneCombat) return null;
     const { exchange: current, opponentTableCount, attackStartedAt, defenceStartedAt, points, playerPointCards, boundary, submitted } = sceneCombat;
-    const freezeReveal = (reveal) => reveal && Object.freeze({
-      ...reveal, playerCards: freezeCards(reveal.playerCards), opponentCards: freezeCards(reveal.opponentCards),
+    const freezeReveal = (reveal, discloseOpponent = false) => reveal && Object.freeze({
+      ...reveal, playerCards: freezeCards(reveal.playerCards),
+      opponentCards: freezeCards(discloseOpponent ? reveal.opponentCards : []),
+      opponentLocked: discloseOpponent ? reveal.opponentLocked : null,
     });
     const table = current.cards?.playerCards ?? current.battleTable;
     const activePlayerCardIds = playerPointCards && sameValues(playerPointCards.ids, table.map(({ id }) => id))
@@ -3158,7 +3207,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       battleTable: freezeHand(current.battleTable), opponentTableCount: current.phase === 'uncertain' ? null : opponentTableCount,
       attackStartedAt, defenceStartedAt, durationMs: QUEST_COMBAT_WAIT, boundary, submitted,
       points: Object.freeze({ ...points }), activePlayerCardIds,
-      attackCards: freezeReveal(current.attackCards), defenceCards: freezeReveal(current.defenceCards), cards: freezeReveal(current.cards),
+      attackCards: freezeReveal(current.attackCards), defenceCards: freezeReveal(current.defenceCards), cards: freezeReveal(current.cards, true),
       dice: current.dice && Object.freeze({
         ...current.dice, attackDice: Object.freeze(current.dice.attackDice.slice()), defenceDice: Object.freeze(current.dice.defenceDice.slice()),
       }),
@@ -3185,6 +3234,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         encounterKey: `${inventoryId}:${slot}`,
         moveDurationMs: QUEST_MOVE_WAIT, opponentHandCount: opponentHeldCount, opponentMoveCount, direction,
         operation, moveSubmitted, movePoints: phase === 'uncertain' ? null : movePoints,
+        feats: Object.freeze({
+          readyIds: Object.freeze(phase === 'uncertain' || exchange?.phase === 'uncertain' ? [] : [...readyFeats]),
+          used: Object.freeze(usedFeats.slice()),
+        }),
         ready: ready && Object.freeze({ turn: ready.turn, action: freezeRefill(ready.action), event: freezeRefill(ready.event) }),
         actionHand: hand && freezeCards(hand.filter((card) => !card.event)),
         eventHand: hand && freezeCards(hand.filter((card) => card.event)),

@@ -16,11 +16,95 @@ function loadManifest() {
   return manifest;
 }
 
-export async function battleStands(signal) {
+export async function battleStands(signal, definitions) {
   if (signal?.aborted) return null;
   try {
-    const { stands } = await loadManifest();
-    return signal?.aborted ? null : stands;
+    const { stands, provenance } = await loadManifest();
+    if (signal?.aborted) return null;
+    if (!definitions) return stands;
+    const bySource = new Map();
+    for (const [id, pose] of Object.entries(stands)) {
+      const source = provenance?.[pose.stand.file]?.source;
+      if (source && !bySource.has(source)) bySource.set(source, { ...pose, sourceCardId: Number(id) });
+    }
+    const resolved = { ...stands };
+    for (const [id, card] of definitions) {
+      // StandCharaImage loads the stand image name, shared by levels of the same character.
+      const pose = bySource.get(`public/image/standchara/${card.standImage}.swf`);
+      if (pose) resolved[id] = pose;
+    }
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
+const conditionSymbols = { S: '近', A: '遠', E: '特', D: '防', M: '移', W: '無' };
+const rangeNames = { S: '近', M: '中', L: '遠' };
+
+// Feat.condition_str_gen builds the localized caption before FeatInfo parses it.
+function skillCondition(condition) {
+  const [prefix, input] = condition.includes(':') ? condition.split(':', 2) : ['', condition];
+  const range = [...'SML'].filter(letter => prefix.includes(letter)).map(letter => rangeNames[letter]).join(',');
+  const cards = [];
+  const types = Object.keys(conditionSymbols);
+  const append = (types, pattern, format) => {
+    for (const type of types) {
+      for (const match of input.matchAll(new RegExp(pattern.replace('@', type), 'g'))) cards.push(format(match, type));
+    }
+  };
+  for (const operator of ['+', '-']) {
+    append(types.slice(0, 5), `@([1-9])\\${operator}`, ([, value], type) => conditionSymbols[type] + value + operator);
+    if (operator === '+') append([''], '(\\[[SAEDM]+\\])([1-9])\\+', ([, set, value]) => set + value + '+');
+  }
+  append(types, '@([1-9])(?:[^+\\-*]|$)', ([, value], type) => conditionSymbols[type] + value);
+  append(types, '@([1-9])[^+\\-]([1-9])', ([, value, count], type) => Array(Number(count)).fill(conditionSymbols[type] + value).join(','));
+  append(['W'], '@\\*([1-9])', ([, count]) => Array(Number(count)).fill('無1+').join(','));
+  append(types.slice(0, 5), '@0', (_, type) => conditionSymbols[type] + '0');
+  return [range, cards.join(',')].filter((value, index) => index || value).join(':');
+}
+
+/** Localized source feat requirements, effect, and reverse-side description. */
+export function formatBattleSkill(skill) {
+  if (typeof skill?.caption !== 'string' || !skill.caption.startsWith('[')) return null;
+  const source = skill.caption
+    .replaceAll('__CONDITION__', () => skillCondition(skill.condition ?? ''))
+    .replaceAll('__POW__', () => String(skill.power ?? ''));
+  // A combined card requirement can contain its own brackets, e.g. [SA]3+.
+  let depth = 1;
+  let end = 1;
+  while (end < source.length && depth) {
+    if (source[end] === '[') depth += 1;
+    if (source[end] === ']') depth -= 1;
+    end += 1;
+  }
+  if (depth) return null;
+  const [phase, range, cards] = source.slice(1, end - 1).split(':');
+  const [effect, ...story] = source.slice(end).split('|');
+  const requirements = [
+    ['階段', phase.replace(/攻撃/g, '攻擊').replace(/防御/g, '防禦')],
+  ];
+  if (range !== undefined) requirements.push(['距離', `${range.replace('近,中,遠', '全')}距離`]);
+  if (cards !== undefined) requirements.push(['卡片', cards
+    .replace(/(.)\+/g, '合計$1以上').replace(/(.)-/g, '合計$1以下')
+    .replace(/[近遠SA]/g, symbol => ({ 近: '劍', 遠: '槍', S: '劍', A: ',槍' })[symbol])
+    .replace(/D/g, ',防')]);
+  return {
+    requirements,
+    effect: effect.replace(/,\s?/g, '\n').replace(/ATK/g, '攻擊力').replace(/DEF/g, '防禦力').replace(/MOV/g, '移動力'),
+    description: [effect, ...story].join('\n'),
+  };
+}
+
+export async function battleCharacterReverse(signal) {
+  try {
+    if (signal?.aborted) return null;
+    const { characterReverse } = await loadManifest();
+    if (!characterReverse) return null;
+    const { plate, tab } = characterReverse;
+    const layers = [plate, tab.up, tab.selected, ...Object.values(tab.phases), ...Object.values(tab.ranges).flat()];
+    await Promise.all(layers.map(layer => loadImage(layer.file)));
+    return signal?.aborted ? null : characterReverse;
   } catch {
     return null;
   }

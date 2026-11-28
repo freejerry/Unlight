@@ -1652,6 +1652,831 @@
         ],
         "settledFrame": 14
       }
+    },
+    "1": {
+      "shadow": {
+        "file": "stand-1-shadow.png",
+        "x": -55,
+        "y": 0,
+        "width": 111,
+        "height": 40
+      },
+      "stand": {
+        "file": "stand-1-stand.png",
+        "x": -54,
+        "y": -200,
+        "width": 111,
+        "height": 204
+      },
+      "opening": {
+        "file": "stand-1-opening.png",
+        "x": -157,
+        "y": -458,
+        "width": 376,
+        "height": 458,
+        "origin": [
+          380.1,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -534.75,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -475.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -422.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -376.25,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -335.85,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -301.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -273.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -251.95,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -236.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -227.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -265.8,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -307.55,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -349.35,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -391.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -432.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -474.65,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -516.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -558.2,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    },
+    "31": {
+      "shadow": {
+        "file": "stand-31-shadow.png",
+        "x": -70,
+        "y": -7,
+        "width": 129,
+        "height": 53
+      },
+      "stand": {
+        "file": "stand-31-stand.png",
+        "x": -70,
+        "y": -206,
+        "width": 129,
+        "height": 211
+      },
+      "opening": {
+        "file": "stand-31-opening.png",
+        "x": -198,
+        "y": -459,
+        "width": 427,
+        "height": 464,
+        "origin": [
+          380.0,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            1.0,
+            1.0,
+            -582.05,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -512.65,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -449.8,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -393.6,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -344.05,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -301.05,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -264.7,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -234.95,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -211.8,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -195.3,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -185.35,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -182.05,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -182.05,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -226.5,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -270.95,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -315.4,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -359.85,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -404.25,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -448.7,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -493.15,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -537.6,
+            579.0
+          ],
+          [
+            1.0,
+            1.0,
+            -582.05,
+            579.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    },
+    "101": {
+      "shadow": {
+        "file": "stand-101-shadow.png",
+        "x": -89,
+        "y": -4,
+        "width": 135,
+        "height": 42
+      },
+      "stand": {
+        "file": "stand-101-stand.png",
+        "x": -88,
+        "y": -184,
+        "width": 136,
+        "height": 189
+      },
+      "opening": {
+        "file": "stand-101-opening.png",
+        "x": -132,
+        "y": -421,
+        "width": 361,
+        "height": 422,
+        "origin": [
+          380.1,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -534.75,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -475.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -422.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -376.25,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -335.85,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -301.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -273.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -251.95,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -236.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -227.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -265.8,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -307.55,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -349.35,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -391.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -432.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -474.65,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -516.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -558.2,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    },
+    "111": {
+      "shadow": {
+        "file": "stand-111-shadow.png",
+        "x": -63,
+        "y": 0,
+        "width": 113,
+        "height": 42
+      },
+      "stand": {
+        "file": "stand-111-stand.png",
+        "x": -66,
+        "y": -208,
+        "width": 115,
+        "height": 210
+      },
+      "opening": {
+        "file": "stand-111-opening.png",
+        "x": -156,
+        "y": -514,
+        "width": 384,
+        "height": 515,
+        "origin": [
+          380.1,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -534.75,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -475.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -422.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -376.25,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -335.85,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -301.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -273.7,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -251.95,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -236.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -227.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -224.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -265.8,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -307.55,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -349.35,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -391.1,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -432.9,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -474.65,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -516.45,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -558.2,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -600.0,
+            584.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
+    },
+    "1050": {
+      "shadow": {
+        "file": "stand-1050-shadow.png",
+        "x": -71,
+        "y": -15,
+        "width": 142,
+        "height": 30
+      },
+      "stand": {
+        "file": "stand-1050-stand.png",
+        "x": -79,
+        "y": -247,
+        "width": 153,
+        "height": 240
+      },
+      "opening": {
+        "file": "stand-1050-opening.png",
+        "x": -184,
+        "y": -487,
+        "width": 337,
+        "height": 487,
+        "origin": [
+          380.0,
+          0.0
+        ],
+        "frames": [
+          null,
+          null,
+          [
+            0.99993896,
+            0.99993896,
+            -576.05,
+            584.0
+          ],
+          [
+            0.9999542,
+            0.9999542,
+            -510.1,
+            584.0
+          ],
+          [
+            0.9999542,
+            0.9999542,
+            -450.4,
+            584.0
+          ],
+          [
+            0.9999695,
+            0.9999695,
+            -396.95,
+            583.95
+          ],
+          [
+            0.9999695,
+            0.9999695,
+            -349.85,
+            583.95
+          ],
+          [
+            0.99998474,
+            0.99998474,
+            -309.05,
+            584.0
+          ],
+          [
+            0.99998474,
+            0.99998474,
+            -274.5,
+            584.0
+          ],
+          [
+            0.99998474,
+            0.99998474,
+            -246.25,
+            584.0
+          ],
+          [
+            1.0,
+            1.0,
+            -224.25,
+            584.0
+          ],
+          [
+            1.0,
+            1.0,
+            -208.55,
+            584.0
+          ],
+          [
+            1.0,
+            1.0,
+            -199.15,
+            584.0
+          ],
+          [
+            1.0,
+            1.0,
+            -196.0,
+            584.0
+          ],
+          [
+            0.9998627,
+            1.0,
+            -196.0,
+            584.0
+          ],
+          [
+            0.9998779,
+            1.0,
+            -238.2,
+            584.0
+          ],
+          [
+            0.9998779,
+            0.99998474,
+            -280.4,
+            584.0
+          ],
+          [
+            0.9998932,
+            0.99998474,
+            -322.65,
+            584.0
+          ],
+          [
+            0.9998932,
+            0.9999695,
+            -364.85,
+            584.0
+          ],
+          [
+            0.99990845,
+            0.9999695,
+            -407.1,
+            584.0
+          ],
+          [
+            0.99990845,
+            0.9999542,
+            -449.3,
+            584.0
+          ],
+          [
+            0.9999237,
+            0.9999542,
+            -491.55,
+            584.0
+          ],
+          [
+            0.9999237,
+            0.99993896,
+            -533.75,
+            584.0
+          ],
+          [
+            0.99993896,
+            0.99993896,
+            -576.05,
+            584.0
+          ],
+          null
+        ],
+        "settledFrame": 14
+      }
     }
   },
   "actionFrames": {
@@ -3021,6 +3846,281 @@
       "sha256": "9c07458dba2fc709c5fe3118292477e7578ec29d6b8f89524c00db887517c1e8",
       "sourceInstance": "up",
       "sourceShape": 2
+    },
+    "chara-reverse-plate.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "3080d1185591224d7d16439bd4c7e2139dc3ec7f8245613d441c8a638a0cd2ea",
+      "sourceFrame": 1
+    },
+    "chara-reverse-tab-up.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "506bf7024ef30ec21b79a8c0590e00be4bd67c6135455b5052902b836cec4ac4",
+      "sourceFrame": 1
+    },
+    "chara-reverse-tab-selected.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "bc20cdd31b0f29b06bed787ece340a1d6bfd67b3af8bf7f84746cd9d92bf9eff",
+      "sourceFrame": 2
+    },
+    "chara-reverse-icon_phase-1.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "07922a0fed95a43f097b5b8b84d929583c338e836ba68b69146b4361d568f828",
+      "sourceFrame": 1
+    },
+    "chara-reverse-icon_phase-2.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "db28d97e82e99f8a0cffd4fa274248e004997d27316f50419795277b98ad1fac",
+      "sourceFrame": 2
+    },
+    "chara-reverse-icon_phase-3.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "837667097e16742b41dcc8c46fa3c99db9615cc60083ac10547da66e317af4da",
+      "sourceFrame": 3
+    },
+    "chara-reverse-icon_range0-1.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "339a957ccbd0b1297cc880a981576d442cd9f32e2e85f47fd904b25a8919342c",
+      "sourceFrame": 1
+    },
+    "chara-reverse-icon_range0-2.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "e7ed60b71f5565c01e5b837d684eed734a3dc87458081b168d2d5550bfffd4f1",
+      "sourceFrame": 2
+    },
+    "chara-reverse-icon_range1-1.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "339a957ccbd0b1297cc880a981576d442cd9f32e2e85f47fd904b25a8919342c",
+      "sourceFrame": 1
+    },
+    "chara-reverse-icon_range1-2.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "90a9a416a133bc9f96b9248da3ffabc985e602e22ddaedbc7ad95e894147286a",
+      "sourceFrame": 2
+    },
+    "chara-reverse-icon_range2-1.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "339a957ccbd0b1297cc880a981576d442cd9f32e2e85f47fd904b25a8919342c",
+      "sourceFrame": 1
+    },
+    "chara-reverse-icon_range2-2.png": {
+      "source": "data/image/ccframe_a.swf",
+      "sourceSha256": "ce17bc134ef39b8aced7ef5a382ab9b21b83bf4091abc4bcf5475771be2e18ec",
+      "sha256": "90a9a416a133bc9f96b9248da3ffabc985e602e22ddaedbc7ad95e894147286a",
+      "sourceFrame": 2
+    },
+    "stand-1-shadow.png": {
+      "source": "public/image/standchara/standchara01.swf",
+      "sourceSha256": "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d",
+      "sha256": "77ebc61b8013829721cec1392bdd0b78cd5d5bf3bda4741af0e6da9523496933",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-1-stand.png": {
+      "source": "public/image/standchara/standchara01.swf",
+      "sourceSha256": "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d",
+      "sha256": "72b4046093c30f90b6879e61c5fd3d0a1de010417001c00591e8cc97642fbc78",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-1-opening.png": {
+      "source": "public/image/standchara/standchara01.swf",
+      "sourceSha256": "a3e0bb317c4461f1ccb8e70f702e5f35289bd199e75f8cb7f24402cdcee8c85d",
+      "sha256": "4a1650e98ecb6f5e7f797bd3b188417561c6820fcc29b49efc21292f285daddc",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-31-shadow.png": {
+      "source": "public/image/standchara/standchara04.swf",
+      "sourceSha256": "08e4852fae9b535e48d64cd8f1947bc827c92ccb24b1cba60b2fc692ef591d56",
+      "sha256": "14adaa4178acb21aa598024d494ed9bd55a7e0d993aedfdfcc11158e79d4b63a",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-31-stand.png": {
+      "source": "public/image/standchara/standchara04.swf",
+      "sourceSha256": "08e4852fae9b535e48d64cd8f1947bc827c92ccb24b1cba60b2fc692ef591d56",
+      "sha256": "90df5dbfa18ef4cf457f266077c36d30c925a6abc573c39cd0589f8cc3540cd1",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-31-opening.png": {
+      "source": "public/image/standchara/standchara04.swf",
+      "sourceSha256": "08e4852fae9b535e48d64cd8f1947bc827c92ccb24b1cba60b2fc692ef591d56",
+      "sha256": "0b619bd7acf2aca6747aaf51389ce8050dc28cbd6f170e9a03726bb67b2315cb",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-101-shadow.png": {
+      "source": "public/image/standchara/standchara11.swf",
+      "sourceSha256": "4f5c75140959ab31e0ed94f2633fac47b619475fa39367b452addbbdcc4bf6c2",
+      "sha256": "aa21909c93d11acbff004c1a10f53e055dcb5cc7cfee1878f7555764570845ed",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-101-stand.png": {
+      "source": "public/image/standchara/standchara11.swf",
+      "sourceSha256": "4f5c75140959ab31e0ed94f2633fac47b619475fa39367b452addbbdcc4bf6c2",
+      "sha256": "e6ca40bcace72032c3f82ed58a74b4dc6ca6e462a49a9b3c0315e6872c1b8847",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-101-opening.png": {
+      "source": "public/image/standchara/standchara11.swf",
+      "sourceSha256": "4f5c75140959ab31e0ed94f2633fac47b619475fa39367b452addbbdcc4bf6c2",
+      "sha256": "219aef00a3b1e8da408e5097bd29f4f556f588ee7be8350c14db8f5508f37648",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-111-shadow.png": {
+      "source": "public/image/standchara/standchara12.swf",
+      "sourceSha256": "834bb986487b05085ee91a90d36a260701027527c6383382ffd2e7b64ca85ad1",
+      "sha256": "a28e5d98bbb48165e571f715d09f59749232c83f5dad8d0ec4fabb6a0bce3e9c",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-111-stand.png": {
+      "source": "public/image/standchara/standchara12.swf",
+      "sourceSha256": "834bb986487b05085ee91a90d36a260701027527c6383382ffd2e7b64ca85ad1",
+      "sha256": "c12af855a9eb017a6196ec49793bf978ef505d433d1918131c06959460b08321",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-111-opening.png": {
+      "source": "public/image/standchara/standchara12.swf",
+      "sourceSha256": "834bb986487b05085ee91a90d36a260701027527c6383382ffd2e7b64ca85ad1",
+      "sha256": "efcbe0e9a19046b1e4613b44d5758d7525f388ced54d15bde06bec3162c2a7ce",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    },
+    "stand-1050-shadow.png": {
+      "source": "public/image/standchara/standmon017_01.swf",
+      "sourceSha256": "1c45b58505ec493aa092c29c84861d1104d14751da09f5e822a4d7ec4ba9b2c8",
+      "sha256": "ec045c843f4da0f4af254dd4ecd37f9bdd9501bdfa9283ced3a9abb64bf84abc",
+      "sourceInstance": "shadow",
+      "sourceFrame": 1
+    },
+    "stand-1050-stand.png": {
+      "source": "public/image/standchara/standmon017_01.swf",
+      "sourceSha256": "1c45b58505ec493aa092c29c84861d1104d14751da09f5e822a4d7ec4ba9b2c8",
+      "sha256": "cf64bee9e27fab9564f2ceaba9df0aad122112330c337a973032212e369c15cb",
+      "sourceInstance": "stand",
+      "sourceFrame": 1
+    },
+    "stand-1050-opening.png": {
+      "source": "public/image/standchara/standmon017_01.swf",
+      "sourceSha256": "1c45b58505ec493aa092c29c84861d1104d14751da09f5e822a4d7ec4ba9b2c8",
+      "sha256": "ea098e531e53c305cad8759c463e3b3676965ab016f4001a7aee0628fcc5578f",
+      "sourceInstance": "up",
+      "sourceShape": 2
+    }
+  },
+  "characterReverse": {
+    "plate": {
+      "file": "chara-reverse-plate.png",
+      "x": 0,
+      "y": 0,
+      "width": 168,
+      "height": 240
+    },
+    "tab": {
+      "up": {
+        "file": "chara-reverse-tab-up.png",
+        "x": 0,
+        "y": 17,
+        "width": 158,
+        "height": 11
+      },
+      "selected": {
+        "file": "chara-reverse-tab-selected.png",
+        "x": 0,
+        "y": 0,
+        "width": 158,
+        "height": 28
+      },
+      "phases": {
+        "atk": {
+          "file": "chara-reverse-icon_phase-1.png",
+          "x": 1,
+          "y": 18,
+          "width": 54,
+          "height": 9
+        },
+        "deff": {
+          "file": "chara-reverse-icon_phase-2.png",
+          "x": 1,
+          "y": 18,
+          "width": 54,
+          "height": 9
+        },
+        "mov": {
+          "file": "chara-reverse-icon_phase-3.png",
+          "x": 1,
+          "y": 18,
+          "width": 54,
+          "height": 9
+        }
+      },
+      "ranges": {
+        "\u8fd1": [
+          {
+            "file": "chara-reverse-icon_range0-1.png",
+            "x": 47,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          },
+          {
+            "file": "chara-reverse-icon_range0-2.png",
+            "x": 47,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          }
+        ],
+        "\u4e2d": [
+          {
+            "file": "chara-reverse-icon_range1-1.png",
+            "x": 39,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          },
+          {
+            "file": "chara-reverse-icon_range1-2.png",
+            "x": 39,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          }
+        ],
+        "\u9060": [
+          {
+            "file": "chara-reverse-icon_range2-1.png",
+            "x": 31,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          },
+          {
+            "file": "chara-reverse-icon_range2-2.png",
+            "x": 31,
+            "y": 17,
+            "width": 9,
+            "height": 11
+          }
+        ]
+      }
     }
   }
 }

@@ -77,6 +77,7 @@ SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse09.mp3": "1e9ccf21bdb3c9f9c937fc31dfeb08838b29c1e570eefca2034477027e8f2395",
     "public/sound/se/ulse10_f.mp3": "25992bf771fbd92beb3d7a44b4241721121105119959a7d20f60c76926844d61",
     "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
+    "public/sound/se/ulse13.mp3": "c2d0c78f2959bdae4e0cf05a3d8572b9d005efb8fe4c15d3a9ea9be5489da858",
     "public/sound/se/ulse15.mp3": "d97f878eaa31eee16dd00f478d1889da16b662673f422d4a0e7e1c2f2e796203",
     "public/sound/se/ulse16.mp3": "493b8b0ed2c64cff4fbf401f44d4fce971518e5a23106267ec4edfdbace7bea3",
     "public/sound/se/ulse17.mp3": "acd65178602c82108052c8873049c9e2f97f286630527c6d5e34d1fdf523a0f2",
@@ -354,7 +355,16 @@ def native_deck_character_card_catalog():
             name = row["name_tcn"] or row["name"]
             caption = row["caption_tcn"] or row["caption"]
             phase = caption.partition("[")[2].partition("]")[0].partition(":")[0]
-            feats[int(row["id"])] = {"name": name, "kind": phase_types.get(phase, "atk")}
+            feat_id = int(row["id"])
+            feats[feat_id] = {
+                "id": feat_id,
+                "name": name,
+                "kind": phase_types.get(phase, "atk"),
+                "caption": caption,
+                "condition": row["condition"],
+                "power": int(row["pow"]),
+                "effectImage": row["effect_image"],
+            }
     skills = {}
     with (SERVER_CSV / "ja/FeatInventories.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in sorted(DictReader(source), key=lambda row: int(row["id"])):
@@ -387,6 +397,8 @@ def native_deck_character_card_catalog():
             "id": card_id,
             "name": name,
             "abName": row["ab_name_tcn"] or "",
+            "caption": row["caption_tcn"] or row["caption"],
+            "standImage": row["stand_image"],
             "skills": skills.get(card_id, []),
             "kind": kind,
             "level": int(row["level"]),
@@ -674,7 +686,7 @@ def create_app(
                 "lobby-friend-invite.js", "lobby-friend-invite.css", "friend-invite-code.js",
                 "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
-                "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
+                "quest-battle-move.js", "quest-battle-exchange.js", "quest-battle-feat.js", "quest-dice-roll.js", "quest-hit-effect.js",
                 "quest-battle-result.js", "quest-battle-bonus.js", "quest-treasure-panel.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
@@ -731,6 +743,13 @@ def create_app(
             for image in sorted(quest_art.glob("*")):
                 if image.suffix in (".png", ".jpg"):
                     app.router.add_get(f"/source-login/quest-art/{image.name}", serve_file(image))
+            for name in ("index.json", "deck-stock.png"):
+                filename = f"quest-deck-stock-art/{name}"
+                app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))
+            quest_feat_art = SOURCE_LOGIN_ROOT / "quest-feat-art"
+            for artifact in sorted(quest_feat_art.glob("*")):
+                if artifact.suffix == ".png" or artifact.name == "index.json":
+                    app.router.add_get(f"/source-login/quest-feat-art/{artifact.name}", serve_file(artifact))
             card_art = SOURCE_LOGIN_ROOT / "card-art"
             app.router.add_get("/source-login/card-art/index.json", serve_file(card_art / "index.json"))
             for artifact in sorted(card_art.glob("*")):

@@ -3,6 +3,7 @@ import { playQuestBattleEffect } from './bgm.js';
 import { questDiceEye } from './quest-dice-roll.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sweepEase = 'linear(0, 0.35158, 0.57955, 0.72737, 0.82322, 0.88537, 0.92567, 0.95181, 0.96875, 0.97974, 0.98686, 0.99148, 0.99448, 0.99642, 0.99768, 0.99849, 1)';
 
 function append(parent, tag, id, className) {
   const node = document.createElement(tag);
@@ -36,7 +37,7 @@ function presentation(exchange, distance) {
 
 export function createQuestBattleExchange(battle, {
   signal, isCurrent, assets, status, hands, move, combatControls, showTable, showPhase, cutIn, startTimer, updateHp,
-  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll, playHit, playAttackPose, onSettled,
+  initialHp, revealCards, drawOpponent, layer, sprite, place, animate, wait, loadDiceArt, playDiceRoll, playFeats, playHit, playAttackPose, onSettled,
 }) {
   const root = layer(battle, 'quest-battle-exchange', 26, 'quest-battle-exchange');
   const points = layer(root, 'quest-battle-combat-points', 0, 'quest-battle-combat-points');
@@ -46,8 +47,10 @@ export function createQuestBattleExchange(battle, {
   let stopTimer;
   let clearCutIn;
   let cutInExit;
-  let seenReveal;
+  let seenReveal = false;
   let revealTask = Promise.resolve();
+  let sweepTask;
+  let featInsertion;
   let rolled = false;
   let hitCount = 0;
   let hitTask = Promise.resolve();
@@ -199,14 +202,45 @@ export function createQuestBattleExchange(battle, {
     board.remove();
   }
 
+  async function sweepPlayedCards(reveal) {
+    root.dataset.sweepState = 'moving';
+    const sides = [
+      [hands.playerTable, reveal.playerCards, false],
+      [hands.opponentTable, reveal.opponentCards, reveal.opponentLocked],
+    ];
+    for (const [table, cards, locked] of sides) {
+      if (!live()) return;
+      const ids = new Set(cards.map(({ id }) => String(id)));
+      const spent = Array.from(table.children).filter(node =>
+        node.classList.contains('quest-battle-reveal-card') &&
+        (locked ? node.dataset.locked === 'true' : ids.has(node.dataset.cardId))).slice(0, cards.length);
+      await Promise.all(spent.map(async (card, index) => {
+        const x = 40 - Number.parseFloat(card.style.left);
+        const y = 105 - Number.parseFloat(card.style.top);
+        if (!reduced() && Number.isFinite(x) && Number.isFinite(y)) {
+          const stagger = (index + 1) * 40;
+          card.dataset.sweep = 'discard';
+          void wait(stagger * .7, signal).then(() => { if (live()) playQuestBattleEffect('deal', signal); });
+          await animate(card, [{ translate: '0 0' }, { translate: `${x}px ${y}px` }], 200 / 1.7, signal, stagger / 1.7, sweepEase);
+        } else if (live()) playQuestBattleEffect('deal', signal);
+        if (live()) card.remove();
+      }));
+      if (live()) table.dataset.count = String(table.children.length);
+    }
+    if (live()) {
+      hands.opponentTable.setAttribute('aria-label', `對手已放置 ${hands.opponentTable.children.length} 張牌`);
+      root.dataset.sweepState = 'settled';
+    }
+  }
+
   async function showDice(exchange) {
     showDiceReceipt(exchange);
     const { playerAttacks, attackDice, defenceDice } = exchange.dice;
-    if (live() && attackDice.length && defenceDice.length && playAttackPose) {
+    await Promise.all([sweepTask, featInsertion]);
+    if (!live() || !attackDice.length || !defenceDice.length) return;
+    if (playAttackPose) {
       void Promise.resolve().then(() => live() && playAttackPose({ battle, playerAttacks, signal })).catch(() => false);
     }
-    await revealTask;
-    if (!live() || !attackDice.length || !defenceDice.length) return;
     const playerDice = playerAttacks ? attackDice : defenceDice;
     const foeDice = playerAttacks ? defenceDice : attackDice;
     const canvas = append(root, 'canvas', 'quest-battle-dice-roll', 'quest-battle-dice-roll');
@@ -300,13 +334,18 @@ export function createQuestBattleExchange(battle, {
     if (exchange.playerAttacks !== null) battle.dataset.playerAttacks = String(exchange.playerAttacks);
     const distance = state.result?.distance ?? Number(battle.dataset.distance);
     paintRole(exchange, distance);
-    if (Number.isSafeInteger(exchange.opponentTableCount) && !exchange.cards) drawOpponent(exchange.opponentTableCount);
-    const reveal = exchange.cards ?? exchange.defenceCards ?? exchange.attackCards;
-    const revealStage = exchange.cards ? 'final' : exchange.defenceCards ? 'defense' : exchange.attackCards ? 'attack' : '';
-    if (reveal && revealStage !== seenReveal) {
-      seenReveal = revealStage;
-      root.dataset.revealStage = revealStage;
-      revealTask = revealTask.then(() => live() && revealCards(reveal, revealStage));
+    if (Number.isSafeInteger(exchange.opponentTableCount) && !seenReveal && !exchange.cards) {
+      drawOpponent(exchange.opponentTableCount);
+    }
+    // The exchange can be rendered during defense, but only the final server packet opens either table.
+    if (exchange.cards && !seenReveal) {
+      seenReveal = true;
+      root.dataset.revealStage = 'final';
+      revealTask = Promise.resolve().then(() => live() && revealCards(exchange.cards));
+      sweepTask = revealTask.then(() => live() && sweepPlayedCards(exchange.cards));
+    }
+    if (exchange.cards && playFeats && state.feats?.used?.length) {
+      featInsertion = revealTask.then(() => live() && playFeats(exchange));
     }
     if (exchange.dice && !rolled) {
       rolled = true;
@@ -315,7 +354,7 @@ export function createQuestBattleExchange(battle, {
     displayHits(exchange, distance);
     if ((exchange.phase === 'terminal' || exchange.phase === 'complete') && exchange.boundary && !resultFinished) {
       resultFinished = true;
-      void Promise.all([diceSettled, hitTask, revealTask, cutInExit]).then(() => {
+      void Promise.all([diceSettled, hitTask, sweepTask, featInsertion, cutInExit]).then(() => {
         if (!live()) return;
         const result = summary(exchange);
         result.dataset.state = exchange.phase;

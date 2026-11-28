@@ -39,6 +39,123 @@ function displaced(node, frames, signal) {
   const cancel = () => animation.cancel();
   signal.addEventListener('abort', cancel, { once: true });
   void animation.finished.catch(() => {}).finally(() => signal.removeEventListener('abort', cancel));
+  return animation;
+}
+
+// DeckArea.as:134–155 schedules count i+1 at 10 + i*20ms, without SPEED scaling.
+export function animateInitialDeckCount(total, paint, signal) {
+  if (!Number.isInteger(total) || total < 0 || signal.aborted) return;
+  const preference = matchMedia('(prefers-reduced-motion: reduce)');
+  if (total === 0 || preference.matches) {
+    paint(total);
+    return;
+  }
+
+  const started = performance.now();
+  let current = 0;
+  let frame;
+
+  function cancel() {
+    cancelAnimationFrame(frame);
+    signal.removeEventListener('abort', cancel);
+  }
+
+  function update(now) {
+    const elapsed = now - started;
+    const next = preference.matches ? total : Math.min(total, Math.max(0, 1 + Math.floor((elapsed - 10) / 20)));
+    if (next > current) {
+      current = next;
+      paint(current);
+    }
+    if (current === total || signal.aborted) cancel();
+    else frame = requestAnimationFrame(update);
+  }
+
+  paint(current);
+  if (signal.aborted) return;
+  signal.addEventListener('abort', cancel, { once: true });
+  frame = requestAnimationFrame(update);
+  return cancel;
+}
+
+export function createCoveredOpponentCards(hands, signal) {
+  const { opponent: hand, opponentTable: table } = hands;
+  const active = new Map();
+  const positionHand = index => [730 - index * 20, -6];
+  const positionTable = (index, count) => [378 + ((count - 1) / 2 - index) * 20, 127];
+
+  function back() {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'quest-battle-dealt-back';
+    canvas.setAttribute('aria-hidden', 'true');
+    void renderActionCard(canvas, null, { signal, back: true });
+    return canvas;
+  }
+
+  function placeBacks(parent, cards, count, locate, previous, transfers, label) {
+    if (!Number.isSafeInteger(count) || count < 0) return;
+    while (cards.length > count) cards.pop().remove();
+    while (cards.length < count) cards.push(back());
+    cards.forEach((node, index) => {
+      if (parent.children[index] !== node) parent.insertBefore(node, parent.children[index] ?? null);
+      const from = previous?.get(node);
+      position(node, ...locate(index, count));
+      node.style.zIndex = parent === table ? String(count - index) : '';
+      if (!from) return;
+      active.get(node)?.cancel();
+      const to = node.getBoundingClientRect();
+      const dx = from.left - to.left;
+      const dy = from.top - to.top;
+      if (!dx && !dy) return;
+      const animation = displaced(node, [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], signal);
+      if (!animation) return;
+      if (transfers.has(node)) node.dataset.coveredTransfer = parent === table ? 'to-table' : 'to-hand';
+      active.set(node, animation);
+      void animation.finished.catch(() => {}).finally(() => {
+        if (active.get(node) !== animation) return;
+        active.delete(node);
+        delete node.dataset.coveredTransfer;
+      });
+    });
+    parent.dataset.count = String(count);
+    parent.setAttribute('aria-label', label(count));
+  }
+
+  return {
+    draw(handCount, tableCount, transfer = true) {
+      const handCards = Array.from(hand.children);
+      const sameHand = !Number.isSafeInteger(handCount) || hand.dataset.count === String(handCount);
+      const sameTable = !Number.isSafeInteger(tableCount) ||
+        (table.dataset.count === String(tableCount) && table.dataset.locked === undefined);
+      if (signal.aborted || (sameHand && sameTable)) return handCards;
+      const tableCards = Array.from(table.children).filter(node => node.classList.contains('quest-battle-dealt-back'));
+      if (Number.isSafeInteger(tableCount) && tableCards.length !== table.children.length) table.replaceChildren(...tableCards);
+      const toTable = tableCount - tableCards.length;
+      const balanced = transfer && Number.isSafeInteger(handCount) && Number.isSafeInteger(tableCount) &&
+        hand.dataset.count === String(handCards.length) && table.dataset.count === String(tableCards.length) &&
+        handCards.length - handCount === toTable && toTable !== 0;
+      const moves = new Set();
+      let previous;
+      if (balanced) {
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          previous = new Map([...handCards, ...tableCards].map(node => [node, node.getBoundingClientRect()]));
+        }
+        // FoeHand moves the first anonymous back on either transfer, regardless of the wire index.
+        const [source, target] = toTable > 0 ? [handCards, tableCards] : [tableCards, handCards];
+        for (const node of source.splice(0, Math.abs(toTable))) {
+          target.push(node);
+          moves.add(node);
+        }
+      }
+      placeBacks(hand, handCards, handCount, positionHand, previous, moves, count => `對手手牌 ${count} 張`);
+      placeBacks(table, tableCards, tableCount, positionTable, previous, moves, count => `對手已放置 ${count} 張牌`);
+      if (Number.isSafeInteger(tableCount)) delete table.dataset.locked;
+      return handCards;
+    },
+    settled() {
+      return Promise.allSettled([...active.values()].map(animation => animation.finished));
+    },
+  };
 }
 
 export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands, controls, combatControls, status, multi, signal, isCurrent }) {
@@ -280,7 +397,7 @@ export function createQuestBattleMove({ battle, scene, encounterKey, hud, hands,
     const entries = result.hand;
     const table = combat ? result.exchange?.battleTable : result.moveTable;
     const currentMove = moveEnabled && (result.ready?.turn ?? turn) === turn && ['move', 'committing', 'settling'].includes(result.phase);
-    if (drawn && Array.isArray(entries) && Array.isArray(table) && (combat ? combatTurn() : currentMove)) {
+    if (drawn && Array.isArray(entries) && Array.isArray(table) && (combat ? combatTurn() && !result.exchange.cards : currentMove)) {
       const signature = [combat ? result.exchange.phase : '', ...entries.map(({ id, up }) => `${id}:${up}`), '/',
         ...table.map(({ id, up }) => `${id}:${up}`)].join(',');
       if (compactSignature !== signature) {

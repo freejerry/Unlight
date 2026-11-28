@@ -1,0 +1,70 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "atlas": {
+    "file": "deck-stock.png",
+    "width": 896,
+    "height": 472,
+    "columns": 16,
+    "sha256": "62a41b0f2e278a17cc33482f2454c0b5a2fb1969722e5bca758126df14e91778"
+  },
+  "frame": {
+    "x": 8,
+    "y": 42,
+    "width": 56,
+    "height": 59
+  },
+  "minCount": 0,
+  "maxCount": 127,
+  "source": [
+    {
+      "file": "public/image/deck.dae",
+      "sha256": "7bdc32477de6341dbeea69ecaad46fa02581bb4b5f274454acacf5ddf955b925"
+    },
+    {
+      "file": "public/image/tex/deck.png",
+      "sha256": "29c4f41605161be31bfb22a30fd72a7156d04bddd8cbb183f1aef18df1650890"
+    }
+  ],
+  "projection": {
+    "viewportOrigin": [
+      -83,
+      -59
+    ],
+    "viewportSize": [
+      200,
+      200
+    ],
+    "camera": {
+      "position": [
+        -5,
+        40,
+        40
+      ],
+      "rotation": [
+        30,
+        80,
+        0
+      ],
+      "focus": 500,
+      "zoom": 0.57
+    },
+    "deck": {
+      "position": [
+        45,
+        0,
+        45
+      ],
+      "rotation": [
+        0,
+        140,
+        0
+      ],
+      "scaleYPerCard": 0.03
+    },
+    "glow": {
+      "color": "#000000",
+      "size": 2,
+      "strength": 16
+    }
+  }
+}

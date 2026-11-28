@@ -137,6 +137,28 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 用另一位全新角色加 `--quest-start-fault combat`，在 Ruby 接受出牌後擋住本方 `SC65`。驗證遲到的回覆仍維持結果未確認、桌面和手牌未被提前改動，重按沒有重送，也不會發出成功移牌音。兩場使用同登入的 Quest 連線，並核對 AP、持有任務和牌組鎖。[原版實跑步驟](/workspace/shared/unlight-web-port/flash-parity/quest-combat-original/README.md) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-combat-live/qa-native-first-exchange-wire.json)
 
+### 重跑戰鬥九項回歸
+
+使用各自隔離的原版 Ruby、SQLite 和測試角色。`presentation` 使用原版已完成教學的古魯瓦爾多 Lv1、空地後的任務 4 和第二格的矮人 `[1001]`。測例固定搜尋種子 22 與該場 `MultiDuel` 初始種子 0，入場已有 1 點傷害。執行時確認牌庫、發牌、角色卡、滑入技能、移動、敵方蓋牌及雙方確認，最後以 Ruby 實際骰值完成任務並返回大廳。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case presentation \
+  --port 4396 --database "$proof_dir/q4-ruby/app/server/data/game_dev2.db" \
+  --user questemptywin --password-file "$proof_dir/questemptywin-password" \
+  --screens "$proof_dir/q4-battle-regressions"
+```
+
+`skill` 使用另一位同角色的測試帳號、魔女山谷的任務 1、舞台 11、對手 `[1004]`，沒有初始傷害。將該場 `MultiDuel` 的隨機種子設為 16，保留原版計時、發牌及技能規則。`--plan` 使用 UTF-8 JSON，包含 `questId: 1`、`cardId: 21`、`skillId: 25`、`skillName: "猛擊"`、`direction: -1`、`range: 1`、`openingActions: [36,5,46,37,17]`、`movementCards: [[36,false],[37,false]]`、`attacks: [[46,true],[17,true]]`、`qualifiesAfter: 2`、`recheckAvailability: true`、`removedPoints: 6`、`attackDice: 12`、`wins: false`。
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case skill \
+  --port 4396 --database "$proof_dir/q1-ruby/app/server/data/game_dev2.db" \
+  --user questskill --password-file "$proof_dir/questskill-password" \
+  --plan "$proof_dir/q1-stock-smash.json" --screens "$proof_dir/q1-battle-regressions"
+```
+
+兩個案例都保留 780×680 PNG、實際封包及瀏覽器逐幀資料於各自的 `--screens` 目錄。Playwright 只暫緩與轉交 Ruby 的原始回覆。隔離環境的隨機種子用於重跑相同牌序。 [逐項來源與動畫順序](battle-regressions.md) · [瀏覽器腳本](../../../tools/legacy-web/check_source_battle.py)
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。

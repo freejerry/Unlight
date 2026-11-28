@@ -1,15 +1,20 @@
 import { playQuestBattleEffect } from './bgm.js';
-import { BATTLE_CARD_ART, battleCardControls, battleExchangeArt, battleStands, renderActionCard } from './battle-card.js';
+import { BATTLE_CARD_ART, battleCardControls, battleCharacterReverse, battleExchangeArt, battleStands, formatBattleSkill, renderActionCard } from './battle-card.js';
 import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
-import { createQuestBattleMove } from './quest-battle-move.js';
+import { createQuestFeatPlayback } from './quest-battle-feat.js';
+import { animateInitialDeckCount, createCoveredOpponentCards, createQuestBattleMove } from './quest-battle-move.js';
 import { mountQuestDuelResult } from './quest-battle-result.js';
 import { playQuestDiceRoll } from './quest-dice-roll.js';
 import { playQuestAttackPose, playQuestHitEffect } from './quest-hit-effect.js';
 
 const art = new URL('./quest-art/', import.meta.url);
+const deckArt = new URL('./quest-deck-stock-art/', import.meta.url);
 const decodedStages = new WeakMap();
 const sineOut = 'linear(0, .1951, .3827, .5556, .7071, .8315, .9239, .9808, 1)';
+const quadIn = 'linear(0, .015625, .0625, .140625, .25, .390625, .5625, .765625, 1)';
+const characterFlipTime = 300;
+const characterFlipSwap = -Math.log2(1 - 94 / 180) * characterFlipTime / 10;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function prepareQuestBattleStage(layers) {
@@ -202,9 +207,9 @@ function drawStageLayers(battle, layers, signal) {
   animation = requestAnimationFrame(advance);
 }
 
-async function animate(node, frames, duration, signal, delay = 0) {
+async function animate(node, frames, duration, signal, delay = 0, easing = sineOut) {
   if (!node || reduced() || signal.aborted) return;
-  const animation = node.animate(frames, { duration, delay, easing: sineOut, fill: 'both' });
+  const animation = node.animate(frames, { duration, delay, easing, fill: 'both' });
   const cancel = () => animation.cancel();
   signal.addEventListener('abort', cancel, { once: true });
   try { await animation.finished; } catch { /* Scene exit aborts the queued tween. */ }
@@ -220,6 +225,65 @@ function output(parent, id, className, x, y, width, height) {
   return node;
 }
 
+function mountDeckStock(battle, initialCount, signal) {
+  const root = layer(battle, 'quest-battle-deck', 6, 'quest-battle-deck');
+  const label = output(root, 'quest-battle-deck-count', 'quest-battle-deck-count', -6, 53);
+  label.setAttribute('aria-label', '剩餘行動牌');
+  // The displayed buildup is cosmetic. Card deals always use the confirmed stock count.
+  let count = initialCount;
+  let displayed;
+  let draw;
+  function paint(value) {
+    if (signal.aborted) return;
+    displayed = value;
+    label.value = String(value);
+    draw?.(value);
+  }
+
+  let cancelInitial = animateInitialDeckCount(count, paint, signal);
+  void fetch(new URL('index.json', deckArt), { signal, redirect: 'error' }).then(async response => {
+    if (!response.ok) return;
+    const { atlas, frame, minCount, maxCount } = await response.json();
+    if (atlas.file !== 'deck-stock.png' || signal.aborted) return;
+    const image = new Image();
+    image.src = new URL(atlas.file, deckArt);
+    await image.decode();
+    if (signal.aborted || image.naturalWidth !== atlas.width || image.naturalHeight !== atlas.height) return;
+    const canvas = document.createElement('canvas');
+    canvas.id = 'quest-battle-deck-stock';
+    canvas.setAttribute('aria-hidden', 'true');
+    const { x, y, width, height } = frame;
+    canvas.width = width;
+    canvas.height = height;
+    place(canvas, x, y, width, height);
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    root.prepend(canvas);
+    draw = value => {
+      context.clearRect(0, 0, width, height);
+      delete canvas.dataset.count;
+      if (value < minCount || value > maxCount) return;
+      const index = value - minCount;
+      const sx = index % atlas.columns * width;
+      const sy = Math.floor(index / atlas.columns) * height;
+      context.drawImage(image, sx, sy, width, height, 0, 0, width, height);
+      canvas.dataset.count = String(value);
+    };
+    if (Number.isInteger(displayed)) draw(displayed);
+  }).catch(() => { /* The count stays readable if the stock artwork cannot be loaded. */ });
+
+  return {
+    root,
+    startDeal() {
+      if (!cancelInitial) return;
+      cancelInitial();
+      cancelInitial = undefined;
+      if (displayed !== count) paint(count);
+    },
+    deal() { if (count > 0 && !signal.aborted) paint(--count); },
+  };
+}
+
 function character(parent, definition, id, damage, x, y, scale, signal) {
   const canvas = document.createElement('canvas');
   canvas.width = 168;
@@ -232,6 +296,111 @@ function character(parent, definition, id, damage, x, y, scale, signal) {
   parent.append(canvas);
   const ready = renderCharacterCard(canvas, definition, { signal, damage }).then(painted => {
     if (painted && !signal.aborted) canvas.hidden = false;
+  });
+  return { canvas, ready };
+}
+
+function inspectCharacter(parent, definition, id, damage, signal) {
+  const card = document.createElement('div');
+  card.id = 'quest-battle-player-character';
+  card.className = 'quest-battle-character-inspect';
+  card.dataset.cardId = String(id);
+  card.dataset.face = 'front';
+  place(card, 0, 440, 168, 240);
+  parent.append(card);
+
+  const { canvas, ready } = character(card, definition, id, damage, 0, 0, 1, signal);
+  const flip = document.createElement('button');
+  flip.className = 'quest-battle-character-flip';
+  flip.type = 'button';
+  flip.hidden = true;
+  flip.setAttribute('aria-label', definition?.name ? `翻轉${definition.name}的角色卡` : '翻轉角色卡');
+  flip.setAttribute('aria-pressed', 'false');
+  place(flip, 0, 0, 168, 240);
+  card.append(flip);
+
+  const rear = document.createElement('div');
+  rear.className = 'quest-battle-character-review';
+  rear.hidden = true;
+  card.append(rear);
+  let flipping = false;
+  const skills = (definition?.skills ?? []).slice(0, 4).map(skill => ({ ...skill, detail: formatBattleSkill(skill) }));
+  void Promise.all([ready, battleCharacterReverse(signal)]).then(([, art]) => {
+    if (!art || signal.aborted || canvas.hidden) return;
+    sprite(rear, art.plate, BATTLE_CARD_ART);
+    const content = document.createElement('div');
+    rear.append(content);
+    function select(index) {
+      content.replaceChildren();
+      skills.forEach((skill, i) => {
+        const y = 24 + i * 30;
+        const selected = i === index;
+        const put = layer => {
+          if (layer) sprite(content, { ...layer, x: layer.x + 5, y: layer.y + y }, BATTLE_CARD_ART);
+        };
+        put(selected ? art.tab.selected : art.tab.up);
+        put(art.tab.phases[skill.kind]);
+        const range = skill.detail?.requirements.find(([name]) => name === '距離')?.[1] ?? '';
+        for (const [key, frames] of Object.entries(art.tab.ranges)) put(frames[Number(range.startsWith('全') || range.includes(key))]);
+        const feat = document.createElement('button');
+        feat.type = 'button';
+        feat.className = 'quest-battle-character-feat';
+        feat.textContent = skill.name;
+        feat.setAttribute('aria-pressed', String(selected));
+        place(feat, 4, 22 + i * 30, 154, 18);
+        feat.addEventListener('click', () => {
+          if (flipping || selected) return;
+          select(i);
+          content.querySelectorAll('button')[i].focus({ preventScroll: true });
+        });
+        content.append(feat);
+        if (!selected || !skill.detail) return;
+        const requirements = document.createElement('p');
+        requirements.className = 'quest-battle-character-requirements';
+        requirements.textContent = skill.detail.requirements.find(([name]) => name === '卡片')?.[1] ?? '';
+        place(requirements, 64, 25 + i * 30, 95);
+        const description = document.createElement('p');
+        description.className = 'quest-battle-character-description';
+        description.textContent = skill.detail.description;
+        place(description, 4, 146, 160, 90);
+        content.append(requirements, description);
+      });
+    }
+    select(0);
+    canvas.setAttribute('aria-hidden', 'true');
+    flip.hidden = false;
+  });
+
+  flip.addEventListener('click', async () => {
+    if (flipping || signal.aborted) return;
+    flipping = true;
+    flip.setAttribute('aria-disabled', 'true');
+    const showRear = card.dataset.face === 'front';
+    const start = showRear ? 0 : 180;
+    playQuestBattleEffect('flip', signal);
+    let animation;
+    if (!reduced()) {
+      if (!showRear) rear.style.transform = 'scaleX(-1)';
+      const frames = Array.from({ length: 31 }, (_, index) => {
+        const part = index / 30;
+        const angle = part < 1 ? 1 - 2 ** (-10 * part) : 1;
+        return { transform: `rotateY(${start + angle * 180}deg)` };
+      });
+      animation = card.animate(frames, { duration: characterFlipTime, fill: 'both' });
+      await wait(characterFlipSwap, signal);
+    }
+    if (!signal.aborted) {
+      canvas.hidden = showRear;
+      rear.hidden = !showRear;
+      rear.style.transform = animation && showRear ? 'scaleX(-1)' : '';
+      card.dataset.face = showRear ? 'back' : 'front';
+      flip.setAttribute('aria-pressed', String(showRear));
+      if (animation) await wait(characterFlipTime - characterFlipSwap, signal);
+    }
+    animation?.cancel();
+    rear.style.transform = '';
+    flip.removeAttribute('aria-disabled');
+    flipping = false;
   });
   return { canvas, ready };
 }
@@ -313,34 +482,7 @@ function playerCard(parent, entry, index, count) {
   return card;
 }
 
-function faceDownCards(parent, count, position, signal) {
-  if (parent.dataset.count === String(count)) return Array.from(parent.children);
-  const nodes = [];
-  parent.replaceChildren();
-  parent.dataset.count = String(count);
-  for (let index = 0; index < count; index += 1) {
-    const canvas = document.createElement('canvas');
-    canvas.className = 'quest-battle-dealt-back';
-    canvas.setAttribute('aria-hidden', 'true');
-    place(canvas, ...position(index, count));
-    parent.append(canvas);
-    nodes.push(canvas);
-    void renderActionCard(canvas, null, { signal, back: true });
-  }
-  return nodes;
-}
-
-const opponentHandPosition = index => [730 - index * 20, -6];
-const opponentTablePosition = (index, count) => [378 + (count / 2 - .5 - index) * 60, 127];
-
-function drawOpponentCards(hands, handCount, tableCount, signal) {
-  hands.opponent.setAttribute('aria-label', `對手手牌 ${handCount} 張`);
-  hands.opponentTable.setAttribute('aria-label', `對手已放置 ${tableCount} 張牌`);
-  faceDownCards(hands.opponentTable, tableCount, opponentTablePosition, signal);
-  return faceDownCards(hands.opponent, handCount, opponentHandPosition, signal);
-}
-
-async function revealHand(hands, ready, signal, { onDeal, onEvent, opponentHandCount }) {
+async function revealHand(hands, ready, signal, { onDeal, onEvent, opponentHandCount, covered }) {
   const entries = [
     ...ready.action.cards.map(card => ({ ...card, kind: 'action' })),
     ...ready.event.cards.map(card => ({ ...card, kind: 'event' })),
@@ -350,7 +492,7 @@ async function revealHand(hands, ready, signal, { onDeal, onEvent, opponentHandC
   const count = Number.isInteger(opponentHandCount) ? opponentHandCount : newlyDrawn;
   const survivors = hands.player.children.length;
   const players = entries.map((entry, index) => playerCard(hands.player, entry, survivors + index, survivors + entries.length));
-  const opponents = drawOpponentCards(hands, count, 0, signal).slice(Math.max(0, count - newlyDrawn));
+  const opponents = covered.draw(count, 0, false).slice(Math.max(0, count - newlyDrawn));
   if (ready.turn > 1 && !Number.isInteger(opponentHandCount)) {
     delete hands.opponent.dataset.count;
     hands.opponent.setAttribute('aria-label', `對手本次補牌 ${newlyDrawn} 張`);
@@ -381,8 +523,10 @@ async function revealHand(hands, ready, signal, { onDeal, onEvent, opponentHandC
     else void wait(10 + i * 330, signal).then(() => { if (!signal.aborted) onDeal(); });
     const x = 40 - Number.parseFloat(node.style.left);
     const y = 105 - Number.parseFloat(node.style.top);
-    return animate(node, [{ opacity: 0, transform: `translate(${x}px,${y}px) scale(.5)` },
-      { opacity: 1, transform: 'none' }], 300 / 1.7, signal, delay);
+    return Promise.all([
+      animate(node, [{ opacity: 0 }, { opacity: 1 }], 100 / 1.7, signal, delay),
+      animate(node, [{ transform: `translate(${x}px,${y}px)` }, { transform: 'none' }], 300 / 1.7, signal, delay),
+    ]);
   };
   const playerActions = players.slice(0, ready.action.cards.length);
   const foeActions = opponents.slice(0, ready.action.opponentDrawCount);
@@ -410,32 +554,60 @@ function assetAt(parent, part, x, y, flip = false) {
   return image;
 }
 
-function drawStands(parent, stands, encounter, opening = false) {
+const standPosition = {
+  player: [288, 184, 80, 184],
+  opponent: [472, 576, 680, 576],
+};
+
+function drawStands(parent, stands, encounter, opening = false, distanceArt) {
   const distance = encounter.duel.distance;
   const nodes = [];
-  for (const [side, ids, xs] of [
-    ['player', encounter.playerCardIds, [288, 184, 80]],
-    ['opponent', encounter.opponentCardIds, [472, 576, 680]],
+  for (const [side, ids, authoredXs] of [
+    ['player', encounter.playerCardIds, distanceArt?.playerX],
+    ['opponent', encounter.opponentCardIds, distanceArt?.foeX],
   ]) {
     const id = opening && side === 'opponent' ? ids.at(-1) : ids[0];
     const pose = stands?.[id];
     const foe = side === 'opponent';
     const part = opening ? pose?.opening : pose?.stand;
     if (!part) continue;
-    const [x, y] = opening ? part.origin : [xs[distance - 1], 416];
+    const xs = authoredXs ?? standPosition[side];
+    const [x, y] = opening ? part.origin : [xs[distance - 1], distanceArt?.y ?? 416];
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
     const flipOrigin = art => foe ? x - art.width - art.x * 2 : x;
+    const standNode = (art, parent) => {
+      const node = assetAt(parent, art, flipOrigin(art), y, foe);
+      node.dataset.side = side;
+      node.dataset.standOffsetX = String(Number.parseFloat(node.style.left) - x);
+      node.dataset.distance = String(distance);
+      return node;
+    };
     if (!opening && pose.shadow) {
-      const shadow = assetAt(parent, pose.shadow, flipOrigin(pose.shadow), y, foe);
-      if (shadow) shadow.dataset.side = side;
+      standNode(pose.shadow, parent);
     }
-    const image = assetAt(parent, part, flipOrigin(part), y, foe);
-    if (!image) continue;
+    const image = standNode(part, parent);
     image.dataset.cardId = String(id);
-    image.dataset.side = side;
+    image.dataset.standSourceCardId = String(pose.sourceCardId ?? id);
     image.classList.add('quest-battle-stand');
     nodes.push({ image, part, foe });
   }
   return nodes;
+}
+
+function moveStands(parent, distance, signal, distanceArt) {
+  const anchors = { player: distanceArt?.playerX ?? standPosition.player, opponent: distanceArt?.foeX ?? standPosition.opponent };
+  const shifts = [];
+  for (const actor of parent.querySelectorAll('[data-stand-offset-x]')) {
+    const x = anchors[actor.dataset.side]?.[distance - 1] + Number(actor.dataset.standOffsetX);
+    if (!Number.isFinite(x)) continue;
+    const nextLeft = `${x}px`;
+    const oldLeft = actor.style.left;
+    actor.style.left = nextLeft;
+    actor.dataset.distance = String(distance);
+    if (oldLeft !== nextLeft) shifts.push(animate(actor, [{ left: oldLeft }, { left: nextLeft }],
+      distanceArt?.durationMs ?? 300, signal, 0, quadIn));
+  }
+  return Promise.all(shifts);
 }
 
 function openingNames(parent, encounter, definitions, signal) {
@@ -685,9 +857,52 @@ function renderChatDecoration(battle, chat) {
 function renderSkills(battle, skills, player, foe) {
   if (!skills?.base) return;
   const strip = layer(battle, 'quest-battle-skills', 5, 'quest-battle-skills');
+  const detailLayer = layer(battle, 'quest-battle-skill-detail-layer', 31);
+  const detail = document.createElement('div');
+  detail.id = 'quest-battle-skill-detail';
+  detail.setAttribute('role', 'tooltip');
+  detail.setAttribute('aria-hidden', 'true');
+  detailLayer.append(detail);
+  let activeLabel;
+  strip.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && activeLabel) hideDetails(activeLabel);
+  });
+  function hideDetails(target) {
+    if (target !== activeLabel) return;
+    activeLabel.removeAttribute('aria-describedby');
+    activeLabel = null;
+    detail.setAttribute('aria-hidden', 'true');
+  }
+  function showDetails(target, data, x, y, side, id) {
+    if (activeLabel && activeLabel !== target) hideDetails(activeLabel);
+    activeLabel = target;
+    target.setAttribute('aria-describedby', detail.id);
+    detail.dataset.side = side;
+    detail.dataset.skillId = String(id);
+    place(detail, x, y, 150);
+    const heading = title => {
+      const label = document.createElement('strong');
+      label.textContent = title;
+      return label;
+    };
+    const list = document.createElement('dl');
+    for (const [name, value] of data.requirements) {
+      const term = document.createElement('dt');
+      term.textContent = `${name} :`;
+      const description = document.createElement('dd');
+      description.textContent = value;
+      list.append(term, description);
+    }
+    const effect = document.createElement('div');
+    effect.className = 'quest-battle-skill-effect';
+    effect.append(heading('[效果]'), data.effect);
+    detail.replaceChildren(heading('[條件]'), list, effect);
+    detail.setAttribute('aria-hidden', 'false');
+  }
   const label = skills.labelOffset;
-  for (const [card, position] of [[player, skills.player], [foe, skills.foe]]) {
-    for (const [index, { name, kind }] of (card?.skills ?? []).entries()) {
+  for (const [side, card, position] of [['player', player, skills.player], ['opponent', foe, skills.foe]]) {
+    for (const [index, skill] of (card?.skills ?? []).entries()) {
+      const { name, kind, id } = skill;
       const art = skills.types[kind];
       if (!art) continue;
       const x = position.x + position.step * index;
@@ -695,20 +910,46 @@ function renderSkills(battle, skills, player, foe) {
       for (const part of [skills.base, art]) sprite(strip, { ...part, x: x + part.x, y: y + part.y });
       const nameLabel = document.createElement('span');
       nameLabel.className = 'quest-battle-skill-name';
+      nameLabel.dataset.side = side;
+      if (Number.isInteger(id)) nameLabel.dataset.skillId = String(id);
+      nameLabel.dataset.ready = 'false';
       nameLabel.textContent = name;
-      place(nameLabel, x + label.x, y + label.y, label.width, label.height);
+      const labelX = x + label.x;
+      const labelY = y + label.y;
+      place(nameLabel, labelX, labelY, label.width, label.height);
+      const data = formatBattleSkill(skill);
+      if (data) {
+        nameLabel.tabIndex = 0;
+        const own = side === 'player';
+        const show = () => showDetails(nameLabel, data, labelX - (own ? 12 : 5), labelY + (own ? 0 : 26), side, id);
+        nameLabel.addEventListener('pointerenter', show);
+        nameLabel.addEventListener('pointerleave', () => {
+          if (!nameLabel.matches(':focus-visible')) hideDetails(nameLabel);
+        });
+        nameLabel.addEventListener('focus', () => {
+          if (nameLabel.matches(':focus-visible')) show();
+        });
+        nameLabel.addEventListener('blur', () => {
+          if (!nameLabel.matches(':hover')) hideDetails(nameLabel);
+        });
+      }
       strip.append(nameLabel);
     }
   }
-  return strip;
+  return { strip, detailLayer, update(feats) {
+    const ready = new Set(feats?.readyIds);
+    for (const label of strip.querySelectorAll('[data-skill-id][data-side="player"]')) {
+      label.dataset.ready = String(ready.has(Number(label.dataset.skillId)));
+    }
+  } };
 }
 
-function showMoveCutIns(battle, manifest, encounter, signal, onlySide) {
+function showMoveCutIns(battle, manifest, encounter, signal, onlySide, stands) {
   const cutIn = layer(battle, 'quest-battle-cut-ins', 17, onlySide ? undefined : 'quest-battle-cut-ins');
   const poses = [];
   for (const [id, foe] of [[encounter.playerCardIds[0], false], [encounter.opponentCardIds[0], true]]) {
     if (onlySide && onlySide !== (foe ? 'opponent' : 'player')) continue;
-    const source = manifest?.cutIns?.[id];
+    const source = manifest?.cutIns?.[id] ?? manifest?.cutIns?.[stands?.[id]?.sourceCardId];
     if (!source?.image) continue;
     const actor = sprite(cutIn, source.image);
     actor.dataset.side = foe ? 'opponent' : 'player';
@@ -735,16 +976,18 @@ function showMoveCutIns(battle, manifest, encounter, signal, onlySide) {
   return async () => { await Promise.all(poses.map(exit => exit())); cutIn.remove(); };
 }
 
-function revealMoveCards(hands, result, signal, { player = true, opponent = true } = {}) {
+function revealMoveCards(hands, result, signal) {
   const rows = [
     [hands.playerTable, result.playerCards, false, 380, 389, false],
     [hands.opponentTable, result.opponentCards, result.opponentLocked, 378, 127, true],
-  ].filter(row => row[5] ? opponent : player);
+  ];
   const definitions = actionCards(rows.flatMap(([, cards, locked]) => locked ? [] : cards.map(card => card.id)), signal);
   return Promise.all(rows.map(async ([parent, cards, locked, cx, cy, side]) => {
+    const backs = side ? Array.from(parent.children).filter(node => node.classList.contains('quest-battle-dealt-back')) : [];
     parent.replaceChildren();
     parent.dataset.count = String(cards.length);
     parent.dataset.locked = String(side ? result.opponentLocked : result.playerLocked);
+    if (side) parent.setAttribute('aria-label', `對手${locked ? '封鎖' : '亮出'} ${cards.length} 張牌`);
     const nodes = cards.map(({ id, up }, index) => {
       const card = document.createElement(side ? 'div' : 'li');
       card.className = 'quest-battle-hand-card quest-battle-reveal-card';
@@ -753,24 +996,34 @@ function revealMoveCards(hands, result, signal, { player = true, opponent = true
         card.dataset.up = String(up);
       }
       card.dataset.locked = String(locked);
-      place(card, cx + (index - (cards.length - 1) / 2) * (side ? -60 : 60), cy);
-      card.textContent = locked ? '' : `#${id}`;
+      const x = cx + (index - (cards.length - 1) / 2) * (side ? -60 : 60);
+      place(card, x, cy);
       parent.append(card);
-      return card;
+      const back = backs[index];
+      if (back) {
+        const dx = Number.parseFloat(back.style.left) - x;
+        back.classList.remove('quest-battle-dealt-back');
+        back.removeAttribute('style');
+        card.append(back);
+        if (dx) void animate(card, [{ translate: `${dx}px 0` }, { translate: '0 0' }], 200 / 1.7, signal);
+      }
+      return { card, back };
     });
     const known = await definitions;
-    for (const [i, card] of nodes.entries()) {
+    for (const [i, { card, back }] of nodes.entries()) {
       if (signal.aborted) return;
       const { id, up } = cards[i];
       const canvas = document.createElement('canvas');
-      if (await renderActionCard(canvas, known.get(id), { signal, reversed: !up, back: locked, large: locked, locked }) && !signal.aborted) {
-        card.replaceChildren(canvas);
-        if (side && !locked) void animate(canvas, [{ scale: '.02 1' }, { scale: '1 1' }], 100, signal);
-      }
-      if (side) {
-        playQuestBattleEffect(locked ? 'reveal-locked' : 'reveal', signal);
-        if (!reduced()) await wait(100, signal);
-      }
+      const painted = await renderActionCard(canvas, known.get(id), { signal, reversed: !up, back: locked, large: locked, locked });
+      if (signal.aborted) return;
+      if (side) playQuestBattleEffect(locked ? 'reveal-locked' : 'reveal', signal);
+      if (back && !locked) await animate(back, [{ scale: '1 1' }, { scale: '.02 1' }], 50, signal);
+      if (signal.aborted) return;
+      if (painted) card.replaceChildren(canvas);
+      else if (!locked) card.textContent = `#${id}`;
+      const duration = back && !locked ? 50 : 100;
+      if (side && painted && !locked) await animate(canvas, [{ scale: '.02 1' }, { scale: '1 1' }], duration, signal);
+      else if (side && !reduced()) await wait(duration, signal);
     }
     if (side && nodes.length && !reduced()) await wait(300, signal);
   }));
@@ -817,7 +1070,8 @@ async function renderBattleHud(battle, sourceAvatar, {
 }) {
   const { hud } = assets;
   const standees = layer(battle, 'quest-battle-standees', 2);
-  drawStands(standees, stands, encounter);
+  const distanceArt = hud.movePresentation?.distance;
+  drawStands(standees, stands, encounter, false, distanceArt);
   const base = layer(battle, 'quest-battle-base', 4);
   for (const common of assets.common) sprite(base, common);
   const handPlate = layer(battle, 'quest-battle-hand-plate', 7);
@@ -860,14 +1114,12 @@ async function renderBattleHud(battle, sourceAvatar, {
     bonus.style.fontSize = `${fontSize}px`;
     bonus.style.letterSpacing = `${letterSpacing}px`;
   }
-  const deck = output(main, 'quest-battle-deck-count', 'quest-battle-deck-count', -6, 53);
-  deck.setAttribute('aria-label', '剩餘行動牌');
-  let deckSize = encounter.duel.deckSize;
-  if (Number.isInteger(deckSize)) deck.value = String(deckSize);
+  const deck = mountDeckStock(battle, encounter.duel.deckSize, signal);
   const roster = layer(battle, 'quest-battle-roster', 30);
-  const activeFace = character(roster, definitions.get(player), player, encounter.playerDamage[0], 0, 440, 1, signal);
+  const activeFace = inspectCharacter(roster, definitions.get(player), player, encounter.playerDamage[0], signal);
   const hands = createHands(battle);
-  const battleChrome = [standees, base, skills, handPlate, avatar, main, chat, roster].filter(Boolean);
+  const covered = createCoveredOpponentCards(hands, signal);
+  const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat, roster].filter(Boolean);
   const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
   status.setAttribute('role', 'status');
   status.tabIndex = -1;
@@ -890,10 +1142,10 @@ async function renderBattleHud(battle, sourceAvatar, {
   let presentedMove = false;
   let tableLoop;
   let combatView;
-  let opponentRevealKey;
   let terminalTask;
   let duelResult;
   let resultStatus;
+  const featPlayback = createQuestFeatPlayback(battle, { signal, isCurrent, onSound: onBattleSound, wait });
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
 
   async function updateHp(hitPoints) {
@@ -933,26 +1185,19 @@ async function renderBattleHud(battle, sourceAvatar, {
       await updateHp(healed);
       if (signal.aborted || !isCurrent()) return;
     }
-    await revealMoveCards(hands, result, signal);
+    await covered.settled();
+    if (signal.aborted || !isCurrent()) return;
+    hands.opponentTable.hidden = false;
+    await Promise.all([revealMoveCards(hands, result, signal), featPlayback.play(latest.feats?.used, visibleTurn, null)]);
     if (signal.aborted || !isCurrent()) return;
     await showMoveArrows(battle, hud.movePresentation, result, signal);
     if (signal.aborted || !isCurrent()) return;
     range?.remove();
     range = sprite(main, hud.range?.[rangeNames[result.distance - 1]]);
-    const config = hud.movePresentation?.distance;
-    const anchors = { player: config?.playerX ?? [288, 184, 80, 184], opponent: config?.foeX ?? [472, 576, 680, 576] };
-    const priorDistance = Number(battle.dataset.distance);
-    const shifts = [];
-    for (const actor of standees.children) {
-      const x = anchors[actor.dataset.side];
-      const delta = x?.[result.distance - 1] - x?.[priorDistance - 1];
-      if (!Number.isFinite(delta) || !delta) continue;
-      actor.style.left = `${Number.parseFloat(actor.style.left) + delta}px`;
-      shifts.push(animate(actor, [{ translate: `${-delta}px 0` }, { translate: '0 0' }], config?.durationMs ?? 300, signal));
-    }
+    const shift = moveStands(standees, result.distance, signal, distanceArt);
     battle.dataset.distance = String(result.distance);
     battle.dataset.initiative = result.playerInitiative ? 'player' : 'opponent';
-    await Promise.all([...shifts, endCutIns?.()]);
+    await Promise.all([shift, endCutIns?.()]);
     if (!signal.aborted && isCurrent()) {
       hands.playerTable.hidden = true;
       hands.opponentTable.hidden = true;
@@ -1009,9 +1254,10 @@ async function renderBattleHud(battle, sourceAvatar, {
       combatView = active;
       active.view = createQuestBattleExchange(battle, {
         signal, isCurrent, assets: hud.combat, status, hands, move, combatControls, showTable, showPhase, layer, sprite, place, animate, wait,
-        cutIn: side => showMoveCutIns(battle, hud.movePresentation, encounter, signal, side),
+        cutIn: side => showMoveCutIns(battle, hud.movePresentation, encounter, signal, side, stands),
         startTimer: onTimeout => startMoveTimer(main, hud.time, signal, onTimeout, true),
         loadDiceArt: () => battleExchangeArt(signal), playDiceRoll: playQuestDiceRoll,
+        playFeats: exchange => featPlayback.play(latest.feats?.used, exchange.turn, key),
         playHit: playQuestHitEffect, playAttackPose: playQuestAttackPose,
         onSettled() {
           if (combatView !== active) return;
@@ -1022,30 +1268,20 @@ async function renderBattleHud(battle, sourceAvatar, {
         initialHp: Object.fromEntries(healthIndicators.map(([side, indicator]) => [side, Number(indicator?.dataset.hp)])),
         drawOpponent: count => {
           hands.opponentTable.hidden = false;
-          if (opponentRevealKey) {
-            delete hands.opponentTable.dataset.count;
-            opponentRevealKey = undefined;
-          }
-          faceDownCards(hands.opponentTable, count, opponentTablePosition, signal);
+          const current = latest.exchange;
+          const currentKey = current?.key ?? `${current?.turn}:${current?.index}`;
+          covered.draw(currentKey === key ? latest.opponentHandCount : null, count);
         },
-        revealCards: (reveal, boundary) => {
-          const key = JSON.stringify([reveal.opponentLocked, reveal.opponentCards]);
-          const opponent = reveal.opponentCards.length > 0 && key !== opponentRevealKey;
-          if (opponent) {
-            hands.opponentTable.hidden = false;
-            opponentRevealKey = key;
-          }
-          const player = boundary === 'final';
-          if (player) {
-            const spent = new Set(reveal.playerCards.map(({ id }) => id));
-            for (const card of Array.from(hands.player.children)) if (spent.has(Number(card.dataset.cardId))) card.remove();
-          }
-          return revealMoveCards(hands, reveal, signal, { player, opponent });
+        revealCards: async reveal => {
+          await covered.settled();
+          if (signal.aborted || combatView !== active || !isCurrent()) return;
+          hands.opponentTable.hidden = false;
+          const spent = new Set(reveal.playerCards.map(({ id }) => id));
+          for (const card of Array.from(hands.player.children)) if (spent.has(Number(card.dataset.cardId))) card.remove();
+          await revealMoveCards(hands, reveal, signal);
         },
       });
-      opponentRevealKey = undefined;
-      hands.opponentTable.replaceChildren();
-      delete hands.opponentTable.dataset.count;
+      covered.draw(null, 0, false);
       move.beginCombat(key);
     }
     combatView.view.update({ ...latest, exchange: source, result: observedMoves.get(source.turn) ?? latest.result });
@@ -1133,7 +1369,7 @@ async function renderBattleHud(battle, sourceAvatar, {
       stopTimer = undefined;
     } else if (phase === 'move' && !stopTimer) {
       move.beginMove(visibleTurn);
-      endCutIns = showMoveCutIns(battle, hud.movePresentation, encounter, signal);
+      endCutIns = showMoveCutIns(battle, hud.movePresentation, encounter, signal, undefined, stands);
       stopTimer = startMoveTimer(main, hud.time, signal, move.onTimeout);
       playQuestBattleEffect('phase', signal);
     }
@@ -1202,9 +1438,10 @@ async function renderBattleHud(battle, sourceAvatar, {
       drawingTurn = visibleTurn;
       battle.dataset.readyTurn = String(ready.turn);
       battle.dataset.drawState = 'dealing';
+      deck.startDeal();
       void revealHand(hands, ready, signal, {
-        opponentHandCount: latest.opponentHandCount,
-        onDeal() { if (deckSize > 0) deck.value = String(--deckSize); },
+        opponentHandCount: latest.opponentHandCount, covered,
+        onDeal: deck.deal,
         onEvent() { if (renderedState === 'draw') showTable('drw_evt'); },
       }).then(metadata => {
         if (signal.aborted || !isCurrent() || ready.turn !== visibleTurn) return;
@@ -1236,10 +1473,9 @@ async function renderBattleHud(battle, sourceAvatar, {
       }
       return;
     }
-    if (['move', 'committing', 'settling'].includes(latest.phase) && Number.isSafeInteger(latest.opponentHandCount) &&
-        Number.isSafeInteger(latest.opponentMoveCount)) {
+    if (['move', 'committing', 'settling'].includes(latest.phase) && Number.isSafeInteger(latest.opponentMoveCount)) {
       hands.opponentTable.hidden = false;
-      drawOpponentCards(hands, latest.opponentHandCount, latest.opponentMoveCount, signal);
+      covered.draw(latest.opponentHandCount, latest.opponentMoveCount);
     }
     if (['move', 'committing', 'settling'].includes(latest.phase)) paint(latest.phase);
     if (Number.isFinite(latest.moveStartedAt)) battle.dataset.moveStartedAt = String(latest.moveStartedAt);
@@ -1248,6 +1484,9 @@ async function renderBattleHud(battle, sourceAvatar, {
   function receive(next) {
     if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
     latest = next.adventure.battle;
+    featPlayback.preload(latest.feats?.used);
+    skills?.update(latest.feats);
+    if (battle.dataset.moveResult === 'settled') void featPlayback.play(latest.feats?.used, visibleTurn, null);
     const moveTurn = latest.ready?.turn ?? latest.turn;
     if (latest.result && Number.isInteger(moveTurn) && !observedMoves.has(moveTurn)) observedMoves.set(moveTurn, latest.result);
     for (const source of [...(latest.exchangeHistory ?? []), latest.exchange]) {
@@ -1311,7 +1550,8 @@ export async function mountQuestBattleEntry(view, board, {
   const { up, down, names } = assets.opening;
   const openingLayers = new Map([...assets.common, ...(up?.frames ?? []), ...(down?.frames ?? []),
     ...Object.values(names ?? {})].filter(Boolean).map(item => [item.file, item]));
-  const [definitions, stands] = await Promise.all([loadCards(cards), battleStands(signal),
+  const definitionsTask = loadCards(cards);
+  const [definitions, stands] = await Promise.all([definitionsTask, definitionsTask.then(definitions => battleStands(signal, definitions)),
     prepareQuestBattleStage([...openingLayers.values()])]);
   if (signal.aborted || view.inert || !isCurrent()) return;
   const sourceAvatar = board.querySelector('#quest-map-avatar');

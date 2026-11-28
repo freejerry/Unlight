@@ -90,6 +90,13 @@ export const QUEST_BATTLE_CARD_ADD_REPLY = 65;
 export const QUEST_BATTLE_CARD_REMOVE_REPLY = 66;
 export const QUEST_CHARA_CHANGE_REPLY = 72;
 export const QUEST_DAMAGE_REPLY = 73;
+const QUEST_FEAT_SEALED_REPLY = 81;
+const QUEST_FEAT_ON_REPLY = 107;
+const QUEST_FEAT_OFF_REPLY = 108;
+const QUEST_FEAT_USED_REPLY = 110;
+export const QUEST_FEAT_REPLIES = [
+  QUEST_FEAT_SEALED_REPLY, QUEST_FEAT_ON_REPLY, QUEST_FEAT_OFF_REPLY, QUEST_FEAT_USED_REPLY,
+];
 export const QUEST_CHARA_REVIVE_REPLY = 75;
 export const QUEST_HIT_POINT_REPLY = 79;
 export const QUEST_CHARA_TRANSFORM_REPLY = 112;
@@ -656,6 +663,22 @@ export function readQuestDirectionReply(reply) {
   reply.done();
   if (direction < -1 || direction > 3) throw new Error('Invalid quest direction.');
   return { player, direction };
+}
+
+export function readQuestFeatReply(reply) {
+  if (!QUEST_FEAT_REPLIES.includes(reply.command)) throw new Error('Unexpected quest feat reply.');
+  if (reply.command === QUEST_FEAT_SEALED_REPLY) {
+    const player = readDuelBoolean(reply);
+    reply.done();
+    return { kind: 'sealed', player };
+  }
+  const used = reply.command === QUEST_FEAT_USED_REPLY;
+  const player = used ? readDuelBoolean(reply) : true;
+  const featId = reply.int();
+  reply.done();
+  if (featId <= 0) throw new Error('Invalid quest feat ID.');
+  const kind = used ? 'used' : (reply.command === QUEST_FEAT_ON_REPLY ? 'on' : 'off');
+  return { kind, player, featId };
 }
 
 export function readQuestMoveCardReply(reply) {

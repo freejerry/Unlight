@@ -2,6 +2,8 @@
 
 盤點自 `cc2ef53` 起比對 ActionScript、Ruby 及原始資料表，並隨固定舞台的交付補入實跑結果。封包編號由 Ruby 2.7 載入原始 `Unlight::Command::RECEIVE_COMMANDS`／`SEND_COMMANDS` 並取陣列索引。以下 CS 表示客戶端送給原版 Quest、SC 表示原版 Quest 回覆。Data SC6、Lobby SC4 是不同服務的角色資料封包。
 
+本輪優先核對技能、牌庫、敵方蓋牌、立繪、技能說明、發牌、角色卡翻面與揭牌時點，另按原版事件列出各段動畫的驗收條件。[戰鬥九項驗收](battle-regressions.md)
+
 ## 分支基準與可直接沿用的部分
 
 | 項目 | 整合分支 | 後續範圍及診斷證據 |

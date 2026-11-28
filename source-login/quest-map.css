@@ -44,7 +44,7 @@
 .quest-battle-hp { width: 150px; color: #aaa; font: 18px/40px "Bradley Gratis", Georgia, serif; }
 .quest-battle-hp strong { color: #fff; font-size: 36px; font-weight: normal; }
 #quest-battle-opponent-hp { text-align: right; }
-.quest-battle-deck-count { width: 163px; text-align: center; font: 22px/40px "Bradley Gratis", Georgia, serif; }
+.quest-battle-deck-count { width: 163px; text-align: center; font: 28px/40px "Bradley Gratis", Georgia, serif; }
 .quest-battle-bonus {
   text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000, 0 0 2px #000;
   font-family: "Bradley Gratis", Georgia, serif;
@@ -146,6 +146,46 @@
   font: 15px/18px "Noto Serif TC", Georgia, serif;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.quest-battle-skill-name[tabindex] { pointer-events: auto; }
+.quest-battle-skill-name[data-ready="true"] { color: #ffff30; font-size: 16px; font-weight: bold; }
+#quest-battle-skill-detail {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 8px;
+  color: white;
+  background: rgb(0 0 0 / 80%);
+  font: 12px/14px Arial, var(--interface-font), sans-serif;
+  opacity: 1;
+  transition: opacity 100ms ease-out;
+}
+#quest-battle-skill-detail[data-side="player"] { transform: translateY(-100%); }
+#quest-battle-skill-detail[aria-hidden="true"] { opacity: 0; transition-duration: 50ms; }
+#quest-battle-skill-detail dl { display: grid; grid-template-columns: 50px 1fr; margin: 0; }
+#quest-battle-skill-detail dd { margin: 0; }
+.quest-battle-skill-effect { color: #ffff00; white-space: pre-line; }
+.quest-battle-skill-effect strong { display: block; }
+.quest-battle-character-inspect, .quest-battle-character-review { position: absolute; }
+.quest-battle-character-inspect, .quest-battle-character-review { transform-origin: 80px 120px; }
+.quest-battle-character-inspect :is(.quest-battle-character-review, .quest-battle-character-card) { inset: 0; }
+.quest-battle-layer :is(.quest-battle-character-flip, .quest-battle-character-feat) {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.quest-battle-character-inspect .quest-battle-character-feat {
+  color: white;
+  text-align: left;
+  font: bold 11px/16px var(--interface-font), serif;
+}
+.quest-battle-character-review img, .quest-battle-character-description, .quest-battle-character-requirements {
+  position: absolute;
+  pointer-events: none;
+}
+.quest-battle-character-description, .quest-battle-character-requirements {
+  margin: 0;
+  color: white;
+  white-space: pre-line;
+  font: 10px/12px var(--interface-font), serif;
 }
 .quest-battle-hands ol { inset: 0; margin: 0; padding: 0; list-style: none; }
 .quest-battle-hand-card, .quest-battle-dealt-back {
