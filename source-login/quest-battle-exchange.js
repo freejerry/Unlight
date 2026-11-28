@@ -227,17 +227,25 @@ export function createQuestBattleExchange(battle, {
     }
     const playerDice = playerAttacks ? attackDice : defenceDice;
     const foeDice = playerAttacks ? defenceDice : attackDice;
-    const canvas = append(root, 'canvas', 'quest-battle-dice-roll', 'quest-battle-dice-roll');
+    // DiceManager adds each roll to the top of the stage, above the character cards.
+    const canvas = append(battle, 'canvas', 'quest-battle-dice-roll', 'quest-battle-dice-roll');
     canvas.setAttribute('aria-hidden', 'true');
+    const removeRoll = () => canvas.remove();
+    signal.addEventListener('abort', removeRoll, { once: true });
     try {
-      await playDiceRoll(canvas, { playerDice, foeDice, playerAttacks }, { signal,
-        onThrow: () => playQuestBattleEffect('dice', signal) });
-    } catch { /* A missing visual renderer does not change the authoritative dice record. */ }
-    if (!reduced() && live()) await wait(500, signal);
-    if (live()) await Promise.all([
-      animate(canvas, [{ opacity: 1 }, { opacity: 0 }], 500, signal).then(() => canvas.remove()),
-      rollArt.then(art => live() && drawResultSymbols(art?.diceResult, playerDice, foeDice, playerAttacks)),
-    ]);
+      try {
+        await playDiceRoll(canvas, { playerDice, foeDice, playerAttacks }, { signal,
+          onThrow: () => playQuestBattleEffect('dice', signal) });
+      } catch { /* A missing visual renderer does not change the authoritative dice record. */ }
+      if (!reduced() && live()) await wait(500, signal);
+      if (live()) await Promise.all([
+        animate(canvas, [{ opacity: 1 }, { opacity: 0 }], 500, signal).then(removeRoll),
+        rollArt.then(art => live() && drawResultSymbols(art?.diceResult, playerDice, foeDice, playerAttacks)),
+      ]);
+    } finally {
+      signal.removeEventListener('abort', removeRoll);
+      removeRoll();
+    }
   }
 
   async function damageCaption(hit, x, hitSignal) {

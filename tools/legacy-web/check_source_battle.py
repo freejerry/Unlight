@@ -358,6 +358,104 @@ def check_bench_hover(page, stage, battle, directory, *, reserve_index, card_id,
             'turnCueBounds': cue_bounds, 'restoredBounds': restored, 'raster': pixels}
 
 
+def check_opponent_hover(page, stage, battle, directory):
+    tabs = battle.locator('#quest-battle-opponent-tabs')
+    tab = tabs.locator('.quest-battle-opponent-tab[data-roster-index="0"][data-card-id="1004"]')
+    trigger = tab.locator('#quest-battle-opponent-trigger[data-opponent-trigger]')
+    plate = tab.locator('img[src$="quest-battle-reserve-tab-base.png"]')
+    card = battle.locator('#quest-battle-opponent-character')
+    slide = card.locator('xpath=..')
+    flip = card.locator('.quest-battle-character-flip')
+    cue = flip.locator('img.quest-battle-character-turn-cue[src$="/battle-card-art/chara-front-turn.png"]')
+    health = battle.locator('#quest-battle-opponent-hp')
+    move_done = battle.locator('button[data-move-command="done"]')
+    base = battle.bounding_box()
+
+    def pointer(x, y):
+        page.mouse.move(base['x'] + x, base['y'] + y)
+
+    def expand(face):
+        pointer(110, 17)
+        expect(trigger).to_have_attribute('aria-expanded', 'true')
+        expect(card).to_have_attribute('data-card-id', '1004')
+        expect(card).to_have_attribute('data-face', face)
+        expect(card).to_have_css('opacity', '1')
+        expect(slide).to_have_css('transition-duration', '0.15s')
+        page.wait_for_function("""() => {
+          const view = document.getElementById('quest-battle-opponent-character');
+          const board = document.getElementById('quest-map-battle');
+          return view && Math.abs(view.getBoundingClientRect().top - board.getBoundingClientRect().top) < 0.25;
+        }""", timeout=qa.TIMEOUT)
+        pointer(110, 170)
+        expect(trigger).to_have_attribute('aria-expanded', 'true')
+        return match_reserve_bounds(card, battle, [0, 0, 168, 240])
+
+    def collapse():
+        pointer(205, 210)
+        expect(trigger).to_have_attribute('aria-expanded', 'false')
+        expect(card).to_have_js_property('inert', True)
+        expect(card).to_have_css('opacity', '0')
+        expect(slide).to_have_css('transition-duration', '0.08s')
+        return match_reserve_bounds(plate, battle, [0, 0, 168, 32])
+
+    expect(tabs.locator('.quest-battle-opponent-tab')).to_have_count(1)
+    expect(health).to_have_text('1/1')
+    expect(trigger).to_be_enabled()
+    expect(trigger).to_have_attribute('aria-expanded', 'false')
+    expect(card).to_be_hidden()
+    expect(move_done).to_be_enabled()
+    expect(plate).to_have_js_property('naturalWidth', 168)
+    expect(plate).to_have_js_property('naturalHeight', 32)
+    collapsed = match_reserve_bounds(plate, battle, [0, 0, 168, 32])
+    match_reserve_bounds(trigger, battle, [0, 0, 168, 32])
+    fields = {'name': ('蝙蝠', [8, 2, 130, 18]), 'hp': ('1', [138, -2, 30, 25]),
+              'level': ('1', [14, 19, 19, 14]), 'attack': ('3', [61, 19, 19, 14]),
+              'defense': ('1', [100, 19, 19, 14]), 'maxHp': ('1', [150, 19, 19, 14])}
+    for field, (text, geometry) in fields.items():
+        label = tab.locator(f'[data-reserve-field="{field}"]')
+        expect(label).to_have_text(text)
+        match_reserve_bounds(label, battle, geometry)
+    sent = sent_quest_actions(page)
+    rest = snapshot(page, stage, directory, '05-q1-opponent-tab-at-rest')
+    opened = expand('front')
+    raised_plate = match_reserve_bounds(plate, battle, [0, 240, 168, 32])
+    raster = character_raster(card)
+    expect(card.locator('canvas.quest-battle-character-card')).to_have_attribute('aria-label', '蝙蝠 Lv.1 · HP 1 · ATK 3 · DEF 1')
+    expect(cue).to_be_visible()
+    expect(cue).to_have_css('opacity', '1')
+    cue_bounds = match_reserve_bounds(cue, battle, [48, 104, 87.95, 47.95])
+    front = snapshot(page, stage, directory, '05-q1-opponent-raised-front')
+
+    flip.click(position={'x': 110, 'y': 170})
+    expect(card).to_have_attribute('data-face', 'back')
+    expect(flip).to_be_enabled()
+    expect(cue).to_be_hidden()
+    rear = card.locator('.quest-battle-character-review img[src$="/battle-card-art/chara-reverse-plate.png"]')
+    expect(rear).to_be_visible()
+    expect(rear).to_have_js_property('naturalWidth', 168)
+    expect(card.locator('.quest-battle-character-feat')).to_have_count(0)
+    reverse = snapshot(page, stage, directory, '05-q1-opponent-raised-reverse')
+    collapse()
+    expand('back')
+    expect(rear).to_be_visible()
+    expect(cue).to_be_hidden()
+    reopened = snapshot(page, stage, directory, '05-q1-opponent-reopened-reverse')
+    flip.click(position={'x': 110, 'y': 170})
+    expect(card).to_have_attribute('data-face', 'front')
+    expect(flip).to_be_enabled()
+    assert character_raster(card) == raster
+    collapse()
+    expect(health).to_have_text('1/1')
+    expect(battle.locator('#quest-battle-player-hp')).to_have_text('7/7')
+    expect(battle).to_have_attribute('data-phase', 'move')
+    expect(move_done).to_be_enabled()
+    assert sent_quest_actions(page) == sent
+    restored = snapshot(page, stage, directory, '05-q1-opponent-tab-restored')
+    return {'rest': rest, 'front': front, 'reverse': reverse, 'reopened': reopened, 'restored': restored,
+            'restBounds': collapsed, 'openedBounds': opened, 'raisedPlateBounds': raised_plate,
+            'turnCueBounds': cue_bounds, 'raster': raster}
+
+
 def close_battle_lobby_notices(page, stage, origin):
     check = qa.wait_lobby_achievement_check(page, 1)
     response = page.request.get(origin + '/source-login/lobby-achievement-art/index.json')
@@ -756,12 +854,65 @@ def check_enemy_first(page, stage, battle, directory, defense):
         end_x, end_y, *_ = flight[-1]['position']
         assert start_x > 290 and start_y == 84, flight
         assert abs(end_x + width / 2 - 40) <= 25 and abs(end_y + height / 2 - 105) <= 12, flight
-    dice = snapshot(page, stage, directory, '09-dice-roll-after-foe-card-discard')
+    dice, layering = check_dice_over_character(page, stage, battle, directory)
     hit = check_first_dwarf_hit(page, stage, battle, directory)
     expect(battle).to_have_attribute('data-exchange-index', '2', timeout=qa.TIMEOUT)
     return {'maskedTransfers': masked, 'flights': flights, 'before': before, 'closed': both, 'revealed': reveal,
             'submitted': submitted, 'after': after, 'bothFaces': both_faces, 'discardSweep': sweeps, 'movingAt': moving['at'],
-            'firstRenderedDiceAt': first_roll['at'], 'rolled': dice, 'firstHit': hit}
+            'firstRenderedDiceAt': first_roll['at'], 'rolled': dice, 'diceLayering': layering, 'firstHit': hit}
+
+
+def check_dice_over_character(page, stage, battle, directory):
+    from io import BytesIO
+
+    from PIL import Image
+
+    roll = battle.locator('#quest-battle-dice-roll')
+    page.wait_for_function("() => document.querySelector('#quest-battle-dice-roll[data-state=\"settled\"]')", timeout=qa.TIMEOUT)
+    proof = roll.evaluate("""canvas => {
+      const board = document.querySelector('#quest-map-battle');
+      const card = board.querySelector('#quest-battle-player-character canvas.quest-battle-character-card');
+      const stack = canvas.parentElement === board && card.closest('.quest-battle-roster');
+      const diceStyle = getComputedStyle(canvas);
+      if (!stack || Number(diceStyle.zIndex) <= Number(getComputedStyle(stack).zIndex)) return null;
+      const diceBox = canvas.getBoundingClientRect();
+      const { x, y, width, height } = card.getBoundingClientRect();
+      const left = x - diceBox.x, top = y - diceBox.y;
+      const gl = canvas.getContext('webgl2');
+      const cardPixels = card.getContext('2d').getImageData(0, 0, width, height).data;
+      const dicePixels = new Uint8Array(width * height * 4);
+      gl.readPixels(left, canvas.height - top - height, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dicePixels);
+      const samples = [];
+      let overlap = 0;
+      for (let py = 1; py < height - 1; py += 3) {
+        for (let px = 1; px < width - 1; px += 3) {
+          const diceIndex = 4 * ((height - 1 - py) * width + px);
+          const cardIndex = 4 * (py * width + px);
+          if (dicePixels[diceIndex + 3] !== 255 || cardPixels[cardIndex + 3] !== 255) continue;
+          const die = Array.from(dicePixels.subarray(diceIndex, diceIndex + 3));
+          const under = Array.from(cardPixels.subarray(cardIndex, cardIndex + 3));
+          if (Math.max(...die.map((value, index) => Math.abs(value - under[index]))) < 65) continue;
+          overlap++;
+          if (samples.length < 64) samples.push({x: left + px, y: top + py, die, under});
+        }
+      }
+      return {diceZ: Number(diceStyle.zIndex), cardZ: Number(getComputedStyle(stack).zIndex), opacity: Number(diceStyle.opacity),
+        pointerEvents: diceStyle.pointerEvents, cardBounds: [left, top, width, height],
+        canvasSize: [canvas.width, canvas.height], overlap, samples};
+    }""")
+    assert (proof and proof['overlap'] >= 24 and proof['opacity'] == 1 and proof['pointerEvents'] == 'none'
+            and proof['canvasSize'] == [780, 680] and proof['cardBounds'] == [0, 440, 168, 240]), proof
+    name = '09-dice-roll-after-foe-card-discard'
+    painted = stage.screenshot(path=directory / (name + '.png'), scale='css', animations='allow')
+    with Image.open(BytesIO(painted)) as image:
+        visual = image.convert('RGB')
+        for sample in proof['samples']:
+            sample['visible'] = list(visual.getpixel((sample['x'], sample['y'])))
+    matches = sum(all(abs(pixel - die) <= 8 for pixel, die in zip(sample['visible'], sample['die'], strict=True))
+                  for sample in proof['samples'])
+    assert matches >= len(proof['samples']) * 0.75, (matches, proof)
+    proof['compositedMatches'] = matches
+    return {'frame': name, 'sent': sent_quest_actions(page), 'replies': len(qa.read_movement_trace(page)['replies'])}, proof
 
 
 def check_first_dwarf_hit(page, stage, battle, directory):
@@ -1303,7 +1454,7 @@ def play_feat_replacement(page, stage, battle, directory):
 
 
 def check_voluntary_change(page, stage, battle, directory, *, turn=1, previous=(0, 635, '11/11', 1262),
-                           selected=(1, 21, '7/7', 25), player_attacks=False, split=True):
+                           selected=(1, 21, '7/7', 25), player_attacks=False, split=True, inspect_opponent=False):
     old_index, old_id, old_hp, old_skill = previous
     new_index, new_id, new_hp, new_skill = selected
     chooser = battle.locator('#quest-battle-character-change')
@@ -1357,6 +1508,24 @@ def check_voluntary_change(page, stage, battle, directory, *, turn=1, previous=(
         expect(chooser).to_have_attribute('data-state', 'open')
         expect(reserve).to_be_enabled()
         evidence['portraitsExited'] = snapshot(page, stage, directory, '04-q82-chooser-after-move-portraits-exit')
+        if inspect_opponent:
+            sent = sent_quest_actions(page)
+            origin = battle.bounding_box()
+            trigger = battle.locator('#quest-battle-opponent-trigger')
+            opponent = battle.locator('#quest-battle-opponent-character[data-card-id="1008"]')
+            page.mouse.move(origin['x'] + 110, origin['y'] + 17)
+            expect(trigger).to_have_attribute('aria-expanded', 'true')
+            expect(opponent).to_have_css('opacity', '1')
+            page.mouse.move(origin['x'] + 110, origin['y'] + 170)
+            match_reserve_bounds(opponent, battle, [0, 0, 168, 240])
+            expect(chooser).to_have_attribute('data-state', 'open')
+            expect(reserve).to_be_enabled()
+            evidence['opponentDuringChoice'] = snapshot(page, stage, directory, '04-q82-opponent-open-during-own-choice')
+            page.mouse.move(origin['x'] + 205, origin['y'] + 210)
+            expect(trigger).to_have_attribute('aria-expanded', 'false')
+            expect(opponent).to_have_css('opacity', '0')
+            expect(reserve).to_be_enabled()
+            assert sent_quest_actions(page) == sent
     assert gate_packets() == [[49, 4, 0, 1]]
     prior_requests = page.evaluate('(window.qaQuestWire.sockets.at(-1).characterRequests ??= []).length')
     earlier_sends = sent_quest_actions(page)
@@ -1836,6 +2005,20 @@ def check_battle(page, args, plan):
             evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
         if 'openingActions' in plan:
             assert [row[0] for row in evidence['2-and-6']['hand'] if row[2] == 'action'] == plan['openingActions']
+        if args.case == 'opponent-hover':
+            qa.music(page, 'quest-duel', 'bgm000.mp3')
+            trace = qa.read_movement_trace(page)
+            encounter, = [packet for packet in trace['replies'] if packet[0] == 37]
+            assert encounter[4:] == ['21', '1004', 11, 0, 0, 0, 0, 0, 0], encounter
+            assert quest[6:] == (0, 0, 0), quest
+            evidence['encounter'] = encounter
+            evidence['opponentHover'] = check_opponent_hover(page, stage, battle, args.screens)
+            assert [code for code, _ in sent_quest_actions(page) if code >= 22] == [22]
+            assert len(live) == 5 and all(not socket.is_closed() for socket in live), live
+            assert qa.quest_inventory(args.database, avatar_id) == [quest[:2] + (2,) + quest[3:]]
+            assert qa.quest_deck(args.database, avatar_id) == [deck[0][:3] + (1,)]
+            assert not errors, errors
+            return
         if forced:
             qa.music(page, 'quest-duel', 'bgm000.mp3')
             encounter, = [packet for packet in qa.read_movement_trace(page)['replies'] if packet[0] == 37]
@@ -1892,7 +2075,9 @@ def check_battle(page, args, plan):
             elif borrower:
                 evidence['1'] = play_borrower_changes(page, stage, battle, args.screens)
             else:
-                evidence['4']['voluntaryChange'] = check_voluntary_change(page, stage, battle, args.screens)
+                evidence['4']['voluntaryChange'] = check_voluntary_change(
+                    page, stage, battle, args.screens, inspect_opponent=bench_hover,
+                )
                 if bench_hover:
                     expect(active).to_have_attribute('data-card-id', '21')
                     grunwald_raster = character_raster(active)
@@ -1944,13 +2129,15 @@ def main():
     parser.add_argument('--chromium', default='/usr/bin/chromium')
     parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition',
                                           'feat-replacement', 'voluntary-change', 'borrower-change', 'forced-change',
-                                          'forced-change-before-dice', 'bench-hover'),
+                                          'forced-change-before-dice', 'bench-hover', 'opponent-hover'),
                         default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
     if (args.case == 'skill') != (args.plan is not None):
         parser.error('--case skill and its original --plan must be used together')
-    if args.case == 'forced-change':
+    if args.case == 'opponent-hover':
+        plan = {'questId': 1, 'cardId': 21}
+    elif args.case == 'forced-change':
         plan = {
             'questId': 1, 'cardId': 21, 'direction': 1, 'openingActions': [12, 18, 4, 2, 39],
             'playerFirst': False, 'range': 3, 'wins': False,

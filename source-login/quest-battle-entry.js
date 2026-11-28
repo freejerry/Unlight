@@ -1405,9 +1405,10 @@ async function renderBattleHud(battle, sourceAvatar, {
   const skillPresentation = createSkillPresentation(skills);
   const chat = renderChatDecoration(battle, hud.chat);
   const health = renderHealth(main, assets, encounter, definitions, signal);
+  const opponentHealth = main.querySelector('#quest-battle-opponent-hp');
   const healthIndicators = [
     ['player', main.querySelector('#quest-battle-player-hp')],
-    ['opponent', main.querySelector('#quest-battle-opponent-hp')],
+    ['opponent', opponentHealth],
   ];
   const rangeNames = ['short', 'middle', 'long', 'hiding'];
   let range = sprite(main, hud.range?.[rangeNames[encounter.duel.distance - 1]]);
@@ -1441,6 +1442,16 @@ async function renderBattleHud(battle, sourceAvatar, {
     ),
     restoreFocus: () => status.focus({ preventScroll: true }),
   });
+  const [opponentCardId] = encounter.opponentCardIds;
+  const ordinaryMap = Number.isInteger(mapIndex) && mapIndex >= 0 && mapIndex < 36;
+  const opponentTab = ordinaryMap && encounter.opponentCardIds.length === 1 && Number.isInteger(opponentCardId)
+    && opponentCardId > 0 && definitions.has(opponentCardId) ? createQuestBattleReserve(battle, {
+      artwork: hud.characterChange?.reserveTab, definitions, signal, side: 'opponent',
+      inspect: (parent, definition, row, damage, cardSignal) => inspectCharacter(
+        parent, definition, row.cardId, damage, cardSignal, row.index, 'quest-battle-opponent-character',
+      ),
+      restoreFocus: () => status.focus({ preventScroll: true }),
+    }) : null;
   const actors = {
     player: { index: 0, cardId: player }, opponent: { index: 0, cardId: encounter.opponentCardIds[0] },
   };
@@ -1450,7 +1461,8 @@ async function renderBattleHud(battle, sourceAvatar, {
     AbortSignal.any([signal, faceScope.signal]));
   const hands = createHands(battle);
   const covered = createCoveredOpponentCards(hands, signal);
-  const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat, roster, reserveTabs?.root].filter(Boolean);
+  const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat,
+    roster, reserveTabs?.root, opponentTab?.root].filter(Boolean);
   const move = createQuestBattleMove({ battle, scene, encounterKey: encounter.key, hud, hands, controls, combatControls, status,
     multi: encounter.duel.multi, signal, isCurrent });
   const changeView = createQuestBattleChange(battle, { scene, encounterKey: encounter.key, signal, isCurrent, assets: hud, definitions,
@@ -1478,6 +1490,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   let resultStatus;
   let characterPresentation;
   let defeatedChange;
+  let opponentInspectionEnabled = false;
   const featPlayback = createQuestFeatPlayback(battle, { signal, isCurrent, onSound: onBattleSound, wait });
   const damageScopes = createDamageScopes(standees, signal, visualRoster);
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
@@ -1487,7 +1500,9 @@ async function renderBattleHud(battle, sourceAvatar, {
     const face = activeFace;
     const card = definitions.get(actors.player.cardId);
     await health.update(hitPoints);
-    if (signal.aborted || !isCurrent() || face !== activeFace) return;
+    if (signal.aborted || !isCurrent()) return;
+    updateOpponentInspection();
+    if (face !== activeFace) return;
     const hp = hitPoints.player;
     if (card && Number.isInteger(hp) && hp <= card.hp) {
       await renderCharacterCard(face.canvas, card, { signal: AbortSignal.any([signal, faceScope.signal]), damage: card.hp - hp });
@@ -1501,6 +1516,22 @@ async function renderBattleHud(battle, sourceAvatar, {
       player: { ...roster.player, activeIndex: actors.player.index },
       opponent: { ...roster.opponent, activeIndex: actors.opponent.index },
     };
+  }
+
+  function updateOpponentInspection() {
+    if (!opponentTab) return;
+    const party = visualRoster()?.opponent;
+    const row = party?.cards[party.activeIndex];
+    const shown = opponentHealth?.dataset;
+    if (party?.cards.length !== 1 || row?.cardId !== opponentCardId || Number(shown?.cardId) !== row.cardId
+      || Number(shown?.rosterIndex) !== row.index) {
+      opponentTab.update(undefined, true, { enabled: false });
+      return;
+    }
+    // Follow the presented gauge so an early Ruby damage receipt cannot expose HP ahead of its animation.
+    const hp = Number(shown.hp);
+    const displayed = { ...row, hp: Number.isInteger(hp) ? hp : null, alive: Number.isInteger(hp) ? hp > 0 : null };
+    opponentTab.update({ ...party, cards: [displayed] }, false, { enabled: opponentInspectionEnabled });
   }
 
   function observeCurrentSkills() {
@@ -1920,6 +1951,8 @@ async function renderBattleHud(battle, sourceAvatar, {
     const inspectionEnabled = !outcome?.duel && !['uncertain', 'closed', 'terminal'].includes(latest.phase)
       && latest.exchange?.phase !== 'uncertain';
     reserveTabs?.update(visualRoster()?.player, pickerActive || actorChanging, { enabled: inspectionEnabled });
+    opponentInspectionEnabled = inspectionEnabled;
+    updateOpponentInspection();
     if (outcome) updateDuelOutcome(outcome);
     if (terminalTask) return;
     if (!combatView && latest.phase === 'terminal' && outcome?.duel) {
@@ -2049,6 +2082,8 @@ async function renderBattleHud(battle, sourceAvatar, {
   void scene.readyBattle({ signal, encounterKey: encounter.key }).then(() => receive(scene.snapshot)).catch(() => {
     if (signal.aborted || !isCurrent()) return;
     reserveTabs?.update(visualRoster()?.player, false, { enabled: false });
+    opponentInspectionEnabled = false;
+    updateOpponentInspection();
     paint('uncertain');
   });
 }

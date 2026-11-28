@@ -2,10 +2,10 @@ import { renderCharacterCard } from './character-card.js';
 
 const art = new URL('./quest-art/', import.meta.url);
 const cardWidth = 168;
+const cardHeight = 240;
 const fieldHeight = 680;
-const inspectTop = 440;
-const restOffset = fieldHeight - inspectTop;
 const quadOut = 'cubic-bezier(.333333, .666667, .666667, 1)';
+const expandedCards = new WeakMap();
 
 function place(node, x, y, width, height) {
   Object.assign(node.style, {
@@ -32,14 +32,19 @@ function reserveLabel(tab, field, bounds) {
   return label;
 }
 
-/** The own reserves' original tab-to-card motion from DuelCharaCards. */
-export function createQuestBattleReserve(battle, { artwork, definitions, signal, inspect, restoreFocus }) {
-  if (!artwork?.base) return;
+/** The original offstage status tab and card motion from DuelCharaCards. */
+export function createQuestBattleReserve(battle, { artwork, definitions, signal, inspect, restoreFocus, side = 'player' }) {
+  const foe = side === 'opponent';
+  const tabOffset = artwork?.offsets?.[foe ? 'foe' : 'player'];
+  if (!artwork?.base || !tabOffset) return;
+  const inspectTop = foe ? 0 : fieldHeight - cardHeight;
+  const restOffset = foe ? -cardHeight : cardHeight;
+  const prefix = foe ? 'quest-battle-opponent' : 'quest-battle-reserve';
   const root = document.createElement('div');
-  root.id = 'quest-battle-reserve-tabs';
-  root.className = 'quest-battle-layer quest-battle-reserve-tabs';
+  root.id = `${prefix}-tabs`;
+  root.className = `quest-battle-layer ${root.id}`;
   root.style.zIndex = '30';
-  root.setAttribute('aria-label', '候補角色');
+  root.setAttribute('aria-label', foe ? '對手角色' : '候補角色');
   battle.append(root);
   const slots = new Map();
   let enabled = false;
@@ -66,8 +71,13 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
   function close(slot, { immediate = false, returnFocus = true } = {}) {
     if (active !== slot) return;
     active = undefined;
+    if (expandedCards.get(battle) === closeActive) expandedCards.delete(battle);
     if (returnFocus && slot.inspector?.card.contains(document.activeElement)) slot.trigger.focus({ preventScroll: true });
     setOpen(slot, false, immediate);
+  }
+
+  function closeActive() {
+    if (active) close(active);
   }
 
   function paintInspector(slot) {
@@ -87,12 +97,13 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
 
   function open(slot) {
     if (!enabled || slot.trigger.disabled || active === slot || slot.signal.aborted) return;
-    if (active) close(active);
+    expandedCards.get(battle)?.();
     if (!slot.inspector) {
       slot.damage = currentDamage(slot.row, slot.definition);
       slot.inspector = inspect(slot.track, slot.definition, slot.row, slot.damage, slot.signal);
       const { card } = slot.inspector;
       card.removeAttribute('data-roster-index');
+      card.style.top = `${inspectTop}px`;
       card.style.opacity = '0';
       card.style.transitionProperty = 'opacity, visibility';
       card.style.transitionTimingFunction = quadOut;
@@ -102,14 +113,16 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
       void card.offsetWidth;
     }
     active = slot;
+    expandedCards.set(battle, closeActive);
     setOpen(slot, true);
   }
 
   function createSlot(row) {
     const node = document.createElement('div');
-    node.className = 'quest-battle-reserve-tab';
+    node.className = `${prefix}-tab`;
     node.dataset.rosterIndex = String(row.index);
     node.dataset.cardId = String(row.cardId);
+    node.dataset.side = side;
     place(node, 0, 0, cardWidth, fieldHeight);
     const track = document.createElement('div');
     place(track, 0, 0, cardWidth, fieldHeight);
@@ -117,7 +130,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     track.style.transitionTimingFunction = quadOut;
     node.append(track);
     const tab = document.createElement('div');
-    const [x, y] = artwork.offsets.player;
+    const [x, y] = tabOffset;
     const { width, height } = artwork.base;
     place(tab, x, inspectTop + y, width, height);
     track.append(tab);
@@ -129,8 +142,13 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     const definition = definitions.get(row.cardId);
     const trigger = document.createElement('button');
     trigger.type = 'button';
-    trigger.id = `quest-battle-reserve-trigger-${row.index}`;
-    trigger.dataset.reserveTrigger = '';
+    if (foe) {
+      trigger.id = `${prefix}-trigger`;
+      trigger.dataset.opponentTrigger = '';
+    } else {
+      trigger.id = `${prefix}-trigger-${row.index}`;
+      trigger.dataset.reserveTrigger = '';
+    }
     trigger.style.pointerEvents = 'auto';
     trigger.setAttribute('aria-label', definition?.name ? `檢視${definition.name}的角色卡` : '檢視候補角色');
     place(trigger, 0, 0, width, height);
@@ -138,7 +156,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     const hitArea = document.createElement('div');
     hitArea.setAttribute('aria-hidden', 'true');
     // Keep the original card hit area while its visible face rotates away.
-    place(hitArea, 0, inspectTop, cardWidth, restOffset);
+    place(hitArea, 0, inspectTop, cardWidth, cardHeight);
     track.append(hitArea);
     const life = new AbortController();
     const slot = { node, track, hitArea, image, labels, trigger, definition, row, life, signal: AbortSignal.any([signal, life.signal]) };
@@ -175,7 +193,7 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
   function updateSlot(slot, row, order) {
     slot.row = row;
     const { node, definition, trigger, image, labels } = slot;
-    node.style.left = `${(order + 1) * cardWidth}px`;
+    node.style.left = `${foe ? 0 : (order + 1) * cardWidth}px`;
     trigger.disabled = !enabled || !definition;
     if (root.children[order] !== node) root.insertBefore(node, root.children[order] ?? null);
     const hp = Number.isInteger(row.hp) ? row.hp : null;
@@ -201,7 +219,10 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
     if (root.contains(document.activeElement)) restoreFocus?.();
   }
 
-  signal.addEventListener('abort', () => root.remove(), { once: true });
+  signal.addEventListener('abort', () => {
+    if (active) close(active, { immediate: true, returnFocus: false });
+    root.remove();
+  }, { once: true });
   return {
     root,
     update(party, hidden, { enabled: canInspect = true } = {}) {
@@ -212,10 +233,13 @@ export function createQuestBattleReserve(battle, { artwork, definitions, signal,
         if (active) close(active, { immediate: true, returnFocus: false });
         for (const slot of slots.values()) slot.hovered = false;
       }
-      root.hidden = hidden;
+      root.hidden = hidden || (foe && !party);
       root.inert = !enabled;
       if (hidden || !party) return;
-      const rows = party.cards.filter(({ index }) => index !== party.activeIndex);
+      const rows = foe
+        ? party.cards.filter(({ index, cardId }) => party.cards.length === 1 && index === party.activeIndex
+          && Number.isSafeInteger(cardId) && cardId > 0 && definitions.has(cardId))
+        : party.cards.filter(({ index }) => index !== party.activeIndex);
       const identities = new Map(rows.map(({ index, cardId }) => [index, cardId]));
       for (const [index, slot] of slots) {
         if (identities.get(index) === slot.row.cardId) continue;

@@ -1993,7 +1993,13 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   }
 
   async function loadStartingHp() {
-    const ids = new Set(roster.player.cards.map((card) => card.cardId));
+    const startingCards = [...roster.player.cards];
+    const mapId = land?.mapId;
+    // Original ordinary Quest encounters use the CPU card's base HP. Tower encounters can scale it.
+    if (Number.isInteger(mapId) && mapId >= 1 && mapId <= LAST_ORDINARY_SEARCH_MAP) {
+      startingCards.push(...roster.opponent.cards.filter(({ cardId }) => validQuestCardId(cardId)));
+    }
+    const ids = new Set(startingCards.map(({ cardId }) => cardId));
     const signal = AbortSignal.any([catalogRequests.signal, AbortSignal.timeout(3500)]);
     const params = new URLSearchParams({ ids: [...ids].join(',') });
     const response = await fetch(`/api/quest-character-cards?${params}`, { signal });
@@ -2005,8 +2011,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if (!ids.has(id) || !Number.isInteger(hp) || hp < 0 || hp > 0x7fffffff || bases.has(id)) return;
       bases.set(id, hp);
     }
-    // Quest passes the enemy-only HP adjustment separately; local HP uses the published base and SC37 damage.
-    for (const card of roster.player.cards) {
+    for (const card of startingCards) {
       if (!bases.has(card.cardId) || changedHp.has(card)) continue;
       const hp = bases.get(card.cardId) - card.seedDamage;
       if (card.alive === true && hp <= 0) continue;

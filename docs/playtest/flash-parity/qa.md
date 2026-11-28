@@ -157,7 +157,7 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case skill \
   --plan "$proof_dir/q1-stock-smash.json" --screens "$proof_dir/q1-battle-regressions"
 ```
 
-兩個案例都保留 780×680 PNG、實際封包及瀏覽器逐幀資料於各自的 `--screens` 目錄。Playwright 只暫緩與轉交 Ruby 的原始回覆。隔離環境的隨機種子用於重跑相同牌序。 [逐項來源與動畫順序](battle-regressions.md) · [瀏覽器腳本](../../../tools/legacy-web/check_source_battle.py)
+兩個案例都保留 780×680 PNG、實際封包及瀏覽器逐幀資料於各自的 `--screens` 目錄。Playwright 只暫緩與轉交 Ruby 的原始回覆。隔離環境的隨機種子用於重跑相同牌序。Q4 的 `presentation` 在實際 `SC56` 後，取樣骰子與左下角色卡同時不透明的位置，對照 WebGL 緩衝與瀏覽器畫面的 RGB，另記錄兩者層級與骰子畫布的指標穿透設定。 [逐項來源與動畫順序](battle-regressions.md) · [瀏覽器腳本](../../../tools/legacy-web/check_source_battle.py)
 
 ### 重跑馬庫斯的攻防抗衡
 
@@ -243,6 +243,17 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case bench-hover \
   --port 4397 --database "$proof_dir/bench-hover-ruby/app/server/data/game_dev2.db" \
   --user questbench --password-file "$proof_dir/questbench-password" \
   --screens "$proof_dir/bench-hover-native"
+```
+
+### 重跑 Q1 敵方單卡檢視
+
+隔離角色以無傷勢的古魯瓦爾多 #21 進入魔女山谷 Q1，搜尋種子 0，對局種子 32。等場地 11 的原版 `SC37/40/46` 開放 Move 後，於 `(110,17)` 滑入敵方卡籤，在 `(110,170)` 點擊翻面，移到 `(205,210)` 收回。確認蝙蝠 #1004 的名字、生命、攻防與空技能卡背。重複滑入後仍是背面，再點擊翻回正面。兩次收合仍保留 Move，並比較所有圖片擷取時的 Quest 指令數。固定繁中 Flash 的對照擷取用原版 `F3` 隱藏舞台除錯字樣。 [兩版實跑規格及證據](quest-pve.md#已知敵方單卡檢視)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case opponent-hover \
+  --port 4397 --database "$proof_dir/opponent-hover-ruby/app/server/data/game_dev2.db" \
+  --user questopponent --password-file "$proof_dir/questopponent-password" \
+  --screens "$proof_dir/opponent-hover-native"
 ```
 
 ### 重跑同回合攻守互換與次回合

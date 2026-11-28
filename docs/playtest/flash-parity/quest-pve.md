@@ -202,6 +202,12 @@
 
 Q1 新版第二回合，馬庫斯以 8/8 接替後，仍可滑入檢視已倒下的古魯瓦爾多。候補正反面亮度為 50%，狀態列保留名稱及最大 7 HP，省略目前 HP。倒下後的主戰畫布與候補畫布逐像素相同。再次展開保留卡背，來回操作沒有新增 Quest 指令。 [倒下候補正面](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/04-q1-bench-21-original-rollover-front.png) · [倒下候補背面](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/04-q1-bench-21-authored-reverse.png) · [Q1 封包及畫面紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/battle-numbered-wire.json)
 
+### 已知敵方單卡檢視
+
+一般 Quest 的 `SC37` 帶入已確認的 CPU 角色 ID。Q1 的名單只有蝙蝠 #1004，原版仍以 `SC40` 的多人編排旗標開場。原版已知敵方首位卡收起在 `(0,-240)`，同一個 168×32 角色狀態列留在 `(0,0)`。滑入後，卡身以 150 ms Quad-out 到 `(0,0)`，狀態列同時到 `(0,240)`。滑離整張卡後，以 80 ms 收回。原版兩邊共用狀態列素材。卡背按角色的技能資料呈現，蝙蝠 #1004 的資料沒有技能。 [原版加入敵方狀態列](../../../app/client/src/view/scene/game/DuelCharaCards.as#L1305) · [原版展開與收回](../../../app/client/src/view/scene/game/DuelCharaCards.as#L1047) · [Quest 原版角色名單](../../../app/server/src/controller/quest_controller.rb#L188) · [原版共用素材清單](../../../source-login/quest-art/sources.json)
+
+原版與新版使用同一副無傷勢牌組和種子實跑 Q1。原版以 `F3` 關閉除錯字樣後，兩版皆從 `(110,17)` 滑入、在 `(110,170)` 翻面、至 `(205,210)` 收回。兩版再次展開均保留卡背，翻面與檢視未新增戰鬥指令。新版核對蝙蝠 Lv1、HP 1/1、ATK 3、DEF 1、卡背無技能，以及原版的銀色「CLICK」素材。一般地圖的敵方初始 HP 依已確認的名單、原始角色資料和 `SC37` 傷勢建立，卡籤跟隨已播放的 HP 變化。己方換角期間，敵方卡籤仍可檢視。 [左上卡籤對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/tab-comparison.png) · [正面對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/front-comparison.png) · [卡背對照](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/reverse-comparison.png) · [原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/original/wire.json) · [新版封包](/workspace/shared/unlight-web-port/flash-parity/quest-opponent-inspection/native/battle-numbered-wire.json)
+
 ### 首回合第一組攻防
 
 | 階段 | 原版規格 |
