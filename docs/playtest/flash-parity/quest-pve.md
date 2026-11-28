@@ -371,11 +371,13 @@ q568 的第 5 格也可在真正戰鬥敗北後進入獎勵骰。隔離角色使
 
 [原版獎勵結束及轉場](../../../app/client/src/view/scene/game/ResultScene.as#L1016) · [原版任務結果](../../../app/client/src/view/QuestView.as#L618) · [原版 Exit 的空獎品](../../../app/server/src/rule/reward.rb#L188)
 
-繁中 Flash 的 Exit 測例在 Quest 關閉前維持 142 Gem／226 EXP。Back 之後，原版大廳的成就檢查才另發成就 31「突破初期地區」的道具與 3000 Gem。Quest 結算、關閉連線與大廳額外成就均用各自的封包與 SQLite 時點核對。[原版任務及大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/terminal-proof.json) · [大廳成就](lobby-views.md)
+繁中 Flash 在 Quest 關閉前的帳戶分別為 Exit 142 Gem 和直接 Get 145 Gem，EXP 均為 226。兩次 Back 之後，原版大廳才另發成就 31「突破初期地區」的道具與 3000 Gem。Quest 結算、關閉連線與大廳額外成就均用各自的封包與 SQLite 時點核對。[原版 Exit 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/lobby-grant-proof.json) · [原版直接 Get 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-direct-original/take/lobby-grant-proof.json) · [大廳成就驗收](lobby-views.md#大廳成就的下一個驗收點)
 
-兩版都從實際登入和任務入口操作。新版 Exit 暫緩真正的 `SC24` 和 `SC126`，分別確認歸檔前不能擲骰、獎勵確認前不能返回。兩版的空獎品結果都保留已開的 Item 窗，按戰果 OK 才轉回地圖並顯示 Quest Failed。第二次 OK 後同一張地圖可操作，Back 只關閉 Quest。兩版此時的任務庫存皆為 0/4，容量標籤字形另行核對。[並排截圖與兩版封包](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/README.md)
+兩版都從實際登入和任務入口操作。新版 Exit 暫緩真正的 `SC24` 和 `SC126`，分別確認歸檔前不能擲骰、獎勵確認前不能返回。兩版的空獎品結果都保留已開的 Item 窗，按戰果 OK 才轉回地圖並顯示 Quest Failed。第二次 OK 後同一張地圖可操作，Back 只關閉 Quest。[並排截圖與兩版封包](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/README.md)
 
-新版直接 Get 暫緩 `SC38`，確認 `SC10` 與 `SC126` 先到時，仍須等齊真正領取回覆才顯示總計及開放 OK。SQLite 和客戶端均由 142 增至 145 Gem，EXP 仍為 226，實體庫存不變。操作只發一次 `CS38`。兩次本機 OK 後可按 Back 正常關閉 Quest。[新版直接領取畫面](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/terminal-get/11-verified-bonus-receipt-and-return.png) · [新版直接領取封包與存檔](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/terminal-get/quest-high-low-wire.json) · [重跑測例](qa.md#重跑高低獎勵骰)
+兩版直接 Get 都只送一次 `CS38`，SQLite 和客戶端均由 142 增至 145 Gem，EXP 維持 226，實體庫存不變。新版額外暫緩 `SC38`，確認 `SC10` 與 `SC126` 先到時，仍須等齊真正領取回覆才顯示總計及開放 OK。兩次本機 OK 後可按 Back 正常關閉 Quest。[直接 Get 並排](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/direct-terminal-settlement-comparison.png) · [重跑測例](qa.md#重跑高低獎勵骰)
+
+原版混音已在兩次試跑分別辨識猜錯的 `ulse19`、敗北的 `ulse15`、Get 的 `ulse17`，以及返回地圖和大廳的原曲。新版瀏覽器驗證獎勵骰音效的觸發順序及成功播放。返回地圖的容量 `0/4` 已改用原版 12 px 明朝體，沿用原舞台定位，以 CSS 黑色光暈對應 Flash 濾鏡。滿額顏色採來源的純紅，這次實跑驗到未滿的白字。[原版 Exit 混音](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/audio-summary.json) · [原版 Get 混音](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-direct-original/take/audio-summary.json) · [容量修正並排](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/quest-list-capacity-comparison.png) · [原版容量標籤](../../../app/client/src/view/scene/quest/QuestList.as#L100)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

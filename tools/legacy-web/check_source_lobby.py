@@ -3643,7 +3643,16 @@ def check_terminal_bonus_map_return(page, stage, directory, inventory_id, profil
     expect(back).to_be_enabled()
     expect(back).to_be_focused()
     expect(page.locator("#quest-map-inventory > li")).to_have_count(0)
-    expect(page.locator("#quest-map-capacity")).to_have_text("0/4")
+    capacity = page.locator("#quest-map-capacity")
+    expect(capacity).to_have_text("0/4")
+    expect(capacity).to_have_css("font-size", "12px")
+    expect(capacity).to_have_css("color", "rgb(255, 255, 255)")
+    assert capacity.evaluate("""async label => {
+      const family = getComputedStyle(label).fontFamily.split(',')[0].trim();
+      if (family !== '"Unlight Reward Item Mincho"') return false;
+      const faces = await document.fonts.load(`12px ${family}`, label.textContent);
+      return faces.length === 1 && faces[0].status === 'loaded';
+    }""")
     expect(page.locator("#quest-map-view")).to_have_attribute("data-map-id", "22")
     expect(page.locator("#quest-map-level")).to_have_text(str(profile[2]))
     expect(page.locator("#quest-map-gems")).to_have_text(str(profile[3]))
