@@ -58,6 +58,11 @@ export const QUEST_DEFENCE_CARD_REMOVE_REQUEST = 31;
 export const QUEST_ATTACK_DONE_REQUEST = 33;
 export const QUEST_DEFENCE_DONE_REQUEST = 34;
 export const QUEST_CHARA_CHANGE_REQUEST = 35;
+export const QUEST_REWARD_HIGH_REQUEST = 36;
+export const QUEST_REWARD_LOW_REQUEST = 37;
+export const QUEST_REWARD_TAKE_REQUEST = 38;
+export const QUEST_REWARD_NEXT_REQUEST = 39;
+export const QUEST_REWARD_AWARD_REPLY = 38;
 export const QUEST_TURN_REPLY = 43;
 export const QUEST_ACTION_REFILL_REPLY = 44;
 export const QUEST_EVENT_REFILL_REPLY = 45;
@@ -85,6 +90,11 @@ export const QUEST_DAMAGE_REPLY = 73;
 export const QUEST_CHARA_REVIVE_REPLY = 75;
 export const QUEST_HIT_POINT_REPLY = 79;
 export const QUEST_CHARA_TRANSFORM_REPLY = 112;
+export const QUEST_REWARD_CANDIDATES_REPLY = 122;
+export const QUEST_REWARD_BASE_DICE_REPLY = 123;
+export const QUEST_REWARD_DECISION_REPLY = 124;
+export const QUEST_REWARD_ROLLED_DICE_REPLY = 125;
+export const QUEST_REWARD_FINAL_REPLY = 126;
 
 const PARTY_DAMAGE_REPLY = 74;
 const HEAL_REPLY = 77;
@@ -460,6 +470,56 @@ export function readQuestDuelFinishReply(reply, { awards = false } = {}) {
   reply.done();
   if (result < 0 || result > 2) throw new Error('Invalid quest duel result.');
   return awards ? { result, gems, exp, expBonus, gemsPow, expPow, totalGems, totalExp, bonus } : { result, bonus };
+}
+
+function readQuestRewardCandidate(reply) {
+  const values = integerList(reply.string(36, true));
+  if (values.length === 0) return null;
+  const [genre, id, amount] = values;
+  if (values.length !== 3 || genre > 7 || id > MAX_INT32 || amount < 1 || amount > MAX_INT32
+      || (genre < 2 ? id !== 0 : id === 0)) throw new Error('Invalid quest reward candidate.');
+  return Object.freeze({ genre, id, amount });
+}
+
+export function readQuestRewardReply(reply) {
+  let data;
+  switch (reply.command) {
+    case QUEST_REWARD_CANDIDATES_REPLY:
+      data = { choices: Array.from({ length: 4 }, () => readQuestRewardCandidate(reply)), rank: reply.int() };
+      if (data.rank < 0 || data.rank > 197) throw new Error('Invalid quest reward rank.');
+      break;
+    case QUEST_REWARD_BASE_DICE_REPLY:
+    case QUEST_REWARD_ROLLED_DICE_REPLY: {
+      data = integerList(reply.string(3));
+      if (data.length !== 2 || data.some((eye) => eye < 1 || eye > 6)) throw new Error('Invalid quest reward dice.');
+      Object.freeze(data);
+      break;
+    }
+    case QUEST_REWARD_DECISION_REPLY:
+      data = { won: readDuelBoolean(reply), current: readQuestRewardCandidate(reply),
+        next: readQuestRewardCandidate(reply), bonus: reply.int() };
+      if (data.bonus < 0 || data.bonus > 197 || data.won !== Boolean(data.current) || data.won !== Boolean(data.next)) {
+        throw new Error('Invalid quest reward decision.');
+      }
+      break;
+    case QUEST_REWARD_AWARD_REPLY: {
+      const inventoryIds = readDuelCardIds(reply);
+      const reward = readQuestRewardCandidate(reply);
+      const isCharacter = reward && reward.genre >= 3 && reward.genre <= 5;
+      if (new Set(inventoryIds).size !== inventoryIds.length || inventoryIds.length !== (isCharacter ? reward.amount : 0)) {
+        throw new Error('Invalid quest reward inventory.');
+      }
+      data = { inventoryIds: Object.freeze(inventoryIds), reward };
+      break;
+    }
+    case QUEST_REWARD_FINAL_REPLY:
+      data = { reward: readQuestRewardCandidate(reply), totalGems: reply.int(), totalExp: reply.int(), addPoint: reply.int() };
+      break;
+    default:
+      throw new Error('Unexpected quest reward reply.');
+  }
+  reply.done();
+  return Object.freeze(data);
 }
 
 function readDuelCardIds(reply) {

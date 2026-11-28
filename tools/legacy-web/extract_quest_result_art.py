@@ -78,18 +78,23 @@ def gem_frame_movie(source, records):
     return stage_movie(source, 1, definitions + controls + swf_tag(1))
 
 
-def gem_icon_movie(source, records):
+def item_icon_movie(source, records, frame=1):
     definitions = bytearray()
     controls = bytearray()
+    current = 0
     for code, data in records:
         if code in DEFINITION_TAGS or code == 8:
             definitions.extend(swf_tag(code, data))
-        elif code == 26:
+        elif code in (26, 28, 70):
             controls.extend(swf_tag(code, data))
-    if sum(code == 1 for code, _ in records) != 1 or not controls:
-        raise ValueError("Unexpected original Gem icon timeline")
+        elif code == 1:
+            current += 1
+            if current == frame:
+                break
+    if current != frame or not controls:
+        raise ValueError("Unexpected original item icon timeline")
 
-    # Keep the original movie registration point and place it at GemCardClip's (83,100).
+    # GemCardClip, ExpCardClip and ItemCardClip share the original (83,100) anchor.
     character = 100
     sprite = swf_tag(39, pack("<HH", character, 1) + controls + swf_tag(1) + swf_tag(0))
     x, y = 83 * TWIPS, 100 * TWIPS
@@ -272,7 +277,7 @@ def generate(args):
     checked_source(args.assets, TREASURE_SOUND)
     gem_frame = render_track("treasure-gem-frame", "gemFrame", 1, gem_frame_movie(paths["gemFrame"], records["gemFrame"]),
                              originalFrame=4, hiddenInstance="rare")["frames"][0]
-    gem_icon = render_track("treasure-gem-icon", "gemIcon", 1, gem_icon_movie(paths["gemIcon"], records["gemIcon"]),
+    gem_icon = render_track("treasure-gem-icon", "gemIcon", 1, item_icon_movie(paths["gemIcon"], records["gemIcon"]),
                             anchor=[83, 100])["frames"][0]
     font = args.output / "treasure-gem-name.woff"
     write_font(args.mincho_font, font, [{"name_tcn": GEM_TITLE}])

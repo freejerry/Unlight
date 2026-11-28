@@ -93,15 +93,17 @@ function diceForSide(values, type) {
   });
 }
 
-async function decodeTexture(file) {
-  if (typeof file !== 'string' || !/^dice-roll-[a-z]+\.png$/.test(file)) throw new Error('Invalid dice texture');
+async function decodeTexture(file, bonus = false) {
+  if (typeof file !== 'string' || !(bonus ? file === 'bonus-sixdice.png' : /^dice-roll-[a-z]+\.png$/.test(file))) {
+    throw new Error('Invalid dice texture');
+  }
   const image = new Image();
-  image.src = BATTLE_CARD_ART + file;
+  image.src = bonus ? new URL(`./quest-result-art/${file}`, import.meta.url).href : BATTLE_CARD_ART + file;
   await image.decode();
   return image;
 }
 
-function initialize(gl, { mesh }, materials, dispose) {
+function initialize(gl, { mesh }, materials, dispose, size, camera) {
   const compile = (type, source) => {
     const shader = gl.createShader(type);
     dispose.push(() => gl.deleteShader(shader));
@@ -148,21 +150,22 @@ function initialize(gl, { mesh }, materials, dispose) {
 
   const uniforms = Object.fromEntries(['diceRoot', 'rotation', 'inverseCamera', 'world', 'camera', 'centre', 'halfStage', 'lens']
     .map(name => [name, gl.getUniformLocation(program, name)]));
+  const [canvasWidth, canvasHeight] = size;
   gl.uniformMatrix3fv(uniforms.diceRoot, false, orientation(-90, 180, 0));
-  gl.uniformMatrix3fv(uniforms.inverseCamera, false, orientation(60, 90, 0, true));
-  gl.uniform3f(uniforms.camera, -10, 120, 50);
-  gl.uniform2f(uniforms.halfStage, width / 2, height / 2);
-  gl.uniform1f(uniforms.lens, focus * zoom);
+  gl.uniformMatrix3fv(uniforms.inverseCamera, false, orientation(...camera.rotation, true));
+  gl.uniform3f(uniforms.camera, ...camera.position);
+  gl.uniform2f(uniforms.halfStage, canvasWidth / 2, canvasHeight / 2);
+  gl.uniform1f(uniforms.lens, camera.focus * camera.zoom);
   gl.enable(gl.DEPTH_TEST);
   gl.clearColor(0, 0, 0, 0);
-  gl.viewport(0, 0, width, height);
+  gl.viewport(0, 0, canvasWidth, canvasHeight);
   return (side, elapsed, onThrow, signal) => {
     if (signal?.aborted) return;
     gl.uniform2f(uniforms.centre, side.x, -side.y);
-    gl.scissor(Math.max(0, side.x), Math.max(0, -side.y), width - Math.abs(side.x), height - Math.abs(side.y));
+    gl.scissor(Math.max(0, side.x), Math.max(0, -side.y), canvasWidth - Math.abs(side.x), canvasHeight - Math.abs(side.y));
     for (const die of side.dice) {
       if (elapsed < die.delay) continue;
-      if (!die.sounded) {
+      if (!die.sounded && elapsed >= die.delay + (die.soundDelay ?? 0)) {
         die.sounded = true;
         onThrow?.();
         if (signal?.aborted) return;
@@ -170,7 +173,9 @@ function initialize(gl, { mesh }, materials, dispose) {
       const t = Math.min(1, (elapsed - die.delay) / duration);
       const slide = Math.sin(t * Math.PI / 2);
       const turn = t < .5 ? (1 - bounce(1 - 2 * t)) / 2 : (1 + bounce(2 * t - 1)) / 2;
-      gl.uniform3f(uniforms.world, die.x * slide, 160 * (1 - bounce(t)), die.startZ + (die.z - die.startZ) * slide);
+      const startX = die.startX ?? 0;
+      gl.uniform3f(uniforms.world, startX + (die.x - startX) * slide,
+        (die.startY ?? 160) * (1 - bounce(t)), die.startZ + (die.z - die.startZ) * slide);
       gl.uniformMatrix3fv(uniforms.rotation, false,
         orientation(600 + (die.rx - 600) * turn, die.ry * turn, 600 + (die.rz - 600) * turn));
       gl.bindTexture(gl.TEXTURE_2D, textures.get(die.material));
@@ -187,22 +192,59 @@ export async function playQuestDiceRoll(canvas, { playerDice, foeDice, playerAtt
     { dice: diceForSide(playerDice, playerAttacks ? 'attack' : 'defense'), x: -330, y: 20 },
     { dice: diceForSide(foeDice, playerAttacks ? 'defense' : 'attack'), x: 120, y: -20 },
   ];
-  const dispose = [];
   try {
     const index = (await battleExchangeArt(signal))?.diceRoll;
     if (!index || signal?.aborted) return false;
     const used = new Set(sides.flatMap(side => side.dice.map(die => die.material)));
     const materials = await Promise.all([...used].map(async name => [name, await decodeTexture(index.textures[name])]));
-    if (signal?.aborted) return false;
-    canvas.width = width;
-    canvas.height = height;
+    return await playDiceAnimation(canvas, index, materials, sides, {
+      size: [width, height], camera: { position: [-10, 120, 50], rotation: [60, 90, 0], focus, zoom },
+      stopAt: duration + Math.max(0, Math.max(playerDice.length, foeDice.length) - 1) * stagger,
+      fadeIn: duration, signal, onThrow,
+    });
+  } catch {
+    canvas.dataset.state = signal?.aborted ? 'cancelled' : 'unavailable';
+    return false;
+  }
+}
+
+/** Render the original sixdice model using the two confirmed SC125 eyes directly. */
+export async function playQuestBonusDiceRoll(canvas, values, source, { signal, onThrow } = {}) {
+  if (signal?.aborted || !source?.mesh || !source.camera || values?.length !== 2 ||
+      !values.every(value => Number.isInteger(value) && value >= 1 && value <= 6)) return false;
+  const dice = values.map((eye, i) => {
+    const [rx, rz] = eyeRotation[eye - 1];
+    return {
+      material: 'bonus', delay: i * stagger, soundDelay: 100,
+      rx, ry: eye === 1 || eye === 6 ? 0 : Math.random() * 360, rz,
+      startX: Math.random() * 50 + i * 10, startY: 150, startZ: Math.random() * 50,
+      x: Math.random() * 5 + i / 3 * 10, z: Math.random() * 3 + (i % 3) * 15,
+    };
+  });
+  try {
+    const texture = await decodeTexture(source.texture, true);
+    // ResultDiceManager enables Viewport3D.autoScaleToStage, so the mounted size replaces 300 × 300.
+    return await playDiceAnimation(canvas, source, [['bonus', texture]], [{ dice, x: 0, y: 0 }], {
+      size: [width, height], camera: source.camera, stopAt: duration + stagger + 100,
+      fadeIn: 100, signal, onThrow,
+    });
+  } catch {
+    canvas.dataset.state = signal?.aborted ? 'cancelled' : 'unavailable';
+    return false;
+  }
+}
+
+async function playDiceAnimation(canvas, index, materials, sides, { size, camera, stopAt, fadeIn, signal, onThrow }) {
+  if (signal?.aborted) return false;
+  const dispose = [];
+  try {
+    [canvas.width, canvas.height] = size;
     const gl = canvas.getContext('webgl2', { alpha: true, preserveDrawingBuffer: true });
     if (!gl) {
       canvas.dataset.state = 'unavailable';
       return false;
     }
-    const draw = initialize(gl, index, materials, dispose);
-    const stopAt = duration + Math.max(0, Math.max(playerDice.length, foeDice.length) - 1) * stagger;
+    const draw = initialize(gl, index, materials, dispose, size, camera);
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     canvas.dataset.state = 'rolling';
     const completed = await new Promise(resolve => {
@@ -221,7 +263,7 @@ export async function playQuestDiceRoll(canvas, { playerDice, foeDice, playerAtt
         start ??= now;
         const elapsed = reduced ? stopAt : Math.min(stopAt, now - start);
         try {
-          canvas.style.opacity = String(Math.sin(Math.min(1, elapsed / duration) * Math.PI / 2));
+          canvas.style.opacity = String(Math.sin(Math.min(1, elapsed / fadeIn) * Math.PI / 2));
           gl.disable(gl.SCISSOR_TEST);
           gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
           gl.enable(gl.SCISSOR_TEST);

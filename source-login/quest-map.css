@@ -50,6 +50,60 @@
   font-family: "Bradley Gratis", Georgia, serif;
   line-height: 23px;
 }
+#quest-battle-bonus { position: absolute; inset: 0; pointer-events: none; outline: none; }
+#quest-battle-bonus img { max-width: none; pointer-events: none; }
+#quest-battle-bonus .quest-battle-bonus-controls button {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+#quest-battle-bonus .quest-battle-bonus-controls button:not(:disabled) { pointer-events: auto; cursor: pointer; }
+#quest-battle-bonus button:focus-visible, #quest-battle-result-ok:focus-visible { outline: 2px solid #ffdf9c; outline-offset: -2px; }
+#quest-battle-bonus .quest-battle-bonus-controls .quest-battle-bonus-fallback-button { background: #222; color: #fff; }
+#quest-battle-bonus [data-skin]:not([data-skin="up"]) { visibility: hidden; }
+#quest-battle-bonus button:not(:disabled):is(:hover, :focus-visible) > [data-skin="up"],
+#quest-battle-bonus button:not(:disabled):active > [data-skin="over"] { visibility: hidden; }
+#quest-battle-bonus button:not(:disabled):is(:hover, :focus-visible) > [data-skin="over"],
+#quest-battle-bonus button:not(:disabled):active > [data-skin="down"] { visibility: visible; }
+#quest-battle-bonus #quest-battle-bonus-decision { pointer-events: auto; }
+#quest-battle-bonus-decision:hover { opacity: .2; }
+#quest-battle-bonus-dice { pointer-events: none; }
+#quest-battle-result-ok { z-index: 1; }
+.quest-battle-bonus-numeric {
+  position: absolute;
+  left: 559px;
+  top: 62px;
+  color: #fff;
+  font: 40px "Bradley Gratis", Georgia, serif;
+}
+.quest-battle-bonus-card, .quest-battle-bonus-quantity { position: absolute; left: 0; top: 0; }
+.quest-battle-bonus-card { width: 168px; height: 240px; transform-origin: left top; }
+.quest-battle-bonus-card-face { position: absolute; inset: 0; }
+.quest-battle-bonus-card-caption, .quest-battle-bonus-card-title {
+  display: block;
+  color: #000;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2px #fff;
+  white-space: nowrap;
+}
+.quest-battle-bonus-card-caption { position: absolute; top: 190px; left: 8px; font: 24px "Bradley Gratis", Georgia, serif; text-align: right; }
+@font-face {
+  font-family: "Unlight Bonus Mincho";
+  src: url("./quest-result-art/bonus-card-name.woff") format("woff");
+  font-display: swap;
+}
+.quest-battle-bonus-card-title { font: 12px "Unlight Bonus Mincho", "Noto Serif TC", Georgia, serif; text-align: center; }
+.quest-battle-bonus-card-caption, .quest-battle-bonus-card-title, .quest-battle-bonus-quantity { letter-spacing: 1px; }
+.quest-battle-bonus-item-caption { font: 9px "Unlight Bonus Mincho", "Noto Serif TC", Georgia, serif; text-align: center; white-space: pre-wrap; }
+.quest-battle-bonus-quantity {
+  width: 170px;
+  height: 40px;
+  color: #fff;
+  text-align: right;
+  font: 24px "Bradley Gratis", Georgia, serif;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}
 .quest-battle-opening-name {
   display: flex;
   align-items: baseline;

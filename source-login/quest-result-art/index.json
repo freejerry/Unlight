@@ -1892,6 +1892,1894 @@
       "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
       "sha256": "01dfa98952d8123d65ac5803c0ce2fa0fb8a512a4087924282a5730fd621ba86",
       "glyphs": "GET GEM!!"
+    },
+    "bonus-high-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "ffd35bc9b66c298d0c0876c6717cc09b69d34c28420d786caed16e4767f9e598",
+      "sourceInstance": "b_high",
+      "sourceSymbol": 31,
+      "shapeIds": [
+        17,
+        24,
+        29
+      ],
+      "bitmapIds": [
+        16,
+        23,
+        28
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-high-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "be0598605cd80ae4904a9221876f55a75faaee812cace0d48a111679bdf17b26",
+      "sourceInstance": "b_high",
+      "sourceSymbol": 31,
+      "shapeIds": [
+        17,
+        24,
+        26
+      ],
+      "bitmapIds": [
+        16,
+        23,
+        25
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "selectedInstance": "b_high_on",
+      "selectedSymbol": 27
+    },
+    "bonus-low-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "077b179f2ccf2cd1e3f8fc82f00bb1d3b26a0228d0557876c2a31354a0b6253c",
+      "sourceInstance": "b_low",
+      "sourceSymbol": 34,
+      "shapeIds": [
+        17,
+        19,
+        33
+      ],
+      "bitmapIds": [
+        16,
+        18,
+        32
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-low-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "814b2229fa36a782c47972d1fce592da40a650c61a42eba8711f62a0c20ca475",
+      "sourceInstance": "b_low",
+      "sourceSymbol": 34,
+      "shapeIds": [
+        17,
+        19,
+        21
+      ],
+      "bitmapIds": [
+        16,
+        18,
+        20
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "selectedInstance": "b_low_on",
+      "selectedSymbol": 22
+    },
+    "bonus-next-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "dcc724cfd07715d3266649da660e58dc595edb22c1283712a54026b12a2f1222",
+      "sourceInstance": "b_next",
+      "sourceSymbol": 48,
+      "shapeIds": [
+        17,
+        43,
+        45
+      ],
+      "bitmapIds": [
+        16,
+        42,
+        44
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-next-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "9754ba507ad43e540360b86c4a4d66d4d9e1c344e513ab1f411473ced76a4fdc",
+      "sourceInstance": "b_next",
+      "sourceSymbol": 48,
+      "shapeIds": [
+        17,
+        43,
+        47
+      ],
+      "bitmapIds": [
+        16,
+        42,
+        46
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "bonus-get-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "c5d17f59b69b5f22d2c77723b1a463b5597c124b7cee23dba4aa5d90658db8fe",
+      "sourceInstance": "b_get",
+      "sourceSymbol": 41,
+      "shapeIds": [
+        17,
+        36,
+        38
+      ],
+      "bitmapIds": [
+        16,
+        35,
+        37
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-get-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "778cb7fd5214a302bb21f242fe101298feef3dc8fefb9bea0c593cd41aa17a92",
+      "sourceInstance": "b_get",
+      "sourceSymbol": 41,
+      "shapeIds": [
+        17,
+        36,
+        40
+      ],
+      "bitmapIds": [
+        16,
+        35,
+        39
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "bonus-exit-up.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "b3f0330710245a2540c179db08ea73bdbb920718153b8ea8b3b6faf502529786",
+      "sourceInstance": "b_exit",
+      "sourceSymbol": 58,
+      "shapeIds": [
+        17,
+        36,
+        55
+      ],
+      "bitmapIds": [
+        16,
+        35,
+        54
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "hitShapeIds": [
+        30
+      ]
+    },
+    "bonus-exit-over.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "d7b2a32faf9dedb27e79dad282b9bdd50fd4422cf1cb97a7cfb277a259c462cb",
+      "sourceInstance": "b_exit",
+      "sourceSymbol": 58,
+      "shapeIds": [
+        17,
+        36,
+        57
+      ],
+      "bitmapIds": [
+        16,
+        35,
+        56
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "bonus-number-2.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "018f2ef41685a380e8b900eea4d206a18d3e2a68e8af279f49bae4d7f50cf8f1",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 2
+    },
+    "bonus-number-3.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "7f9763b7f6b7bee589c110e98c3ab7ae66f07b91601a5c631b0f64ecf3095cba",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 3
+    },
+    "bonus-number-4.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "c7511f57c446a611ee2579f019f64b74042af454c8eb70288f942789c0804dac",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        7
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 4
+    },
+    "bonus-number-5.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "e271af1c26eae2878735af2d9c5ba891b901de036b106c0a05e31ced670eed66",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        8
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 5
+    },
+    "bonus-number-6.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "50655698d17ca1f1b813c5257f4cc34a02f339ef220e375e3800fc86f4c91dfa",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        9
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 6
+    },
+    "bonus-number-7.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "6aa3d2a95e2018d4f3063af54b08ef993a3d4fc5b65b0b723817ac48fa303028",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        10
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 7
+    },
+    "bonus-number-8.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "e7660707ed8ef19aeb20b9061665f5ba7afd9e64a51a613a2d851b3e9b3fe4c3",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        11
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 8
+    },
+    "bonus-number-9.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "06f445a209a43693ca8fed8756b457cb03d24556eb36ae7dd62658d9b7bd743b",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        12
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 9
+    },
+    "bonus-number-10.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "62ac647fe898de89b68f5164c8c2923a55792a7d6275c0fc66206045a1db2c7c",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        13
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 10
+    },
+    "bonus-number-11.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "d3dc1d9cb163b225c5f7a6906b8ee1e2d8a12e04e11c908c37710f661ef22fa0",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        14
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 11
+    },
+    "bonus-number-12.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "c9a87117be5302559265c00f7d60be6acd526faf93e825a20814a5ca56136135",
+      "sourceInstance": "num_roll",
+      "sourceSymbol": 15,
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [],
+      "sourceFrame": 12
+    },
+    "bonus-success-1.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "d34d79a6a5b635de7c6efa621c556ee9045ed4120ead19a26fafbf6081764393",
+      "sourceInstance": "roll_suc",
+      "sourceSymbol": 3,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceFrame": 1
+    },
+    "bonus-success-2.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "e6e2c1de0347069ebf29ae69d4319641c4bca2a75116e3a303cc5413486f81a6",
+      "sourceInstance": "roll_suc",
+      "sourceSymbol": 3,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceFrame": 2
+    },
+    "bonus-success-3.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "932b39b32bcf6fa5e0b7ec28722ecf4d2c3e86cc7dd3f5589b2469b034f42c88",
+      "sourceInstance": "roll_suc",
+      "sourceSymbol": 3,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceFrame": 3
+    },
+    "bonus-success-4.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "61d7f56e50b91ab3e86193473363089c454dbdc08a74bd6e657834ec5f573763",
+      "sourceInstance": "roll_suc",
+      "sourceSymbol": 3,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceFrame": 4
+    },
+    "bonus-failure-1.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "0117212e71a6dee105d76eb99c324e1d75ecad30be8a1b8fec2347189bcc775b",
+      "sourceInstance": "roll_fail",
+      "sourceSymbol": 6,
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceFrame": 1
+    },
+    "bonus-failure-2.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "d3f5f53ad287945a099a6cdc92973bc62d4e45d5c4800d2c0a8fbe4597310f03",
+      "sourceInstance": "roll_fail",
+      "sourceSymbol": 6,
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceFrame": 2
+    },
+    "bonus-failure-3.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "22cf7b69b3443dbb02a1f2df5d04573eb33b30af066eea8ede51a19b76765615",
+      "sourceInstance": "roll_fail",
+      "sourceSymbol": 6,
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceFrame": 3
+    },
+    "bonus-failure-4.png": {
+      "source": "data/image/game/result/result_roll.swf",
+      "sourceSha256": "2acd656a25a6fe56d7a1ba31c468f3af9d53e42a9a4443a53b6cc68a4db93669",
+      "sha256": "53b2c3a6a31671dba00712e548bb8c7058407286780e68f63f6045d0cfc1e2be",
+      "sourceInstance": "roll_fail",
+      "sourceSymbol": 6,
+      "shapeIds": [
+        5
+      ],
+      "bitmapIds": [
+        4
+      ],
+      "sourceFrame": 4
+    },
+    "bonus-card-backdrop.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "d85fd14066ebe2e6ac8273db27a00cb6b2837ab1e1f418f523ceda0b2fc6c69c",
+      "sourceFrame": 1,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "normal"
+    },
+    "bonus-card-get-02.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "633d6be5996effed7a52389e92b9ab9d0a074094d90b53a34d916321cec5da8a",
+      "sourceFrame": 2,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-03.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "041512867bf502c2a1757c9199979c6565107f7f593bcc63a21cc20d6863d45d",
+      "sourceFrame": 3,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-04.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "7ed485ebe133c759128e00315706637ac34ac8f0f675c75562a83ce37b526368",
+      "sourceFrame": 4,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-05.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "465dcae54d3cd8ee4732f75b1a44158e5e888edc1879549c3a8deb00e6f73ab5",
+      "sourceFrame": 5,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-06.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "c41315a6e60c95e9917ddb0fe5c5aecc848982c790a1fd7696dac599e5979eb8",
+      "sourceFrame": 6,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-07.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "f7c4850991a6f51729d7aea1626bb22e444f81e9676927ab3ed68d8b76afd40a",
+      "sourceFrame": 7,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-08.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "e20b0eb894a4fa2ac6bc206eab056144e6e607c44d1080cecf629b8aad48f93e",
+      "sourceFrame": 8,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-09.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "c7708580164bfd19858853c720ffd8d95388cccae24a62518b96141a7eded5d9",
+      "sourceFrame": 9,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-10.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "4fe12edbf489380087deeef2f69b0b448070da87363accca038f3e623abf08e6",
+      "sourceFrame": 10,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-11.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "aaf5a801ae7b507546e53d1b3a5d6c2d745e9b35c45a4d5999d124e404785941",
+      "sourceFrame": 11,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-card-get-12.png": {
+      "source": "data/image/game/result/frame_card.swf",
+      "sourceSha256": "0e4bef638b10ce8531b21a768cd4431b8410367e26485eaacb7458c15a5d4e44",
+      "sha256": "b7dfee067e0aae9f2d6f294132bc80c9304ed978d035471691640f534509a863",
+      "sourceFrame": 12,
+      "sourceInstance": "frame_card",
+      "sourceSymbol": 12,
+      "sourceLabel": "get"
+    },
+    "bonus-exp-icon.png": {
+      "source": "public/image/avatar_items/item_a_a000.swf",
+      "sourceSha256": "7687463a3d029608a7a79433f8c9db3c8c63aac4c22963d78d3d149f0dec6b84",
+      "sha256": "4f42d5c3496050f3a80269d763bde3875b5a8e7d645f2cece0e9a82f3651081b",
+      "sourceFrame": 1,
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "bonus-card-name.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "0ff60ed51b7cf105364846953a021b2fb56fd448c3ad812a1e528cc74715e185",
+      "glyphs": "獲得EXP增加獲得GEM增加時間沙漏可以將搜索中任務的搜索時間縮短3小時急救品5恢復任務中所有人物的生命值5"
+    },
+    "bonus-item-11.png": {
+      "source": "public/image/avatar_items/item_c_b004.swf",
+      "sourceSha256": "3cfb2f92c2c383406080936d0ae30814096e7ee2a7ed8dc56a2066432aacc739",
+      "sha256": "6ff3c49fc480fbc3b9c8e102eefa88fbd9166197c87dc1ca989644213cb33ff9",
+      "sourceFrame": 1,
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "bonus-item-15.png": {
+      "source": "public/image/avatar_items/item_e_b000.swf",
+      "sourceSha256": "14f16a2cc2ef98e2c50e5a1ff2e29569198e6bd964595e9d142b2fbe871af269",
+      "sha256": "b6db4f4995c49bc12d7aea555c481876fde034103e464cd51d7ac0c9e5e2364b",
+      "sourceFrame": 3,
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "bonus-panel.png": {
+      "source": "data/image/game/result/result_ch.swf",
+      "sourceSha256": "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0",
+      "sha256": "7acea7c0d786baf1b64bf409a589bb8a554b29ba92bb59adab4fec48b1063fd4",
+      "sourceInstance": "frame_base",
+      "sourceSymbol": 3,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ]
+    },
+    "bonus-rank.png": {
+      "source": "data/image/game/result/itemrank.swf",
+      "sourceSha256": "051a7b600edf1f6e2562e06ad312521ee1ea99701dba96b5e90196e0520dbc62",
+      "sha256": "ce227314ad3133aa59ea9584b3b12a14961b31c4f21f87a0fde1573831173c22",
+      "sourceInstance": "premiumrank",
+      "sourceSymbol": 5,
+      "shapeIds": [
+        2,
+        3
+      ],
+      "bitmapIds": [
+        1
+      ]
+    },
+    "bonus-stars.png": {
+      "source": "data/image/game/result/itemrank.swf",
+      "sourceSha256": "051a7b600edf1f6e2562e06ad312521ee1ea99701dba96b5e90196e0520dbc62",
+      "sha256": "713c70573330edd41252489c474624503001f64705cdbfde4400dc3d62a1f00a",
+      "sourceInstance": "star",
+      "sourceSymbol": 7,
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": []
+    },
+    "bonus-sixdice.png": {
+      "source": "public/image/tex/sixdice.png",
+      "sourceSha256": "bb9266928b75d8304c520cb2fd9eb9fc4dd5e9e69000c8f8c7f39f94840f4a65",
+      "sha256": "bb9266928b75d8304c520cb2fd9eb9fc4dd5e9e69000c8f8c7f39f94840f4a65"
+    }
+  },
+  "bonus": {
+    "panel": {
+      "file": "bonus-panel.png",
+      "x": 0.0,
+      "y": 29.0,
+      "width": 760,
+      "height": 196
+    },
+    "controls": {
+      "high": {
+        "up": {
+          "file": "bonus-high-up.png",
+          "x": 265.0,
+          "y": 73.0,
+          "width": 163,
+          "height": 164
+        },
+        "over": {
+          "file": "bonus-high-over.png",
+          "x": 265.0,
+          "y": 73.0,
+          "width": 163,
+          "height": 164
+        },
+        "down": {
+          "file": "bonus-high-over.png",
+          "x": 265.0,
+          "y": 73.0,
+          "width": 163,
+          "height": 164
+        },
+        "hit": [
+          340.0,
+          80.0,
+          80.0,
+          80.0
+        ]
+      },
+      "low": {
+        "up": {
+          "file": "bonus-low-up.png",
+          "x": 333.0,
+          "y": 141.0,
+          "width": 162,
+          "height": 164
+        },
+        "over": {
+          "file": "bonus-low-over.png",
+          "x": 333.0,
+          "y": 141.0,
+          "width": 162,
+          "height": 164
+        },
+        "down": {
+          "file": "bonus-low-over.png",
+          "x": 333.0,
+          "y": 141.0,
+          "width": 162,
+          "height": 164
+        },
+        "hit": [
+          340.0,
+          218.0,
+          80.0,
+          80.0
+        ]
+      },
+      "next": {
+        "up": {
+          "file": "bonus-next-up.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "over": {
+          "file": "bonus-next-over.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "down": {
+          "file": "bonus-next-over.png",
+          "x": 266.0,
+          "y": 142.0,
+          "width": 162,
+          "height": 163
+        },
+        "hit": [
+          272.0,
+          149.0,
+          80.0,
+          80.0
+        ]
+      },
+      "get": {
+        "up": {
+          "file": "bonus-get-up.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "over": {
+          "file": "bonus-get-over.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "down": {
+          "file": "bonus-get-over.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "hit": [
+          408.0,
+          149.0,
+          80.0,
+          80.0
+        ]
+      },
+      "exit": {
+        "up": {
+          "file": "bonus-exit-up.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "over": {
+          "file": "bonus-exit-over.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "down": {
+          "file": "bonus-exit-over.png",
+          "x": 332.0,
+          "y": 73.0,
+          "width": 164,
+          "height": 165
+        },
+        "hit": [
+          408.0,
+          149.0,
+          80.0,
+          80.0
+        ]
+      }
+    },
+    "selected": {
+      "high": {
+        "file": "bonus-high-over.png",
+        "x": 265.0,
+        "y": 73.0,
+        "width": 163,
+        "height": 164
+      },
+      "low": {
+        "file": "bonus-low-over.png",
+        "x": 333.0,
+        "y": 141.0,
+        "width": 162,
+        "height": 164
+      }
+    },
+    "numbers": {
+      "2": {
+        "file": "bonus-number-2.png",
+        "x": 569.3439987595,
+        "y": 90.05,
+        "width": 50,
+        "height": 96
+      },
+      "3": {
+        "file": "bonus-number-3.png",
+        "x": 572.592114312,
+        "y": 89.9,
+        "width": 47,
+        "height": 99
+      },
+      "4": {
+        "file": "bonus-number-4.png",
+        "x": 559.0499710084999,
+        "y": 91.15,
+        "width": 54,
+        "height": 95
+      },
+      "5": {
+        "file": "bonus-number-5.png",
+        "x": 568.0447525385,
+        "y": 91.15,
+        "width": 52,
+        "height": 99
+      },
+      "6": {
+        "file": "bonus-number-6.png",
+        "x": 568.3445785895,
+        "y": 81.85,
+        "width": 52,
+        "height": 107
+      },
+      "7": {
+        "file": "bonus-number-7.png",
+        "x": 568.0447525385,
+        "y": 91.15,
+        "width": 49,
+        "height": 106
+      },
+      "8": {
+        "file": "bonus-number-8.png",
+        "x": 561.5485214335,
+        "y": 89.45,
+        "width": 58,
+        "height": 101
+      },
+      "9": {
+        "file": "bonus-number-9.png",
+        "x": 568.0447525385,
+        "y": 91.15,
+        "width": 50,
+        "height": 110
+      },
+      "10": {
+        "file": "bonus-number-10.png",
+        "x": 552.1040008269999,
+        "y": 90.75,
+        "width": 88,
+        "height": 100
+      },
+      "11": {
+        "file": "bonus-number-11.png",
+        "x": 552.1539718355,
+        "y": 90.75,
+        "width": 79,
+        "height": 95
+      },
+      "12": {
+        "file": "bonus-number-12.png",
+        "x": 552.1040008269999,
+        "y": 90.05,
+        "width": 87,
+        "height": 96
+      }
+    },
+    "rank": {
+      "plate": {
+        "file": "bonus-rank.png",
+        "x": 151.95,
+        "y": 6.5,
+        "width": 351,
+        "height": 34
+      },
+      "stars": {
+        "file": "bonus-stars.png",
+        "x": 259.55,
+        "y": 7.95,
+        "width": 242,
+        "height": 25
+      },
+      "mask": [
+        260.0,
+        6.0,
+        241.0,
+        32.0
+      ]
+    },
+    "roll": {
+      "framesPerSecond": 40.8,
+      "stopFrame": 4,
+      "leadInMs": 333.3333333333333,
+      "success": [
+        {
+          "file": "bonus-success-1.png",
+          "x": 525.05,
+          "y": 187.0,
+          "width": 128,
+          "height": 48
+        },
+        {
+          "file": "bonus-success-2.png",
+          "x": 509.05,
+          "y": 180.55,
+          "width": 160,
+          "height": 60
+        },
+        {
+          "file": "bonus-success-3.png",
+          "x": 514.25,
+          "y": 182.6,
+          "width": 150,
+          "height": 57
+        },
+        {
+          "file": "bonus-success-4.png",
+          "x": 519.4,
+          "y": 184.55,
+          "width": 139,
+          "height": 53
+        }
+      ],
+      "failure": [
+        {
+          "file": "bonus-failure-1.png",
+          "x": 536.6,
+          "y": 187.2,
+          "width": 104,
+          "height": 48
+        },
+        {
+          "file": "bonus-failure-2.png",
+          "x": 523.6,
+          "y": 180.7,
+          "width": 130,
+          "height": 60
+        },
+        {
+          "file": "bonus-failure-3.png",
+          "x": 527.95,
+          "y": 182.9,
+          "width": 122,
+          "height": 57
+        },
+        {
+          "file": "bonus-failure-4.png",
+          "x": 532.2,
+          "y": 185.0,
+          "width": 113,
+          "height": 53
+        }
+      ]
+    },
+    "dice": {
+      "mesh": {
+        "positions": [
+          -4.6,
+          4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          5.0,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          4.6,
+          4.6,
+          -5.0,
+          5.0,
+          -4.6,
+          4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          5.0,
+          4.6,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          4.6,
+          5.0,
+          -5.0,
+          4.6,
+          4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          4.6,
+          5.0,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          5.0,
+          4.6,
+          5.0,
+          4.6,
+          4.6,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          -4.6,
+          5.0,
+          5.0,
+          -4.6,
+          4.6,
+          4.6,
+          -5.0,
+          4.6,
+          4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          -5.0,
+          -4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          4.6,
+          -5.0,
+          5.0,
+          4.6,
+          -4.6,
+          4.6,
+          5.0,
+          -4.6,
+          4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          5.0,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -5.0,
+          -5.0,
+          -4.6,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          5.0,
+          -4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          4.6,
+          4.6,
+          -5.0,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          5.0,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          -4.6,
+          4.6,
+          5.0,
+          -4.6,
+          -5.0,
+          4.6,
+          4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -4.6,
+          5.0,
+          -5.0,
+          -4.6,
+          4.6,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          4.6,
+          5.0,
+          -4.6,
+          5.0,
+          4.6,
+          -5.0,
+          4.6,
+          4.6,
+          4.6,
+          4.6,
+          5.0,
+          5.0,
+          4.6,
+          4.6,
+          4.6,
+          5.0,
+          4.6,
+          4.6,
+          -4.6,
+          5.0,
+          4.6,
+          -5.0,
+          4.6,
+          5.0,
+          -4.6,
+          4.6,
+          -4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          -5.0,
+          -4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          4.6,
+          -4.6,
+          -5.0,
+          5.0,
+          -4.6,
+          -4.6,
+          4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          4.6,
+          -5.0,
+          4.6,
+          5.0,
+          -4.6,
+          5.0,
+          4.6,
+          -4.6,
+          -4.6,
+          4.6,
+          -5.0,
+          -5.0,
+          4.6,
+          -4.6,
+          -4.6,
+          5.0,
+          -4.6,
+          -5.0,
+          4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          -4.6,
+          -5.0,
+          -4.6,
+          4.6,
+          -5.0,
+          4.6,
+          4.6
+        ],
+        "uv": [
+          0.35341,
+          0.330058,
+          0.35341,
+          0.029355,
+          0.654194,
+          0.029355,
+          0.654194,
+          0.330058,
+          0.316357,
+          0.029355,
+          0.015573,
+          0.029355,
+          0.015573,
+          0.330058,
+          0.316357,
+          0.330058,
+          0.00601,
+          0.99399,
+          0.00601,
+          0.69351,
+          0.30649,
+          0.69351,
+          0.30649,
+          0.99399,
+          0.654194,
+          0.654783,
+          0.654194,
+          0.353999,
+          0.35341,
+          0.353999,
+          0.35341,
+          0.654783,
+          0.015573,
+          0.654783,
+          0.015573,
+          0.353999,
+          0.316357,
+          0.353999,
+          0.316357,
+          0.654783,
+          0.340332,
+          0.029355,
+          0.35341,
+          0.029355,
+          0.35341,
+          0.330058,
+          0.340332,
+          0.330058,
+          0.35341,
+          0.654783,
+          0.35341,
+          0.667861,
+          0.654194,
+          0.667861,
+          0.654194,
+          0.654783,
+          0.667272,
+          0.330058,
+          0.654194,
+          0.330058,
+          0.654194,
+          0.029355,
+          0.667272,
+          0.029355,
+          0.316357,
+          0.654783,
+          0.316357,
+          0.667861,
+          0.015573,
+          0.667861,
+          0.015573,
+          0.654783,
+          0.015573,
+          0.353999,
+          0.015573,
+          0.340921,
+          0.316357,
+          0.340921,
+          0.316357,
+          0.353999,
+          0.329435,
+          0.029355,
+          0.316357,
+          0.029355,
+          0.316357,
+          0.330058,
+          0.329435,
+          0.330058,
+          0.654194,
+          0.353999,
+          0.654194,
+          0.340921,
+          0.35341,
+          0.340921,
+          0.35341,
+          0.353999,
+          0.002495,
+          0.330058,
+          0.015573,
+          0.330058,
+          0.015573,
+          0.029355,
+          0.002495,
+          0.029355,
+          0.316357,
+          0.353999,
+          0.329435,
+          0.353999,
+          0.329435,
+          0.654783,
+          0.316357,
+          0.654783,
+          0.654194,
+          0.654783,
+          0.667272,
+          0.654783,
+          0.667272,
+          0.353999,
+          0.654194,
+          0.353999,
+          0.340332,
+          0.654783,
+          0.35341,
+          0.654783,
+          0.35341,
+          0.353999,
+          0.340332,
+          0.353999,
+          0.015573,
+          0.654783,
+          0.002495,
+          0.654783,
+          0.002495,
+          0.353999,
+          0.015573,
+          0.353999,
+          0.015573,
+          0.667861,
+          0.002495,
+          0.654783,
+          0.015573,
+          0.654783,
+          0.35341,
+          0.667861,
+          0.35341,
+          0.654783,
+          0.340332,
+          0.654783,
+          0.654194,
+          0.667861,
+          0.667272,
+          0.654783,
+          0.654194,
+          0.654783,
+          0.316357,
+          0.667861,
+          0.316357,
+          0.654783,
+          0.329435,
+          0.654783,
+          0.015573,
+          0.340921,
+          0.015573,
+          0.353999,
+          0.002495,
+          0.353999,
+          0.316357,
+          0.340921,
+          0.329435,
+          0.353999,
+          0.316357,
+          0.353999,
+          0.654194,
+          0.340921,
+          0.654194,
+          0.353999,
+          0.667272,
+          0.353999,
+          0.35341,
+          0.340921,
+          0.340332,
+          0.353999,
+          0.35341,
+          0.353999,
+          0.62899,
+          0.69351,
+          0.32851,
+          0.69351,
+          0.32851,
+          0.99399,
+          0.62899,
+          0.99399
+        ],
+        "indices": [
+          0,
+          1,
+          2,
+          2,
+          3,
+          0,
+          4,
+          5,
+          6,
+          6,
+          7,
+          4,
+          8,
+          9,
+          10,
+          10,
+          11,
+          8,
+          12,
+          13,
+          14,
+          14,
+          15,
+          12,
+          16,
+          17,
+          18,
+          18,
+          19,
+          16,
+          20,
+          21,
+          22,
+          22,
+          23,
+          20,
+          24,
+          25,
+          26,
+          26,
+          27,
+          24,
+          28,
+          29,
+          30,
+          30,
+          31,
+          28,
+          32,
+          33,
+          34,
+          34,
+          35,
+          32,
+          36,
+          37,
+          38,
+          38,
+          39,
+          36,
+          40,
+          41,
+          42,
+          42,
+          43,
+          40,
+          44,
+          45,
+          46,
+          46,
+          47,
+          44,
+          48,
+          49,
+          50,
+          50,
+          51,
+          48,
+          52,
+          53,
+          54,
+          54,
+          55,
+          52,
+          56,
+          57,
+          58,
+          58,
+          59,
+          56,
+          60,
+          61,
+          62,
+          62,
+          63,
+          60,
+          64,
+          65,
+          66,
+          66,
+          67,
+          64,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          94,
+          95,
+          92
+        ]
+      },
+      "source": "public/image/sixdice.dae",
+      "sourceSha256": "c13ac9ee6ffd9d56c6be3c73cfb1dc10c7facef6e7efc9ed9c4a2084312601b7",
+      "texture": "bonus-sixdice.png",
+      "camera": {
+        "position": [
+          0,
+          60,
+          27
+        ],
+        "focus": 500,
+        "zoom": 1,
+        "rotation": [
+          90,
+          90,
+          0
+        ]
+      },
+      "viewport": [
+        60,
+        35,
+        780,
+        680
+      ],
+      "sourceViewport": [
+        300,
+        300
+      ]
+    },
+    "cards": {
+      "frame": {
+        "file": "bonus-card-backdrop.png",
+        "x": 291,
+        "y": 317,
+        "width": 179,
+        "height": 264
+      },
+      "get": {
+        "frames": [
+          {
+            "file": "bonus-card-get-02.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-03.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-04.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-05.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-06.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-07.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-08.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-09.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-10.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-11.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-12.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-12.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-12.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-12.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          },
+          {
+            "file": "bonus-card-get-12.png",
+            "x": 291,
+            "y": 317,
+            "width": 179,
+            "height": 264
+          }
+        ],
+        "framesPerSecond": 40.8
+      },
+      "exp": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240
+        },
+        "icon": {
+          "file": "bonus-exp-icon.png",
+          "x": 25,
+          "y": 43,
+          "width": 116,
+          "height": 111
+        },
+        "title": {
+          "text": "獲得EXP增加",
+          "font": "bonus-card-name.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "x": -62,
+          "y": 185,
+          "width": 200,
+          "height": 100
+        }
+      },
+      "gem": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240
+        },
+        "icon": {
+          "file": "treasure-gem-icon.png",
+          "x": 34,
+          "y": 31,
+          "width": 107,
+          "height": 108
+        },
+        "title": {
+          "text": "獲得GEM增加",
+          "font": "bonus-card-name.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "x": -56,
+          "y": 185,
+          "width": 200,
+          "height": 100
+        }
+      }
+    },
+    "items": {
+      "11": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240
+        },
+        "icon": {
+          "file": "bonus-item-11.png",
+          "x": 32,
+          "y": 43,
+          "width": 102,
+          "height": 114
+        },
+        "title": {
+          "text": "時間沙漏",
+          "font": "bonus-card-name.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "text": "可以將搜索中任務的搜索時間縮短3小時",
+          "font": "bonus-card-name.woff",
+          "x": 15,
+          "y": 180,
+          "width": 144,
+          "height": 90
+        }
+      },
+      "15": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240
+        },
+        "icon": {
+          "file": "bonus-item-15.png",
+          "x": 21,
+          "y": 42,
+          "width": 123,
+          "height": 120
+        },
+        "title": {
+          "text": "急救品5",
+          "font": "bonus-card-name.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "text": "恢復任務中所有人物的生命值5",
+          "font": "bonus-card-name.woff",
+          "x": 15,
+          "y": 180,
+          "width": 144,
+          "height": 90
+        }
+      }
     }
   }
 }

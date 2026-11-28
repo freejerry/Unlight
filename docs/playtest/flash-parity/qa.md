@@ -185,6 +185,12 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 舞台 0 檢查城堡和欄杆、6 處燭光原始位置及同步畫格、`bgm000.mp3`。格 6 核對同一持有任務的 `SC19=74`，實體卡 `SC13` 與實際卡號 `SC25 [6,1,21]`，以及後續 `SC20` 和 Pong。確認前讀 SQLite 的 Binder 與原牌組。格 10 先驗六點傷勢與原地回復，再檢查末格寶箱、通關及 Back。保留舞台、寶箱、封包、音效與存檔。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [左線逐項規格](quest-pve.md#泥潭左線與先鋒卡)
 
+### 重跑高低獎勵骰
+
+各用獨立角色持有 q568「魯比歐那的殘渣1」。原版搜尋種子 190，地區旗標 21，搜尋和開始各扣 4 AP。保留同一個 Deck 1 的卡 25 或 30，並在兩戰初始化前限定該角色設種子 1。出牌計畫分別為 1＋1 或 2＋2 回合，其餘使用原本的 Ruby 計時、牌與骰。[原版角色與操作準備](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/README.md)
+
+固定舞台測試沿用 `--quest-start-user` 及對應密碼檔。另傳 `--quest-high-low high` 驗 Next 後猜高，或 `--quest-high-low get` 驗直接領取。保留 `SC123`、`SC124` 及 `SC38/126` 的實際等待畫面，檢查按鈕何時啟用、對局合計與帳戶絕對值，以及續行格 7 是否保留原任務和原牌組。道具以真 `SC11` 和 SQLite 查核，角色卡用 `SC38` 的實體 ID 對照 Binder。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [高低獎勵骰規格](quest-pve.md#高低獎勵骰)
+
 ## 待驗收
 
 - 建立同一次發布的原版↔固定舞台配對，固定帳號類型、XML、DPR、視窗、音訊設定和合成擷取時點。對登入、建角、教學與大廳核對實際像素、焦點、圖層、文字及畫格。已知偏差包含 Logo 取樣捨入、裝置字型及台外署名。 [固定舞台已知差異](../../../source-login/README.md)

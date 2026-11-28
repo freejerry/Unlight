@@ -24,6 +24,9 @@ import {
   QUEST_HAND_EFFECT_REPLIES,
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY,
+  QUEST_REWARD_HIGH_REQUEST, QUEST_REWARD_LOW_REQUEST, QUEST_REWARD_NEXT_REQUEST, QUEST_REWARD_TAKE_REQUEST,
+  QUEST_REWARD_AWARD_REPLY, QUEST_REWARD_CANDIDATES_REPLY, QUEST_REWARD_BASE_DICE_REPLY,
+  QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
@@ -34,7 +37,7 @@ import {
   readQuestDuelFinishReply, readQuestCombatBoundaryReply,
   readQuestHandEffectReply,
   readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
-  readQuestSettlementValueReply, readQuestCharacterAwardReply,
+  readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -88,6 +91,7 @@ const QUEST_LAND_SLOTS = 15;
 const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
 const QUEST_CHARACTER_TREASURE_TYPE = 1; // Original TG_CHARA_CARD.
 const QUEST_OWN_CARD_TREASURE_TYPE = 6; // Original TG_OWN_CARD.
+const QUEST_BONUS_GAME_TREASURE_TYPE = 7; // Original TG_BONUS_GAME.
 const QUEST_VANGUARD_KINDS = new Set([0, 8, 13]); // Original ordinary, reborn, and episode characters.
 const QUEST_BOSS_KIND = 2; // Original QT_BOSS.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
@@ -137,6 +141,9 @@ const QUEST_SETTLEMENT_REPLIES = [
   QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_MAP_FLAG_REPLY, QUEST_MAP_CLEAR_COUNT_REPLY,
   QUEST_CHARACTER_AWARD_REPLY, QUEST_ENERGY_REPLY,
 ];
+const QUEST_REWARD_REPLIES = [QUEST_REWARD_AWARD_REPLY, QUEST_REWARD_CANDIDATES_REPLY, QUEST_REWARD_BASE_DICE_REPLY,
+  QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY];
+const QUEST_REWARD_AVATAR_REPLIES = [QUEST_EXP_REPLY, QUEST_LEVEL_REPLY, QUEST_GEMS_REPLY, QUEST_CHARACTER_AWARD_REPLY];
 const HEARTBEAT = 180_000;
 const CLOSE_TIMEOUT = 1500;
 const LOGIN_FIELD = /^[A-Za-z0-9_.-]{1,16}$/;
@@ -185,6 +192,8 @@ const messages = {
   'quest-card-rejected': '遊戲服務未接受移動這張卡。',
   'quest-character-unavailable': '目前無法選擇這張角色卡。',
   'quest-character-overridden': '原版伺服器選擇了其他角色。',
+  'quest-reward-unavailable': '原版獎勵目前不接受這項操作。',
+  'quest-reward-uncertain': '尚未確認獎勵結果，本次獎勵暫停操作。',
   'quest-return-unavailable': '任務服務尚未確認可返回地圖。',
   'quest-return-uncertain': '未能確認原版任務連線已釋放。',
 };
@@ -1209,7 +1218,7 @@ async function readQuestRoute(questId, signal) {
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
   for (const { slot, id, name, caption, stage, nextMask, enemyId, eventNo, emptyTerrain, fixedGemTreasure,
-    fixedBattleGemTreasure, fixedCharacterTreasure, ownCardTreasure, nextSlots } of positions) {
+    fixedBattleGemTreasure, fixedCharacterTreasure, ownCardTreasure, bonusGameTreasure, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
@@ -1228,6 +1237,9 @@ async function readQuestRoute(questId, signal) {
       ownCardTreasure: ordinaryMap && storyNo === 0 && eventNo === 0 && nextMask > 0 && validQuestCardId(enemyId)
         && ownCardTreasure?.slotType === 1 && ownCardTreasure.value === 1
         ? verifiedFixedTreasure(ownCardTreasure, QUEST_OWN_CARD_TREASURE_TYPE) : null,
+      bonusGameTreasure: ordinaryMap && storyNo === 0 && eventNo === 0 && validQuestCardId(enemyId)
+        && bonusGameTreasure?.slotType === 1 && bonusGameTreasure.value <= 8
+        ? verifiedFixedTreasure(bonusGameTreasure, QUEST_BONUS_GAME_TREASURE_TYPE) : null,
       mapId, questKind: kind, mapClearTarget,
       nextSlots,
     });
@@ -1366,13 +1378,196 @@ function questRoster(cardIds, damage) {
   };
 }
 
+function sameQuestReward(first, second) {
+  return first === second || (first && second && first.genre === second.genre && first.id === second.id && first.amount === second.amount);
+}
+
+function observeQuestBattleReward(socket, { canPlay, knowsCard, applyClaim, publish }) {
+  let phase = 'loading';
+  let round = 0;
+  let rank = null;
+  let choices = Object.freeze([]);
+  let baseDice = null;
+  let rolledDice = null;
+  let decision = null;
+  let claim = null;
+  let append;
+  let nextRank;
+  let award;
+  let avatar;
+  let cards;
+  let pending;
+  let expected = QUEST_REWARD_CANDIDATES_REPLY;
+  const preludeDeadline = setTimeout(fail, TIMEOUT);
+
+  function fail() {
+    if (phase === 'uncertain') return;
+    clearTimeout(preludeDeadline);
+    phase = 'uncertain';
+    expected = null;
+    pending?.reject(new SessionError('quest-reward-uncertain'));
+    publish();
+  }
+
+  function received(reply) {
+    const rewardReply = QUEST_REWARD_REPLIES.includes(reply.command);
+    const claimUpdate = phase === 'claiming' && QUEST_REWARD_AVATAR_REPLIES.includes(reply.command);
+    if (!rewardReply && !claimUpdate) return false;
+    if (phase === 'uncertain' || phase === 'claimed') return true;
+    try {
+      if (claimUpdate) {
+        if (award) throw new SessionError('protocol');
+        if (reply.command === QUEST_CHARACTER_AWARD_REPLY) {
+          const card = readQuestCharacterAwardReply(reply);
+          if (knowsCard(card.inventoryId) || cards.has(card.inventoryId) || cards.size >= MAX_QUEST_ROWS) {
+            throw new SessionError('protocol');
+          }
+          cards.set(card.inventoryId, card);
+        } else {
+          const { field, value } = readQuestSettlementValueReply(reply);
+          avatar[field] = value;
+        }
+        return true;
+      }
+      if (reply.command !== expected) throw new SessionError('protocol');
+      const data = readQuestRewardReply(reply);
+      switch (reply.command) {
+        case QUEST_REWARD_CANDIDATES_REPLY:
+          if (phase === 'loading') {
+            if (!data.choices.every(Boolean)) throw new SessionError('protocol');
+            choices = Object.freeze(data.choices);
+            rank = data.rank;
+          } else {
+            if (!data.choices[0] || data.choices.slice(1).some(Boolean) || data.rank < rank) throw new SessionError('protocol');
+            append = data.choices[0];
+            nextRank = data.rank;
+          }
+          expected = QUEST_REWARD_BASE_DICE_REPLY;
+          break;
+        case QUEST_REWARD_BASE_DICE_REPLY:
+          if (phase === 'loading') {
+            clearTimeout(preludeDeadline);
+            phase = 'offer';
+          } else {
+            if (!sameValues(data, rolledDice ?? baseDice)) throw new SessionError('protocol');
+            round += 1;
+            phase = 'guess';
+            rolledDice = decision = null;
+          }
+          baseDice = data;
+          expected = null;
+          break;
+        case QUEST_REWARD_ROLLED_DICE_REPLY:
+          rolledDice = data;
+          expected = QUEST_REWARD_DECISION_REPLY;
+          break;
+        case QUEST_REWARD_DECISION_REPLY:
+          if (data.bonus !== nextRank || (data.won && (!sameQuestReward(data.current, choices[1])
+              || !sameQuestReward(data.next, append)))) throw new SessionError('protocol');
+          if (data.won) choices = Object.freeze([data.current, ...choices.slice(2), data.next]);
+          decision = data;
+          rank = data.bonus;
+          phase = 'offer';
+          expected = null;
+          break;
+        case QUEST_REWARD_AWARD_REPLY: {
+          const offered = decision?.won === false ? null : choices[0];
+          if (!sameQuestReward(data.reward, offered)
+              || data.inventoryIds.some((id) => knowsCard(id) || cards.has(id))
+              || (offered?.genre === 0 && avatar.exp === null)
+              || (offered?.genre === 1 && avatar.gems === null)) throw new SessionError('protocol');
+          award = data;
+          expected = QUEST_REWARD_FINAL_REPLY;
+          break;
+        }
+        case QUEST_REWARD_FINAL_REPLY:
+          if (!sameQuestReward(data.reward, award.reward)) throw new SessionError('protocol');
+          applyClaim({ avatar, cards: [...cards.values(), ...award.inventoryIds.map((inventoryId) => ({ inventoryId, cardId: award.reward.id }))] });
+          claim = Object.freeze({ ...data, inventoryIds: award.inventoryIds });
+          phase = 'claimed';
+          expected = null;
+          break;
+      }
+      if (expected === null) pending?.resolve();
+      publish();
+    } catch {
+      fail();
+    }
+    return true;
+  }
+
+  function snapshot() {
+    const allowed = !pending && canPlay();
+    return Object.freeze({ phase, round, rank, choices, baseDice, rolledDice, decision, claim,
+      canNext: allowed && phase === 'offer' && decision?.won !== false,
+      canTake: allowed && phase === 'offer', canGuess: allowed && phase === 'guess' });
+  }
+
+  async function request(action, signal) {
+    if (signal.aborted) throw new SessionError('cancelled');
+    if (phase === 'uncertain') throw new SessionError('quest-reward-uncertain');
+    if (pending) throw new SessionError('busy');
+    const gate = snapshot();
+    const next = action === 'next';
+    const take = action === 'take';
+    if (!(next ? gate.canNext : take ? gate.canTake : gate.canGuess && (action === 'high' || action === 'low'))) {
+      throw new SessionError('quest-reward-unavailable');
+    }
+    const previous = phase;
+    const response = new Promise((resolve, reject) => { pending = { resolve, reject }; });
+    const result = bounded(response, signal);
+    let sent = false;
+    try {
+      if (next) {
+        phase = 'opening';
+        expected = QUEST_REWARD_CANDIDATES_REPLY;
+        socket.send(QUEST_REWARD_NEXT_REQUEST, []);
+      } else if (take) {
+        phase = 'claiming';
+        expected = QUEST_REWARD_AWARD_REPLY;
+        avatar = { exp: null, gems: null, level: null, energy: null };
+        cards = new Map();
+        socket.send(QUEST_REWARD_TAKE_REQUEST, []);
+      } else {
+        phase = 'rolling';
+        expected = QUEST_REWARD_ROLLED_DICE_REPLY;
+        socket.send(action === 'high' ? QUEST_REWARD_HIGH_REQUEST : QUEST_REWARD_LOW_REQUEST, []);
+      }
+      sent = true;
+      publish();
+      await result;
+      signal.throwIfAborted();
+      if (phase === 'uncertain') throw new SessionError('quest-reward-uncertain');
+      socket.assertOpen();
+    } catch (error) {
+      if (sent) {
+        fail();
+        throw new SessionError('quest-reward-uncertain');
+      }
+      phase = previous;
+      expected = null;
+      pending.reject(error);
+      await result.catch(() => {});
+      throw error;
+    } finally {
+      pending = null;
+      publish();
+    }
+  }
+
+  return { received, snapshot, request, stop: () => clearTimeout(preludeDeadline),
+    invalidate() { if (phase !== 'claimed' && phase !== 'uncertain') fail(); } };
+}
+
 function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange, continuation) {
   const land = continuation && run.positions?.get(slot);
   const ownCardTreasure = land?.ownCardTreasure && { ...land.ownCardTreasure, value: continuation.ownCardLevel1Id };
   const characterTreasure = land?.fixedCharacterTreasure ?? ownCardTreasure;
   const fixedBattleGemTreasure = land?.fixedBattleGemTreasure;
+  const bonusGameTreasure = land?.bonusGameTreasure;
   const fixedTreasure = characterTreasure ?? fixedBattleGemTreasure;
-  const treasureMap = fixedTreasure && land.nextMask === 0 ? expectedTreasureMapUpdate(land, continuation.mapBefore) : null;
+  const treasureMap = (fixedTreasure || bonusGameTreasure) && land.nextMask === 0
+    ? expectedTreasureMapUpdate(land, continuation.mapBefore) : null;
   let treasureStage = 'progress';
   let treasureCard;
   let duelGemBalance = null;
@@ -1404,6 +1599,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   let outcomeDuel = null;
   let outcomeState = null;
   let outcomeReceipt = null;
+  let reward = null;
   let outcomeDeadline;
   let landFence;
   let outcomeNextLands = Object.freeze([]);
@@ -1946,10 +2142,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
 
   function outcomeSnapshot() {
     if (!outcomeState) return null;
+    const canReturn = !duelFinish?.bonus || reward?.snapshot().phase === 'claimed';
     return Object.freeze({
       inventoryId, questId, state: outcomeState, duel: outcomeDuel,
       quest: questFinish && Object.freeze({ ...questFinish }), receipt: outcomeReceipt,
-      canReturn: outcomeState === 'settled' || (outcomeState === 'land-cleared' && outcomeNextLands.length > 0),
+      canReturn: Boolean(canReturn && (outcomeState === 'settled' || (outcomeState === 'land-cleared' && outcomeNextLands.length > 0))),
       nextLands: outcomeNextLands,
     });
   }
@@ -1958,6 +2155,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     clearTimeout(outcomeDeadline);
     outcomeState = 'uncertain';
     outcomeNextLands = Object.freeze([]);
+    reward?.invalidate();
     if (!duelFinish) uncertain();
     publishBattlePhase(true);
   }
@@ -1978,11 +2176,15 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   }
 
   function expectsLandContinuation() {
-    return hasNextLand() && duelFinish?.result === 0 && !duelFinish.bonus;
+    return hasNextLand() && duelFinish?.result === 0 && (!duelFinish.bonus || bonusGameTreasure);
   }
 
   function expectsFixedTreasure() {
     return fixedTreasure && duelFinish?.result === 0 && !duelFinish.bonus;
+  }
+
+  function expectsBonusTreasure() {
+    return bonusGameTreasure && duelFinish?.result === 0 && duelFinish.bonus;
   }
 
   function confirmLandProgress() {
@@ -2003,7 +2205,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       run.damage = damage;
       clearTimeout(outcomeDeadline);
       outcomeReceipt = freezeQuestReceipt(receipt);
-      outcomeNextLands = nextSceneLands(run.positions, slot, progress, Boolean(fixedBattleGemTreasure));
+      outcomeNextLands = nextSceneLands(run.positions, slot, progress, Boolean(fixedBattleGemTreasure || bonusGameTreasure));
       outcomeState = 'land-cleared';
       publishBattlePhase(true);
     }).catch(() => { if (!signal.aborted) failQuestOutcome(); });
@@ -2035,7 +2237,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   function receiveSettlement(reply) {
     if (settlement || outcomeState === 'uncertain') return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
-      if (duelFinish && (hasNextLand() || fixedTreasure)) {
+      if (duelFinish && (hasNextLand() || fixedTreasure || bonusGameTreasure)) {
         const duplicate = readQuestDuelFinishReply(reply, { awards: true });
         if (Object.entries(duplicate).some(([field, value]) => outcomeDuel[field] !== value)) failQuestOutcome();
       }
@@ -2044,10 +2246,19 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           outcomeDuel = Object.freeze(readQuestDuelFinishReply(reply, { awards: true }));
           const { result, bonus } = outcomeDuel;
           duelFinish = { result, bonus };
-          outcomeState = bonus ? 'bonus-pending' : 'awaiting-settlement';
+          outcomeState = bonus && !bonusGameTreasure ? 'bonus-pending' : 'awaiting-settlement';
           outcomeDeadline = setTimeout(failQuestOutcome, TIMEOUT);
+          if (bonus && bonusGameTreasure) {
+            reward = observeQuestBattleReward(socket, {
+              canPlay: () => outcomeState === 'land-cleared' || outcomeState === 'settled',
+              knowsCard: continuation.knowsCard,
+              applyClaim: continuation.claimReward,
+              publish: () => publishBattlePhase(true),
+            });
+          }
         } else duelFinish = readQuestDuelFinishReply(reply);
         markDuelFinished();
+        if (bonusGameTreasure && !duelFinish.bonus) failQuestOutcome();
       }
       return;
     }
@@ -2056,7 +2267,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       case QUEST_DELETED_REPLY:
         if (readQuestDeletedReply(reply) === inventoryId) {
           if (onStateChange && (!duelFinish || outcomeState === 'land-cleared')) return failQuestOutcome();
-          if (expectsFixedTreasure()) {
+          if (expectsBonusTreasure() && hasNextLand()) return failQuestOutcome();
+          if (expectsFixedTreasure() || expectsBonusTreasure()) {
             if (treasureStage !== 'delete') return failQuestOutcome();
             treasureStage = 'finish';
           }
@@ -2070,7 +2282,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (onStateChange && (!duelFinish || !questDeleted || finish.result !== (duelFinish.result === 0 ? 0 : 1))) {
           return failQuestOutcome();
         }
-        if (expectsFixedTreasure() && treasureStage !== 'finish') return failQuestOutcome();
+        if ((expectsFixedTreasure() || expectsBonusTreasure()) && treasureStage !== 'finish') return failQuestOutcome();
         if (finish.result !== 0 && finish.result !== 1) return;
         questFinish ??= finish;
         if (exchange) {
@@ -2087,7 +2299,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (hasNextLand() && (!duelFinish || (expectsLandContinuation() && !expected))) {
           return failQuestOutcome();
         }
-        if (fixedTreasure && !duelFinish) return failQuestOutcome();
+        if ((fixedTreasure || bonusGameTreasure) && !duelFinish) return failQuestOutcome();
+        if (expectsBonusTreasure()) {
+          if (!expected || treasureStage !== 'progress') return failQuestOutcome();
+          treasureStage = 'treasure';
+        }
         if (expectsFixedTreasure()) {
           if (!expected || treasureStage !== 'progress') return failQuestOutcome();
           treasureStage = fixedBattleGemTreasure ? 'gem-balance' : 'award';
@@ -2101,8 +2317,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       case QUEST_DECK_STATE_REPLY: {
         const update = readQuestDeckStateReply(reply);
         if (update.deckIndex !== deckIndex) break;
-        if ((hasNextLand() || fixedTreasure) && !duelFinish) return failQuestOutcome();
-        if (expectsFixedTreasure()) {
+        if ((hasNextLand() || fixedTreasure || bonusGameTreasure) && !duelFinish) return failQuestOutcome();
+        if (expectsFixedTreasure() || expectsBonusTreasure()) {
           if (update.status !== QUEST_IN_PROGRESS || update.damage.some((damage) => damage < 0)) return failQuestOutcome();
           if (treasureStage === 'damage') treasureStage = hasNextLand() ? 'confirmed' : 'reset';
           else if (treasureStage === 'reset' && treasureMap && update.damage.every((damage) => damage === 0)) {
@@ -2144,6 +2360,12 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         break;
       }
       case QUEST_TREASURE_REPLY: {
+        if (expectsBonusTreasure()) {
+          if (treasureStage !== 'treasure') return failQuestOutcome();
+          readMatchingQuestTreasure(reply, bonusGameTreasure);
+          treasureStage = 'damage'; // The original result scene owns this reward, not a separate map chest.
+          break;
+        }
         if (!expectsFixedTreasure() || treasureStage !== 'treasure') return failQuestOutcome();
         readMatchingQuestTreasure(reply, fixedTreasure);
         treasure = fixedBattleGemTreasure ? fixedGemReceipt(fixedBattleGemTreasure, treasureBalance)
@@ -2178,7 +2400,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         break;
       default: {
         const { field, value } = readQuestSettlementValueReply(reply);
-        if (expectsFixedTreasure() && Object.hasOwn(settlementMap, field)) {
+        if ((expectsFixedTreasure() || expectsBonusTreasure()) && Object.hasOwn(settlementMap, field)) {
           const expectedStage = field === 'questClearNum' ? 'clear-count' : 'map-flag';
           if (treasureStage !== expectedStage || treasureMap?.[field] !== value) return failQuestOutcome();
           treasureStage = field === 'questClearNum' && treasureMap.questFlag !== null ? 'map-flag' : 'delete';
@@ -2197,7 +2419,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if (onStateChange) {
         clearTimeout(outcomeDeadline);
         outcomeReceipt = freezeQuestReceipt(settlement);
-        outcomeState = duelFinish.bonus ? 'bonus-pending' : 'settled';
+        outcomeState = duelFinish.bonus && !bonusGameTreasure ? 'bonus-pending' : 'settled';
       }
     }
   }
@@ -2295,12 +2517,15 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
     ...(onStateChange ? [QUEST_MOVE_SUBMITTED_REPLY, QUEST_ATTACK_SUBMITTED_REPLY, QUEST_DEFENCE_SUBMITTED_REPLY,
       QUEST_POINT_UPDATE_REPLY] : []),
-    ...(fixedTreasure ? [QUEST_TREASURE_REPLY] : []),
+    ...(fixedTreasure || bonusGameTreasure ? [QUEST_TREASURE_REPLY] : []),
+    ...(bonusGameTreasure ? QUEST_REWARD_REPLIES : []),
   ];
   function receiveReply(reply) {
     if (phase === 'closed') return;
     let combatChanged = false;
     try {
+      if (reward?.received(reply)) return;
+      if (QUEST_REWARD_REPLIES.includes(reply.command)) return failQuestOutcome();
       if (sceneCombat?.nextAttackPoints && reply.command !== QUEST_POINT_UPDATE_REPLY
           && reply.command !== QUEST_ATTACK_PHASE_START_REPLY) sceneCombat.nextAttackPoints = null;
       if (QUEST_SETTLEMENT_REPLIES.includes(reply.command) || reply.command === QUEST_TREASURE_REPLY) {
@@ -2314,6 +2539,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if ((expectsLandContinuation() || expectsFixedTreasure()) && reply.command === QUEST_ERROR_REPLY) {
         readQuestErrorReply(reply);
         failQuestOutcome();
+        return;
+      }
+      if (reward && reply.command === QUEST_ERROR_REPLY) {
+        reward.invalidate();
         return;
       }
       if (phase === 'uncertain' || exchange?.phase === 'uncertain' || duelFinish || questFinish) return;
@@ -2457,9 +2686,9 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
     } catch {
       if (onStateChange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_DELETED_REPLY
-          || reply.command === QUEST_FINISH_REPLY || ((hasNextLand() || fixedTreasure) && (reply.command === QUEST_PROGRESS_REPLY
+          || reply.command === QUEST_FINISH_REPLY || ((hasNextLand() || fixedTreasure || bonusGameTreasure) && (reply.command === QUEST_PROGRESS_REPLY
             || reply.command === QUEST_DECK_STATE_REPLY || reply.command === QUEST_ERROR_REPLY)))) failQuestOutcome();
-      else if (fixedTreasure && [QUEST_CHARACTER_AWARD_REPLY, QUEST_TREASURE_REPLY, QUEST_MAP_FLAG_REPLY,
+      else if ((fixedTreasure || bonusGameTreasure) && [QUEST_CHARACTER_AWARD_REPLY, QUEST_TREASURE_REPLY, QUEST_MAP_FLAG_REPLY,
         QUEST_MAP_CLEAR_COUNT_REPLY, QUEST_GEMS_REPLY].includes(reply.command)) failQuestOutcome();
       else uncertain();
     } finally {
@@ -2618,6 +2847,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         exchange: (duelFinish || questFinish || (phase !== 'between-turns' && phase !== 'preparing')) ? sceneExchangeSnapshot() : null,
         exchangeHistory, previousExchange: exchangeHistory.at(-1) ?? null,
         outcome: outcomeSnapshot(),
+        ...(reward ? { reward: reward.snapshot() } : {}),
         roster: Object.freeze({ player: freezeSide(roster.player), opponent: freezeSide(roster.opponent) }),
         characterChange: characterChange && Object.freeze({
           kind: characterChange.kind, playerDone: characterChange.playerDone, opponentDone: characterChange.opponentDone,
@@ -2650,12 +2880,20 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     removeBattleCard: (id, signal) => send('battle-card', 'remove', null, signal, { id }),
     rotateBattleCard: (id, signal) => send('battle-rotate', QUEST_CARD_ROTATE_REQUEST, null, signal, { id }),
     commitBattle: (signal) => send('battle-commit', 'done', ['', ''], signal),
+    async rewardAction(action, signal, round) {
+      if (!reward || (round !== undefined && round !== reward.snapshot().round)) {
+        throw new SessionError('quest-reward-unavailable');
+      }
+      await reward.request(action, signal);
+      return reward.snapshot();
+    },
     async stop(reason) {
       phase = 'closed';
       catalogRequests.abort();
       if (exchange) exchange.phase = 'closed';
       clearTimeout(settlementTimer);
       clearTimeout(outcomeDeadline);
+      reward?.stop();
       unsubscribe();
       const action = pending;
       if (action) {
@@ -3282,6 +3520,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             knowsCard: (id) => confirmedQuestAwards.has(id)
               || initialData?.deckCollection?.binder.some(({ inventoryId }) => inventoryId === id)
               || initialData?.deckChoices?.some(({ cards }) => cards.some(({ inventoryId }) => inventoryId === id)),
+            claimReward(receipt) {
+              if (questScene !== scene || scene.adventure !== current || current.state !== 'encounter') {
+                throw new SessionError('protocol');
+              }
+              reconcileQuestRewards(receipt);
+              publishAvatar();
+            },
           });
           void previousObserver?.stop('closed');
           current.nonCombatObserver = null;
@@ -3389,6 +3634,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       }
     }, deadline);
     return scene.snapshot.adventure.battle;
+  }
+
+  async function runQuestSceneReward(scene, action, { signal, encounterKey, rewardRound } = {}) {
+    const current = scene.adventure;
+    return runQuestSceneOperation(scene, `battle-reward-${action}`, signal, (_, requestSignal) => {
+      if (scene.adventure !== current || !matchesEncounter(current, encounterKey)) throw new SessionError('quest-reward-unavailable');
+      return current.battle.rewardAction(action, requestSignal, rewardRound);
+    });
   }
 
   async function returnFromQuestSceneBattle(scene, signal, encounterKey) {
@@ -3878,6 +4131,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
             },
             commitBattle: ({ signal, exchangeKey, encounterKey } = {}) => runQuestSceneBattle(scene, 'combat-commit', signal,
               (battle, active) => battle.commitBattle(active), exchangeKey, encounterKey),
+            nextBattleReward: (options) => runQuestSceneReward(scene, 'next', options),
+            guessBattleReward: async (direction, options) => {
+              if (direction !== 'high' && direction !== 'low') throw new SessionError('quest-reward-unavailable');
+              return runQuestSceneReward(scene, direction, options);
+            },
+            takeBattleReward: (options) => runQuestSceneReward(scene, 'take', options),
             returnFromBattle: ({ signal, encounterKey } = {}) => returnFromQuestSceneBattle(scene, signal, encounterKey),
             close: () => closeQuestScene(scene),
             closed: socket.closed.then(async (reason) => {

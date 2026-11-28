@@ -1,4 +1,5 @@
 import { battleStands } from './battle-card.js';
+import { mountQuestBattleBonus } from './quest-battle-bonus.js';
 
 const resultArt = new URL('./quest-result-art/', import.meta.url);
 const standArt = new URL('./battle-card-art/', import.meta.url);
@@ -173,6 +174,17 @@ function scoreNodes(parent, rewards, outcome) {
   }));
 }
 
+async function revealAwardDetails(rows, signal) {
+  for (const column of [2, 3, 4]) {
+    if (signal.aborted) return;
+    await Promise.all(rows.map(row => {
+      const { node } = row[column];
+      node.hidden = false;
+      return fade(node, 0, 1, 300, signal);
+    }));
+  }
+}
+
 async function portraitLayer(playerCardId, signal) {
   const stands = await battleStands(signal);
   const pose = stands?.[playerCardId]?.opening;
@@ -184,15 +196,16 @@ async function portraitLayer(playerCardId, signal) {
     width: pose.width * sx, height: pose.height * sy });
 }
 
-/** Show the original no-bonus Quest battle awards before returning to the retained Quest map. */
+/** Show the original Quest battle awards and any confirmed bonus before returning to the map. */
 export function mountQuestDuelResult(battle, {
-  outcome, playerCardId, signal, canReturn = false, receipt, onReturn, onSound,
+  outcome, playerCardId, signal, canReturn = false, receipt, onReturn, onSound, reward, runRewardAction, loadCards,
 }) {
   const controller = new AbortController();
   const visual = controller.signal;
   const valid = Number.isInteger(outcome?.result) && outcome.result >= 0 && outcome.result < resultNames.length
-    && outcome.bonus === false && awardNames.every(key => Number.isSafeInteger(outcome[key]));
-  if (signal?.aborted || !valid) return { ready: Promise.resolve(false), setCanReturn() {}, setLevelUp() {}, dispose() {} };
+    && (outcome.bonus === false || (outcome.bonus === true && typeof runRewardAction === 'function'))
+    && awardNames.every(key => Number.isSafeInteger(outcome[key]));
+  if (signal?.aborted || !valid) return { ready: Promise.resolve(false), setCanReturn() {}, setLevelUp() {}, setReward() {}, dispose() {} };
 
   const originalChildren = Array.from(battle.children)
     .filter(node => !node.querySelector('#quest-battle-settlement-status')).map(node => [node, node.inert]);
@@ -218,11 +231,13 @@ export function mountQuestDuelResult(battle, {
   rewards.setAttribute('aria-label', 'Gem 和 EXP');
   const levelLayer = nodeIn(overlay, 'div', 'quest-battle-result-level');
   levelLayer.hidden = true;
+  if (outcome.bonus) Object.assign(levelLayer.style, { position: 'absolute', inset: '0', zIndex: '1', pointerEvents: 'none' });
   const button = nodeIn(overlay, 'button', 'quest-battle-result-ok');
   button.type = 'button';
   button.textContent = 'OK';
   button.hidden = true;
   button.disabled = true;
+  button.dataset.confirmation = outcome.bonus ? 'begin' : 'return';
   button.setAttribute('aria-label', 'OK');
   put(button, { x: 576, y: 600, width: 136, height: 51 });
   overlay.focus({ preventScroll: true });
@@ -236,14 +251,23 @@ export function mountQuestDuelResult(battle, {
   let level = levelFrom(receipt);
   let levelTask;
   let levelPlaying = false;
+  let bonusStarted = false;
+  let bonus;
+  let bonusClaim;
+  let showBonusLevel = false;
+  let scoreRows;
 
   function sound(cue) {
     try { void Promise.resolve(onSound?.(cue)).catch(() => {}); } catch { /* Audio is independent of the result. */ }
   }
 
   function gate() {
-    const enable = ready && returnAllowed && !leaving && !levelPlaying && typeof onReturn === 'function';
-    const focus = enable && button.disabled && overlay.ownerDocument.activeElement === overlay;
+    const offer = outcome.bonus && !bonusStarted;
+    const allowed = offer ? reward?.phase === 'offer' && reward.choices?.length === 4 && typeof runRewardAction === 'function'
+      : returnAllowed && (!outcome.bonus || !!bonusClaim) && typeof onReturn === 'function';
+    const enable = ready && allowed && !leaving && !levelPlaying;
+    const active = overlay.ownerDocument.activeElement;
+    const focus = enable && button.disabled && (active === overlay || active?.id === 'quest-battle-bonus');
     button.disabled = !enable;
     if (focus) button.focus({ preventScroll: true });
   }
@@ -281,15 +305,72 @@ export function mountQuestDuelResult(battle, {
   function setCanReturn(value) { returnAllowed = value === true; gate(); }
   function setLevelUp(next) {
     if (!levelTask) level = levelFrom(next) ?? level;
-    void showLevel();
+    if (!outcome.bonus || showBonusLevel) void showLevel();
+  }
+  function setReward(next) {
+    reward = next;
+    bonus?.update(next);
+    gate();
+  }
+
+  async function showClaim(claim) {
+    if (visual.aborted) return;
+    bonusClaim = claim;
+    showBonusLevel = !claim.reward;
+    const values = { totalGems: claim.totalGems, totalExp: claim.totalExp };
+    if (claim.reward?.genre === 0) values.expCardPower = claim.reward.amount;
+    if (claim.reward?.genre === 1) values.gemsCardPower = claim.reward.amount;
+    for (const [field, value] of Object.entries(values)) {
+      const node = rewards.querySelector(`[data-award="${field}"]`);
+      node.textContent = node.dataset.value = String(value);
+    }
+    await revealAwardDetails(scoreRows, visual);
+    if (showBonusLevel) await showLevel();
+    if (visual.aborted) return;
+    button.dataset.confirmation = level && !levelTask ? 'level' : 'return';
+    button.hidden = false;
+    await fade(button, 0, 1, 500 / 1.7, visual);
+    if (visual.aborted) return;
+    ready = true;
+    stableState();
+    if (!button.disabled) button.focus({ preventScroll: true });
   }
 
   button.addEventListener('click', async () => {
     if (button.disabled || leaving || visual.aborted) return;
+    sound('confirm');
+    if (button.dataset.confirmation === 'begin') {
+      bonusStarted = true;
+      ready = false;
+      overlay.dataset.state = 'bonus';
+      gate();
+      await Promise.all([button, destination].map(node => fade(node, 1, 0, 500 / 1.7, visual)));
+      if (visual.aborted) return;
+      button.hidden = destination.hidden = true;
+      bonus = mountQuestBattleBonus(overlay, {
+        assets, reward, runAction: runRewardAction, loadCards, signal: visual, onSound: sound, onClaim: showClaim,
+      });
+      return;
+    }
+    if (button.dataset.confirmation === 'level') {
+      ready = false;
+      button.hidden = true;
+      gate();
+      await bonus.hideClaimCard();
+      if (visual.aborted) return;
+      showBonusLevel = true;
+      await showLevel();
+      if (visual.aborted) return;
+      button.dataset.confirmation = 'return';
+      button.hidden = false;
+      ready = true;
+      stableState();
+      if (!button.disabled) button.focus({ preventScroll: true });
+      return;
+    }
     leaving = true;
     overlay.dataset.state = 'leaving';
     gate();
-    sound('confirm');
     try {
       if (await onReturn() !== false) return;
     } catch { /* Allow another local attempt while the retained result remains authoritative. */ }
@@ -339,17 +420,20 @@ export function mountQuestDuelResult(battle, {
         Object.assign(label.style, { position: 'absolute', left: '16px', top: `${y}px`, color: '#fff' });
       }
     }
-    const rows = scoreNodes(rewards, assets?.rewards, outcome);
+    scoreRows = scoreNodes(rewards, assets?.rewards, outcome);
+    if (outcome.bonus) {
+      for (const row of scoreRows) for (const { node } of row.slice(2)) node.hidden = true;
+    }
     rewards.hidden = false;
     await Promise.all([slide(plate, 'Y', 220, 300, visual),
-      ...rows.flatMap(row => row.slice(0, 2).map(({ node, y }) => slide(node, 'Y', 805 - y, 300, visual)))]);
-    for (const index of [2, 3, 4]) await Promise.all(rows.map(row => fade(row[index].node, 0, 1, 300, visual)));
+      ...scoreRows.flatMap(row => row.slice(0, 2).map(({ node, y }) => slide(node, 'Y', 805 - y, 300, visual)))]);
+    if (!outcome.bonus) await revealAwardDetails(scoreRows, visual);
     if (visual.aborted) return false;
 
     awardsShown = true;
     const buttonLayers = await untilAbort(Promise.all(['up', 'over', 'down'].map(key => decode(resultArt, assets?.ok?.[key]))), visual);
     if (visual.aborted) return false;
-    await showLevel();
+    if (!outcome.bonus) await showLevel();
     if (visual.aborted) return false;
     const [up, over, down] = buttonLayers;
     const area = assets?.ok?.hit;
@@ -376,5 +460,5 @@ export function mountQuestDuelResult(battle, {
     return true;
   }
 
-  return { ready: present(), setCanReturn, setLevelUp, dispose };
+  return { ready: present(), setCanReturn, setLevelUp, setReward, dispose };
 }

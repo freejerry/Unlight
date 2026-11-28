@@ -12,7 +12,7 @@ from xml.etree import ElementTree
 from PIL import Image, ImageChops
 
 from extract_character_card_art import DisplayList, REVISION, bitmap, checked_source, matrix, timeline
-from extract_quest_detail_art import kind, png_bytes, rasterize_svg
+from extract_quest_detail_art import STAND_ALIASES, kind, png_bytes, rasterize_svg
 
 
 STANDS = {
@@ -20,6 +20,10 @@ STANDS = {
     "1004": ("public/image/standchara/standmon002_00.swf", "197fdd0e24b0b7036a9d89acfe3bed7e5cdb938cd588f204893ab26e4b981f9e"),
     "1001": ("public/image/standchara/standmon001_00.swf", "c5a506de29a9f7b20267dc2bbc8a45b4219cf3f212dc05867ecab63c1a58dd6c"),
     "1007": ("public/image/standchara/standmon003_00.swf", "0a19be4040f63c9d9084c45eb950845b1fbefbca263fbeda77e2cc0074817133"),
+    "1079": ("public/image/standchara/standmon028_00.swf", "612f16d0a1020ced7e7415e89963b8e46bc56f7e0882ced28e6f8ad37cdeee36"),
+    "94": ("public/image/standchara/standchara10.swf", "78f0cdbec2ed5a1bd1d40222daced9a471503458ff8711a9eca11dbf24316496"),
+    "1033": ("public/image/standchara/standmon012_02.swf", "63c711be1ef980383a840ab2ab6b4722ef22430dd435a9c11e9b1eac7b6a6331"),
+    "1034": ("public/image/standchara/standmon011_00.swf", "e7461ee4e85f105e0dd55b40a27fc9ed123fcbaa195a907c1513070bc03c49e5"),
 }
 FRAME = ("data/image/game/acframe.swf", "180d95f8ef1455a59c284dbe4a125ab4c1a2ad9e1eeb4e65e0a863d979663bd9")
 CONTROLS = ("data/image/cardaction.swf", "6a4fe69814a98332b45cb3860f288027483b269ca69922ab575022e311a4e220")
@@ -238,9 +242,16 @@ def dice_hit(args, movie, sprite, normal, save):
 
 def generate(args):
     args.output.mkdir(parents=True, exist_ok=True)
-    if sha256(args.ffdec.read_bytes()).hexdigest() != FFDEC_SHA256:
-        raise ValueError("Expected ffdec.jar from the JPEXS 26.6.0 ZIP release")
-    provenance = {}
+    index_path = args.output / "index.json"
+    if args.stand:
+        index = json.loads(index_path.read_text())
+        if index.get("assetRevision") != REVISION:
+            raise ValueError("Battle art manifest uses a different asset revision")
+        provenance = index["provenance"]
+    else:
+        if sha256(args.ffdec.read_bytes()).hexdigest() != FFDEC_SHA256:
+            raise ValueError("Expected ffdec.jar from the JPEXS 26.6.0 ZIP release")
+        provenance = {}
 
     def save_bytes(filename, data, pin, **details):
         (args.output / filename).write_bytes(data)
@@ -254,28 +265,34 @@ def generate(args):
     def open_movie(pin):
         return DisplayList(checked_source(args.assets, pin), args.swfdump)
 
-    def save_actor(id, name, movie, pin, shapes, view, **details):
-        layer = positive(render(movie, shapes, view))
-        x0, y0, x1, y1 = layer.getbbox()
-        file = save(f"stand-{id}-{name}.png", layer.crop((x0, y0, x1, y1)), pin, **details)
-        return {"file": file, "x": view[0] + x0, "y": view[1] + y0, "width": x1 - x0, "height": y1 - y0}
+    def save_actor(id, name, movie, pin, shapes, **details):
+        # Opening portraits may extend outside the old 510px actor view.
+        for view in ((-250, -560, 510, 650), (-640, -700, 1280, 900)):
+            layer = positive(render(movie, shapes, view))
+            x0, y0, x1, y1 = layer.getbbox()
+            if x0 == 0 or y0 == 0 or x1 == view[2] or y1 == view[3]:
+                continue
+            file = save(f"stand-{id}-{name}.png", layer.crop((x0, y0, x1, y1)), pin, **details)
+            return {"file": file, "x": view[0] + x0, "y": view[1] + y0, "width": x1 - x0, "height": y1 - y0}
+        raise ValueError(f"Original actor {id} {name} exceeds the export view")
 
     stands = {}
-    for id, pin in STANDS.items():
+    for id in args.stand or STANDS:
+        pin = STANDS[id]
         movie = open_movie(pin)
         root = {node.get("name"): node for node in movie.frame(movie.movie, 1)}
-        actor_view = (-250, -560, 510, 650)
         layers = {}
         for name in ("shadow", "stand"):
+            # StandCharaImage sets the stand/shadow positions and scale at runtime.
             symbol = root[name]["idref"]
             layer = movie.frame(movie.symbols[symbol], 1)
-            layers[name] = save_actor(id, name, movie, pin, layer, actor_view,
+            layers[name] = save_actor(id, name, movie, pin, layer,
                                       sourceInstance=name, sourceFrame=1)
         symbol = root["up"]["idref"]
         sequence = list(timeline(movie.symbols[symbol]))
         drawable = next(frame[0]["idref"] for frame in sequence if frame)
         layer = [{"idref": drawable, "matrix": "t0,0"}]
-        layers["opening"] = save_actor(id, "opening", movie, pin, layer, actor_view,
+        layers["opening"] = save_actor(id, "opening", movie, pin, layer,
                                        sourceInstance="up", sourceShape=int(drawable))
         layers["opening"]["origin"] = list(matrix(root["up"]["matrix"])[4:])
         layers["opening"]["origin"] = [coordinate / 20 for coordinate in layers["opening"]["origin"]]
@@ -286,6 +303,12 @@ def generate(args):
         ]
         layers["opening"]["settledFrame"] = 14
         stands[id] = layers
+    if args.stand:
+        index["stands"].update(stands)
+        index["stands"].update({alias: index["stands"][original] for alias, original in STAND_ALIASES.items()})
+        index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+        return
+    stands.update({alias: stands[original] for alias, original in STAND_ALIASES.items()})
 
     frames = open_movie(FRAME)
     action_frames = {}
@@ -340,5 +363,10 @@ if __name__ == "__main__":
     parser.add_argument("assets", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--swfdump", type=Path, required=True)
-    parser.add_argument("--ffdec", type=Path, required=True, help="ffdec.jar from the JPEXS 26.6.0 ZIP release")
-    generate(parser.parse_args())
+    parser.add_argument("--ffdec", type=Path, help="ffdec.jar from the JPEXS 26.6.0 ZIP release")
+    parser.add_argument("--stand", action="append", choices=STANDS,
+                        help="refresh only this actor in an existing output (repeatable)")
+    args = parser.parse_args()
+    if not args.stand and args.ffdec is None:
+        parser.error("--ffdec is required for a full export")
+    generate(args)

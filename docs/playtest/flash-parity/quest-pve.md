@@ -314,16 +314,22 @@
 
 ### 高低獎勵骰
 
-普通任務最早在地圖 13 的 q300 第 4 格遇到高低獎勵。先選地圖 22 的 q568「魯比歐那的殘渣1」`1→5` 驗兩種返回。兩場同用舞台 0，第 1 格發固定 30 Gem，第 5 格寶物 70004 啟動等級 4 的獎勵骰。第 5 格打贏可保留原任務。敗北或和局會收到任務失敗結末，而原版 Ruby 仍會建立獎勵階段。q568 的兩張敵方素材與獎勵介面待接入。[原版最早入口](../../../app/server/data/csv/tcn/Quests.csv#L301) · [q568 路線](../../../app/server/data/csv/tcn/Quests.csv#L569) · [Ruby 入口](../../../app/server/src/controller/quest_controller.rb#L554)
+普通任務最早在地圖 13 的 q300 第 4 格遇到高低獎勵。第一個實測入口是地圖 22 的 q568「魯比歐那的殘渣1」`1→5`。兩場同用舞台 0，第 1 格發固定 30 Gem，第 5 格寶物 70004 啟動等級 4 的獎勵骰。第 5 格打贏可保留原任務。敗北或和局會收到任務失敗結末，而原版 Ruby 仍會建立獎勵階段。兩場敵方立繪及獎勵介面已接入任務流程。[原版最早入口](../../../app/server/data/csv/tcn/Quests.csv#L301) · [q568 路線](../../../app/server/data/csv/tcn/Quests.csv#L569) · [Ruby 入口](../../../app/server/src/controller/quest_controller.rb#L554)
 
-| 操作 | 原版狀態和待驗收據 |
+| 操作 | 原版狀態與驗收條件 |
 | --- | --- |
 | 戰果 OK | `SC41` 的 bonus 位元開啟共用 ResultScene。先收四份候選 `SC122`、兩顆底骰 `SC123`。第一次 OK 是本機操作。戰鬥 BGM 依 `GAME_END` 淡出，回到任務才切回地圖曲。 |
 | Next | `CS39` 向原 Quest 要求下一輪，等待帶新候選的 `SC122` 與 `SC123`。取得兩顆底骰後顯示 High／Low。 |
 | High／Low | `CS36/37` 送一次選擇。原版先 `SC125` 給兩個骰眼，再用 `SC124` 判定成功或失敗。原版骰模型是 `sixdice.dae`，用結果相機與兩顆骰的動畫，按鍵、成功及失敗分別為 `ulse17/18/19.mp3`。 |
 | Get／Exit 與最終 OK | `CS38` 後查同一次獎品寫入及 `SC38`、`SC126`。等待同一任務的結末或中途進度與獎勵回覆各自齊全。成功物品、失敗無候選、重複按鍵、延遲或斷線各驗一次。最終 OK 復原地圖，Back 才關閉 Quest。 |
 
-尚待原版與新版實跑。驗收將對照 TCN 候選框、各原始按鈕的顯示及有效區、候選星級遮罩、2–12 比較數字、成功或失敗的停幀、聲音及實體入庫。[共用戰果場景](../../../app/client/src/view/scene/game/ResultScene.as#L478) · [原版控制與有效區](../../../app/client/src/view/image/game/ResultFrame.as#L506) · [原版獎勵骰相機](../../../app/client/src/view/scene/game/ResultDiceManager.as#L38) · [原版獎勵回覆](../../../app/server/src/controller/duel_controller.rb#L1587)
+候選框、按鈕、數字與骰子沿用原版素材。倍率、加成和結算數字在領取前留白，收到 `SC126` 後才由左至右淡入。勝負、盤面更新與可領取狀態跟隨原 Quest 回覆。原版的道具控制、重擲、變更和實機失敗分支仍待驗收。[共用戰果場景](../../../app/client/src/view/scene/game/ResultScene.as#L478) · [原版控制與有效區](../../../app/client/src/view/image/game/ResultFrame.as#L506) · [原版獎勵骰相機](../../../app/client/src/view/scene/game/ResultDiceManager.as#L38) · [原版獎勵回覆](../../../app/server/src/controller/duel_controller.rb#L1587)
+
+- 隔離 Ruby 用原版搜尋種子 190 取得 q568。兩戰使用對局種子 1。Lv5 古魯瓦爾多的兩場各一回合，第 5 格底骰 `1,6`，選 High 擲出 `6,1`，同點由 Ruby 判成功。真正 `SC11` 寫入「時間沙漏」，`SC38` 回覆的角色卡持有欄為空。R5 的兩場各兩回合，高低骰同為同點成功，SQLite 則在 Binder 找到 `SC38` 指定的新古魯瓦爾多 Lv3。[原版五個獎勵場次](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/README.md)
+- 兩套牌組的初始 `320% EXP` 都可直接領取。原版分別再加 154 與 66 EXP。`SC126` 帶本場累計，帳上 EXP 和等級保留真正的更新回覆。R5 另實跑格 5 敗北，任務已歸檔 5、Deck 1 解鎖，仍用同一 Quest 領一份急救品5。這些紀錄用隔離 Ruby 和離線時鐘，瀏覽器另走原版計時。[原版直接領取](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/q568-r5-direct-seed1.json) · [原版敗北後領取](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/q568-r5-terminal-loss-direct-seed1.json) · [地形主資料及音效](/workspace/shared/unlight-web-port/flash-parity/quest-reward-dice-source/catalog-and-cues.json)
+- 新版 R5 的兩戰實跑各兩回合。底骰 `4,4` 與猜高的 `3,5` 同點成功，領取只發一次 `CS38`。原版 `SC38` 指定一張古魯瓦爾多 Lv3 實體卡並在 Binder 確認，獨立的 `SC11` 另發道具。暫緩 `SC123`、`SC124` 及 `SC126` 時均停在相應畫面。播放兩次按鍵音、兩顆骰音、成功音和領取音，最後同一 Quest 開放格 7，保留進度 34、傷勢 4 與 Deck 1 鎖定。[新版猜高](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/qa-high/09-authoritative-high-low-decision.png) · [實體卡與返回封包](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/qa-high/quest-high-low-wire.json) · [同一任務格 7](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/qa-high/12-return-on-the-same-active-quest.png)
+
+後續先驗敗猜後的原版 Item，使用隔離角色原本持有且未使用的「幸運四葉草」。打開及關閉清單只切換本機介面。選實體項目發一次 `CS7`，參數為持有 ID 與目前地圖索引。重擲需收新的底骰 `SC123` 和相同實體 ID 的消耗確認 `SC127`，再手動猜一次。骰差為 2 時，門檻 1 的道具維持未使用，門檻 3 則需保留同一候選並核對 `SC123`、成功的 `SC124` 及 `SC127`。[原版 Item 清單](../../../app/client/src/view/scene/game/ResultScene.as#L522) · [原版 Quest 使用指令](../../../app/client/src/controller/QuestCtrl.as#L285) · [Ruby 重擲及門檻](../../../app/server/src/model/avatar_item.rb#L612)
 
 第一張地圖已在 Chromium 以實際 Quest 認證、Back 及隔離 Ruby 連線驗證。中繼另驗 Chromium 端與伺服器端各 25 次正常關閉，均為 `1000` 且 `wasClean=true`。三次測試 TCP 重設得到 `1011`，畫面在收不到確認時會保留重登入提示。[地圖與兩筆庫存並排](/workspace/shared/unlight-web-port/flash-parity/quest-map/quest-map-inventory-comparison.png) · [重跑方法](qa.md#重跑任務地圖的庫存及返回)
 

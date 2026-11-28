@@ -74,6 +74,7 @@ SOURCE_DIGESTS = {
     "bg_btl00a_book": "34615ce7fe027f31b3ff7f858bcb677d457cc698a47fdf857c48dcc2728187ba",
     "bg_btl02a": "6efa988629c9288fecac1b529d6dba7c58c98a5062e9000bf0e9c6c9597fc927",
     "bg_btl03a": "2a46c9649848ac593073f801fd90bb5a8e3414b77c4e88bd38b90feb8fe25f12",
+    "bg_btl07a": "ab487378eee6fb1ccaa8b4bd45f60de265d63e4e23a2fc45e5907a4e112b1736",
     "bg_btl11a": "94ed3904e83f1c63821174378456ee10f8ddea1566c2de1219658159d84d910f",
     "bg_btl11a_book": "1e278239f01ed3a2f8fbb4ca695552396ccb2a8ecd769031f62c2b890740c8a5",
     "base": "6289d7c6fe19a62c45692474c692aee1807b59773bb414b9d4b311d87ac9ab5e",
@@ -106,10 +107,14 @@ SOURCE_DIGESTS = {
     "standmon001_00_f": "6358207e01180f6b35ba118dbd611ae4813ae7ac8af7162c7d71bae543ab9152",
     "standmon002_00_f": "c43e7eeb9d71a86279fe796f9a2e1884ab564998c8440908a1c13065e363813f",
     "standmon003_00_f": "63d67d31585cddce6f3582956bf722ad00bd3353afc3d27356d77af09ad31e5a",
+    "standmon028_00_f": "8cfbf8b27f1d026c91c544cd0b98137ead7cbf41d941b5d2f59be6d539582ea2",
+    "standchara10_f": "455ec578878e539508cad752907fbfc9702abf930c4d0356c766640cd6cd2659",
+    "standmon012_02_f": "de21836f609c798ec5990d44fc97277a9ba4292842d150cca9304ea083afa264",
+    "standmon011_00_f": "b84a9dde353d2ecb9de6c5a78b9303d202510f2e247b3b28598e16cd33a03971",
 }
 BATTLE_SOURCE_DIRS = {
     **dict.fromkeys(("bg_btl00a", "bg_btl00a_far", "bg_btl00a_book", "bg_btl02a", "bg_btl03a",
-                     "bg_btl11a", "bg_btl11a_book"), "bg"),
+                     "bg_btl07a", "bg_btl11a", "bg_btl11a_book"), "bg"),
     **dict.fromkeys(("base", "phase", "space", "range_ch", "time_base", "life_base", "card_base", "cardempty", "ok",
                      "chat_base", "skill_base", "avatar_ch", "arrow_move", "num_btl_p"), "game"),
     **dict.fromkeys(("op_hukidashi", "op_up", "op_down", "op_name"), "game/opening"),
@@ -119,7 +124,11 @@ MOVE_FACE_SOURCES = {
     "1": "standchara01_f", "21": "standchara03_f", "31": "standchara04_f",
     "101": "standchara11_f", "111": "standchara12_f", "1004": "standmon002_00_f",
     "1001": "standmon001_00_f", "1007": "standmon003_00_f",
+    "1079": "standmon028_00_f", "94": "standchara10_f",
+    "1033": "standmon012_02_f", "1034": "standmon011_00_f",
 }
+# The original CharaCards.csv uses standchara03 for all three Grunwald variants.
+STAND_ALIASES = {"25": "21", "30": "21"}
 
 # Source vector order in MapStageImage.as. Stages 8, 9 and 12 use the lake SWF.
 TERRAIN = (
@@ -271,13 +280,16 @@ class Primitive:
 
 
 class Movie:
-    def __init__(self, asset_root, name, swfdump):
-        directory = (Path("public/image/standchara") if name in MOVE_FACE_SOURCES.values()
-                     else QUEST_DIR.parent / BATTLE_SOURCE_DIRS.get(name, "quest"))
-        self.path = directory / f"{name}.swf"
+    def __init__(self, asset_root, name, swfdump, *, pin=None):
+        if pin is None:
+            directory = (Path("public/image/standchara") if name in MOVE_FACE_SOURCES.values()
+                         else QUEST_DIR.parent / BATTLE_SOURCE_DIRS.get(name, "quest"))
+            pin = (directory / f"{name}.swf", SOURCE_DIGESTS[name])
+        path, digest = pin
+        self.path = Path(path)
         self.source = source = asset_root / self.path
         self.digest = sha256(source.read_bytes()).hexdigest()
-        if self.digest != SOURCE_DIGESTS[name]:
+        if self.digest != digest:
             raise ValueError(f"Incorrect pinned digest for {self.path}")
         raw_tags = list(tags(source))
         layout = chat_dump(source, raw_tags, swfdump) if name == "chat_base" else subprocess.check_output([swfdump, "-encode", source])
@@ -398,7 +410,7 @@ class Movie:
                 pieces.extend(self.shape(shape, translation(placement["matrix"])))
         return pieces, shapes
 
-    def shape(self, shape, offset, ratio=0, *, outline_behind_fill=False):
+    def shape(self, shape, offset, ratio=0, *, outline_behind_fill=False, preserve_stroke_alpha=False):
         name = kind(shape)
         if name == "DefineMorphShape":
             if shape.find(f"{NS}fillstyle").get("type") == "0":
@@ -419,8 +431,10 @@ class Movie:
                 if flags not in ("0", "320"):
                     raise ValueError(f"Unexpected line style {style.attrib}")
                 stroke = 'stroke-linecap="butt"' if flags == "320" else 'stroke-linecap="round" stroke-linejoin="round"'
+                color = style.attrib["color"]
+                opacity = f' stroke-opacity="{hex_alpha(color)}"' if preserve_stroke_alpha else ""
                 markup = (
-                    f'<path d="{path}" fill="none" stroke="{style.attrib["color"][:7]}" '
+                    f'<path d="{path}" fill="none" stroke="{color[:7]}"{opacity} '
                     f'stroke-width="{int(style.attrib["width"])}" {stroke} '
                     f'transform="translate({dx} {dy})"/>'
                 )
@@ -759,7 +773,7 @@ def color_transform(pieces, attributes):
     return [Primitive(piece.bounds, f"{start}{piece.markup}{end}", piece.bitmap_id) for piece in pieces]
 
 
-def authored_primitives(source, placements, *, outline_behind_fill=False):
+def authored_primitives(source, placements, *, outline_behind_fill=False, preserve_stroke_alpha=False):
     """Resolve HUD sprites and Flash depth masks, preserving color transforms."""
     pieces, shapes = [], []
     clip = None
@@ -780,17 +794,20 @@ def authored_primitives(source, placements, *, outline_behind_fill=False):
         if symbol_kind == "DefineSprite":
             child_frame = part.get("spriteFrame", 1)
             children = list(timeline(symbol))[child_frame - 1][1]
-            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill)
+            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill,
+                                                           preserve_stroke_alpha=preserve_stroke_alpha)
             shapes.extend(nested_shapes)
         elif symbol_kind == "DefineButton2":
             children = [button.attrib for button in symbol if kind(button) == "buttonRecord"
                         and part.get("buttonState", "up") in button.attrib["states"].split(",")]
-            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill)
+            originals, nested_shapes = authored_primitives(source, children, outline_behind_fill=outline_behind_fill,
+                                                           preserve_stroke_alpha=preserve_stroke_alpha)
             shapes.extend(nested_shapes)
         elif symbol_kind == "DefineText" and all(hex_alpha(text.attrib["color"]) == 0 for text in symbol):
             continue
         else:
-            originals = source.shape(symbol, (0, 0), int(part.get("ratio", 0)), outline_behind_fill=outline_behind_fill)
+            originals = source.shape(symbol, (0, 0), int(part.get("ratio", 0)), outline_behind_fill=outline_behind_fill,
+                                     preserve_stroke_alpha=preserve_stroke_alpha)
             shapes.append(source.original_id(part))
         transformed_parts = placed_primitives(originals, part["matrix"])
         if "cxform" in part:
@@ -803,7 +820,7 @@ def authored_primitives(source, placements, *, outline_behind_fill=False):
     return pieces, shapes
 
 
-def extract(asset_root, art, swfdump):
+def extract(asset_root, art, swfdump, move_faces=(), battle_stages=()):
     manifest_path = art / "sources.json"
     manifest = json.loads(manifest_path.read_text())
     if manifest["assetRevision"] != REVISION:
@@ -812,10 +829,11 @@ def extract(asset_root, art, swfdump):
     castle = manifest.get("battle", {}).get("stages", {}).get("0")
     castle_art = {name: layer for name, layer in manifest["layers"].items()
                   if castle and name.startswith("quest-battle-stage00-")}
-    manifest["layers"] = {
-        name: layer for name, layer in manifest["layers"].items()
-        if not name.startswith(("quest-detail-", "quest-battle-"))
-    }
+    if not move_faces and not battle_stages:
+        manifest["layers"] = {
+            name: layer for name, layer in manifest["layers"].items()
+            if not name.startswith(("quest-detail-", "quest-battle-"))
+        }
 
     @cache
     def movie(name):
@@ -840,8 +858,7 @@ def extract(asset_root, art, swfdump):
                        coordinate_space, frame, shapeIds=shapes,
                        bitmapIds=[piece.bitmap_id for piece in pieces if piece.bitmap_id is not None], **extra)
 
-    def stage11_battle_layers():
-        far = movie("bg_btl11a")
+    def battle_far_jpeg(far, filename):
         _, placements = next(timeline(far.root))
         (placed,) = placements
         (fill,) = far.symbol(placed).findall(f"{NS}fillstyle")
@@ -851,10 +868,13 @@ def extract(asset_root, art, swfdump):
             raise ValueError("Expected original complete JPEG stream for battle FarBG")
         image = far.bitmap(bitmap_id)
         dx, dy = translation(placed["matrix"])
-        far_art = publish(far, "quest-battle-stage11-far.jpg", data[2:],
-                          dict(x=dx / TWIPS, y=dy / TWIPS, width=image.width, height=image.height), "stage", 1,
-                          shapeIds=[far.original_id(placed)], bitmapIds=[far.binary_ids[bitmap_id]],
-                          representation="unchanged SWF JPEG stream", sourceDepth=int(placed["depth"]))
+        return publish(far, f"quest-battle-{filename}.jpg", data[2:],
+                       dict(x=dx / TWIPS, y=dy / TWIPS, width=image.width, height=image.height), "stage", 1,
+                       shapeIds=[far.original_id(placed)], bitmapIds=[far.binary_ids[bitmap_id]],
+                       representation="unchanged SWF JPEG stream", sourceDepth=int(placed["depth"]))
+
+    def stage11_battle_layers():
+        far_art = battle_far_jpeg(movie("bg_btl11a"), "stage11-far")
         near = movie("bg_btl11a_book")
         _, placements = next(timeline(near.root))
         near_parts = [
@@ -887,6 +907,17 @@ def extract(asset_root, art, swfdump):
         _, placements = next(timeline(lake.root))
         layer = add(lake, "stage03-lake", placements, "stage", art_set="battle", sourceDepth=3)
         return [dict(layer, depth=0)]
+
+    stage_extractors = {
+        "2": (stage2_battle_layers, "002"),
+        "3": (stage3_battle_layers, "003"),
+        "7": (lambda: [dict(battle_far_jpeg(movie("bg_btl07a"), "stage07-far"), depth=0)], "007"),
+        "11": (stage11_battle_layers, "000"),
+    }
+
+    def stage_art(stages):
+        return {stage: {"layers": stage_extractors[stage][0](),
+                        "bgm": f"/public/sound/bgm/bgm{stage_extractors[stage][1]}.mp3"} for stage in stages}
 
     def battle_static_frame():
         source = movie("base")
@@ -1007,24 +1038,10 @@ def extract(asset_root, art, swfdump):
         art["hit"] = [x0 / TWIPS, y0 / TWIPS, (x1 - x0) / TWIPS, (y1 - y0) / TWIPS]
         return art
 
-    def move_presentation():
-        avatar = movie("avatar_ch")
-        _, avatar_root = next(timeline(avatar.root))
-        # AvatarBase hides watch UI and the raid score in an ordinary Quest duel.
-        (avatar_layer,) = [placement for placement in avatar_root if int(placement["depth"]) == 1]
-        avatar_base = battle_art(avatar, "avatar-base", [avatar_layer], sourceDepth=1)
-
-        arrow = movie("arrow_move")
-        arrow_child = arrow.instance("arrow_right")
-        arrows = {
-            side: battle_art(arrow, f"move-result-{side}", [arrow_child | {"matrix": matrix}],
-                             crop=(0, 0, 800, 1060), sourceInstance="arrow_right", sourceLabel="normal")
-            for side, matrix in (("right", "t400,500"), ("left", "s-1.0,1.0 t400,500"))
-        }
-
+    def move_face_art(card_ids):
         faces = {}
-        for card_id, name in MOVE_FACE_SOURCES.items():
-            source = movie(name)
+        for card_id in card_ids:
+            source = movie(MOVE_FACE_SOURCES[card_id])
             face = source.instance("face")
             pivot = [value / TWIPS for value in translation(face["matrix"])]
             frame_data = list(timeline(source.symbol(face)))
@@ -1044,6 +1061,34 @@ def extract(asset_root, art, swfdump):
                 positions.append({"x": x / TWIPS, "y": y / TWIPS})
             faces[card_id] = {"image": layer, "pivot": pivot, "enter": positions[:12], "exit": positions[12:],
                               "framesPerSecond": QUEST_STAGE_FRAME_RATE}
+        return faces
+
+    if move_faces or battle_stages:
+        if move_faces:
+            faces = manifest["battle"]["hud"]["movePresentation"]["cutIns"]
+            faces.update(move_face_art(move_faces))
+            faces.update({alias: faces[original] for alias, original in STAND_ALIASES.items()})
+        if battle_stages:
+            manifest["battle"]["stages"].update(stage_art(battle_stages))
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+        return
+
+    def move_presentation():
+        avatar = movie("avatar_ch")
+        _, avatar_root = next(timeline(avatar.root))
+        # AvatarBase hides watch UI and the raid score in an ordinary Quest duel.
+        (avatar_layer,) = [placement for placement in avatar_root if int(placement["depth"]) == 1]
+        avatar_base = battle_art(avatar, "avatar-base", [avatar_layer], sourceDepth=1)
+
+        arrow = movie("arrow_move")
+        arrow_child = arrow.instance("arrow_right")
+        arrows = {
+            side: battle_art(arrow, f"move-result-{side}", [arrow_child | {"matrix": matrix}],
+                             crop=(0, 0, 800, 1060), sourceInstance="arrow_right", sourceLabel="normal")
+            for side, matrix in (("right", "t400,500"), ("left", "s-1.0,1.0 t400,500"))
+        }
+        faces = move_face_art(MOVE_FACE_SOURCES)
+        faces.update({alias: faces[original] for alias, original in STAND_ALIASES.items()})
         return {
             "avatarBase": dict(avatar_base, depth=11), "avatarOrigin": [590, 473],
             "cutIns": faces,
@@ -1312,11 +1357,7 @@ def extract(asset_root, art, swfdump):
         detail["terrain"][str(stage)] = terrains[stem]
 
     manifest["detail"] = detail
-    stages = {
-        "2": {"layers": stage2_battle_layers(), "bgm": "/public/sound/bgm/bgm002.mp3"},
-        "3": {"layers": stage3_battle_layers(), "bgm": "/public/sound/bgm/bgm003.mp3"},
-        "11": {"layers": stage11_battle_layers(), "bgm": "/public/sound/bgm/bgm000.mp3"},
-    }
+    stages = stage_art(stage_extractors)
     if castle:
         stages = {"0": castle, **stages}
     manifest["battle"] = {
@@ -1345,5 +1386,9 @@ if __name__ == "__main__":
     parser.add_argument("asset_root", type=Path)
     parser.add_argument("art_dir", type=Path)
     parser.add_argument("--swfdump", default="swfdump", help="Apache Flex SDK swfdump")
+    parser.add_argument("--move-face", action="append", choices=MOVE_FACE_SOURCES,
+                        help="refresh only this cut-in in an existing output (repeatable)")
+    parser.add_argument("--battle-stage", action="append", choices=("2", "3", "7", "11"),
+                        help="refresh only this battle stage in an existing output (repeatable)")
     args = parser.parse_args()
-    extract(args.asset_root, args.art_dir, args.swfdump)
+    extract(args.asset_root, args.art_dir, args.swfdump, args.move_face, args.battle_stage)

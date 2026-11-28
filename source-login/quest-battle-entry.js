@@ -812,7 +812,7 @@ function showMoveArrows(battle, assets, result, signal) {
 }
 
 async function renderBattleHud(battle, sourceAvatar, {
-  assets, encounter, scene, definitions, stands, signal, isCurrent, onBattleFinish, onBattleSound, returnToMap,
+  assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, returnToMap,
 }) {
   const { hud } = assets;
   const standees = layer(battle, 'quest-battle-standees', 2);
@@ -853,7 +853,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   turn.setAttribute('aria-label', '回合');
   if (hud.bonus) {
     const { initial, x, y, width, height, color, fontSize, letterSpacing } = hud.bonus;
-    const bonus = output(main, 'quest-battle-bonus', 'quest-battle-bonus', x, y, width, height);
+    const bonus = output(main, 'quest-battle-bonus-meter', 'quest-battle-bonus', x, y, width, height);
     bonus.value = `Bonus ${initial}`;
     bonus.style.color = color;
     bonus.style.fontSize = `${fontSize}px`;
@@ -1061,6 +1061,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   function updateDuelOutcome(outcome) {
     battle.dataset.outcomeState = outcome.state;
     duelResult?.setLevelUp?.(outcome.receipt);
+    duelResult?.setReward(latest.reward);
     duelResult?.setCanReturn(outcome.canReturn === true);
     if (!resultStatus) return;
     resultStatus.value = {
@@ -1068,7 +1069,7 @@ async function renderBattleHud(battle, sourceAvatar, {
       uncertain: '無法確認任務結算。',
       'bonus-pending': '正在等待獎勵結算。',
     }[outcome.state] ?? '';
-    resultStatus.className = ['uncertain', 'bonus-pending'].includes(outcome.state) ? 'quest-battle-status' : 'sr-only';
+    resultStatus.className = outcome.state === 'uncertain' ? 'quest-battle-status' : 'sr-only';
   }
 
   async function presentDuelResult() {
@@ -1088,8 +1089,15 @@ async function renderBattleHud(battle, sourceAvatar, {
     for (const node of pieces) node.hidden = true;
     showTable('blank');
     duelResult = mountQuestDuelResult(battle, {
-      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound,
+      outcome: duel, receipt, playerCardId: player, signal, canReturn, onSound: onBattleSound, reward: latest.reward, loadCards,
       onReturn: () => !signal.aborted && isCurrent() && latest.outcome?.canReturn === true && returnToMap?.(),
+      runRewardAction(action, rewardRound) {
+        if (signal.aborted || !isCurrent()) return false;
+        const options = { signal, encounterKey: encounter.key, rewardRound };
+        if (action === 'next') return scene.nextBattleReward(options);
+        if (action === 'high' || action === 'low') return scene.guessBattleReward(action, options);
+        return scene.takeBattleReward(options);
+      },
     });
     resultStatus = output(layer(battle, 'quest-battle-settlement-message', 50), 'quest-battle-settlement-status', 'sr-only', 178, 24);
     resultStatus.setAttribute('role', 'status');
@@ -1307,6 +1315,6 @@ export async function mountQuestBattleEntry(view, board, {
   await runOpening(battle, sourceAvatar, { assets, encounter, definitions, stands, signal });
   if (signal.aborted || view.inert || !isCurrent()) return;
   await renderBattleHud(battle, sourceAvatar, {
-    assets, encounter, scene, definitions, stands, signal, isCurrent, onBattleFinish, onBattleSound, returnToMap,
+    assets, encounter, scene, definitions, stands, signal, isCurrent, loadCards, onBattleFinish, onBattleSound, returnToMap,
   });
 }
