@@ -167,6 +167,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 依序確認戰鬥結果、寶箱和任務完成。保存卡背、翻牌或翻後卡面及兩處任務地圖面板。核對 `ulse23.mp3` 只播放一次、兩次地圖面板確認沒有額外點擊音。三次 OK 後，查隱者之道 0/3、任務歸檔及蝙蝠卡實體 ID。再按 Back 檢查唯一 `CS2`、正常關閉及四條登入連線。[固定舞台腳本](../../../tools/legacy-web/check_source_lobby.py) · [分項規格](quest-pve.md#末格蝙蝠卡寶箱與區域解鎖)
 
+### 重跑大廳直接成就通知
+
+使用獨立 Lv1 角色、5/5 AP、旗標 0、魔女山谷通關數 3、Deck 1 卡 21 及初始傷勢 1。由原版 `get_boss_quest(1)` 取得 q3。兩戰各在原版 `MultiDuel` 初始化前為本角色設定種子 0。出牌仍經客戶端操作，Ruby 執行原有規則、發牌、擲骰及計時。首先驗資料服務發的三件抽獎券，確認本機 OK 和實體庫存，再重新登入同一角色，沿實際原版試跑的路徑完成 q3。[原版頭目取得](../../../app/server/src/model/avatar.rb#L2798) · [大廳成就規格](lobby-views.md#大廳成就的直接獎勵)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user q3-record --quest-start-password-file /path/to/disposable-password \
+  --quest-complete-q3 --lobby-achievements --screens /tmp/unlight-q3-record
+```
+
+先確認旗標 0 的大廳送一次 `CS35(true)`，成就 2、31 仍待完成。通關後以 `SC26` 確認旗標 1，完成 Quest 本機確認，再以 Back 關閉 Quest。核對原 Lobby 上的 `SC25`、`SC27`、`SC31`、`SC51`、`SC52` 及實體 SQLite 資料。暫緩 `CS35` 後同一 Lobby `CS3` 的真 Pong，驗證已入庫且尚未開啟提示。放行後每張通知保存翻開畫格、實際 `ulse23` 和一次 OK，並驗證底層按鈕無法操作。第二次開啟任務再以 Back 回大廳，重新檢查成就，金額和持有物維持，成就 2 的可選獎品仍然待領。[自動驗收](../../../tools/legacy-web/check_source_lobby.py)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

@@ -1,0 +1,116 @@
+@font-face {
+  font-family: "Unlight Achievement Mincho";
+  src: url("./lobby-achievement-art/achievement-mincho.woff") format("woff");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Unlight Achievement Gem";
+  src: url("./quest-result-art/treasure-gem-name.woff") format("woff");
+  font-display: swap;
+}
+
+#lobby-achievement-notice {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  overflow: clip;
+  color: #000;
+  background: transparent;
+}
+
+#lobby-achievement-notice::backdrop { background: transparent; }
+
+.lobby-achievement-content {
+  position: absolute;
+  inset: 0 20px 0 0;
+  perspective: 2962px;
+  perspective-origin: 390px 340px;
+}
+
+.lobby-achievement-content :is(img, h2, p, button, #lobby-achievement-notice-reward, .lobby-achievement-card-face,
+    .lobby-achievement-card-title, .lobby-achievement-card-description, .lobby-achievement-gem, .lobby-achievement-quantity) {
+  position: absolute;
+}
+
+.lobby-achievement-content img { pointer-events: none; max-width: none; }
+
+#lobby-achievement-notice-title, #lobby-achievement-notice-message {
+  z-index: 1;
+  margin: 0;
+  padding: 2px;
+  pointer-events: none;
+}
+
+#lobby-achievement-notice-title {
+  color: #fff;
+  font: 16px/20px "Unlight Achievement Mincho", serif;
+  text-align: center;
+  text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000;
+}
+
+#lobby-achievement-notice-message {
+  left: 210px;
+  top: 200px;
+  width: 400px;
+  height: 300px;
+  font: 16px/18px Verdana, var(--interface-font);
+  letter-spacing: 1px;
+}
+
+#lobby-achievement-notice-reward {
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.lobby-achievement-card-face canvas { display: block; width: 100%; height: 100%; }
+
+.lobby-achievement-card-title, .lobby-achievement-card-description, .lobby-achievement-gem {
+  padding: 2px;
+  color: #000;
+  text-align: center;
+  letter-spacing: 1px;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2px #fff;
+  text-shadow: 0 0 2px #fff;
+}
+
+.lobby-achievement-card-title, .lobby-achievement-card-description { font: 12px "Unlight Achievement Mincho", serif; }
+.lobby-achievement-card-description { font-size: 9px; }
+.lobby-achievement-gem-title { font-family: "Unlight Achievement Gem", serif; }
+.lobby-achievement-gem { font: 24px "Bradley Gratis", Georgia, serif; white-space: nowrap; }
+.lobby-achievement-gem span { font-size: 50px; }
+
+.lobby-achievement-quantity {
+  padding: 2px;
+  translate: 0 -4px;
+  color: #fff;
+  font: 24px "Bradley Gratis", Georgia, serif;
+  letter-spacing: 1px;
+  text-align: right;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2px #000;
+  text-shadow: 0 0 2px #000;
+}
+.lobby-achievement-quantity span { font: 32px "Unlight Achievement Mincho", serif; }
+
+#lobby-achievement-notice-ok {
+  z-index: 3;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+#lobby-achievement-notice-ok:disabled { cursor: default; }
+#lobby-achievement-notice-ok:focus-visible { outline: 2px solid #ffdf9c; outline-offset: -2px; }
+#lobby-achievement-notice-ok [data-button-state]:not([data-button-state="up"]) { visibility: hidden; }
+#lobby-achievement-notice-ok:not(:disabled):hover [data-button-state="up"],
+#lobby-achievement-notice-ok:not(:disabled):active [data-button-state="over"] { visibility: hidden; }
+#lobby-achievement-notice-ok:not(:disabled):hover:not(:active) [data-button-state="over"],
+#lobby-achievement-notice-ok:not(:disabled):active [data-button-state="down"] { visibility: visible; }

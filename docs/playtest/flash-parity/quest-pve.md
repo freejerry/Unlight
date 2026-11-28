@@ -371,7 +371,7 @@ q568 的第 5 格也可在真正戰鬥敗北後進入獎勵骰。隔離角色使
 
 [原版獎勵結束及轉場](../../../app/client/src/view/scene/game/ResultScene.as#L1016) · [原版任務結果](../../../app/client/src/view/QuestView.as#L618) · [原版 Exit 的空獎品](../../../app/server/src/rule/reward.rb#L188)
 
-繁中 Flash 在 Quest 關閉前的帳戶分別為 Exit 142 Gem 和直接 Get 145 Gem，EXP 均為 226。兩次 Back 之後，原版大廳才另發成就 31「突破初期地區」的道具與 3000 Gem。Quest 結算、關閉連線與大廳額外成就均用各自的封包與 SQLite 時點核對。[原版 Exit 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/lobby-grant-proof.json) · [原版直接 Get 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-direct-original/take/lobby-grant-proof.json) · [大廳成就驗收](lobby-views.md#大廳成就的下一個驗收點)
+繁中 Flash 在 Quest 關閉前的帳戶分別為 Exit 142 Gem 和直接 Get 145 Gem，EXP 均為 226。兩次 Back 之後，原版大廳才另發成就 31「突破初期地區」的道具與 3000 Gem。Quest 結算、關閉連線與大廳額外成就均用各自的封包與 SQLite 時點核對。[原版 Exit 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-exit-original/high/lobby-grant-proof.json) · [原版直接 Get 大廳證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-direct-original/take/lobby-grant-proof.json) · [大廳成就驗收](lobby-views.md#大廳成就的直接獎勵)
 
 兩版都從實際登入和任務入口操作。新版 Exit 暫緩真正的 `SC24` 和 `SC126`，分別確認歸檔前不能擲骰、獎勵確認前不能返回。兩版的空獎品結果都保留已開的 Item 窗，按戰果 OK 才轉回地圖並顯示 Quest Failed。第二次 OK 後同一張地圖可操作，Back 只關閉 Quest。[並排截圖與兩版封包](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/README.md)
 

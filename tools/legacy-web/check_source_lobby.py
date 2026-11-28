@@ -39,6 +39,8 @@ OPTION_DEFAULTS = {"bgm": 50, "se": 50, "cv": 50, "toolTip": True, "arrow": True
 OPTION_EDITS = {"bgm": 0, "se": 99, "cv": 1, "toolTip": False, "arrow": False}
 OPTION_STORAGE = "unlight.source-login.preferences"
 LOBBY_REFRESH = [0, 2, 0, 17, 10]
+LOBBY_ACHIEVEMENT_CHECK = [0, 3, 0, 35, 1, 10]
+LOBBY_ACHIEVEMENT_PING = [0, 2, 0, 3, 10]
 QUEST_SEARCH_TIMES = tuple(zip(
     (0, 180, 600, 1800, 3600, 7200, 14400, 28800, 57600, 86400, 259200),
     ("0分", "3分", "10分", "30分", "1小時", "2小時", "4小時", "8小時", "16小時", "1天", "3天"),
@@ -225,11 +227,35 @@ def observe_session_codec(page, origin):
         fields.done();
         return result;
       }
+      function achievementFields(body, command) {
+        const fields = read(body);
+        switch (command) {
+          case 25: return [fields.int()];
+          case 27:
+          case 31:
+            return [fields.int(), fields.int()];
+          case 51:
+            return Array.from({length: 5}, () => fields.int());
+          case 52: return [fields.int()];
+          case 54:
+            return [fields.string(1024 * 1024, true).split('|').filter(Boolean).map(part => {
+              const [type, value] = part.split(':');
+              return +type === 26 ? {type: 26, achievementId: +value} : {type: +type};
+            })];
+          case 56: {
+            const csv = () => fields.string(1024 * 1024, true).split(',').filter(Boolean).map(Number);
+            return [csv(), csv()];
+          }
+          default: return [];
+        }
+      }
       export function encodeCommand(command, fields, key) {
         const frame = encode(command, fields, key);
         const isRefresh = command === 17 && fields?.length === 0;
         if (isRefresh) window.qaLastLobbyRefresh = performance.now();
-        window.refreshQASends?.push(isRefresh ? [...encode(command, [])] : command);
+        const readyAchievement = [35, 3].includes(command) && document.getElementById('stage')?.dataset.screen === 'lobby'
+          && document.getElementById('lobby-avatar')?.dataset.avatarState === 'ready';
+        window.refreshQASends?.push(isRefresh || readyAchievement ? [...encode(command, fields)] : command);
         const confirm = command === 12 && fields?.length === 2
           ? [fields[0], fields[1]?.value] : null;
         const deck = command === 12 && fields?.length === 1 ? fields[0] : null;
@@ -241,14 +267,25 @@ def observe_session_codec(page, origin):
           ? [command, ...(fields ?? []).map(field => field.value ?? field)] : null;
         const item = command === 7 && fields?.length === 2
           ? fields.map(field => field.value ?? field) : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, key});
+        const notice = command === 35 && fields?.length === 1 ? fields[0]?.value : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, notice, key});
         return frame;
       }
       export function readReply(body) {
         const reply = read(body);
+        const startup = window.qaQuestWire?.readingStartupData;
+        if (startup && [6, 22, 23, 24, 25].includes(reply.command)) {
+          // Data SC22/23/24/25 use Lobby SC51/52/53/56's record shapes.
+          const metadata = {22: 51, 23: 52, 24: 52, 25: 56}[reply.command];
+          startup.push([reply.command, body.byteLength, ...(metadata ? achievementFields(body, metadata) : [])]);
+        }
         const lobby = window.qaQuestWire?.readingLobby;
         if (lobby && reply.command === 9 && body.byteLength === 6) {
           lobby.replies.push([9, body.byteLength, new DataView(body.buffer, body.byteOffset, body.byteLength).getInt32(2)]);
+        }
+        if (lobby?.achievement && [25, 27, 31, 35, 51, 52, 54, 56].includes(reply.command)) {
+          lobby.achievement.replies.push([reply.command, body.byteLength, ...achievementFields(body, reply.command)]);
+          lobby.achievement.timeline.push(['lobby', 'reply', reply.command]);
         }
         const replies = window.qaQuestWire?.receiving?.replies;
         if (replies) {
@@ -289,15 +326,18 @@ def observe_session_codec(page, origin):
             : reply.command === 6 && body.byteLength >= 19
             ? [bytes.getInt32(2), bytes.getInt32(6), bytes.getInt32(10), bytes.getInt8(18)] : [];
           replies.push([reply.command, body.byteLength, ...data]);
+          if (reply.command === 26) window.qaQuestWire.lobby.achievement?.timeline.push(['quest', 'flag', data[0]]);
         }
         return reply;
       }
     """))
 
 
-def observe_quest_wire(page):
+def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
+      if ({str(lobby_achievements).lower()}) wire.lobby.achievement = {{sent: [], replies: [], sockets: 0, closed: 0, timeline: []}};
+      if ({str(startup_data).lower()}) wire.startupData = [];
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -314,12 +354,22 @@ def observe_quest_wire(page):
         constructor(...args) {{
           super(...args);
           const service = new URL(this.url).pathname;
-          if (service === '/socket/12002') this.lobbyTrace = wire.lobby;
+          if (service === '/socket/12003' && wire.startupData) this.startupData = wire.startupData;
+          if (service === '/socket/12002') {{
+            this.lobbyTrace = wire.lobby;
+            if (this.lobbyTrace.achievement) {{
+              this.lobbyTrace.achievement.sockets += 1;
+              this.addEventListener('close', () => {{ this.lobbyTrace.achievement.closed += 1; }});
+            }}
+          }}
           if (service !== {QUEST_PORT!r}) return;
           const overlaps = wire.sockets.some(socket => !socket.close);
           const trace = this.questTrace = {{ sent: [], confirms: [], actions: [], movement: [], combat: [], replies: [], close: null, held: false, overlaps }};
           wire.sockets.push(trace);
-          this.addEventListener('close', event => {{ trace.close = [event.code, event.wasClean]; }});
+          this.addEventListener('close', event => {{
+            trace.close = [event.code, event.wasClean];
+            wire.lobby.achievement?.timeline.push(['quest', 'close', event.code, event.wasClean]);
+          }});
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
@@ -328,6 +378,7 @@ def observe_quest_wire(page):
             const hold = wire.actionHold;
             if (hold?.peer === this.questTrace && hold.command === command && hold.before !== null) hold.key = key;
             this.questTrace.sent.push([command, frame.byteLength]);
+            if (command === 2) wire.lobby.achievement?.timeline.push(['quest', 'send', command]);
             if (confirm) this.questTrace.confirms.push(confirm);
             if (action) this.questTrace.actions.push(action);
             if (movement) this.questTrace.movement.push(movement);
@@ -339,15 +390,59 @@ def observe_quest_wire(page):
             }}
           }}
           if (this.lobbyTrace && encoded && encoded.deck !== null) this.lobbyTrace.sent.push([encoded.command, frame.byteLength, encoded.deck]);
+          if (this.lobbyTrace?.achievement && encoded) {{
+            const hold = wire.lobbyPong;
+            if (hold && encoded.command === 3 && this.lobbyTrace.achievement.sent.at(-1)?.[0] === 35) hold.key = encoded.key;
+            this.lobbyTrace.achievement.sent.push([encoded.command, frame.byteLength,
+              encoded.notice ?? null, document.getElementById('stage')?.dataset.screen,
+              document.getElementById('lobby-avatar')?.dataset.avatarState ?? null]);
+            this.lobbyTrace.achievement.timeline.push(['lobby', 'send', encoded.command]);
+          }}
           super.send(frame);
         }}
         set onmessage(handler) {{
           let heldBytes = 0;
           let heldSize = 0;
-          if (this.lobbyTrace) {{
+          if (this.startupData) {{
             super.onmessage = event => {{
+              wire.readingStartupData = this.startupData;
+              try {{ handler.call(this, event); }} finally {{ wire.readingStartupData = null; }}
+            }};
+            return;
+          }}
+          if (this.lobbyTrace) {{
+            const receive = event => {{
               wire.readingLobby = this.lobbyTrace;
               try {{ handler.call(this, event); }} finally {{ wire.readingLobby = null; }}
+            }};
+            if (!wire.startupData) {{ super.onmessage = receive; return; }}
+            // Preserve complete original frames so the one selected authenticated Pong can wait.
+            let buffered = new Uint8Array();
+            const forward = () => {{
+              while (buffered.length >= 4) {{
+                const size = new DataView(buffered.buffer, buffered.byteOffset).getUint32(0) + 5;
+                if (buffered.length < size) return;
+                const hold = wire.lobbyPong;
+                if (size === 7 && hold?.key) {{
+                  const high = buffered[4] ^ hold.key[0];
+                  const low = buffered[5] ^ hold.key[1 % hold.key.length];
+                  if (high === 0 && low === 35) {{
+                    hold.resume = forward;
+                    return;
+                  }}
+                }}
+                const data = buffered.slice(0, size).buffer;
+                buffered = buffered.slice(size);
+                receive({{data}});
+              }}
+            }};
+            super.onmessage = event => {{
+              const bytes = new Uint8Array(event.data);
+              const merged = new Uint8Array(buffered.length + bytes.length);
+              merged.set(buffered);
+              merged.set(bytes, buffered.length);
+              buffered = merged;
+              forward();
             }};
             return;
           }}
@@ -567,7 +662,7 @@ def check_lobby(page, player_id, profile):
     ), stars_box
 
 
-def close_lobby_news(page, stage, directory):
+def close_lobby_news(page, stage, directory, *, restores_title=True):
     news = page.locator("#lobby-news")
     news_close = page.locator("#lobby-news-close")
     expect(news).to_have_attribute("data-state", "ready")
@@ -581,7 +676,8 @@ def close_lobby_news(page, stage, directory):
     check_button_hover(page, news_close)
     news_close.press("Escape")
     expect(news).to_be_hidden()
-    expect(page.locator("#lobby-title")).to_be_focused()
+    if restores_title:
+        expect(page.locator("#lobby-title")).to_be_focused()
 
 
 def wait_quest_art(page):
@@ -1899,7 +1995,7 @@ def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_a
 
 
 def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=False, dwarf_slot=None, left_slot=None,
-                         reward_rounds=None, reward_defeat=False):
+                         reward_rounds=None, reward_defeat=False, q3_stock=False):
     battle = page.locator("#quest-map-battle")
     done = battle.locator('button[data-combat-command="done"]')
     actions = []
@@ -1911,7 +2007,7 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
         assert deal == [[44, 24, [41, 26, 9, 27, 56], 31, 5], [45, 14, [259], 1, 1]], deal
     rounds = TWO_CLOSE_COMBAT_ROUNDS[:reward_rounds] if reward_rounds else Q32_LEFT_COMBAT.get(left_slot)
     opening_hp = combat_health(battle) if 10 in (dwarf_slot, left_slot) else None
-    turn_limit = len(rounds) if rounds else 2 if reward_defeat else 3
+    turn_limit = len(rounds) if rounds else 1 if q3_stock else 2 if reward_defeat else 3
     for turn in range(1, turn_limit + 1):
         retreat = defeat or dwarf_slot in (4, 5) or left_slot in (3, 6)
         forward = reward_rounds or reward_defeat
@@ -1928,6 +2024,10 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
             deal = [p[2:] for p in read_movement_trace(page)["replies"] if p[0] in (44, 45)][-2:]
             assert deal == ([[[22, 20, 11, 44, 42], 31, 5], [[62], 1, 1]] if turn == 1 else [[[], 0, 4], [[64], 1, 1]]), deal
             assert move[2:4] == [False, 3], move
+        if q3_stock:
+            deal = [p[2:] for p in read_movement_trace(page)["replies"] if p[0] in (44, 45)][-2:]
+            assert deal == [[[41, 28, 7, 29, 57], 31, 5], [[61], 1, 1]], deal
+            assert move[2:4] == [True, 2], move
         if opening_hp is not None and turn == 1:
             healing = [p for p in read_movement_trace(page)["replies"][len(opening):] if p[0] == 77]
             assert ([77, 4, 1, 1] in healing) == (opening_hp["player"] < 7), healing
@@ -1943,12 +2043,14 @@ def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=Fa
             player_attacks = bool(phase[2])
             if rounds or reward_defeat or (dwarf_slot is not None and turn == 1):
                 assert player_attacks == (index == 2), phase
+            if q3_stock:
+                assert index == 1 and player_attacks, phase
             role = "attack" if player_attacks else "defense"
             expect(battle).to_have_attribute("data-exchange-index", str(index), timeout=TIMEOUT)
             expect(battle).to_have_attribute("data-exchange-phase", role, timeout=TIMEOUT)
             card_actions, placed = ([], []) if defeat or (dwarf_slot is not None and not player_attacks) else place_terminal_cards(
                 page, battle, attack_type, player_attacks, reserve_attack=not player_attacks and index == 1,
-                choices=(attack if player_attacks else defence) if rounds else None)
+                choices=[(7, True), (29, True)] if q3_stock else (attack if player_attacks else defence) if rounds else None)
             if dwarf_slot is not None and player_attacks:
                 assert placed == [[41, False], [26, True], [56, True]], placed
             actions.extend(card_actions)
@@ -2107,12 +2209,13 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
     assert [packet for packet in trace["sent"] if packet[0] != 3] == [packet for packet in held["sent"] if packet[0] != 3]
 
 
-def open_quest_fixture(page, origin, player_id, name, password):
+def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achievements=False, startup_records=False,
+                       q3_bootstrap_record=False, startup_directory=None):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
     observe_session_codec(page, origin)
-    observe_quest_wire(page)
+    observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records, startup_data=lobby_achievements)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
@@ -2120,7 +2223,12 @@ def open_quest_fixture(page, origin, player_id, name, password):
     page.locator("#password").fill(password)
     page.locator("#login-submit").click()
     screen(stage, "lobby")
-    close_lobby_news(page, stage, None)
+    if q3_bootstrap_record:
+        close_q3_startup_record(page, stage, startup_directory)
+    elif startup_records:
+        close_lobby_startup_records(page, stage, origin)
+    else:
+        close_lobby_news(page, stage, None)
     active_session_traffic(sockets, live, 0, player_id)
     return stage, live, errors
 
@@ -2564,21 +2672,326 @@ def start_preowned_quest(page, database, player_id, quest, locked, *, ap_cost):
     return detail, before
 
 
-def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land, complete=False):
+def read_lobby_achievement_trace(page):
+    return page.evaluate("window.qaQuestWire.lobby.achievement")
+
+
+def wait_lobby_achievement_check(page, number, *, since=0):
+    page.wait_for_function("""({number, since}) => {
+      const trace = window.qaQuestWire.lobby.achievement;
+      return trace.sent.filter(([opcode]) => opcode === 35).length >= number
+        && trace.replies.slice(since).some(([opcode, size]) => opcode === 35 && size === 2);
+    }""", arg={"number": number, "since": since}, timeout=TIMEOUT)
+    trace = read_lobby_achievement_trace(page)
+    sends = trace["sent"]
+    checks = [index for index, packet in enumerate(sends) if packet[0] == 35]
+    assert len(checks) == number, sends
+    assert all(sends[index:index + 2] == [[35, 6, 1, "lobby", "ready"], [3, 5, None, "lobby", "ready"]]
+               for index in checks), sends
+    assert [reply for reply in trace["replies"] if reply[0] == 35] == [[35, 2]] * number, trace["replies"]
+    assert trace["sockets"] == 1 and trace["closed"] == 0
+    return trace
+
+
+def close_q3_startup_record(page, stage, directory):
+    startup = page.evaluate("window.qaQuestWire.startupData")
+    profile_offset = next(index for index, packet in enumerate(startup) if packet[0] == 6)
+    before_profile = startup[:profile_offset]
+    assert [p for p in startup if p[0] == 22] == [[22, 22, 1, 3, 9, 3, 0]], startup
+    assert [22, 22, 1, 3, 9, 3, 0] in before_profile
+    assert [23, 6, 2] in before_profile and any(p[0] == 25 for p in before_profile), startup
+    trace = wait_lobby_achievement_check(page, 1)
+    assert not any(p[0] == 51 for p in trace["replies"]), trace["replies"]
+    news_seen = record_seen = False
+    notice = page.locator("#lobby-achievement-notice[open]")
+    while not (news_seen and record_seen):
+        page.wait_for_function("""() => document.querySelector('#lobby-news[open], #lobby-achievement-notice[open][data-state="ready"]')""",
+                               timeout=TIMEOUT)
+        if page.locator("#lobby-news[open]").is_visible():
+            assert not news_seen
+            close_lobby_news(page, stage, None, restores_title=record_seen)
+            news_seen = True
+        else:
+            assert not record_seen
+            for field, value in (("achievement-id", 1), ("treasure-type", 3), ("item-id", 9), ("amount", 3), ("slot-type", 0)):
+                expect(notice).to_have_attribute(f"data-{field}", str(value))
+            expect(notice.locator("#lobby-achievement-notice-title")).to_have_text("Record")
+            expect(notice.locator("#lobby-achievement-notice-message")).to_contain_text("創立虛擬人物")
+            expect(notice.locator("#lobby-achievement-notice-quantity")).to_have_text("x3")
+            ok = notice.locator("#lobby-achievement-notice-ok")
+            expect(ok).to_be_focused()
+            capture(stage, directory, "11-record-bootstrap-avatar-created.png", animations="allow")
+            ok.press("Enter")
+            expect(notice).to_have_count(0)
+            record_seen = True
+    expect(page.locator("#lobby-title")).to_be_focused()
+    assert read_lobby_achievement_trace(page)["sent"] == trace["sent"]
+
+
+def close_lobby_startup_records(page, stage, origin):
+    trace = wait_lobby_achievement_check(page, 1)
+    rewards = [p[2:] for p in trace["replies"] if p[:2] == [51, 22]]
+    if not rewards:
+        close_lobby_news(page, stage, None)
+        return
+    response = page.request.get(origin + "/source-login/lobby-achievement-art/index.json")
+    assert response.ok
+    assets = response.json()
+    cards = assets["card"]
+    pending = []
+    for reward in rewards:
+        achievement_id, kind, item_id, _, _ = reward
+        art = {1: cards.get("characters", {}), 3: cards.get("items", {}), 5: {"0": cards.get("gem")}}.get(kind, {})
+        if str(achievement_id) in assets["achievements"] and art.get(str(item_id)):
+            pending.append(reward)
+    news_seen = False
+    notice = page.locator("#lobby-achievement-notice[open]")
+    while pending or not news_seen:
+        page.wait_for_function("""() => document.querySelector('#lobby-news[open], #lobby-achievement-notice[open][data-state="ready"]')""",
+                               timeout=TIMEOUT)
+        if page.locator("#lobby-news[open]").is_visible():
+            assert not news_seen
+            close_lobby_news(page, stage, None, restores_title=not pending)
+            news_seen = True
+        else:
+            receipt = notice.evaluate("""({dataset: data}) =>
+              ['achievementId', 'treasureType', 'itemId', 'amount', 'slotType'].map(field => +data[field])""")
+            assert receipt in pending, (receipt, pending)
+            pending.remove(receipt)
+            notice.locator("#lobby-achievement-notice-ok").click()
+    expect(notice).to_have_count(0)
+    assert read_lobby_achievement_trace(page)["sent"] == trace["sent"]
+
+
+def lobby_achievement_states(database, avatar_id):
+    return dict(query(database, """SELECT achievement_id, state FROM achievement_inventories
+        WHERE avatar_id = ? AND achievement_id IN (2, 31) ORDER BY achievement_id""", avatar_id))
+
+
+def pending_selectable_record(database, avatar_id):
+    return any("26:2" in body.split("|") for (body,) in query(database, "SELECT body FROM avatar_notices WHERE avatar_id = ?", avatar_id))
+
+
+def observe_lobby_achievement_notices(page):
+    page.evaluate("""() => {
+      const trace = window.qaQuestWire.lobby.achievement;
+      trace.notices = [];
+      trace.noticeAudio = [];
+      const stage = document.getElementById('stage');
+      const receipt = data => [data.achievementId, data.treasureType, data.itemId, data.amount, data.slotType].map(Number);
+      const sample = () => {
+        const dialog = document.getElementById('lobby-achievement-notice');
+        if (!dialog?.open || !dialog.dataset.achievementId) return;
+        const step = [...receipt(dialog.dataset), dialog.dataset.state];
+        if (String(trace.notices.at(-1)) !== String(step)) {
+          trace.notices.push(step);
+          trace.timeline.push(['ui', 'record', ...step]);
+        }
+      };
+      new MutationObserver(sample).observe(stage, {
+        subtree: true, childList: true, attributes: true, attributeFilter: ['open', 'data-state'],
+      });
+      const originalPlay = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function (...args) {
+        const dialog = document.querySelector('#lobby-achievement-notice[open]');
+        const file = this.src.split('/').at(-1);
+        if (stage.dataset.screen !== 'lobby' || !dialog || !/^ulse(?:01|02|23)\\.mp3$/.test(file)) {
+          return originalPlay.apply(this, args);
+        }
+        const cue = {file, receipt: receipt(dialog.dataset), state: dialog.dataset.state, playback: 'pending'};
+        trace.noticeAudio.push(cue);
+        const playing = originalPlay.apply(this, args);
+        void playing.then(() => { cue.playback = 'played'; }, () => { cue.playback = 'rejected'; });
+        return playing;
+      };
+    }""")
+
+
+def check_q3_lobby_achievement(page, stage, directory, database, player_id, live, *, before, first_trace):
+    avatar_id = before["profile"][0]
+    page.wait_for_function("() => typeof window.qaQuestWire.lobbyPong?.resume === 'function'", timeout=TIMEOUT)
+    held = read_lobby_achievement_trace(page)
+    try:
+        raw = held["replies"][len(first_trace["replies"]):]
+        assert len([p for p in raw if p[:2] == [51, 22]]) == 4 and not any(p[0] == 35 for p in raw), raw
+        assert not held["notices"] and not held["noticeAudio"]
+        assert lobby_achievement_states(database, avatar_id) == {2: 1, 31: 1}
+        expect(page.locator("#lobby-gems")).to_have_text(str(before["profile"][3] + 3000), timeout=2000)
+        expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
+        capture(stage, directory, "42-lobby-records-awaiting-actual-pong.png", animations="allow")
+    finally:
+        page.evaluate("""() => {
+          const {resume} = window.qaQuestWire.lobbyPong;
+          window.qaQuestWire.lobbyPong = null;
+          resume();
+        }""")
+    trace = wait_lobby_achievement_check(page, 2, since=len(first_trace["replies"]))
+    check_offsets = [index for index, event in enumerate(trace["timeline"]) if event == ["lobby", "send", 35]]
+    first_return_reply = sum(event[:2] == ["lobby", "reply"] for event in trace["timeline"][:check_offsets[1]])
+    battle_replies = trace["replies"][len(first_trace["replies"]):first_return_reply]
+    battle_gems = [p for p in battle_replies if p[0] == 25]
+    assert battle_gems and battle_gems[-1] == [25, 6, before["profile"][3]], battle_gems
+    assert not any(p[0] in (27, 31, 51) for p in battle_replies), battle_replies
+    replies = trace["replies"][first_return_reply:]
+    rewards = [(2, 3, 9, 1, 0), (2, 1, 10006, 7, 0), (31, 3, 3, 1, 0), (31, 5, 0, 3000, 0)]
+    assert [tuple(p[2:]) for p in replies if p[0] == 51 and p[1] == 22] == rewards, replies
+    assert [p for p in replies if p[0] == 52] == [[52, 6, 3], [52, 6, 32]], replies
+    original_notices = [rewards[0], rewards[1], rewards[3], rewards[2]]
+    counted_items = [tuple(p[2:]) for p in replies if p[0] == 27 and p[1] == 10]
+    counted_cards = [tuple(p[2:]) for p in replies if p[0] == 31 and p[1] == 10]
+    assert sorted(item for _, item in counted_items) == [3, 9]
+    assert len(set(counted_cards)) == 7 and [card for _, card in counted_cards] == [10006] * 7
+    total_gems = before["profile"][3] + 3000
+    assert [p for p in replies if p[0] == 25] == [[25, 6, total_gems]], replies
+    rewarded = bonus_profile(database, player_id)
+    assert rewarded["profile"][2:7] == (before["profile"][2], total_gems, *before["profile"][4:7])
+    assert rewarded["cards"] - before["cards"] == set(counted_cards)
+    assert rewarded["items"] - before["items"] == set(counted_items)
+    assert before["cards"] <= rewarded["cards"] and before["items"] <= rewarded["items"]
+    assert rewarded["slotCards"] == before["slotCards"]
+    assert lobby_achievement_states(database, avatar_id) == {2: 1, 31: 1}
+    expect(page.locator("#lobby-gems")).to_have_text(str(total_gems), timeout=TIMEOUT)
+    music(page, "lobby", "ulbgm02.mp3")
+
+    captions = {2: "虛擬人物Lv到達3", 31: "突破初期地區"}
+    notice = page.locator("#lobby-achievement-notice[open]")
+    seen = []
+    for number, original in enumerate(original_notices, start=1):
+        expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+        receipt = notice.evaluate("""({dataset: data}) =>
+          ['achievementId', 'treasureType', 'itemId', 'amount', 'slotType'].map(field => +data[field])""")
+        capture(stage, directory, f"42-record-{number:02d}-{receipt[0]}-{receipt[2]}-revealed.png", animations="allow")
+        assert tuple(receipt) == original, (receipt, original)
+        seen.append(receipt)
+        expect(notice.locator("#lobby-achievement-notice-title")).to_have_text("Record")
+        expect(notice.locator("#lobby-achievement-notice-message")).to_contain_text(captions[receipt[0]])
+        expect(notice.locator(".lobby-achievement-card-face")).to_be_visible()
+        if receipt[3] == 7:
+            expect(notice.locator("#lobby-achievement-notice-quantity")).to_have_text("x7")
+        if receipt[3] == 3000:
+            expect(notice.locator(".lobby-achievement-gem")).to_have_text("3000Gem")
+        ok = notice.locator("#lobby-achievement-notice-ok")
+        expect(ok).to_be_enabled()
+        expect(ok).to_be_focused()
+        if number == 1:
+            stage_box = stage.bounding_box()
+            ok_box = ok.bounding_box()
+            assert stage_box and ok_box and (stage_box["width"], stage_box["height"]) == (780, 680)
+            assert abs(ok_box["x"] - stage_box["x"] - 308) < 1 and abs(ok_box["y"] - stage_box["y"] - 529) < 1
+            quest_button = page.locator("#lobby-quest-load").bounding_box()
+            assert quest_button
+            page.mouse.click(quest_button["x"] + quest_button["width"] / 2, quest_button["y"] + quest_button["height"] / 2)
+            expect(notice).to_have_attribute("data-state", "ready")
+            assert len(live) == 5
+        ok.press("Enter") if number == 1 else ok.click()
+        expect(notice.and_(page.locator(f'[data-state="ready"][data-achievement-id="{receipt[0]}"][data-item-id="{receipt[2]}"]'))).to_have_count(0)
+    expect(notice).to_have_count(0)
+    expect(page.locator("#lobby-quest-load")).to_be_focused()
+    settled = read_lobby_achievement_trace(page)
+    assert settled["sent"] == trace["sent"], settled["sent"]
+    assert pending_selectable_record(database, avatar_id)
+    page.wait_for_function("""() => window.qaQuestWire.lobby.achievement.replies.some(([opcode, , notices]) =>
+      opcode === 54 && notices.some(({type, achievementId}) => type === 26 && achievementId === 2))""", timeout=TIMEOUT)
+    page.wait_for_function("""() => {
+      const audio = window.qaQuestWire.lobby.achievement.noticeAudio;
+      return audio.length >= 4 && audio.every(cue => cue.playback !== 'pending');
+    }""", timeout=TIMEOUT)
+    settled = read_lobby_achievement_trace(page)
+    flips = [row[:5] for row in settled["notices"] if row[-1] == "flipping"]
+    assert flips == seen, settled["notices"]
+    first_record = next(index for index, event in enumerate(settled["timeline"]) if event[:2] == ["ui", "record"])
+    pong_offsets = [index for index, event in enumerate(settled["timeline"]) if event == ["lobby", "reply", 35]]
+    assert pong_offsets[-1] < first_record
+    assert settled["noticeAudio"] == [
+        {"file": "ulse23.mp3", "receipt": receipt, "state": "flipping", "playback": "played"} for receipt in seen
+    ], settled["noticeAudio"]
+    assert bonus_profile(database, player_id) == rewarded
+    capture(stage, directory, "43-lobby-after-records.png")
+
+    page.locator("#lobby-quest-load").click()
+    screen(stage, "quest-map")
+    expect(page.locator("#quest-map-view")).to_have_attribute("data-map-id", "2", timeout=TIMEOUT)
+    page.locator("#quest-map-back").click()
+    screen(stage, "lobby")
+    final = wait_lobby_achievement_check(page, 3, since=len(settled["replies"]))
+    duplicate = final["replies"][len(settled["replies"]):]
+    assert not any(p[0] in (27, 31, 51) for p in duplicate), duplicate
+    assert not any(p[0] in (37, 52) for p in final["sent"]), final["sent"]
+    assert final["notices"] == settled["notices"]
+    expect(notice).to_have_count(0)
+    expect(page.locator("#lobby-quest-load")).to_be_focused()
+    expect(page.locator("#lobby-gems")).to_have_text(str(total_gems))
+    assert bonus_profile(database, player_id) == rewarded
+    assert lobby_achievement_states(database, avatar_id) == {2: 1, 31: 1}
+    assert pending_selectable_record(database, avatar_id)
+    assert len(live) == 6 and all(not peer.is_closed() for peer in live[:4]) and all(peer.is_closed() for peer in live[4:])
+    reopened_quest = read_movement_trace(page)
+    assert [p[0] for p in reopened_quest["sent"] if p[0] != 3] == [0, 1, 2]
+    assert reopened_quest["close"] == [1000, True] and not reopened_quest["overlaps"]
+    capture(stage, directory, "44-lobby-reentry-no-duplicate-records.png")
+    return {"firstLobby": first_trace, "firstReturn": settled, "secondReturn": final, "notices": seen,
+            "firstReturnPongHeld": held,
+            "achievements": lobby_achievement_states(database, avatar_id), "itemAwards": counted_items,
+            "cardAwards": counted_cards, "gemsBefore": before["profile"][3], "gemsAfter": total_gems,
+            "beforeBackProfile": {"mapFlag": 1, "mapClears": 0, "gems": before["profile"][3]},
+            "pendingSelectableBefore": before["pendingSelectable"], "pendingSelectableAfter": True,
+            "pendingSelectableRecheck": pending_selectable_record(database, avatar_id),
+            "questReentry": reopened_quest}
+
+
+def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land, complete=False,
+                         lobby_achievements=False):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
     avatar_id = profile[0]
     (quest,) = quest_inventory(database, avatar_id)
-    quest_id, initial_damage = (3, 0) if continue_land else (1, 6)
+    quest_id, initial_damage = (3, int(lobby_achievements)) if continue_land else (1, 6)
     assert flags == 0 and quest[1:3] == (quest_id, 0) and quest[4:] == (0, 1, initial_damage, 0, 0), quest
-    assert profile[5:7] == (4, 5)
+    assert profile[5:7] == (5 if lobby_achievements else 4, 5)
+    if lobby_achievements:
+        assert profile[2] == 1 and profile[4] in (0, 9)
+        item_sql = "SELECT id, avatar_item_id, state FROM item_inventories WHERE avatar_id = ?"
+        initial_items = set(query(database, item_sql, avatar_id))
     assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [
         (0, 3 if continue_land else 0),
     ]
     deck = quest_deck(database, avatar_id)
     assert len(deck) == 1 and deck[0][1:] == (STARTER_CARD, 0, 0)
     locked = [deck[0][:3] + (1,)]
-    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=lobby_achievements,
+                                            q3_bootstrap_record=lobby_achievements, startup_directory=directory)
+    if lobby_achievements:
+        startup_lobby = wait_lobby_achievement_check(page, 1)
+        earned_items = set(query(database, item_sql, avatar_id))
+        startup_items = sorted(earned_items - initial_items)
+        assert initial_items <= earned_items and [(item, state) for _, item, state in startup_items] == [(9, 0)] * 3
+        assert query(database, "SELECT state FROM achievement_inventories WHERE avatar_id = ? AND achievement_id = 1", avatar_id) == [(1,)]
+        startup_data = page.evaluate("window.qaQuestWire.startupData")
+        assert not any(p[0] == 51 for p in startup_lobby["replies"]), startup_lobby
+        startup_peers = tuple(live)
+        browser = page.context.browser
+        assert browser is not None
+        # The original q3 capture re-authenticated after acknowledging the cold startup Record.
+        assert page.reload(wait_until="domcontentloaded").ok
+        wait_logout(page, database, player_id)
+        assert not errors, errors
+        page.close()
+
+        page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1, reduced_motion="reduce")
+        stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=True)
+        first_lobby = wait_lobby_achievement_check(page, 1)
+        assert len(startup_peers) == len(live) == 4 and all(peer not in startup_peers for peer in live)
+        warm_data = page.evaluate("window.qaQuestWire.startupData")
+        assert any(p[0] == 6 for p in warm_data), warm_data
+        assert not any((p[0], p[2]) in ((22, 1), (23, 2)) for p in warm_data if p[0] in (22, 23)), warm_data
+        assert set(query(database, item_sql, avatar_id)) == earned_items
+        expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
+        first_lobby.update(startupData=startup_data, startupItems=startup_items, startupLobby=startup_lobby,
+                           warmData=warm_data, startupSessionClosed=True)
+        commands = [p[0] for p in first_lobby["sent"]]
+        assert commands[commands.index(35) - 1] == 17
+        assert not any(p[0] == 51 and p[2] in (2, 31) for p in first_lobby["replies"]), first_lobby
+        assert lobby_achievement_states(database, avatar_id) == {2: 0, 31: 0}
     page.locator("#lobby-quest-load").click()
     screen(stage, "quest-map")
     expect(page.locator("#quest-map-view")).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
@@ -2610,13 +3023,22 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     page.emulate_media(reduced_motion="reduce")
     cards_before = owned_character_cards(database, avatar_id)
     actions, held, _ = play_terminal_combat(page, stage, directory, completions=(20,) if continue_land else (24,),
-                                            defeat=not continue_land)
+                                            defeat=not continue_land, q3_stock=lobby_achievements)
     if continue_land:
         second_open = check_next_quest_land(page, stage, directory, database, quest, avatar_id, locked, held)
         if complete:
             page.emulate_media(reduced_motion="reduce")
-            second_actions, second_held, _ = play_terminal_combat(page, stage, directory, completions=(25, 24))
+            second_actions, second_held, _ = play_terminal_combat(page, stage, directory, completions=(25, 24),
+                                                                  q3_stock=lobby_achievements)
             check_q3_final_treasure(page, stage, directory, database, quest, deck, before, cards_before, second_open, second_held)
+            if lobby_achievements:
+                before_back = bonus_profile(database, player_id)
+                assert before_back["profile"][2] >= 3 and lobby_achievement_states(database, avatar_id) == {2: 0, 31: 0}
+                before_back["pendingSelectable"] = pending_selectable_record(database, avatar_id)
+                assert not before_back["pendingSelectable"]
+                assert [p for p in read_lobby_achievement_trace(page)["sent"] if p[0] == 35] == [[35, 6, 1, "lobby", "ready"]]
+                observe_lobby_achievement_notices(page)
+                page.evaluate("() => { window.qaQuestWire.lobbyPong = {}; }")
             page.locator("#quest-map-back").click()
             screen(stage, "lobby")
     else:
@@ -2635,6 +3057,11 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
         12, 13, 16, 22, *(command for command, *_ in actions), *([16, 22] if continue_land else []),
         *([command for command, *_ in second_actions] if complete else []), *([2] if not continue_land or complete else []),
     ]
+    if lobby_achievements:
+        achievement_trace = check_q3_lobby_achievement(page, stage, directory, database, player_id, live, before=before_back,
+                                                       first_trace=first_lobby)
+        if directory is not None:
+            (directory / "lobby-achievement-wire.json").write_text(json.dumps(achievement_trace, indent=2) + "\n")
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
     assert not errors, errors
@@ -3691,7 +4118,7 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
     checkpoints = {} if terminal else None
     locked = [deck[:3] + (1,)]
     assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [(21, 0)]
-    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True)
     page.locator("#lobby-quest-load").click()
     screen(stage, "quest-map")
     view = page.locator("#quest-map-view")
@@ -3760,7 +4187,7 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
                                                           authored, quest_id=568, land_slot=5, previous_progress=2,
                                                           map_flag=21, bonus=True, card_id=card_id)
             assert duel == [41, 32, 1, 2, 6, 0, 100, 100, 2, 6, 1], duel
-            assert source_profile[2:7] == (6, 142, 226, 0, 8), source_profile
+            assert source_profile[2:7] == (6, base[3] + 2, 226, 0, 8), source_profile
             check_terminal_bonus_archive_gate(page, stage, directory)
             checkpoints["archiveHeld"] = reward_checkpoint(read_movement_trace(page))
             release_movement_reply(page)
@@ -3832,7 +4259,8 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
                                                  checkpoints=checkpoints)
     expect(battle).to_have_count(0)
     if terminal:
-        assert profile[2:7] == (6, 145 if choice == "terminal-get" else 142, 226, 0, 8), profile
+        extra_gems = 3 if choice == "terminal-get" else 0
+        assert profile[2:7] == (6, source_profile[3] + extra_gems, 226, 0, 8), profile
         assert quest_inventory(database, avatar_id) == [] and quest_deck(database, avatar_id) == [deck]
         assert len(live) == 5 and all(not peer.is_closed() for peer in live)
         check_terminal_bonus_map_return(page, stage, directory, inventory_id, profile, card_id, checkpoints)
@@ -3914,7 +4342,7 @@ def check_peaceful_quest(page, origin, database, name, password, directory, kind
     parts = equipped_parts(database, avatar_id)
     assert len(deck) == 1 and deck[0][1:] == (STARTER_CARD, 0, 0)
     locked = [deck[0][:3] + (1,)]
-    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password)
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True)
     page.locator("#lobby-quest-load").click()
     screen(stage, "quest-map")
     view = page.locator("#quest-map-view")
@@ -4537,9 +4965,17 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
                 refresh_packets = sent[start:]
             else:
                 assert len(sent) == start
-        assert 1 <= len(refresh_packets) <= 2 and all(frame[:2] == b"\x00\x02" and len(frame) == 5
-                                                     and frame[-1:] == b"\n" for frame in refresh_packets)
-        assert page.evaluate("window.refreshQASends") == [LOBBY_REFRESH] * len(refresh_packets)
+        options_sends = page.evaluate("window.refreshQASends")
+        assert len(options_sends) == len(refresh_packets)
+        checks = options_sends.count(LOBBY_ACHIEVEMENT_CHECK)
+        assert 1 <= options_sends.count(LOBBY_REFRESH) <= 2 and checks <= 1
+        assert options_sends.count(LOBBY_ACHIEVEMENT_PING) == checks
+        if checks:
+            index = options_sends.index(LOBBY_ACHIEVEMENT_CHECK)
+            assert options_sends[index:index + 2] == [LOBBY_ACHIEVEMENT_CHECK, LOBBY_ACHIEVEMENT_PING]
+        for command, frame in zip(options_sends, refresh_packets, strict=True):
+            assert command in (LOBBY_REFRESH, LOBBY_ACHIEVEMENT_CHECK, LOBBY_ACHIEVEMENT_PING), options_sends
+            assert len(frame) == len(command) and frame[:2] == bytes(command[:2]) and frame[-1:] == b"\n"
         page.evaluate("() => { window.refreshQASends = null; }")
         assert all(request.method == "GET" for request in requests[request_start:])
         if edit:
@@ -4709,6 +5145,8 @@ def main():
                         help="Use an owned q3 fixture to verify both encounters on the retained original Quest")
     parser.add_argument("--quest-complete-q3", action="store_true",
                         help="Use an owned q3 fixture to win both battles and hold the genuine fixed treasure reply")
+    parser.add_argument("--lobby-achievements", action="store_true",
+                        help="Extend the original boss fixture through native Lobby record awards and a second Return")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
@@ -4737,6 +5175,8 @@ def main():
     if args.quest_complete_q3 and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
                                    or args.quest_terminal or args.quest_next_land):
         parser.error("--quest-complete-q3 requires --quest-start-user and its own case")
+    if args.lobby_achievements and not args.quest_complete_q3:
+        parser.error("--lobby-achievements requires --quest-complete-q3 and the source-seeded boss fixture")
     if args.quest_peaceful and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
                                or args.quest_terminal or args.quest_next_land or args.quest_complete_q3):
         parser.error("--quest-peaceful requires --quest-start-user and its own case")
@@ -4801,7 +5241,8 @@ def main():
                 elif args.quest_next_land or args.quest_complete_q3 or args.quest_terminal == "defeat":
                     check_preowned_quest(page, origin, args.database, args.quest_start_user,
                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
-                                         continue_land=args.quest_next_land or args.quest_complete_q3, complete=args.quest_complete_q3)
+                                         continue_land=args.quest_next_land or args.quest_complete_q3, complete=args.quest_complete_q3,
+                                         lobby_achievements=args.lobby_achievements)
                     mode = "authorized next land" if args.quest_next_land else "one-HP defeat"
                     if args.quest_complete_q3:
                         mode = "two wins, verified fixed treasure and map unlock"

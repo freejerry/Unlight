@@ -1,0 +1,327 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "assetRepository": "https://github.com/ni-light/Unlight-Images",
+  "assetLicense": "CC-BY-ND-4.0",
+  "panel": {
+    "file": "information-panel.png",
+    "x": 116,
+    "y": 144,
+    "width": 528.0,
+    "height": 416.0
+  },
+  "portrait": {
+    "file": "braw.png",
+    "x": 147,
+    "y": 264,
+    "width": 99.04985046386719,
+    "height": 247.9583740234375
+  },
+  "ok": {
+    "up": {
+      "file": "ok-up.png",
+      "x": 308,
+      "y": 529,
+      "width": 143.949462890625,
+      "height": 23.9498291015625
+    },
+    "over": {
+      "file": "ok-over.png",
+      "x": 308,
+      "y": 529,
+      "width": 143.949462890625,
+      "height": 23.9498291015625
+    },
+    "down": {
+      "file": "ok-over.png",
+      "x": 308,
+      "y": 529,
+      "width": 143.949462890625,
+      "height": 23.9498291015625
+    },
+    "hit": [
+      308,
+      529,
+      143.89948043823242,
+      23.89993362426758
+    ]
+  },
+  "font": "achievement-mincho.woff",
+  "title": {
+    "text": "Record",
+    "x": 300,
+    "y": 166,
+    "width": 150,
+    "height": 30
+  },
+  "achievements": {
+    "1": "創立虛擬人物",
+    "2": "虛擬人物Lv到達3",
+    "31": "突破初期地區"
+  },
+  "card": {
+    "back": {
+      "file": "treasure-card-back.png",
+      "x": 295.04999999999995,
+      "y": 263.04999999999995,
+      "width": 168,
+      "height": 240,
+      "url": "/source-login/quest-result-art/treasure-card-back.png"
+    },
+    "pivot": [
+      375,
+      383
+    ],
+    "width": 168,
+    "height": 240,
+    "face": [
+      295,
+      263
+    ],
+    "gem": {
+      "frame": {
+        "file": "treasure-gem-frame.png",
+        "x": 0,
+        "y": 0,
+        "width": 168,
+        "height": 240,
+        "url": "/source-login/quest-result-art/treasure-gem-frame.png"
+      },
+      "icon": {
+        "file": "treasure-gem-icon.png",
+        "x": 34,
+        "y": 31,
+        "width": 107,
+        "height": 108,
+        "url": "/source-login/quest-result-art/treasure-gem-icon.png"
+      },
+      "title": {
+        "text": "GET GEM!!",
+        "font": "treasure-gem-name.woff",
+        "x": 0,
+        "y": 5,
+        "width": 164,
+        "height": 100,
+        "fontUrl": "/source-login/quest-result-art/treasure-gem-name.woff"
+      },
+      "caption": {
+        "x": 15,
+        "y": 178,
+        "width": 150,
+        "height": 100
+      }
+    },
+    "items": {
+      "3": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240,
+          "url": "/source-login/quest-result-art/treasure-gem-frame.png"
+        },
+        "icon": {
+          "file": "item-3.png",
+          "x": 59.6,
+          "y": 39.25,
+          "width": 47,
+          "height": 122
+        },
+        "title": {
+          "text": "魔女秘藥",
+          "font": "achievement-mincho.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "text": "完全恢復虛擬人物的行動力。",
+          "font": "achievement-mincho.woff",
+          "x": 15,
+          "y": 180,
+          "width": 144,
+          "height": 90
+        }
+      },
+      "9": {
+        "frame": {
+          "file": "treasure-gem-frame.png",
+          "x": 0,
+          "y": 0,
+          "width": 168,
+          "height": 240,
+          "url": "/source-login/quest-result-art/treasure-gem-frame.png"
+        },
+        "icon": {
+          "file": "item-9.png",
+          "x": 23.6042468,
+          "y": 40.6042468,
+          "width": 119,
+          "height": 119
+        },
+        "title": {
+          "text": "抽獎券",
+          "font": "achievement-mincho.woff",
+          "x": 0,
+          "y": 5,
+          "width": 164,
+          "height": 100
+        },
+        "caption": {
+          "text": "抽獎券",
+          "font": "achievement-mincho.woff",
+          "x": 15,
+          "y": 180,
+          "width": 144,
+          "height": 90
+        }
+      }
+    },
+    "characters": {
+      "10006": {
+        "id": 10006,
+        "name": "記憶的碎片",
+        "kind": 3,
+        "level": 0,
+        "slot": 0,
+        "hp": 0,
+        "ap": 0,
+        "dp": 0
+      }
+    },
+    "quantity": [
+      30,
+      80,
+      96,
+      48
+    ],
+    "motion": {
+      "backHoldMs": 200,
+      "flipDurationMs": 300,
+      "flipDegrees": 180,
+      "showFaceAtDeg": 94
+    }
+  },
+  "references": {
+    "treasure-card-back.png": {
+      "source": "data/image/quest/quest_treasure.swf",
+      "sourceSha256": "7dcb2412ac8705ecfa4ade71fcb9986914334ac0224ff0c20d222f049dcec19c",
+      "sha256": "b43e39a99bac957e88868a1f9ccadf4f9254e072030911726a3eca3a1f6bd105",
+      "sourceBitmap": 1,
+      "sourceLabel": "red",
+      "sourceShape": 2,
+      "sourceFrame": 1
+    },
+    "treasure-gem-frame.png": {
+      "source": "data/image/item_cardframe.swf",
+      "sourceSha256": "ccc9f157c5cabcf205d290a96911436882ff9b2942bde277ea53dd21baf1383e",
+      "sha256": "5e7996ea63dc72b03915482c1fef2848a96f8961b2c6db4f57ce13907fa15502",
+      "sourceFrame": 1,
+      "originalFrame": 4,
+      "hiddenInstance": "rare"
+    },
+    "treasure-gem-icon.png": {
+      "source": "public/image/avatar_items/item_a_a001.swf",
+      "sourceSha256": "5ddf65c7bcf5692af534021694e9019ed771735bbf9fb02159e46e6e4bc05d3e",
+      "sha256": "974ce9111c76c354fb1a0a383c8b2c4c32166e45a136dc1bf6b4048b695bb6e7",
+      "sourceFrame": 1,
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "treasure-gem-name.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "01dfa98952d8123d65ac5803c0ce2fa0fb8a512a4087924282a5730fd621ba86",
+      "glyphs": "GET GEM!!"
+    },
+    "memoryIllustration": {
+      "source": "public/image/cmem0.swf",
+      "sourceSha256": "3fab6f5badc93be13add3729e638ba17634e1b4b548d77e809cdff9b8e552509"
+    }
+  },
+  "provenance": {
+    "information-panel.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "561e7479bfde7f5bf5f32aac7ba0b6b8336d3abcf82775879f7f6dd7a729d592",
+      "sourceBitmap": 1,
+      "sourceShape": 2,
+      "sourceDepth": 1,
+      "sourceFrame": 1
+    },
+    "braw.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "94099d4e3d18739bf53a1dc65e6134a964e2bc630758b30fcdc269f5f64c1cda",
+      "sourceBitmap": 8,
+      "sourceInstance": "braw",
+      "sourceShape": 9,
+      "sourceSprite": 10,
+      "sourceFrame": 1
+    },
+    "ok-up.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "7b3e04c9bdb83a6cb2bef2bedb85462f5a5cdd4c65ff45510c3b43f2d18e1ed6",
+      "sourceBitmap": 3,
+      "sourceInstance": "btn_ok",
+      "sourceShape": 4,
+      "sourceButton": 7,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "ok-over.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "760762921463767122498d008a9d074a04773b50c2829b3fb56e174a52a1c984",
+      "sourceBitmap": 5,
+      "sourceInstance": "btn_ok",
+      "sourceShape": 6,
+      "sourceButton": 7,
+      "sourceStates": [
+        "over",
+        "down",
+        "hitTest"
+      ]
+    },
+    "achievement-mincho.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sha256": "85ab4fb394487282656604a8f07df2a81670039cce4ec6a9d96dc4ff5d5e05e9",
+      "glyphs": "Record0123456789x記憶的碎片魔女秘藥完全恢復虛擬人物的行動力。抽獎券抽獎券"
+    },
+    "item-3.png": {
+      "source": "public/image/avatar_items/item_c_a000.swf",
+      "sourceSha256": "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c",
+      "sha256": "35ad1b80523d81c2d57c4f4a997e2c366d825b7bbcc702173181badae6a3676f",
+      "sourceFrame": 3,
+      "shapeIds": [
+        5
+      ],
+      "anchor": [
+        83,
+        100
+      ]
+    },
+    "item-9.png": {
+      "source": "public/image/avatar_items/item_c_d000.swf",
+      "sourceSha256": "97cbf340ad3d39279f5928e44b2efa918a94fcbd59272fb57cb4b781dfe4ec18",
+      "sha256": "9989c14d08846e1e0a83c71f2bc5c3d0c0e1b4de63caa1268109626787bf4516",
+      "sourceFrame": 1,
+      "shapeIds": [
+        1,
+        4
+      ],
+      "anchor": [
+        83,
+        100
+      ]
+    }
+  }
+}

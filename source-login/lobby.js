@@ -1,6 +1,7 @@
 import { readNews } from '/news.js';
 import { mountAvatarLayer, prepareLobbyArt } from './avatar-layer.js';
-import { playLobbyClick } from './bgm.js';
+import { playLobbyClick, playQuestBattleEffect } from './bgm.js';
+import { mountLobbyAchievementNotices } from './lobby-achievement.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -85,43 +86,88 @@ async function loadNews(view, signal) {
   return false;
 }
 
-export function mountLobby(host, { session, fadeIn, onOptions, onQuest }) {
+export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
   const lifetime = new AbortController();
   const { signal } = lifetime;
   const title = view.querySelector('#lobby-title');
+  const focus = (returnFocus && view.querySelector(returnFocus)) || title;
   const news = view.querySelector('#lobby-news');
   const avatarArrival = mountAvatarLayer(view.querySelector('.avatar-layer'), { session, signal });
+  host.append(view);
+  const waitingNotices = [];
+  let ready = false;
+  let checkingAchievements = false;
+  let newsAvailable = false;
+  const achievements = mountLobbyAchievementNotices(view, {
+    signal,
+    returnFocus: focus,
+    onFlip: () => playQuestBattleEffect('flip', signal),
+    onAcknowledge: receipt => session.acknowledgeLobbyAchievement(receipt),
+    onIdle: presentNotices,
+  });
+
+  function presentNotices() {
+    if (!ready || checkingAchievements || signal.aborted || news.open) return;
+    if (waitingNotices.length) {
+      achievements.enqueue(waitingNotices.splice(0));
+    } else if (newsAvailable && !newsSeen.has(session.playerId) && !achievements.hasPending() &&
+        document.activeElement === title) {
+      news.showModal();
+      newsSeen.add(session.playerId);
+    }
+  }
+
   const options = view.querySelector('#lobby-option-open');
-  options.disabled = typeof onOptions !== 'function';
-  if (!options.disabled) {
+  const canOpenOptions = typeof onOptions === 'function';
+  options.disabled = true;
+  if (canOpenOptions) {
     options.addEventListener('click', () => {
       playLobbyClick();
       onOptions();
     }, { signal });
   }
   const quest = view.querySelector('#lobby-quest-load');
-  quest.disabled = typeof onQuest !== 'function';
-  if (!quest.disabled) quest.addEventListener('click', onQuest, { signal });
-  news.addEventListener('close', () => title.focus({ preventScroll: true }), { signal });
+  const canOpenQuest = typeof onQuest === 'function';
+  quest.disabled = true;
+  if (canOpenQuest) quest.addEventListener('click', onQuest, { signal });
+  news.addEventListener('close', () => {
+    title.focus({ preventScroll: true });
+    presentNotices();
+  }, { signal });
 
-  host.append(view);
   void prepareLobbyArt(view, signal);
   title.focus({ preventScroll: true });
   const entrance = fadeIn?.(view) ?? host.getAnimations().find(animation => animation.animationName === 'login-destination-in');
-  // LobbyView asks for an avatar update after its entrance threads have joined.
-  const ready = Promise.allSettled([avatarArrival, entrance?.finished]).then(() => {
-    if (!signal.aborted) session.refreshLobbyAvatar?.();
-  });
   if (!newsSeen.has(session.playerId)) {
-    void Promise.all([loadNews(view, signal), ready]).then(([available]) => {
-      if (!available || signal.aborted || document.activeElement !== title) return;
-      news.showModal();
-      newsSeen.add(session.playerId);
+    void loadNews(view, signal).then(available => {
+      newsAvailable = available;
+      presentNotices();
     });
   }
+  // LobbyView refreshes the avatar and checks notices after its entrance threads join.
+  void Promise.allSettled([avatarArrival, entrance?.finished]).then(() => {
+    if (signal.aborted) return;
+    ready = true;
+    options.disabled = !canOpenOptions;
+    quest.disabled = !canOpenQuest;
+    if (document.activeElement === title) focus.focus({ preventScroll: true });
+    session.refreshLobbyAvatar?.();
+    session.subscribeLobbyAchievementEvents(event => {
+      if (event.kind !== 'achievement' && event.kind !== 'new-achievement') return;
+      waitingNotices.push(event);
+      presentNotices();
+    }, { signal });
+    presentNotices();
+    const finishCheck = () => {
+      checkingAchievements = false;
+      presentNotices();
+    };
+    checkingAchievements = true;
+    if (!session.checkLobbyAchievements({ signal, onBatchReady: finishCheck })) finishCheck();
+  });
 
   return () => {
     lifetime.abort();

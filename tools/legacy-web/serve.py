@@ -662,7 +662,8 @@ def create_app(
             app.router.add_get("/source-login/avatar-levels.json", avatar_level_curve)
             for filename in (
                 "style.css", "login.js", "stage.js", "panel-skin.js", "swf-vector.js", "title-motion.js", "news.js", "bgm.js",
-                "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
+                "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "lobby-achievement.js", "lobby-achievement.css",
+                "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
                 "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
                 "quest-battle-result.js", "quest-battle-bonus.js", "quest-treasure-panel.js",
@@ -680,6 +681,12 @@ def create_app(
             app.router.add_get("/source-login/lobby-art/hover/index.json", serve_file(hover_root / "index.json"))
             for image in sorted(hover_root.glob("*.png")):
                 app.router.add_get(f"/source-login/lobby-art/hover/{image.name}", serve_file(image))
+            achievement_art = SOURCE_LOGIN_ROOT / "lobby-achievement-art"
+            app.router.add_get("/source-login/lobby-achievement-art/index.json", serve_file(achievement_art / "index.json"))
+            for artifact in sorted(achievement_art.glob("*")):
+                if artifact.suffix in (".png", ".woff"):
+                    headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
+                    app.router.add_get(f"/source-login/lobby-achievement-art/{artifact.name}", serve_file(artifact, headers))
             for name in ("background.jpg", "back.png", "back-over.png"):
                 filename = f"option-art/{name}"
                 app.router.add_get(f"/source-login/{filename}", serve_file(SOURCE_LOGIN_ROOT / filename))

@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收大廳成就的獎勵通知和實體回覆，以及 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復、首次登入成就 #1、q3 返回大廳的 #2／#31 四筆直接獎勵。**部分**大廳其他入口及共用提示。 | 新挑戰、可選獎品的命令版本，以及 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝敗、大蝙蝠之群兩戰及蝙蝠卡寶箱、山丘矮人勝利、紫色泥沼澤2左右線及左線先鋒卡。q568 已實跑獎勵骰敗猜、重擲、補正、終局空獎品 Exit、直接 Get 與返回。新版另實跑落日大蝙蝠 18 回合和局與山丘矮人敗北。**部分**戰鬥 HUD 與其他高低獎勵。 | 終局實體獎品、繁中 Flash 落日大蝙蝠和局、山丘矮人敗北與 AP 更新時點、攻防開場時序及換角。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -147,3 +147,7 @@
 ### 魯比歐那的殘渣1終局獎勵
 
 - 原版與新版都用 Lv5 古魯瓦爾多從 q568 首格勝利打到第 5 格敗北。Deck 1 在同一任務歸檔後解鎖，保留進度 2。猜高 `1,6→1,2` 失敗後按 Exit，仍得戰鬥原有的 2 Gem／6 EXP，已開道具窗留在結算畫面。直接 Get 另發 3 Gem，Back 前兩版帳戶均為 145 Gem。兩條路徑都先確認戰果，再確認任務失敗。Back 才送一次 `CS2` 並只關閉 Quest。[Exit 結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/exit-terminal-settlement-comparison.png) · [直接 Get 結算並排](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/direct-terminal-settlement-comparison.png) · [兩版驗收證據](/workspace/shared/unlight-web-port/flash-parity/quest-highlow-terminal-live/README.md) · [逐項規格](flash-parity/quest-pve.md#終局獎勵與敗猜後-exit)
+
+### 大廳 Record 直接成就獎勵
+
+- 兩版實跑首次登入的三件抽獎券，以及同一角色重新登入後完成 q3 兩戰。旗標 0→1，Back 前 124 Gem。回到同一條 Lobby 後確實加發兩件道具、七張記憶的碎片和 3,000 Gem。四張 Record 依序顯示抽獎券、記憶的碎片、Gem、魔女秘藥。新版另實跑逐張翻牌聲和本機 OK、底層入口互斥、焦點恢復與再次返回時的防重。[首次登入並排](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/initial-record-ticket-comparison.png) · [返回大廳的逐項畫面與封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/README.md)

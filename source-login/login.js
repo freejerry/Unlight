@@ -208,10 +208,10 @@ function showLobby(session, returnFocus) {
   cleanupScreen = mountLobby(postLogin, {
     session,
     fadeIn,
+    returnFocus,
     onOptions: () => switchOptions(session, true),
     onQuest: () => openQuest(session),
   });
-  if (returnFocus) postLogin.querySelector(returnFocus).focus({ preventScroll: true });
 }
 
 async function switchOptions(session, opening) {

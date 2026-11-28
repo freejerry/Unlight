@@ -238,7 +238,7 @@ export function playQuestBattleEffect(cue, signal) {
 function playSceneMusic() {
   if (!active || !sceneEntered()) return;
   const scene = stage.dataset.soundscape ?? "title";
-  if (scene === "quest") prepareQuestCue("flip");
+  if (scene === "quest" || scene === "lobby") prepareQuestCue("flip");
   if (scene === "title" && music === titleMusic && titleFade) return;
   entryObserver.disconnect();
   const wasWarming = warmingMusic;

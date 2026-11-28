@@ -48,6 +48,11 @@ const SERVER_SB = 0;
 const LOBBY_PORT = 12002;
 const DATA_PORT = 12003;
 const DATA_AVATAR_CREATED_REQUEST = 4;
+const DATA_ACHIEVEMENT_CLEAR_REPLY = 22;
+const DATA_ACHIEVEMENT_NEW_REPLY = 23;
+const DATA_ACHIEVEMENT_DELETE_REPLY = 24;
+const DATA_ACHIEVEMENT_UPDATE_REPLY = 25;
+const DATA_ACHIEVEMENT_FIELD_LIMIT = 1024 * 1024;
 const QUEST_PORT = 12005;
 const LOBBY_CREATE_AVATAR_REQUEST = 10;
 const LOBBY_CHECK_NAME_REQUEST = 11;
@@ -59,6 +64,7 @@ const LOBBY_MOVE_DECK_CARD_REQUEST = 5;
 const LOBBY_MOVE_DECK_CARD_FAILED_REPLY = 10;
 const LOBBY_ERROR_REPLY = 34;
 const LOBBY_MOVE_DECK_CARD_FINISH_REPLY = 67;
+const LOBBY_ACHIEVEMENT_CHECK = 35;
 const LOBBY_PONG = 35;
 const LOBBY_REFRESH_AVATAR = 17;
 const LOBBY_ENERGY_REPLY = 17;
@@ -67,7 +73,11 @@ const LOBBY_LEVEL_REPLY = 22;
 const LOBBY_DECK_EXP_REPLY = 23;
 const LOBBY_DECK_LEVEL_REPLY = 24;
 const LOBBY_GEMS_REPLY = 25;
+const LOBBY_ITEM_GRANTED_REPLY = 27;
+const LOBBY_CHARACTER_GRANTED_REPLY = 31;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
+const LOBBY_ACHIEVEMENT_CLEAR_REPLY = 51;
+const LOBBY_ACHIEVEMENT_NEW_REPLY = 52;
 const LOBBY_REFRESH_INTERVAL = 2000;
 // Destination levels with a nonzero LEVEL_ENG_BOUNUS in the original Ruby table (levels 1–150).
 const ENERGY_CAP_GROWTH_LEVELS = [2, 4, 6, 8, 10, 13, 17, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 73, 80, 90, 100,
@@ -417,9 +427,24 @@ class SessionSocket {
   }
 }
 
+function readAchievementEvent(reply, isNew) {
+  const achievementId = reply.int();
+  if (achievementId <= 0) throw new SessionError('protocol');
+  if (isNew) return { kind: 'new-achievement', achievementId };
+  const treasureType = reply.int();
+  const itemId = reply.int();
+  const amount = reply.int();
+  const slotType = reply.int();
+  if (treasureType < 0 || treasureType > 7 || itemId < 0 || amount < 0 || slotType < 0) {
+    throw new SessionError('protocol');
+  }
+  return { kind: 'achievement', achievementId, treasureType, itemId, amount, slotType };
+}
+
 function observeLobbyAvatar(reply, publish) {
   let patch;
   let marker;
+  let event;
   try {
     switch (reply.command) {
       case LOBBY_ENERGY_REPLY: {
@@ -437,9 +462,27 @@ function observeLobbyAvatar(reply, publish) {
       }
       case LOBBY_GEMS_REPLY: {
         const gems = reply.int();
-        if (gems >= 0) patch = { gems };
+        if (gems >= 0) {
+          patch = { gems };
+          event = { kind: 'gems', gems };
+        }
         break;
       }
+      case LOBBY_ITEM_GRANTED_REPLY:
+      case LOBBY_CHARACTER_GRANTED_REPLY: {
+        const inventoryId = reply.int();
+        const definitionId = reply.int();
+        if (inventoryId > 0 && definitionId > 0) {
+          event = reply.command === LOBBY_ITEM_GRANTED_REPLY
+            ? { kind: 'item', inventoryId, itemId: definitionId }
+            : { kind: 'card', inventoryId, cardId: definitionId };
+        }
+        break;
+      }
+      case LOBBY_ACHIEVEMENT_CLEAR_REPLY:
+      case LOBBY_ACHIEVEMENT_NEW_REPLY:
+        event = readAchievementEvent(reply, reply.command === LOBBY_ACHIEVEMENT_NEW_REPLY);
+        break;
       case LOBBY_FREE_DUEL_COUNT_REPLY: {
         const freeDuelCount = reply.byte();
         if (freeDuelCount >= 0 && freeDuelCount <= 3) patch = { freeDuelCount };
@@ -460,7 +503,7 @@ function observeLobbyAvatar(reply, publish) {
     // A malformed optional status update does not affect the other Lobby replies.
     return true;
   }
-  if (patch || marker !== undefined) publish(patch, reply.command, marker);
+  if (patch || marker !== undefined || event) publish(patch, reply.command, marker, event);
   return true;
 }
 
@@ -470,31 +513,55 @@ function authReply(reply, expected) {
   throw new SessionError('credentials');
 }
 
-function observeInitialData(socket, signal) {
+function observeInitialData(channel, signal, publishAchievement) {
+  const { socket } = channel;
   const decoding = new AbortController();
   let versions;
   let profileStarted = false;
   let unsubscribe;
+  channel.waitingForProfile = true;
   const received = new Promise((resolve, reject) => {
-    unsubscribe = socket.observe([VERSION_COMMAND, AVATAR_COMMAND, REGISTRATION_COMMAND], (reply) => {
+    unsubscribe = socket.observe([
+      VERSION_COMMAND, AVATAR_COMMAND, REGISTRATION_COMMAND, DATA_ACHIEVEMENT_CLEAR_REPLY, DATA_ACHIEVEMENT_NEW_REPLY,
+      DATA_ACHIEVEMENT_DELETE_REPLY, DATA_ACHIEVEMENT_UPDATE_REPLY,
+    ], (reply) => {
       try {
+        if (!channel.verified) throw new SessionError('protocol');
         if (reply.command === VERSION_COMMAND) {
           if (versions) throw new SessionError('protocol');
           versions = readVersions(reply);
-        } else {
-          if (!versions || profileStarted) throw new SessionError('protocol');
-          profileStarted = true;
-          // Anchor the original relative times at frame arrival, before async inflation.
-          const receivedAt = performance.now();
-          readDataProfile(reply, decoding.signal).then(
-            ({ questData, ...profile }) => resolve({
-              versions,
-              ...profile,
-              questData: questData ? Object.assign(questData, { receivedAt }) : null,
-            }),
-            reject,
-          );
+          return;
         }
+        if (!versions) throw new SessionError('protocol');
+        if (reply.command === DATA_ACHIEVEMENT_CLEAR_REPLY || reply.command === DATA_ACHIEVEMENT_NEW_REPLY) {
+          const event = readAchievementEvent(reply, reply.command === DATA_ACHIEVEMENT_NEW_REPLY);
+          reply.done();
+          publishAchievement(event);
+          return;
+        }
+        if (reply.command === DATA_ACHIEVEMENT_DELETE_REPLY) {
+          if (reply.int() <= 0) throw new SessionError('protocol');
+          reply.done();
+          return;
+        }
+        if (reply.command === DATA_ACHIEVEMENT_UPDATE_REPLY) {
+          for (let field = 0; field < 5; field += 1) reply.discardString(DATA_ACHIEVEMENT_FIELD_LIMIT, true);
+          reply.done();
+          return;
+        }
+        if (profileStarted) throw new SessionError('protocol');
+        profileStarted = true;
+        channel.waitingForProfile = false;
+        // Anchor the original relative times at frame arrival, before async inflation.
+        const receivedAt = performance.now();
+        readDataProfile(reply, decoding.signal).then(
+          ({ questData, ...profile }) => resolve({
+            versions,
+            ...profile,
+            questData: questData ? Object.assign(questData, { receivedAt }) : null,
+          }),
+          reject,
+        );
       } catch (error) {
         reject(error);
       }
@@ -504,13 +571,14 @@ function observeInitialData(socket, signal) {
   return {
     received: bounded(received, signal),
     dispose() {
+      channel.waitingForProfile = false;
       unsubscribe();
       decoding.abort();
     },
   };
 }
 
-async function confirmChannel(channel, playerId, sessionKey, signal) {
+async function confirmChannel(channel, playerId, sessionKey, signal, publishAchievement) {
   const { socket } = channel;
   await socket.open(signal);
   const negotiation = await socket.ask(0, [playerId], [0, 2], {
@@ -526,7 +594,7 @@ async function confirmChannel(channel, playerId, sessionKey, signal) {
   negotiation.done();
 
   // This service sends the bootstrap immediately after its certificate in the same TCP stream.
-  const initial = channel.port === DATA_PORT ? observeInitialData(socket, signal) : null;
+  const initial = channel.port === DATA_PORT ? observeInitialData(channel, signal, publishAchievement) : null;
   try {
     const login = socket.ask(1, ['yes, ok.', sign], [1, 2], {
       signal,
@@ -3030,7 +3098,8 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   };
 }
 
-function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar, lobbyStartupComplete) {
+function activeSession(auth, channels, playerId, sessionKey, { questData, ...initialData }, attachLobbyAvatar,
+  lobbyStartupComplete, startupLobbyEvents) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const data = channels.find(({ port }) => port === DATA_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
@@ -3044,6 +3113,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   let queuedEnergyRefresh;
   let verifiedLobbyCap;
   const avatarSubscriptions = new Set();
+  const lobbyAchievementSubscriptions = new Set();
+  const pendingLobbyAchievements = new Set();
+  const checkedLobbyShows = new WeakSet();
+  let lobbyAchievementFenceUncertain = false;
   let profileRequest;
   let deckEditState;
   let deckSelectionUncertain = false;
@@ -3081,20 +3154,83 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     },
   };
 
+  function rememberItemGrant({ inventoryId, itemId }) {
+    if (!knownQuestItems) return false;
+    const previous = knownQuestItems.get(inventoryId);
+    if (previous && (previous.itemId !== itemId || previous.state === 2)) throw new SessionError('protocol');
+    if (previous) return false;
+    knownQuestItems.set(inventoryId, { inventoryId, itemId, state: 0 });
+    return true;
+  }
+
   function receiveQuestItemGrant(scene, reply) {
     if (reply.command !== QUEST_ITEM_GRANTED_REPLY || !scene?.channel.verified || questScene !== scene) return false;
     if (!knownQuestItems) return true;
     try {
-      const item = readQuestItemReply(reply);
-      const previous = knownQuestItems.get(item.inventoryId);
-      if (previous && (previous.itemId !== item.itemId || previous.state === 2)) throw new SessionError('protocol');
-      if (previous) return true;
-      knownQuestItems.set(item.inventoryId, { ...item, state: 0 });
+      if (!rememberItemGrant(readQuestItemReply(reply))) return true;
     } catch {
       knownQuestItems = null;
     }
     publishQuestScene(scene);
     return true;
+  }
+
+  function notifyLobbyListener(listener, event) {
+    try {
+      void Promise.resolve(listener(event)).catch(() => {});
+    } catch {
+      // Presentation callbacks cannot interrupt the verified Lobby stream.
+    }
+  }
+
+  function recordLobbyEvent(event) {
+    if (!initialData?.avatar) return;
+    if (event.kind === 'item') {
+      try {
+        if (knownQuestItems && !rememberItemGrant(event)) return;
+      } catch {
+        knownQuestItems = null;
+        if (questScene?.state === 'open') publishQuestScene(questScene);
+        return;
+      }
+      if (questScene?.state === 'open') publishQuestScene(questScene);
+    } else if (event.kind === 'card') {
+      const { inventoryId, cardId } = event;
+      const { deckCollection, deckChoices, selectedDeck } = initialData;
+      if (confirmedQuestAwards.has(inventoryId) || deckCollection?.binder.some((card) => card.inventoryId === inventoryId)
+        || deckCollection?.deck.cards.some((card) => card.inventoryId === inventoryId)
+        || selectedDeck?.cards.some((card) => card.inventoryId === inventoryId)
+        || deckChoices?.some(({ cards }) => cards.some((card) => card.inventoryId === inventoryId))) return;
+      if (deckCollection) {
+        const card = Object.freeze({ inventoryId, cardId });
+        const binder = Object.freeze([...deckCollection.binder, card]);
+        initialData.deckCollection = Object.freeze({ ...deckCollection, binder });
+      }
+    }
+    const receipt = Object.freeze(event);
+    if (receipt.kind === 'achievement' || receipt.kind === 'new-achievement') pendingLobbyAchievements.add(receipt);
+    for (const subscription of [...lobbyAchievementSubscriptions]) {
+      if (lobbyAchievementSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, receipt);
+    }
+  }
+
+  function finishLobbyAchievementBatch(signal, onBatchReady) {
+    const previous = lobby.heartbeat;
+    const batch = (async () => {
+      if (previous) await previous;
+      if (!initialData || lobbyAchievementFenceUncertain) return false;
+      await finishLobbyObservation(lobby.socket);
+      return true;
+    })().catch(() => {
+      // The original Pong has no ID. A late reply cannot confirm another achievement batch.
+      lobbyAchievementFenceUncertain = true;
+      return false;
+    });
+    lobby.heartbeat = batch;
+    void batch.then((confirmed) => {
+      if (lobby.heartbeat === batch) lobby.heartbeat = null;
+      if (initialData && !signal.aborted) notifyLobbyListener(onBatchReady, confirmed);
+    });
   }
 
   function publishAvatar() {
@@ -3186,22 +3322,27 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     scene.energyRefreshDue = false;
   }
 
-  attachLobbyAvatar((patch, command, marker) => {
+  attachLobbyAvatar((patch, command, marker, event) => {
     if (!initialData) return;
+    if (event && !patch) recordLobbyEvent(event);
     recordLobbyRefresh(patch, command, marker);
     if (!patch || (questScene?.energyOwned && (command === LOBBY_ENERGY_REPLY || command === LOBBY_ENERGY_MAX_REPLY))) return;
     const avatar = initialData.avatar;
     if (avatar) {
-      if (Object.entries(patch).every(([field, value]) => avatar[field] === value)) return;
-      Object.assign(avatar, patch);
-      publishAvatar();
-      if (Object.hasOwn(patch, 'energy') && questScene?.state === 'open') publishQuestScene(questScene);
+      if (Object.entries(patch).some(([field, value]) => avatar[field] !== value)) {
+        Object.assign(avatar, patch);
+        publishAvatar();
+        if (Object.hasOwn(patch, 'energy') && questScene?.state === 'open') publishQuestScene(questScene);
+      }
+      if (event) recordLobbyEvent(event);
     } else if (confirmedAvatar) {
       Object.assign(confirmedAvatar.avatar, patch);
     } else if (registrationLobbyPatch) {
       Object.assign(registrationLobbyPatch, patch);
     }
   });
+  for (const event of startupLobbyEvents) recordLobbyEvent(event);
+  startupLobbyEvents.length = 0;
 
   function stop(reason) {
     if (!closing) {
@@ -3213,6 +3354,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       questData = null;
       confirmedAvatar = null;
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
+      for (const subscription of lobbyAchievementSubscriptions) subscription.unsubscribe();
+      pendingLobbyAchievements.clear();
       boundQuestDecks.clear();
       attemptedDiscoveries.clear();
       questConfirmations.clear();
@@ -4011,9 +4154,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         auth.ask(6, [], [7], { allowOther: true }),
         ...channels.map((channel) => {
           const { socket, pong } = channel;
-          if (profileRequest?.channel === channel) return null;
-          channel.heartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => { channel.heartbeat = null; });
-          return channel.heartbeat;
+          if (profileRequest?.channel === channel || channel.heartbeat) return null;
+          const heartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => {
+            if (channel.heartbeat === heartbeat) channel.heartbeat = null;
+          });
+          channel.heartbeat = heartbeat;
+          return heartbeat;
         }),
       ]);
       for (const reply of replies) reply?.done();
@@ -4041,6 +4187,39 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       }
       if (now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
       return sendLobbyRefresh();
+    },
+    checkLobbyAchievements({ signal, onBatchReady } = {}) {
+      if (!(signal instanceof AbortSignal) || signal.aborted || checkedLobbyShows.has(signal) || !initialData?.avatar
+        || !lobby.verified || profileRequest || questRequest || questReturn || questScene || adventure) return false;
+      try {
+        auth.assertOpen();
+        lobby.socket.send(LOBBY_ACHIEVEMENT_CHECK, [signedByte(1)]);
+        checkedLobbyShows.add(signal);
+        if (typeof onBatchReady === 'function') finishLobbyAchievementBatch(signal, onBatchReady);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    subscribeLobbyAchievementEvents(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      const subscription = {
+        listener,
+        unsubscribe() {
+          lobbyAchievementSubscriptions.delete(subscription);
+          signal?.removeEventListener('abort', subscription.unsubscribe);
+        },
+      };
+      lobbyAchievementSubscriptions.add(subscription);
+      signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+      for (const receipt of [...pendingLobbyAchievements]) {
+        if (!lobbyAchievementSubscriptions.has(subscription)) break;
+        if (pendingLobbyAchievements.has(receipt)) notifyLobbyListener(listener, receipt);
+      }
+      return subscription.unsubscribe;
+    },
+    acknowledgeLobbyAchievement(receipt) {
+      return receipt?.kind === 'achievement' && pendingLobbyAchievements.delete(receipt);
     },
     subscribeAvatar(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
@@ -4716,10 +4895,12 @@ export async function startSession(username, password, { signal, onAuthenticated
   let sessionKeyBytes;
   const channels = [];
   const startupAvatarPatch = {};
+  const startupLobbyEvents = [];
   let lobbyStartupComplete = false;
-  let publishLobbyAvatar = (patch, command) => {
+  let publishLobbyAvatar = (patch, command, marker, event) => {
     Object.assign(startupAvatarPatch, patch);
     if (command === LOBBY_DECK_LEVEL_REPLY) lobbyStartupComplete = true;
+    if (event && event.kind !== 'gems') startupLobbyEvents.push(event);
   };
   const startup = new AbortController();
   const startupSignal = startup.signal;
@@ -4775,12 +4956,19 @@ export async function startSession(username, password, { signal, onAuthenticated
     for (const { port, pong } of CHANNELS) {
       startupSignal.throwIfAborted();
       const channel = { port, pong, verified: false };
-      const onPushedReply = port === LOBBY_PORT
-        ? (reply) => channel.verified && observeLobbyAvatar(reply, publishLobbyAvatar)
-        : undefined;
+      let onPushedReply;
+      if (port === LOBBY_PORT) {
+        onPushedReply = (reply) => channel.verified && observeLobbyAvatar(reply, publishLobbyAvatar);
+      } else if (port === DATA_PORT) {
+        onPushedReply = () => {
+          if (channel.waitingForProfile) throw new SessionError('protocol');
+          return false;
+        };
+      }
       channel.socket = new SessionSocket(port, rejectStartup, onPushedReply);
       channels.push(channel);
-      const data = await confirmChannel(channel, playerId, sessionKeyBytes, startupSignal);
+      const data = await confirmChannel(channel, playerId, sessionKeyBytes, startupSignal,
+        (event) => startupLobbyEvents.push(event));
       if (data) initialData = data;
     }
     startupSignal.throwIfAborted();
@@ -4790,7 +4978,7 @@ export async function startSession(username, password, { signal, onAuthenticated
     if (initialData.avatar) Object.assign(initialData.avatar, startupAvatarPatch);
     return activeSession(auth, channels, playerId, sessionKeyBytes, initialData, (receiver) => {
       publishLobbyAvatar = receiver;
-    }, lobbyStartupComplete);
+    }, lobbyStartupComplete, startupLobbyEvents);
   } catch (error) {
     finishStartup();
     sessionKeyBytes?.fill(0);
