@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/source-login/lobby-record.css" />
     <link rel="stylesheet" href="/source-login/lobby-item.css" />
     <link rel="stylesheet" href="/source-login/lobby-friend.css" />
+    <link rel="stylesheet" href="/source-login/lobby-friend-invite.css" />
     <link rel="stylesheet" href="/source-login/options.css" />
     <link rel="stylesheet" href="/source-login/quest-map.css" />
     <script type="module" src="/source-login/panel-skin.js"></script>
@@ -62,6 +63,16 @@
       </section>
       <button id="title-music-start" type="button">啟用音樂</button>
       <div id="post-login" hidden></div>
+      <template id="lobby-friend-invite-template">
+        <dialog id="lobby-friend-invite-dialog" aria-labelledby="lobby-friend-invite-title">
+          <h2 id="lobby-friend-invite-title" lang="en">Invite Code</h2>
+          <p id="lobby-friend-invite-message">
+            你的邀請代碼是<br />[ <output id="lobby-friend-invite-value"></output>]<br />分享代碼來邀請朋友吧
+          </p>
+          <button id="lobby-friend-invite-copy" type="button">複製連結</button>
+          <button id="lobby-friend-invite-close" type="button" aria-label="關閉邀請碼" autofocus></button>
+        </dialog>
+      </template>
       <dialog id="lobby-friend-confirm" class="stage-panel" role="alertdialog" aria-labelledby="lobby-friend-confirm-title" aria-describedby="lobby-friend-confirm-message">
         <h2 id="lobby-friend-confirm-title">確認</h2>
         <p id="lobby-friend-confirm-message"></p>

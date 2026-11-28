@@ -248,6 +248,25 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 逐一登入甲、乙、甲、乙、甲。驗證 NO 後無關係命令，暫緩真 `SC36` 時 SQLite 已有待認證資料但畫面保持原狀，放行才更新搜尋與等待分頁。乙確認認證後使用同一筆關係列，甲刪除後搜尋並封鎖。乙重新登入讀到狀態 4 且清單留空。甲解除封鎖後用第三個角色觸發容量錯誤 `SC34=64`。全程比對實際封包、原角色 ID、SQLite、已驗證的真角色卡及固定舞台。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [寫入規格](lobby-views.md#好友確認與關係寫入)
 
+### 重跑好友定時刷新與邀請碼
+
+沿用右側好友清單的隔離資料。主角色玩家 ID 為 2，共有 11 位已認證好友。第二頁唯一好友 `friendpane11` 開始時離線。兩個測例分開初始化隔離資料，主角色和第二個帳號皆已完成教學及啟動通知的處理。原版保留同一個好友窗，先在第二頁驗證離線，點 `(444,541)` 開啟邀請碼、`(390,340)` 複製、`(502,234)` 關閉子窗。再從另一條連線登入第二個帳號，等原版的真實計時。比對 `CS8(1,10,10)`、`SC12` 的狀態 2 → 6 和 Online 圖樣。剪貼簿驗收在有讀寫權限的同源 Chromium 進行。[好友隔離資料](#重跑右側好友清單) · [原版計時器](../../../app/client/src/view/FriendListView.as#L303)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user friendpaneown --quest-start-password-file /path/to/private-a \
+  --lobby-friend-invite --screens /tmp/unlight-friend-invite
+
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user friendpaneown --quest-start-password-file /path/to/private-a \
+  --lobby-friend-refresh --friend-peer-user friendpane11 --friend-peer-password-file /path/to/private-b \
+  --screens /tmp/unlight-friend-refresh
+```
+
+新版加速主角色的瀏覽器計時，第二個帳號和 Ruby 使用真實時間。暫緩與放行由服務送出的 `SC12`，確認同一畫面在收到回覆前後的好友狀態。其餘檢查涵蓋搜尋、待刷新時關窗、設定的同登入頁次、邀請碼的窗體座標和轉場、剪貼簿及同一組連線。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [好友規格](lobby-views.md#好友定時刷新與邀請碼)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

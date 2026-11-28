@@ -1,0 +1,52 @@
+{
+  "source": "frameworks/projects/framework/assets/Assets.swf",
+  "sourceSha256": "b97f1a92a25208564686b23754538e2685ecf1fedd092305964842faa5558e49",
+  "flexVersion": "3.6.0 build 16995",
+  "close": {
+    "size": [
+      16,
+      16
+    ],
+    "panelRight": 10,
+    "up": {
+      "file": "close-up.png",
+      "sha256": "03a8eb8eb82828fc0386d196227be8597c19bd744834bda524e312a1bc8e32ac",
+      "sourceSymbol": "CloseButtonUp",
+      "sourceId": 239,
+      "sourceFrame": 1,
+      "shapeIds": [
+        235,
+        237
+      ]
+    },
+    "over": {
+      "file": "close-over.png",
+      "sha256": "e2b654104b28504e6ca6074e3c6e4cf47dea7338f339e8c6f7a5ce70dfa753e0",
+      "sourceSymbol": "CloseButtonOver",
+      "sourceId": 242,
+      "sourceFrame": 1,
+      "shapeIds": [
+        240,
+        237
+      ]
+    },
+    "down": {
+      "file": "close-down.png",
+      "sha256": "60768befc5ca056ae572ba872bb1c9d1b3d21d613d410c79030416e1a1746ce6",
+      "sourceSymbol": "CloseButtonDown",
+      "sourceId": 243,
+      "sourceFrame": 1,
+      "shapeIds": [
+        235,
+        237
+      ]
+    },
+    "disabled": {
+      "file": null,
+      "sourceSymbol": "CloseButtonDisabled",
+      "sourceId": 244,
+      "sourceFrame": 1,
+      "shapeIds": []
+    }
+  }
+}

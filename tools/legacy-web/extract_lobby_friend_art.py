@@ -49,11 +49,16 @@ CONFIRM_WORDING_SOURCES = {
     "app/client/src/controller/BaseCtrl.as": ("_TRANS_ALERT",),
     "app/client/lib/Const.as": tuple(f"_TRANS_ERR_MSG{code}" for code in range(60, 67)),
 }
+INVITE_WORDING_SOURCES = {
+    "app/client/src/view/scene/common/NewInvitePanel.as": (
+        "_TRANS_INVITE_MSG2_1", "_TRANS_INVITE_MSG2_2", "_TRANS_LINKCOPY",
+    ),
+}
 
 
-def confirmation_glyphs():
+def fixed_wording_glyphs(wording_sources):
     glyphs, provenance = set(), []
-    for path, names in CONFIRM_WORDING_SOURCES.items():
+    for path, names in wording_sources.items():
         source = (REPO / path).read_bytes()
         constants = dict(re.findall(
             r'CONFIG::LOCALE_TCN\s+private static const\s+(\w+)\s*:\s*String\s*=\s*("(?:\\.|[^"\\])*");',
@@ -196,9 +201,10 @@ def extract(assets, output, swfdump, device_font, mincho_font):
             "app/client/data/css/UL.css.cn",
         ],
     }
-    confirmation, wording_sources = confirmation_glyphs()
+    confirmation, confirmation_sources = fixed_wording_glyphs(CONFIRM_WORDING_SOURCES)
+    invitation, invitation_sources = fixed_wording_glyphs(INVITE_WORDING_SOURCES)
     glyphs = "".join(map(chr, range(32, 127))) + "".join(
-        (*WORDING.values(), *SEARCH_WORDING.values(), *INVITE_LABELS.values(), confirmation)
+        (*WORDING.values(), *SEARCH_WORDING.values(), *INVITE_LABELS.values(), confirmation, invitation)
     )
     index["fonts"] = {
         "mincho": font_subset(device_font, output, "friend-mincho.woff", DEVICE_FONT, glyphs, provenance),
@@ -206,7 +212,9 @@ def extract(assets, output, swfdump, device_font, mincho_font):
                                   ("res/data/wt004.ttf", FONT_SHA), WORDING["waiting"], provenance),
         "bradley": {"file": "bradley-gratis.ttf", "url": "/source-login/fonts/bradley-gratis.ttf"},
     }
-    provenance[index["fonts"]["mincho"]["file"]]["confirmationWording"] = wording_sources
+    word_evidence = provenance[index["fonts"]["mincho"]["file"]]
+    word_evidence["confirmationWording"] = confirmation_sources
+    word_evidence["invitationWording"] = invitation_sources
     bradley_path = SOURCE_LOGIN / "fonts/bradley-gratis.ttf"
     if sha256(bradley_path.read_bytes()).hexdigest() != BRADLEY[1]:
         raise ValueError("Expected the exact historical nbr.ttf for Friend List levels")

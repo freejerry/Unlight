@@ -48,6 +48,7 @@
 ## 道具與外觀
 
 - `btn_e` 是整頁 `ItemView`。繁中 `item_inventory_ch.swf` 置於 `(0,0)`，`item_panel`／`item_base` 支援分類、列表、卡格及操作。道具／身體／衣服／飾品，預設第一頁。道具列表 `(24,104)`、部件數 `(449,630)`，共用 `PL_AVATAR_QUEST`。入退場 tween 約 470.6ms，入場程式在 join 之後才掛主容器，不能直接據該值推斷每層可見順序。 [ItemView.as](../../../app/client/src/view/ItemView.as#L74) · [ItemView.as](../../../app/client/src/view/ItemView.as#L220) · [ItemInventoryImage.as](../../../app/client/src/view/image/item/ItemInventoryImage.as#L23) · [ItemListPanel.as](../../../app/client/src/view/scene/item/ItemListPanel.as#L55)
+- **待移植。** 整頁先驗原版進場、四個外層分類、真實庫存及返回大廳。固定繁中道具頁內部為虛擬人物、任務、對戰、突擊、特殊。原版道具格每頁 5×3，子分類與翻頁用 `item_panel_ch` 的命名按鈕。道具沿用已認證的實體庫存；外觀頁還需從 `SC6`／`SC4` 保留全部實體部件、裝備狀態、期限及容量。裝備、消耗和服務警告各有後續原版操作驗收。[原版素材與座標盤點](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/source-audit.md) · [登入庫存欄位](../../../app/server/src/protocol/command/datacommand.rb#L187)
 
 ### 右側道具速查
 
@@ -71,8 +72,16 @@
 
 - 大廳與設定的好友按鈕實際點擊區是 `(712,528,48,32)`，原紅色提示圖在 `(712,521)`。只以已讀關係中待本人確認的狀態 1 啟用紅色提示。兩種待確認總數含送出與收到。528×408 窗體以 300 ms Quad-out 從 `(125,-120)` 到 `(125,150)`，關閉用 150 ms sine-out。開啟時阻止底層點擊。每頁五欄兩列，卡片從原始裝備部件繪製角色，旁列真實角色名、等級及上線狀態。[按鈕狀態](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [進退場](../../../app/client/src/view/FriendListView.as#L249) · [窗體與名片素材](../../../source-login/lobby-friend-art/index.json)
 - 好友、等待、封鎖由已認證 Data `CS8` 以類型 1、0、2 取每頁十筆，`SC12` 另帶各類總數。顯示已披露的正整數角色 ID 時送 `CS5` 等 `SC9`，介面只使用實際角色資料。好友容量取已認證的 Data `SC6` 或創角 Lobby `SC4`，後續由 Lobby `SC19` 更新。同登入短時間內翻回及重開沿用五分鐘快取。原分頁在總數恰為十的倍數時多一空頁。封鎖資料可能包含被對方封鎖的關係，畫面只列本人封鎖，且不補取對方封鎖列的角色名片。[原版清單快取](../../../app/client/src/model/FriendLink.as#L175) · [原版資料服務](../../../app/server/src/controller/data_controller.rb#L24) · [封鎖計數與排序](../../../app/server/src/model/friend_link.rb#L84)
-- 搜尋以三至十二個 UTF-16 碼元為限，使用 Enter 或按鈕。非空短名稱顯示 `Error` 和「最少需要3個字」，不送封包。有效搜尋由 Data `CS15` 與 `SC26` 確認同伺服器的角色名稱前綴，收到結果後維持原版的一秒等候，再更新名單。無結果清單清空。好友、等待及封鎖分頁顯示原版「邀請」與「邀請Code」，搜尋時兩者收起。關閉會觸發 Lobby `CS35(true)` 成就檢查。邀請及寄送流程另驗。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版搜尋限制](../../../app/server/src/controller/data_controller.rb#L152) · [關閉行為](../../../app/client/src/view/FriendListView.as#L319)
-- **已實跑。** 原版與新版均驗證 10+1 分頁、等待與封鎖的兩個方向、空清單、短名稱、同服搜尋及設定。原 `SC26` 回傳角色 ID 20、19，原版畫面依序呈現 19、20，新版沿用該畫面次序。鼠標點選後的橙字皮膚跨設定保留。關閉時檢查成就，瀏覽前後關係列一致。原版開啟中定時刷新另驗。[原版搜尋物件迭代](../../../app/client/src/view/scene/common/FriendListContainer.as#L514) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-live/README.md)
+- 搜尋以三至十二個 UTF-16 碼元為限，使用 Enter 或按鈕。非空短名稱顯示 `Error` 和「最少需要3個字」，不送封包。有效搜尋由 Data `CS15` 與 `SC26` 確認同伺服器的角色名稱前綴，收到結果後維持原版的一秒等候，再更新名單。無結果清單清空。好友、等待及封鎖分頁顯示原版「邀請」與「邀請Code」，搜尋時兩者收起。關閉會觸發 Lobby `CS35(true)` 成就檢查。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版搜尋限制](../../../app/server/src/controller/data_controller.rb#L152) · [關閉行為](../../../app/client/src/view/FriendListView.as#L319)
+- **已實跑。** 原版與新版均驗證 10+1 分頁、等待與封鎖的兩個方向、空清單、短名稱、同服搜尋及設定。原 `SC26` 回傳角色 ID 20、19，原版畫面依序呈現 19、20，新版沿用該畫面次序。鼠標點選後的橙字皮膚跨設定保留。關閉時檢查成就，瀏覽前後關係列一致。[原版搜尋物件迭代](../../../app/client/src/view/scene/common/FriendListContainer.as#L514) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-live/README.md)
+
+#### 好友定時刷新與邀請碼
+
+- 好友窗開啟時即檢查一次，開著時每 300 秒再檢查。距本次登入上一輪啟動刷新超過 300 秒時，等三秒後讀取當時的分類及頁次。搜尋分頁略過刷新。新版接收已認證 Data 的 `CS8`／`SC12`，收到正確分類與頁次前保留原名單。大廳與設定共用同一登入的刷新時間。原版關閉時停止週期計時。新版也取消已排程的讀取，避免關窗後才送出查詢。[原版計時及開關](../../../app/client/src/view/FriendListView.as#L249) · [原版讀取分頁](../../../app/client/src/model/FriendLink.as#L175) · [新版好友窗](../../../source-login/lobby-friend.js)
+- 「邀請Code」在舞台 `(260,220)` 開啟 `260×250` 的 `Invite Code`。原版 `panel_gene` 整張拉伸，關閉圖示沿用固定 Flex 素材。進退場分別是 50 ms Quad-out 與 sine-out，底層好友窗可見。「複製連結」沿用 `ulse01` 和原版剪貼簿文字 `orig`。固定來源未提供可替換的邀請網址，窗內顯示的是從登入玩家 ID 算出的九字代碼。固定原版的社群圖示區為空白，對應圖檔未在素材鏡像找到。一般「邀請」在這個建置沒有綁定動作。註冊兌換及任務寄送另有各自的入口。[原版視窗及按鈕](../../../app/client/src/view/scene/common/NewInvitePanel.as#L145) · [原版代碼](../../../app/client/src/model/Player.as#L270) · [固定 Flex 素材](../../../source-login/lobby-friend-invite-art/index.json) · [重跑步驟](qa.md#重跑好友定時刷新與邀請碼)
+- **Flash 實跑。** 第 2 頁維持開啟，該頁好友從另一條正常 Auth 連線登入。原版從點擊開窗到定時送出 `CS8(1,10,10)` 實測 305.277 秒，62 ms 後收 `SC12`，原卡顯示 Online。實際點複製也讀回 `orig`，開關子窗期間原版服務未收到業務操作，關係及庫存存檔一致。[原版實測時間](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-invite-refresh-live/original/timing.json) · [原版操作記錄](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-invite-refresh-live/original/trace.json)
+- **新版實跑。** 加速主畫面的瀏覽器時鐘，第二帳號實際登入 Ruby。300 秒檢查後滿三秒才送第 2 頁查詢。暫緩真 `SC12` 時，同一張卡仍顯示離線。放行後以同一真回覆顯示 Online。搜尋略過兩個週期，關窗取消待送查詢，設定延續同頁及同次登入的刷新時間。舊清單、分頁、搜尋、關閉及設定測例重跑通過。[上線並排](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-invite-refresh-live/friend-online-comparison.png) · [新版刷新紀錄](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-invite-refresh-live/native-refresh/lobby-friend-refresh-wire.json)
+- **新版實跑。** 在原好友窗內開啟邀請碼、複製 `orig` 及以鍵盤關閉，焦點回到原按鈕。測例角色 Player 2 的顯示碼為 `E78JM8M7U`。複製只播一次 `ulse01`，大廳 BGM 持續，四條登入服務的封包計數在操作前後一致。原版與新版在小字的抗鋸齒和複製鍵邊緣仍有差異。[邀請碼並排和實機證據](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-invite-refresh-live/README.md)
 
 #### 好友確認與關係寫入
 

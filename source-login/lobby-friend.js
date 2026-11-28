@@ -1,5 +1,6 @@
 import { renderLobbyAvatar } from './lobby-avatar.js';
 import { playBackClick } from './bgm.js';
+import { mountLobbyFriendInvite } from './lobby-friend-invite.js';
 
 const art = new URL('./lobby-friend-art/', import.meta.url);
 const tabs = [
@@ -10,6 +11,8 @@ const tabs = [
 ];
 const actionLabels = { 1: 'approve', 2: 'mail', 6: 'mail', 7: 'request' };
 const viewsBySession = new WeakMap();
+const refreshInterval = 300_000;
+const refreshDelay = 3000;
 
 function add(parent, tag, id, className) {
   const node = parent.ownerDocument.createElement(tag);
@@ -91,14 +94,19 @@ function buttonText(button, text, [x, y, width, height], [hitX, hitY]) {
   place(label, x - hitX, y - hitY, width, height);
 }
 
+function placeCard(card, index, grid) {
+  card.dataset.slot = String(index);
+  place(card, grid.x + index % grid.columns * grid.stepX, grid.y + Math.floor(index / grid.columns) * grid.stepY,
+    grid.stepX, grid.stepY);
+}
+
 function addCard(parent, row, index, grid, source, wording) {
   const card = add(parent, 'div', null, 'lobby-friend-card');
   card.setAttribute('role', 'listitem');
   Object.assign(card.dataset, {
-    playerId: String(row.playerId), avatarId: String(row.avatarId), status: String(row.status), slot: String(index),
+    playerId: String(row.playerId), avatarId: String(row.avatarId), status: String(row.status),
   });
-  place(card, grid.x + index % grid.columns * grid.stepX, grid.y + Math.floor(index / grid.columns) * grid.stepY,
-    grid.stepX, grid.stepY);
+  placeCard(card, index, grid);
   const portrait = add(card, 'div', null, 'lobby-friend-avatar-clip');
   const canvas = add(portrait, 'canvas', null, 'lobby-friend-avatar');
   canvas.width = 290;
@@ -145,7 +153,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
   const lifetime = new AbortController();
   const saved = viewsBySession.get(session) ?? {
     pages: [0, 0, 0, 0], retainedHover: new Set(), totals: null, uncertainSearch: false,
-    write: null, uncertainWrite: false, updateWriteControls: null,
+    write: null, uncertainWrite: false, updateWriteControls: null, updatedTime: 0,
   };
   const { pages, retainedHover } = saved;
   if (session) viewsBySession.set(session, saved);
@@ -167,12 +175,13 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
   async function close() {
     const instance = current;
     if (!instance || instance.panel.dataset.state === 'closing') return false;
-    const { shell, panel, controller, opening, stopRequests, writeScope, y, start } = instance;
+    const { shell, panel, controller, opening, stopRequests, stopRefresh, writeScope, y, start } = instance;
     const yOffset = panel.getBoundingClientRect().top - shell.getBoundingClientRect().top - y;
     panel.dataset.state = 'closing';
     panel.inert = true;
     opening.abort();
     stopRequests();
+    stopRefresh();
     writeScope.abort();
     onClosing?.();
     if (!await slide(panel, yOffset, start, manifest.motion.closeMs, time => Math.sin(time * Math.PI / 2), controller.signal)) return false;
@@ -231,6 +240,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     const previous = artButton(panel, 'prev', '上一頁', manifest.buttons.previous);
     const next = artButton(panel, 'next', '下一頁', manifest.buttons.next);
     const invites = [];
+    let inviteCodeTrigger;
     for (const [id, invite] of [['invite', manifest.invites?.sns], ['invite-code', manifest.invites?.code]]) {
       if (!invite) continue;
       const button = artButton(panel, id, invite.label, invite.button);
@@ -238,6 +248,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       button.disabled = true;
       buttonText(button, invite.label, invite.buttonText, invite.button.hit);
       invites.push(button);
+      if (id === 'invite-code') inviteCodeTrigger = button;
     }
     const rows = add(panel, 'div', 'rows');
     rows.setAttribute('role', 'list');
@@ -265,11 +276,21 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     let request;
     let searchData;
     let lastQuery = '';
-    current = { shell, panel, controller, opening, stopRequests, writeScope, y, start };
+    let refreshTimer;
+    let waitTimer;
+    let refreshRequest;
+    panel.dataset.refreshState = 'idle';
+    let inviteCode;
+    if (inviteCodeTrigger && Number.isSafeInteger(session?.playerId) && session.playerId > 0) {
+      inviteCodeTrigger.disabled = false;
+      inviteCode = mountLobbyFriendInvite(panel, { session, trigger: inviteCodeTrigger, signal: writeSignal, onOpen: cancelRefresh });
+    }
+    current = { shell, panel, controller, opening, stopRequests, stopRefresh, writeScope, y, start };
     saved.updateWriteControls = updateWriteControls;
     scope.addEventListener('abort', () => {
       opening.abort();
       stopRequests();
+      stopRefresh();
       writeScope.abort();
       if (saved.updateWriteControls === updateWriteControls) saved.updateWriteControls = null;
     }, { once: true });
@@ -286,8 +307,12 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       updateWriteControls();
     }
 
+    function writeState() {
+      return saved.write?.phase ?? session?.getLobbyFriendWriteState?.() ?? (saved.uncertainWrite ? 'uncertain' : 'idle');
+    }
+
     function updateWriteControls() {
-      const state = saved.write?.phase ?? session?.getLobbyFriendWriteState?.() ?? (saved.uncertainWrite ? 'uncertain' : 'idle');
+      const state = writeState();
       panel.dataset.writeState = state;
       const available = panel.dataset.state === 'open' && panel.dataset.status === 'ready' && onConfirm && session?.changeLobbyFriend;
       for (const button of rows.querySelectorAll('button')) {
@@ -322,6 +347,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
 
     async function writeFriend(action, row, name, focus) {
       if (writeSignal.aborted || focus.disabled || !rows.contains(focus) || saved.write) return;
+      cancelRefresh();
       const write = { phase: 'confirming', focus };
       saved.write = write;
       updateWriteControls();
@@ -406,18 +432,41 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       }
     }
 
-    function paintRows(records, rowSignal) {
-      rows.replaceChildren();
+    function paintRows(records, rowSignal, { retain = false } = {}) {
+      const key = (playerId, avatarId, status) => `${playerId}:${avatarId}:${status}`;
+      const currentCards = retain ? [...rows.children] : [];
+      const existing = new Map();
+      const focused = view.ownerDocument.activeElement;
+      if (retain) {
+        for (const card of currentCards) {
+          const { dataset } = card;
+          existing.set(key(dataset.playerId, dataset.avatarId, dataset.status), card);
+        }
+      } else rows.replaceChildren();
+      const ordered = [];
       const { statuses } = tabs[selectedTab];
       records.slice(0, pageSize).forEach((row, index) => {
         if (!row || !statuses.includes(row.status) || !Number.isSafeInteger(row.avatarId) || row.avatarId < 1) return;
+        const existingCard = existing.get(key(row.playerId, row.avatarId, row.status));
+        if (existingCard) {
+          placeCard(existingCard, index, manifest.grid);
+          ordered.push(existingCard);
+          return;
+        }
         const elements = addCard(rows, row, index, manifest.grid, manifest.card, manifest.wording);
         elements.card.dataset.avatarState = 'loading';
+        ordered.push(elements.card);
         void paintProfile(row, elements, rowSignal);
       });
+      if (retain && (ordered.length !== currentCards.length || ordered.some((card, index) => card !== currentCards[index]))) {
+        const refocus = rows.contains(focused);
+        rows.replaceChildren(...ordered);
+        if (refocus) (rows.contains(focused) ? focused : tabButtons[selectedTab]).focus({ preventScroll: true });
+      }
     }
 
     async function loadPage({ preserve = false } = {}) {
+      cancelRefreshRequest();
       const readSignal = newRequest();
       const tab = tabs[selectedTab];
       const offset = pages[selectedTab] * pageSize;
@@ -443,6 +492,72 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       }
     }
 
+    function cancelRefreshRequest() {
+      if (!refreshRequest) return;
+      refreshRequest.abort();
+      refreshRequest = undefined;
+      panel.dataset.refreshState = 'idle';
+    }
+
+    function cancelRefresh() {
+      clearTimeout(waitTimer);
+      waitTimer = undefined;
+      cancelRefreshRequest();
+      panel.dataset.refreshState = 'idle';
+    }
+
+    function stopRefresh() {
+      clearInterval(refreshTimer);
+      cancelRefresh();
+    }
+
+    function canRefreshPage() {
+      const state = writeState();
+      return !writeSignal.aborted && !inviteCode?.isOpen() && selectedTab !== 3 && panel.dataset.status === 'ready' &&
+        state !== 'confirming' && state !== 'pending';
+    }
+
+    async function refreshPage() {
+      if (!canRefreshPage()) return;
+      const controller = new AbortController();
+      refreshRequest = controller;
+      panel.dataset.refreshState = 'pending';
+      const tab = tabs[selectedTab];
+      const offset = pages[selectedTab] * pageSize;
+      try {
+        const result = await session.readLobbyFriendPage(tab.type, offset, { signal: controller.signal, refresh: true });
+        if (controller.signal.aborted || !canRefreshPage() || result?.type !== tab.type || result.offset !== offset) return;
+        saved.totals = result;
+        if (pages[selectedTab] >= pageCount()) {
+          pages[selectedTab] = pageCount() - 1;
+          void loadPage({ preserve: true });
+          return;
+        }
+        paintNavigation();
+        paintRows(result.rows, request?.signal ?? scope, { retain: true });
+      } catch {
+        // A failed timed read leaves the last verified page in place.
+      } finally {
+        if (refreshRequest === controller) {
+          refreshRequest = undefined;
+          panel.dataset.refreshState = 'idle';
+        }
+      }
+    }
+
+    function scheduleRefresh() {
+      // FriendListView stamps the shared timer when starting the three-second wait.
+      const now = performance.now();
+      if (writeSignal.aborted || selectedTab === 3 || waitTimer !== undefined || refreshRequest || now - saved.updatedTime <= refreshInterval) return;
+      saved.updatedTime = now;
+      panel.dataset.refreshState = 'waiting';
+      waitTimer = setTimeout(() => {
+        waitTimer = undefined;
+        panel.dataset.refreshState = 'idle';
+        void refreshPage();
+      }, refreshDelay);
+    }
+
     function paintSearch() {
       const rowSignal = newRequest();
       const pageIndex = pages[selectedTab];
@@ -460,6 +575,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       input.disabled = submit.disabled = saved.uncertainSearch;
       panel.dataset.searchState = saved.uncertainSearch ? 'uncertain' : 'idle';
       if (index === 3) {
+        cancelRefresh();
         pages[index] = 0;
         paintSearch();
       } else {
@@ -542,7 +658,10 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     shell.showModal();
     trigger?.setAttribute('aria-expanded', 'true');
     onOpen?.();
+    if (writeSignal.aborted) return false;
     void loadPage();
+    refreshTimer = setInterval(scheduleRefresh, refreshInterval);
+    scheduleRefresh();
     session?.subscribeAvatar?.(paintNavigation, { signal: scope });
     session?.subscribeLobbyFriendChanges?.(applyChange, { signal: scope });
     if (!await slide(panel, start, 0, manifest.motion.openMs, time => 1 - (1 - time) ** 2, opening.signal)) return false;

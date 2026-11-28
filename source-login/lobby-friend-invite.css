@@ -1,0 +1,82 @@
+#lobby-friend-invite-dialog {
+  position: fixed;
+  inset: auto;
+  inline-size: 260px;
+  block-size: 250px;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: url("./assets/panel_gene.png") 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  color: #fff;
+  isolation: isolate;
+}
+
+#lobby-friend-invite-dialog::backdrop { background: transparent; }
+
+#lobby-friend-invite-title {
+  position: absolute;
+  inset: 6px auto auto 11px;
+  margin: 0;
+  color: #000;
+  font: 12px/16px 'Unlight Friend Ming', serif;
+}
+
+#lobby-friend-invite-message {
+  position: absolute;
+  inset: 31px 10px auto;
+  margin: 0;
+  font: 12px/14px 'Unlight Friend Ming', serif;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+#lobby-friend-invite-copy {
+  position: absolute;
+  inset-block-start: 109px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: 58px;
+  block-size: 23px;
+  padding: 1px 2px 3px;
+  border: 1px solid;
+  border-color: #666 #555 #333;
+  border-radius: 3px;
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%),
+    linear-gradient(rgb(255 255 255 / 60%), rgb(204 204 204 / 40%));
+  color: #000;
+  font: 12px/1 'Unlight Friend Ming', serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+#lobby-friend-invite-copy:not(:disabled):hover {
+  border-color: #600 #500 #4c0000;
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%),
+    linear-gradient(rgb(255 255 255 / 75%), rgb(238 238 238 / 65%));
+  color: #fff;
+}
+
+#lobby-friend-invite-copy:not(:disabled):active {
+  background: linear-gradient(rgb(255 255 255 / 60%), transparent 50%), linear-gradient(#e8d8d8, #c19999);
+  color: #600;
+}
+
+#lobby-friend-invite-close {
+  position: absolute;
+  inset: 6px 10px auto auto;
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent url("./lobby-friend-invite-art/close-up.png") center no-repeat;
+  cursor: pointer;
+}
+
+#lobby-friend-invite-close:hover { background-image: url("./lobby-friend-invite-art/close-over.png"); }
+#lobby-friend-invite-close:active { background-image: url("./lobby-friend-invite-art/close-down.png"); }
+
+#lobby-friend-invite-dialog button:focus-visible { outline: 1px solid #600; outline-offset: 1px; }
+#lobby-friend-invite-dialog[data-state="closing"] { pointer-events: none; }

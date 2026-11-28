@@ -395,7 +395,7 @@ def observe_session_codec(page, origin):
 
 
 def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lobby_energy=False, lobby_record=False,
-                       lobby_items=False, lobby_friends=False):
+                       lobby_items=False, lobby_friends=False, hold_friend_frames=False):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
       if ({str(lobby_achievements).lower()}) wire.lobby.achievement = {{sent: [], replies: [], sockets: 0, closed: 0, timeline: []}};
@@ -410,6 +410,7 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         wire.friends = {{sent: [], replies: []}};
         wire.lobby.friendWrites = {{sent: [], replies: []}};
       }}
+      const holdFriendFrames = {str(hold_friend_frames).lower()};
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -422,6 +423,36 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         if (deliver) for (const receive of queued) receive();
         return queued.length;
       }};
+      // Keep complete source frames in order when withholding one authenticated reply.
+      function frameReader(receive, getHold) {{
+        let buffered = new Uint8Array();
+        const forward = () => {{
+          while (buffered.length >= 4) {{
+            const size = new DataView(buffered.buffer, buffered.byteOffset).getUint32(0) + 5;
+            if (buffered.length < size) return;
+            const hold = getHold();
+            if (hold?.key && (hold.bodyLength === null || size === hold.bodyLength + 5)) {{
+              const high = buffered[4] ^ hold.key[0];
+              const low = buffered[5] ^ hold.key[1 % hold.key.length];
+              if ((high << 8 | low) === hold.reply) {{
+                hold.resume = forward;
+                return;
+              }}
+            }}
+            const data = buffered.slice(0, size).buffer;
+            buffered = buffered.slice(size);
+            receive({{data}});
+          }}
+        }};
+        return event => {{
+          const bytes = new Uint8Array(event.data);
+          const merged = new Uint8Array(buffered.length + bytes.length);
+          merged.set(buffered);
+          merged.set(bytes, buffered.length);
+          buffered = merged;
+          forward();
+        }};
+      }}
       window.WebSocket = class extends WebSocket {{
         constructor(...args) {{
           super(...args);
@@ -448,7 +479,13 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
-          if (this.friendData && encoded) this.friendData.sent.push([encoded.command, frame.byteLength, ...encoded.friendRead]);
+          if (this.friendData && encoded) {{
+            this.friendData.sent.push([encoded.command, frame.byteLength, ...encoded.friendRead]);
+            const hold = wire.friendHold;
+            if (hold && encoded.command === 8 && encoded.friendRead[0] === hold.type && encoded.friendRead[1] === hold.offset) {{
+              hold.key = encoded.key;
+            }}
+          }}
           if (this.questTrace) {{
             const {{ command, confirm, action, movement, combat, item, key }} = encoded;
             const hold = wire.actionHold;
@@ -488,13 +525,14 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
           let heldBytes = 0;
           let heldSize = 0;
           if (this.startupData || this.friendData) {{
-            super.onmessage = event => {{
+            const receive = event => {{
               wire.readingStartupData = this.startupData;
               wire.readingFriends = this.friendData;
               try {{ handler.call(this, event); }} finally {{
                 wire.readingStartupData = wire.readingFriends = null;
               }}
             }};
+            super.onmessage = this.friendData && holdFriendFrames ? frameReader(receive, () => wire.friendHold) : receive;
             return;
           }}
           if (this.lobbyTrace) {{
@@ -502,35 +540,7 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
               wire.readingLobby = this.lobbyTrace;
               try {{ handler.call(this, event); }} finally {{ wire.readingLobby = null; }}
             }};
-            if (!wire.startupData) {{ super.onmessage = receive; return; }}
-            // Preserve complete original frames while the selected authenticated reply waits.
-            let buffered = new Uint8Array();
-            const forward = () => {{
-              while (buffered.length >= 4) {{
-                const size = new DataView(buffered.buffer, buffered.byteOffset).getUint32(0) + 5;
-                if (buffered.length < size) return;
-                const hold = wire.lobbyHold;
-                if (hold?.key && size === hold.bodyLength + 5) {{
-                  const high = buffered[4] ^ hold.key[0];
-                  const low = buffered[5] ^ hold.key[1 % hold.key.length];
-                  if ((high << 8 | low) === hold.reply) {{
-                    hold.resume = forward;
-                    return;
-                  }}
-                }}
-                const data = buffered.slice(0, size).buffer;
-                buffered = buffered.slice(size);
-                receive({{data}});
-              }}
-            }};
-            super.onmessage = event => {{
-              const bytes = new Uint8Array(event.data);
-              const merged = new Uint8Array(buffered.length + bytes.length);
-              merged.set(buffered);
-              merged.set(bytes, buffered.length);
-              buffered = merged;
-              forward();
-            }};
+            super.onmessage = wire.startupData ? frameReader(receive, () => wire.lobbyHold) : receive;
             return;
           }}
           super.onmessage = this.questTrace ? event => {{
@@ -2298,14 +2308,15 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
 
 def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achievements=False, startup_records=False,
                        q3_bootstrap_record=False, startup_directory=None, defer_lobby_notices=False,
-                       lobby_record=False, lobby_items=False, lobby_friends=False):
+                       lobby_record=False, lobby_items=False, lobby_friends=False, hold_friend_frames=False):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
     observe_session_codec(page, origin)
     observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records,
                        startup_data=lobby_achievements or startup_records or lobby_record or lobby_items,
-                       lobby_record=lobby_record, lobby_items=lobby_items, lobby_friends=lobby_friends)
+                       lobby_record=lobby_record, lobby_items=lobby_items, lobby_friends=lobby_friends,
+                       hold_friend_frames=hold_friend_frames)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
@@ -3314,11 +3325,14 @@ def check_friend_rows(rows, database, expected):
 
 
 def check_friend_invites(panel, *, visible=True):
-    for selector in ("#lobby-friend-invite", "#lobby-friend-invite-code"):
-        invite = panel.locator(selector)
+    for control in ("invite", "invite-code"):
+        invite = panel.locator(f"#lobby-friend-{control}")
         if visible:
             expect(invite).to_be_visible()
-            expect(invite).to_be_disabled()
+            if control == "invite-code":
+                expect(invite).to_be_enabled()
+            else:
+                expect(invite).to_be_disabled()
         else:
             expect(invite).to_have_count(1)
             expect(invite).to_be_hidden()
@@ -3544,6 +3558,279 @@ def check_lobby_friends(page, origin, database, name, password, directory, mode)
                     "closeFence": end["timeline"][len(start["timeline"]):], "motion": motion,
                     "geometry": geometry, "framesBefore": before, "framesWhileBrowsing": browse, "options": options_proof}
         (directory / "lobby-friend-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
+
+
+def observe_friend_intervals(page):
+    page.evaluate("""() => {
+      const intervals = new Map();
+      const start = window.setInterval;
+      const stop = window.clearInterval;
+      window.qaFriendIntervals = [];
+      window.setInterval = function (callback, delay, ...args) {
+        if (delay !== 300000) return start.call(this, callback, delay, ...args);
+        const timer = {at: performance.now(), callbacks: [], stopped: null};
+        const id = start.call(this, function (...values) {
+          timer.callbacks.push(performance.now());
+          return callback.apply(this, values);
+        }, delay, ...args);
+        intervals.set(id, timer);
+        window.qaFriendIntervals.push(timer);
+        return id;
+      };
+      window.clearInterval = function (id) {
+        if (intervals.has(id)) intervals.get(id).stopped = performance.now();
+        return stop.call(this, id);
+      };
+    }""")
+
+
+def advance_friend_clock(page, target):
+    elapsed = int(page.evaluate("performance.now()"))
+    duration = target - elapsed
+    assert duration >= 0, (target, elapsed)
+    if duration:
+        page.clock.fast_forward(duration)
+
+
+def cross_friend_interval(page, due):
+    # Step through the interval deadline so fast_forward never fires or reschedules it.
+    advance_friend_clock(page, int(due) - 40)
+    before = page.evaluate("window.qaFriendIntervals[0].callbacks")
+    page.clock.run_for(80)
+    callbacks = page.evaluate("window.qaFriendIntervals[0].callbacks")
+    assert len(callbacks) == len(before) + 1 and abs(callbacks[-1] - due) <= 20, (due, before, callbacks)
+    return callbacks[-1]
+
+
+def friend_page_reads(page):
+    return page.evaluate("window.qaQuestWire.friends.sent.filter(packet => packet[0] === 8)")
+
+
+def check_lobby_friend_refresh(page, origin, database, name, password, peer_name, peer_password, directory):
+    ((player_id, flags), (peer_id, peer_flags)) = (player(database, login)[0] for login in (name, peer_name))
+    assert flags == peer_flags == 0
+    ((_, server),) = query(database, "SELECT id, server_type FROM avatars WHERE player_id = ?", player_id)
+    links = stored_friend_links(database, player_id, server)
+    fixture = friend_fixture_lists(database, player_id, server, links)
+    assert len(fixture[1]) == 11 and fixture[1][10][0] == peer_id and fixture[1][10][2] == 2, fixture[1]
+    offline = fixture[1][10]
+    online = offline[:2] + [6]
+
+    page.clock.install()
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True,
+                                            lobby_friends=True, hold_friend_frames=True)
+    observe_friend_intervals(page)
+    page.locator("#lobby-friend-open").click()
+    panel = page.locator("#lobby-friend-shell[open] #lobby-friend")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    panel.locator("#lobby-friend-next").click()
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-offset", "10")
+    rows = panel.locator("#lobby-friend-rows [data-player-id]")
+    check_friend_rows(rows, database, [offline])
+    rows.first.evaluate("row => { window.qaOriginalFriendCard = row; }")
+    capture(stage, directory, "01-friend-timer-offline-before.png", animations="allow")
+    timing = page.evaluate("window.qaFriendIntervals")
+    assert len(timing) == 1 and timing[0]["stopped"] is None, timing
+    first_due = timing[0]["at"] + 300000
+    page.clock.pause_at(page.evaluate("new Date(Date.now() + 1000).toISOString()"))
+    previous_reads = friend_page_reads(page)
+    assert previous_reads == [[8, 17, 1, 0, 10], [8, 17, 1, 10, 10]], previous_reads
+
+    browser = page.context.browser
+    assert browser is not None
+    peer_page = browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1, reduced_motion="reduce")
+    try:
+        _, peer_live, peer_errors = open_quest_fixture(peer_page, origin, peer_id, peer_name, peer_password, startup_records=True)
+        assert query(database, "SELECT state & 1 FROM players WHERE id = ?", peer_id) == [(1,)]
+        advance_friend_clock(page, int(first_due) - 40)
+        expect(panel).to_have_attribute("data-refresh-state", "idle")
+        assert not page.evaluate("window.qaFriendIntervals[0].callbacks.length")
+        assert friend_page_reads(page) == previous_reads
+        first_tick = cross_friend_interval(page, first_due)
+        expect(panel).to_have_attribute("data-refresh-state", "waiting")
+        remaining = int(first_tick + 3000 - page.evaluate("performance.now()"))
+        assert remaining > 2, (first_tick, remaining)
+        page.clock.run_for(remaining - 2)
+        expect(panel).to_have_attribute("data-refresh-state", "waiting")
+        assert friend_page_reads(page) == previous_reads
+
+        captured = page.evaluate("window.qaQuestWire.friends")
+        page.evaluate("() => { window.qaQuestWire.friendHold = {type: 1, offset: 10, reply: 12, bodyLength: null}; }")
+        page.clock.run_for(4)
+        deadline = monotonic() + 8
+        while not page.evaluate("typeof window.qaQuestWire.friendHold.resume === 'function'"):
+            assert monotonic() < deadline, "Genuine second-page SC12 did not reach the hold"
+            page.wait_for_timeout(25)
+        try:
+            held = page.evaluate("window.qaQuestWire.friends")
+            reads_while_held = [packet for packet in held["sent"][len(captured["sent"]):] if packet[0] == 8]
+            assert reads_while_held == [[8, 17, 1, 10, 10]], reads_while_held
+            assert held["replies"] == captured["replies"]
+            expect(panel).to_have_attribute("data-refresh-state", "pending")
+            expect(rows).to_have_count(1)
+            expect(rows.first).to_have_attribute("data-status", "2")
+            assert rows.first.evaluate("row => row === window.qaOriginalFriendCard")
+            capture(stage, directory, "02-friend-real-page-held-offline.png", animations="allow")
+        finally:
+            page.evaluate("""() => {
+              const {resume} = window.qaQuestWire.friendHold;
+              window.qaQuestWire.friendHold = null;
+              resume();
+            }""")
+        expect(panel).to_have_attribute("data-refresh-state", "idle", timeout=TIMEOUT)
+        check_friend_rows(rows, database, [online])
+        after = page.evaluate("window.qaQuestWire.friends")
+        (refresh,) = [packet for packet in after["replies"][len(held["replies"]):] if packet[0] == 12]
+        assert refresh[2:] == [1, 10, 11, sum(row[2] == 3 for row in fixture[2]), len(fixture[0]), [online]], refresh
+        assert len(peer_live) == 4 and all(not socket.is_closed() for socket in peer_live) and not peer_errors, peer_errors
+        capture(stage, directory, "03-friend-real-page-released-online.png", animations="allow")
+        assert peer_page.reload(wait_until="domcontentloaded").ok
+        wait_logout(peer_page, database, peer_id)
+    finally:
+        peer_page.close()
+
+    panel.locator("#lobby-friend-tab-search").press("Enter")
+    expect(panel).to_have_attribute("data-tab", "search")
+    search_before = friend_page_reads(page)
+    second_tick = cross_friend_interval(page, first_tick + 300000)
+    third_tick = cross_friend_interval(page, second_tick + 300000)
+    page.clock.run_for(3001)
+    expect(panel).to_have_attribute("data-refresh-state", "idle")
+    assert friend_page_reads(page) == search_before
+    capture(stage, directory, "04-friend-no-background-refresh-in-search.png", animations="allow")
+
+    panel.locator("#lobby-friend-tab-friend").press("Enter")
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-offset", "10")
+    before_close = friend_page_reads(page)
+    cross_friend_interval(page, third_tick + 300000)
+    expect(panel).to_have_attribute("data-refresh-state", "waiting")
+    panel.locator("#lobby-friend-close").press("Enter")
+    expect(panel).to_have_count(0)
+    page.clock.run_for(3001)
+    assert friend_page_reads(page) == before_close
+    expect(page.locator("#lobby-friend-open")).to_be_focused()
+
+    page.locator("#lobby-option-open").press("Enter")
+    screen(stage, "options")
+    page.locator("#options-friend-open").press("Enter")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-offset", "10")
+    expect(panel).to_have_attribute("data-refresh-state", "idle")
+    options_before = friend_page_reads(page)
+    page.clock.run_for(3001)
+    assert friend_page_reads(page) == options_before
+    intervals = page.evaluate("window.qaFriendIntervals")
+    assert len(intervals) == 2 and intervals[0]["stopped"] is not None and intervals[1]["stopped"] is None, intervals
+    assert len(intervals[0]["callbacks"]) == 4 and intervals[1]["callbacks"] == [], intervals
+    assert not page.evaluate("window.qaQuestWire.lobby.friendWrites.sent.length")
+    assert len(live) == 4 and all(not socket.is_closed() for socket in live) and not errors, errors
+    assert stored_friend_links(database, player_id, server) == links
+    capture(stage, directory, "05-options-friend-shared-page-and-timer.png", animations="allow")
+    if directory is not None:
+        evidence = {"automaticRequest": [8, 17, 1, 10, 10], "authenticRefresh": refresh, "offline": offline,
+                    "heldNoReply": held["replies"] == captured["replies"], "intervals": intervals,
+                    "searchReads": search_before, "readsAtClose": before_close, "readsAtOptions": options_before}
+        (directory / "lobby-friend-refresh-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
+
+
+def check_lobby_friend_invite(page, origin, database, name, password, directory):
+    ((player_id, flags),) = player(database, name)
+    assert player_id == 2 and flags == 0, "Use the original player-ID-2 Invite Code fixture"
+    traffic = {}
+    requests = []
+
+    def observe_socket(peer):
+        counters = traffic.setdefault(urlsplit(peer.url).path, [0, 0])
+        peer.on("framesent", lambda _payload: counters.__setitem__(0, counters[0] + 1))
+        peer.on("framereceived", lambda _payload: counters.__setitem__(1, counters[1] + 1))
+
+    page.on("websocket", observe_socket)
+    page.on("request", lambda request: requests.append(urlsplit(request.url).netloc))
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=origin)
+    page.emulate_media(reduced_motion="no-preference")
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True, lobby_friends=True)
+    page.locator("#lobby-friend-open").click()
+    panel = page.locator("#lobby-friend-shell[open] #lobby-friend")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel.locator('.lobby-friend-card[data-avatar-state="loading"]')).to_have_count(0, timeout=TIMEOUT)
+    check_friend_invites(panel)
+    trigger = panel.locator("#lobby-friend-invite-code")
+    box, outer = trigger.bounding_box(), stage.bounding_box()
+    assert box and outer
+    launcher = (box["x"] - outer["x"], box["y"] - outer["y"], box["width"], box["height"])
+    assert all(abs(actual - expected) <= 1 for actual, expected in zip(launcher, (405, 531, 78, 20))), launcher
+    music(page, "lobby", "ulbgm02.mp3")
+    page.evaluate("""() => {
+      const track = document.querySelector('#stage > audio[data-bgm-scene="lobby"]');
+      const observation = window.qaInviteAudio = {track, start: track.currentTime, clicks: []};
+      const original = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        const playback = original.call(this);
+        if (this.src.endsWith('/ulse01.mp3')) {
+          const index = observation.clicks.push('pending') - 1;
+          void playback.then(() => { observation.clicks[index] = 'played'; },
+            () => { observation.clicks[index] = 'rejected'; });
+        }
+        return playback;
+      };
+    }""")
+    before = {service: list(counts) for service, counts in traffic.items()}
+    assert set(before) == SESSION_PORTS
+    request_offset = len(requests)
+    observe_lobby_panel_motion(page, "lobby-friend-invite-dialog")
+    page.evaluate("navigator.clipboard.writeText('test-before-copy')")
+
+    trigger.click()
+    dialog = page.locator("#lobby-friend-invite-dialog[open]")
+    expect(dialog).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(trigger).to_have_attribute("aria-expanded", "true")
+    expect(dialog.locator("#lobby-friend-invite-title")).to_have_text("Invite Code")
+    expect(dialog.locator("#lobby-friend-invite-value")).to_have_text("E78JM8M7U")
+    message = dialog.locator("#lobby-friend-invite-message").inner_text().strip()
+    assert message == "你的邀請代碼是\n[ E78JM8M7U]\n分享代碼來邀請朋友吧", repr(message)
+    box = dialog.bounding_box()
+    assert box
+    geometry = (box["x"] - outer["x"], box["y"] - outer["y"], box["width"], box["height"])
+    assert all(abs(actual - expected) <= 1 for actual, expected in zip(geometry, (260, 220, 260, 250))), geometry
+    close = dialog.locator("#lobby-friend-invite-close")
+    expect(close).to_be_focused()
+    copy = dialog.locator("#lobby-friend-invite-copy")
+    expect(copy).to_have_text("複製連結")
+    expect(copy).to_be_enabled()
+    capture(stage, directory, "01-friend-invite-original-code.png", animations="allow")
+    cue_offset = page.evaluate("window.qaInviteAudio.clicks.length")
+    copy.click()
+    page.wait_for_function("() => navigator.clipboard.readText().then(value => value === 'orig')", timeout=TIMEOUT)
+    page.wait_for_function("offset => window.qaInviteAudio.clicks.slice(offset).includes('played')", arg=cue_offset, timeout=TIMEOUT)
+    expect(dialog).to_have_attribute("data-state", "open")
+    capture(stage, directory, "02-friend-invite-local-copy.png", animations="allow")
+    close.press("Enter")
+    expect(dialog).to_have_count(0)
+    expect(trigger).to_have_attribute("aria-expanded", "false")
+    expect(trigger).to_be_focused()
+    expect(panel).to_have_attribute("data-state", "open")
+    motion = check_lobby_panel_motion(page, 50, 50)
+    cues = page.evaluate("offset => window.qaInviteAudio.clicks.slice(offset)", cue_offset)
+    assert cues == ["played"], cues
+    assert page.evaluate("""() => {
+      const {track, start} = window.qaInviteAudio;
+      return track === document.querySelector('#stage > audio[data-bgm-scene="lobby"]')
+        && !track.paused && track.currentTime > start;
+    }""")
+    assert traffic == before, (before, traffic)
+    assert all(host == urlsplit(origin).netloc for host in requests[request_offset:]) and page.url == origin + ENTRY
+    assert len(live) == 4 and all(not socket.is_closed() for socket in live) and not errors, errors
+    capture(stage, directory, "03-friend-invite-closed-focus.png", animations="allow")
+    if directory is not None:
+        evidence = {"playerId": player_id, "geometry": geometry, "motion": motion, "copiedOriginalLiteral": True,
+                    "copyCuePlayback": cues, "sameLobbyMusic": True,
+                    "socketFramesBefore": before, "socketFramesAfter": traffic}
+        (directory / "lobby-friend-invite-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
 
 
 def friend_mutation_role(database, name):
@@ -6668,7 +6955,11 @@ def main():
                         help="Verify the original read-only Friends viewer on the matching disposable fixture")
     parser.add_argument("--lobby-friend-write", action="store_true",
                         help="Verify original Friends mutations with two disposable authenticated roles")
-    parser.add_argument("--friend-peer-user", help="Second disposable account for --lobby-friend-write")
+    parser.add_argument("--lobby-friend-refresh", action="store_true",
+                        help="Verify the original timed current-page refresh with a disposable peer sign-in")
+    parser.add_argument("--lobby-friend-invite", action="store_true",
+                        help="Verify the original Invite Code panel and local clipboard on player ID 2")
+    parser.add_argument("--friend-peer-user", help="Second disposable account for --lobby-friend-write or --lobby-friend-refresh")
     parser.add_argument("--friend-peer-password-file", type=Path, help="Private password file for --friend-peer-user")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
@@ -6733,8 +7024,16 @@ def main():
                                     or args.quest_complete_q3 or args.quest_peaceful or args.quest_high_low or args.lobby_selectable
                                     or args.lobby_record or args.lobby_item or args.lobby_friend):
         parser.error("--lobby-friend-write requires --quest-start-user and the --friend-peer credentials as its own case")
-    if not args.lobby_friend_write and (args.friend_peer_user or args.friend_peer_password_file):
-        parser.error("--friend-peer credentials require --lobby-friend-write")
+    if (args.lobby_friend_refresh or args.lobby_friend_invite) and (
+        not args.quest_start_user or args.quest_start_fault or args.quest_next_turn or args.quest_terminal or args.quest_next_land
+        or args.quest_complete_q3 or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record
+        or args.lobby_item or args.lobby_friend or args.lobby_friend_write or (args.lobby_friend_refresh and args.lobby_friend_invite)
+    ):
+        parser.error("--lobby-friend-refresh and --lobby-friend-invite each require --quest-start-user and their own case")
+    if args.lobby_friend_refresh and (not args.friend_peer_user or not args.friend_peer_password_file):
+        parser.error("--lobby-friend-refresh requires the --friend-peer credentials")
+    if not (args.lobby_friend_write or args.lobby_friend_refresh) and (args.friend_peer_user or args.friend_peer_password_file):
+        parser.error("--friend-peer credentials require --lobby-friend-write or --lobby-friend-refresh")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -6776,6 +7075,15 @@ def main():
                                                  args.quest_start_password_file.read_text().rstrip("\r\n"), args.friend_peer_user,
                                                  args.friend_peer_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Original Friends confirmation, exact authenticated writes, and persisted relationship transitions passed.")
+                elif args.lobby_friend_refresh:
+                    check_lobby_friend_refresh(page, origin, args.database, args.quest_start_user,
+                                               args.quest_start_password_file.read_text().rstrip("\r\n"), args.friend_peer_user,
+                                               args.friend_peer_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Original Friends timing, held current-page reply, and genuine presence change passed.")
+                elif args.lobby_friend_invite:
+                    check_lobby_friend_invite(page, origin, args.database, args.quest_start_user,
+                                              args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Original Invite Code, local clipboard, focus and unchanged socket traffic passed.")
                 elif args.quest_high_low:
                     page_errors = []
                     page.on("pageerror", lambda error: page_errors.append(str(error)))

@@ -4712,16 +4712,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     },
     canUseLobbyAvatarItem,
     useLobbyAvatarItem,
-    async readLobbyFriendPage(type, offset, { signal } = {}) {
+    async readLobbyFriendPage(type, offset, { signal, refresh = false } = {}) {
       if (!Number.isInteger(type) || type < 0 || type > 2 || !Number.isInteger(offset) || offset < 0 || offset > 0x7fffffff) {
         throw new SessionError('friend-data-unavailable');
       }
       const key = `${type}:${offset}`;
       if (signal?.aborted) throw new SessionError('cancelled');
-      const existing = cachedFriendPage(key);
+      const existing = refresh === true ? undefined : cachedFriendPage(key);
       if (existing) return existing;
       return readFriendData(signal, key, async request => {
-        const cached = cachedFriendPage(key);
+        const cached = refresh === true ? undefined : cachedFriendPage(key);
         if (cached) return cached;
         const avatarId = initialData.avatar.id;
         const page = await request(DATA_FRIEND_PAGE_REQUEST, [type, offset, FRIEND_PAGE_SIZE], DATA_FRIEND_PAGE_REPLY,

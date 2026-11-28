@@ -1035,8 +1035,8 @@
       "source": "res/data/cwming.ttf",
       "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
-      "sha256": "ae9aed92c25679c892f700c76dd41d48aabe9e510695546eba7cb1b4608042f2",
-      "glyphs": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~中了人信個值再刪到包友同名向含告單嗎大好字定家封對少已待從您意成把拒搜擇數方最朋檢此法為無玩申的確等索絕要解認請證警送達選邀鎖除需？",
+      "sha256": "98b932417ebcec03992a94d601fd5cfce6152826126fc6a7b5e7f42703ae3378",
+      "glyphs": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~中了享人代你來信個值再分刪到包友同名向吧含告單嗎大好字定家封對少已待從您意成把拒搜擇數方是最朋檢此法為無玩申的確碼等索結絕製複要解認請證警送連達選邀鎖除需？",
       "confirmationWording": [
         {
           "source": "app/client/src/view/scene/common/FriendListContainer.as",
@@ -1070,6 +1070,17 @@
             "_TRANS_ERR_MSG64",
             "_TRANS_ERR_MSG65",
             "_TRANS_ERR_MSG66"
+          ]
+        }
+      ],
+      "invitationWording": [
+        {
+          "source": "app/client/src/view/scene/common/NewInvitePanel.as",
+          "sourceSha256": "bd30fad64e672121df377257a3beb90b8ffaecfa0f885ae8c1c21a8220722448",
+          "constants": [
+            "_TRANS_INVITE_MSG2_1",
+            "_TRANS_INVITE_MSG2_2",
+            "_TRANS_LINKCOPY"
           ]
         }
       ]
