@@ -12,7 +12,7 @@ function avatarMarkup(idPrefix) {
   return `
   <div class="art-slot avatar" aria-hidden="true"></div>
   <canvas id="${idPrefix}-avatar" class="avatar-portrait" width="290" height="450" aria-label="虛擬人物"></canvas>
-  ${idPrefix === 'quest-map' ? '' : sideEntries}
+  ${idPrefix === 'lobby' || idPrefix === 'options' ? sideEntries : ''}
   <dl id="${idPrefix}-profile" class="avatar-status" data-source="gene.swf" aria-label="角色狀態">
     <div class="name">
       <dt class="sr-only">Name</dt>
@@ -200,7 +200,7 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
   if (!avatar || !Number.isSafeInteger(session.playerId) || session.playerId < 1) {
     throw new Error('A verified player and avatar are required.');
   }
-  if (idPrefix !== 'lobby' && idPrefix !== 'options' && idPrefix !== 'quest-map') {
+  if (!['lobby', 'options', 'quest-map', 'lobby-main-item'].includes(idPrefix)) {
     throw new Error('Unknown avatar layer.');
   }
   if (signal.aborted) return Promise.resolve();
@@ -210,8 +210,18 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
   const avatarName = layer.querySelector(`#${idPrefix}-avatar-name`);
   const freeDuel = layer.querySelector('.free-duel');
   const expNext = layer.querySelector(`#${idPrefix}-exp-next`);
+  const portrait = layer.querySelector('.avatar-portrait');
+  let drawnParts;
   let experienceTable;
   let displayedExperienceLevel;
+  const drawPortrait = equippedParts => {
+    drawnParts = equippedParts;
+    return renderLobbyAvatar(portrait, equippedParts, { signal, fadeOnly: idPrefix !== 'lobby' })
+      .then(() => Promise.allSettled(portrait.getAnimations().map(animation => animation.finished)))
+      .catch(() => {
+        // The renderer marks an unavailable portrait without blocking this view.
+      });
+  };
   const applyHints = ({ toolTip }) => {
     if (toolTip) {
       avatarName.title = avatarName.textContent;
@@ -225,6 +235,7 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
     if (signal.aborted || snapshot?.id !== avatar.id) return;
     displayProfile(layer, idPrefix, session.playerId, snapshot);
     applyHints(getPreferences());
+    if (idPrefix === 'lobby-main-item' && snapshot.equippedPartIds !== drawnParts) void drawPortrait(snapshot.equippedPartIds);
     const { level, exp } = snapshot;
     const nextLevel = Number.isSafeInteger(level) && level > 0 && Number.isSafeInteger(exp) ? level : null;
     if (nextLevel === displayedExperienceLevel) return;
@@ -238,18 +249,11 @@ export function mountAvatarLayer(layer, { session, signal, idPrefix = 'lobby' })
       if (Number.isSafeInteger(target) && target >= 0) expNext.textContent = `/${target || '-----'}`;
     });
   };
+  const arrival = drawPortrait(avatar.equippedPartIds);
   paint(avatar);
   session.subscribeAvatar?.(paint, { signal });
   const unsubscribe = subscribePreferences(applyHints);
   signal.addEventListener('abort', unsubscribe, { once: true });
 
-  const portrait = layer.querySelector('.avatar-portrait');
-  return renderLobbyAvatar(portrait, avatar.equippedPartIds, {
-    signal,
-    fadeOnly: idPrefix !== 'lobby',
-  }).then(() => {
-    return Promise.allSettled(portrait.getAnimations().map(animation => animation.finished));
-  }).catch(() => {
-    // The portrait renderer marks its own failure; the signed-in view remains usable.
-  });
+  return arrival;
 }

@@ -37,8 +37,11 @@
 }
 
 .avatar-layer, .source-lobby .entrance-layer { inset: 0; }
-.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) { pointer-events: none; }
-.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) :is(.avatar-status, .side-entries > li) { pointer-events: auto; }
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"], [data-avatar-mode="lobby-main-item"]) {
+  pointer-events: none;
+}
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) :is(.avatar-status, .side-entries > li),
+.avatar-layer[data-avatar-mode="lobby-main-item"] .avatar-status { pointer-events: auto; }
 .source-lobby .entrance-layer { pointer-events: none; }
 .source-lobby .entrance-layer :is([data-symbol], button) { pointer-events: auto; }
 
@@ -62,7 +65,8 @@
 .avatar-layer .avatar { left: 537px; top: 307px; width: 151px; height: 340px; }
 .avatar-layer .avatar-portrait { position: absolute; left: 489px; top: 230px; width: 290px; height: 450px; pointer-events: none; }
 /* AvatarView uses (785 - 260) for both Match and Quest modes. */
-.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"]) .avatar-portrait { left: 525px; }
+.avatar-layer:is([data-avatar-mode="options"], [data-avatar-mode="quest-map"],
+    [data-avatar-mode="lobby-main-item"]) .avatar-portrait { left: 525px; }
 
 .source-lobby .entrance-art { position: absolute; top: 0; left: 0; display: block; }
 .source-lobby .top-entries {
@@ -84,7 +88,7 @@
 .source-lobby .quest { left: 464px; top: 240px; }
 .source-lobby .raid { left: 368px; top: 368px; }
 
-.source-lobby-quest-entry, .source-lobby-option-entry {
+.source-lobby-quest-entry, .source-lobby-option-entry, .source-lobby-item-entry {
   display: block;
   width: 100%;
   height: 100%;
@@ -95,7 +99,7 @@
   cursor: pointer;
 }
 
-.source-lobby-option-entry:disabled { cursor: default; }
+:is(.source-lobby-option-entry, .source-lobby-item-entry):disabled { cursor: default; }
 
 .source-lobby .utility-entries li { height: 27px; }
 .source-lobby .options { left: 536px; top: 160px; width: 104px; }

@@ -1,0 +1,148 @@
+@font-face {
+  font-family: 'Unlight Main Item Title';
+  src: url('./lobby-main-item-art/main-item-title.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Unlight Main Item Labels';
+  src: url('./lobby-main-item-art/main-item-labels.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Unlight Main Item Detail';
+  src: url('./lobby-main-item-art/main-item-detail.woff') format('woff');
+  font-display: swap;
+}
+
+#lobby-main-item-view {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  width: 780px;
+  height: 680px;
+  overflow: clip;
+  background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000;
+  color: #fff;
+  font: 12px/1.3 'Unlight Main Item Detail', 'Unlight Record Ming', var(--interface-font, serif);
+}
+
+#lobby-main-item-chrome,
+#lobby-main-item-rows,
+#lobby-main-item-detail { position: absolute; inset: 0; pointer-events: none; }
+
+#lobby-main-item-view > .avatar-layer { z-index: 1; }
+
+#lobby-main-item-title,
+#lobby-main-item-subtitle,
+#lobby-main-item-error {
+  position: absolute;
+  margin: 0;
+  padding: 2px;
+  z-index: 2;
+}
+
+#lobby-main-item-title {
+  left: 15px;
+  top: 5px;
+  width: 100px;
+  height: 25px;
+  font: 24px/25px 'Bradley Gratis', serif;
+  text-shadow: 0 0 1px #000, 0 0 2px #000, 0 0 2px #000;
+}
+
+#lobby-main-item-title:focus { outline: none; }
+
+#lobby-main-item-subtitle {
+  left: 100px;
+  top: 12px;
+  width: 100px;
+  height: 25px;
+  color: #000;
+  font: 10px/15px 'Unlight Main Item Title', var(--interface-font, serif);
+  text-shadow: 0 0 1px #fff, 0 0 2px #fff;
+  pointer-events: none;
+}
+
+#lobby-main-item-error { left: 24px; top: 104px; }
+
+.lobby-main-item-art,
+.lobby-main-item-inner-label,
+.lobby-main-item-tile-count,
+.lobby-main-item-detail-field,
+#lobby-main-item-page,
+#lobby-main-item-capacity {
+  position: absolute;
+  display: block;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.lobby-main-item-button {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#lobby-main-item-back { z-index: 2; }
+.lobby-main-item-button:disabled { cursor: default; }
+.lobby-main-item-button:focus-visible { outline: 1px solid #82e1f9; outline-offset: -1px; }
+
+.lobby-main-item-button > [data-skin]:not([data-skin="up"]),
+.lobby-main-item-button:not(:disabled):is(:hover, :focus-visible, :active) > [data-skin="up"],
+.lobby-main-item-button:not(:disabled):active > [data-skin="over"],
+.lobby-main-item-button[aria-pressed="true"] > [data-skin] { visibility: hidden; }
+
+.lobby-main-item-button:not(:disabled):is(:hover, :focus-visible):not(:active):not([aria-pressed="true"]) > [data-skin="over"],
+.lobby-main-item-button:not(:disabled):active:not([aria-pressed="true"]) > [data-skin="down"],
+.lobby-main-item-button[aria-pressed="true"] > [data-skin="selected"] { visibility: visible; }
+
+.lobby-main-item-inner-label {
+  padding: 2px;
+  font: 10px/14px 'Unlight Main Item Labels', var(--interface-font, serif);
+  letter-spacing: 1px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lobby-main-item-tile-count {
+  padding: 2px;
+  color: #000;
+  font-size: 10px;
+  text-align: right;
+}
+
+.lobby-main-item-detail-field {
+  overflow: hidden;
+  padding: 2px;
+  text-align: right;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#lobby-main-item-caption { text-align: left; }
+
+/* The visible extension of item_inventory_ch.swf's authored gray fill behind the capacity plate. */
+#lobby-main-item-capacity-extension { position: absolute; }
+
+#lobby-main-item-page {
+  padding: 2px;
+  text-align: right;
+}
+
+#lobby-main-item-capacity {
+  padding: 2px;
+  font: 24px/25px 'Bradley Gratis', serif;
+}
+
+#lobby-main-item-capacity.lobby-main-item-over-capacity { color: #f00; }

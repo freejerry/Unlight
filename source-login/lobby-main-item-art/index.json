@@ -1,0 +1,1782 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "background": {
+    "file": "background.jpg",
+    "x": 0,
+    "y": 0,
+    "width": 760,
+    "height": 680
+  },
+  "backgroundRect": {
+    "x": 528,
+    "y": 632,
+    "width": 232,
+    "height": 24,
+    "color": "#858585",
+    "sourceShape": 2,
+    "sourceDepth": 2
+  },
+  "capacityPlate": {
+    "file": "capacity.png",
+    "x": 352,
+    "y": 632,
+    "width": 184,
+    "height": 24
+  },
+  "capacity": [
+    449,
+    630,
+    100,
+    25
+  ],
+  "outerTabs": [
+    {
+      "key": "items",
+      "hit": [
+        0,
+        32,
+        95.95,
+        21.95
+      ],
+      "selected": {
+        "file": "outer-items-selected.png",
+        "x": 0,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "up": {
+        "file": "outer-items-up.png",
+        "x": 0,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "over": {
+        "file": "outer-items-over.png",
+        "x": 0,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "down": {
+        "file": "outer-items-over.png",
+        "x": 0,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      }
+    },
+    {
+      "key": "body",
+      "hit": [
+        95.95,
+        32,
+        95.95,
+        21.95
+      ],
+      "selected": {
+        "file": "outer-body-selected.png",
+        "x": 95.95,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "up": {
+        "file": "outer-body-up.png",
+        "x": 95.95,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "over": {
+        "file": "outer-body-over.png",
+        "x": 95.95,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "down": {
+        "file": "outer-body-over.png",
+        "x": 95.95,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      }
+    },
+    {
+      "key": "clothes",
+      "hit": [
+        191.9,
+        32,
+        95.95,
+        21.95
+      ],
+      "selected": {
+        "file": "outer-clothes-selected.png",
+        "x": 192,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "up": {
+        "file": "outer-clothes-up.png",
+        "x": 191.9,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "over": {
+        "file": "outer-clothes-over.png",
+        "x": 191.9,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "down": {
+        "file": "outer-clothes-over.png",
+        "x": 191.9,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      }
+    },
+    {
+      "key": "accessories",
+      "hit": [
+        287.85,
+        32,
+        95.95,
+        21.95
+      ],
+      "selected": {
+        "file": "outer-accessories-selected.png",
+        "x": 287.75,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "up": {
+        "file": "outer-accessories-up.png",
+        "x": 287.85,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "over": {
+        "file": "outer-accessories-over.png",
+        "x": 287.85,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      },
+      "down": {
+        "file": "outer-accessories-over.png",
+        "x": 287.85,
+        "y": 32,
+        "width": 96,
+        "height": 22
+      }
+    }
+  ],
+  "inner": {
+    "panel": {
+      "file": "inner-panel.png",
+      "x": 0.0,
+      "y": 56.0,
+      "width": 512,
+      "height": 544
+    },
+    "tabs": [
+      {
+        "hit": [
+          16.0,
+          56.0,
+          95.95,
+          31.95
+        ],
+        "label": [
+          38,
+          63,
+          80,
+          30
+        ],
+        "selected": {
+          "file": "inner-tab-selected.png",
+          "x": 16.0,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "up": {
+          "file": "inner-tab-up.png",
+          "x": 16.0,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "over": {
+          "file": "inner-tab-hover-1.png",
+          "x": 16.0,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "down": {
+          "file": "inner-tab-down.png",
+          "x": 16.0,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "hover": {
+          "frames": [
+            {
+              "file": "inner-tab-hover-1.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-2.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-3.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-4.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-5.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-6.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-7.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-8.png",
+              "x": 16.0,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            }
+          ],
+          "frameMs": 41.666666666666664,
+          "loop": false
+        }
+      },
+      {
+        "hit": [
+          111.95,
+          56.0,
+          95.95,
+          31.95
+        ],
+        "label": [
+          134,
+          63,
+          80,
+          30
+        ],
+        "selected": {
+          "file": "inner-tab-selected.png",
+          "x": 111.95,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "up": {
+          "file": "inner-tab-up.png",
+          "x": 111.95,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "over": {
+          "file": "inner-tab-hover-1.png",
+          "x": 111.95,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "down": {
+          "file": "inner-tab-down.png",
+          "x": 111.95,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "hover": {
+          "frames": [
+            {
+              "file": "inner-tab-hover-1.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-2.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-3.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-4.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-5.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-6.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-7.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-8.png",
+              "x": 111.95,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            }
+          ],
+          "frameMs": 41.666666666666664,
+          "loop": false
+        }
+      },
+      {
+        "hit": [
+          207.9,
+          56.0,
+          95.95,
+          31.95
+        ],
+        "label": [
+          230,
+          63,
+          80,
+          30
+        ],
+        "selected": {
+          "file": "inner-tab-selected.png",
+          "x": 207.9,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "up": {
+          "file": "inner-tab-up.png",
+          "x": 207.9,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "over": {
+          "file": "inner-tab-hover-1.png",
+          "x": 207.9,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "down": {
+          "file": "inner-tab-down.png",
+          "x": 207.9,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "hover": {
+          "frames": [
+            {
+              "file": "inner-tab-hover-1.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-2.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-3.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-4.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-5.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-6.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-7.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-8.png",
+              "x": 207.9,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            }
+          ],
+          "frameMs": 41.666666666666664,
+          "loop": false
+        }
+      },
+      {
+        "hit": [
+          303.85,
+          56.0,
+          95.95,
+          31.95
+        ],
+        "label": [
+          326,
+          63,
+          80,
+          30
+        ],
+        "selected": {
+          "file": "inner-tab-selected.png",
+          "x": 303.85,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "up": {
+          "file": "inner-tab-up.png",
+          "x": 303.85,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "over": {
+          "file": "inner-tab-hover-1.png",
+          "x": 303.85,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "down": {
+          "file": "inner-tab-down.png",
+          "x": 303.85,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "hover": {
+          "frames": [
+            {
+              "file": "inner-tab-hover-1.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-2.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-3.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-4.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-5.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-6.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-7.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-8.png",
+              "x": 303.85,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            }
+          ],
+          "frameMs": 41.666666666666664,
+          "loop": false
+        }
+      },
+      {
+        "hit": [
+          399.8,
+          56.0,
+          95.95,
+          31.95
+        ],
+        "label": [
+          422,
+          63,
+          80,
+          30
+        ],
+        "selected": {
+          "file": "inner-tab-selected.png",
+          "x": 399.8,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "up": {
+          "file": "inner-tab-up.png",
+          "x": 399.8,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "over": {
+          "file": "inner-tab-hover-1.png",
+          "x": 399.8,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "down": {
+          "file": "inner-tab-down.png",
+          "x": 399.8,
+          "y": 56.0,
+          "width": 96,
+          "height": 32
+        },
+        "hover": {
+          "frames": [
+            {
+              "file": "inner-tab-hover-1.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-2.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-3.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-4.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-5.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-6.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-7.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            },
+            {
+              "file": "inner-tab-hover-8.png",
+              "x": 399.8,
+              "y": 56.0,
+              "width": 96,
+              "height": 32
+            }
+          ],
+          "frameMs": 41.666666666666664,
+          "loop": false
+        }
+      }
+    ],
+    "pager": {
+      "first": {
+        "hit": [
+          16.0,
+          394.0,
+          23.95,
+          15.95
+        ],
+        "up": {
+          "file": "page-first-up.png",
+          "x": 16.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "over": {
+          "file": "page-first-over.png",
+          "x": 16.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "down": {
+          "file": "page-first-over.png",
+          "x": 16.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        }
+      },
+      "previous": {
+        "hit": [
+          40.0,
+          394.0,
+          23.95,
+          15.95
+        ],
+        "up": {
+          "file": "page-previous-up.png",
+          "x": 40.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "over": {
+          "file": "page-previous-over.png",
+          "x": 40.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "down": {
+          "file": "page-previous-over.png",
+          "x": 40.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        }
+      },
+      "next": {
+        "hit": [
+          464.0,
+          394.0,
+          23.95,
+          15.95
+        ],
+        "up": {
+          "file": "page-next-up.png",
+          "x": 464.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "over": {
+          "file": "page-next-over.png",
+          "x": 464.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "down": {
+          "file": "page-next-over.png",
+          "x": 464.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        }
+      },
+      "last": {
+        "hit": [
+          488.0,
+          394.0,
+          23.95,
+          15.95
+        ],
+        "up": {
+          "file": "page-last-up.png",
+          "x": 488.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "over": {
+          "file": "page-last-over.png",
+          "x": 488.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        },
+        "down": {
+          "file": "page-last-over.png",
+          "x": 488.0,
+          "y": 394.0,
+          "width": 24,
+          "height": 16
+        }
+      }
+    },
+    "actions": {
+      "use": {
+        "hit": [
+          344.0,
+          576.0,
+          80.0,
+          24.0
+        ],
+        "up": {
+          "file": "use-up.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "over": {
+          "file": "use-over.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "down": {
+          "file": "use-over.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        }
+      },
+      "remove": {
+        "hit": [
+          344.0,
+          576.0,
+          80.05004799999998,
+          23.94982920000002
+        ],
+        "up": {
+          "file": "remove-up.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 81,
+          "height": 24
+        },
+        "over": {
+          "file": "remove-over.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 81,
+          "height": 24
+        },
+        "down": {
+          "file": "remove-over.png",
+          "x": 344.0,
+          "y": 576.0,
+          "width": 81,
+          "height": 24
+        }
+      },
+      "drop": {
+        "hit": [
+          240.0,
+          576.0,
+          80.0,
+          24.0
+        ],
+        "up": {
+          "file": "drop-up.png",
+          "x": 240.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "over": {
+          "file": "drop-over.png",
+          "x": 240.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "down": {
+          "file": "drop-over.png",
+          "x": 240.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        }
+      },
+      "sell": {
+        "hit": [
+          136.0,
+          576.0,
+          80.0,
+          24.0
+        ],
+        "up": {
+          "file": "sell-up.png",
+          "x": 136.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "over": {
+          "file": "sell-over.png",
+          "x": 136.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        },
+        "down": {
+          "file": "sell-over.png",
+          "x": 136.0,
+          "y": 576.0,
+          "width": 80,
+          "height": 24
+        }
+      }
+    }
+  },
+  "tile": {
+    "hit": [
+      0.0,
+      0.0,
+      88.0,
+      88.0
+    ],
+    "up": {
+      "file": "tile-up.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 88,
+      "height": 88
+    },
+    "over": {
+      "file": "tile-over.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 88,
+      "height": 88
+    },
+    "down": {
+      "file": "tile-over.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 88,
+      "height": 88
+    },
+    "selected": {
+      "file": "tile-selected.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 88,
+      "height": 88
+    },
+    "equip": {
+      "file": "tile-equip.png",
+      "x": 43.0,
+      "y": 3.0,
+      "width": 41,
+      "height": 9
+    }
+  },
+  "grid": {
+    "x": 24,
+    "y": 104,
+    "columns": 5,
+    "rows": 3,
+    "stepX": 95,
+    "stepY": 95
+  },
+  "page": [
+    242,
+    392,
+    30,
+    20
+  ],
+  "fonts": {
+    "title": {
+      "file": "main-item-title.woff"
+    },
+    "labels": {
+      "file": "main-item-labels.woff"
+    },
+    "detail": {
+      "file": "main-item-detail.woff"
+    }
+  },
+  "labels": [
+    [
+      "虛擬人物",
+      "任務",
+      "對戰",
+      "突擊",
+      "特殊"
+    ],
+    [
+      "身體顏色",
+      "眼睛",
+      "嘴",
+      "髮型"
+    ],
+    [
+      "上衣",
+      "下衣",
+      "禮服",
+      "鞋"
+    ],
+    [
+      "頭",
+      "手臂",
+      "臉",
+      "ETC"
+    ]
+  ],
+  "layoutSources": [
+    "app/client/src/view/ItemView.as",
+    "app/client/src/view/image/item/ItemInventoryImage.as",
+    "app/client/src/view/image/item/ItemInventoryPanelImage.as",
+    "app/client/src/view/scene/common/BaseItemListPanel.as",
+    "app/client/src/view/scene/item/ItemTileList.as",
+    "app/client/src/model/AvatarItem.as",
+    "app/client/src/model/AvatarPart.as",
+    "app/client/data/css/UL.css.cn"
+  ],
+  "provenance": {
+    "background.jpg": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "e307799bc15f4c900272448d11a1e3dbe4b536455ea191ea9a3573d2d6660bab",
+      "sourceBitmap": 1,
+      "sourceShape": 2,
+      "sourceDepth": 2
+    },
+    "capacity.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "91978328e1c2545ee264b7c4a8bdfb6d8599fcdb7c72f33956bc9aacc5519443",
+      "sourceBitmap": 3,
+      "sourceShape": 4,
+      "sourceDepth": 3
+    },
+    "outer-items-selected.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "2b71e74a39472fa244f6cd3fde4767603d1bf1364589aded16756ff4417d3b1f",
+      "sourceBitmap": 5,
+      "sourceShape": 6,
+      "sourceInstance": "btn_a",
+      "sourceButton": 13,
+      "sourceState": "selected",
+      "sourceAliases": []
+    },
+    "outer-items-up.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "318041c011166d029b13903da704636227e4c4938003f793d660f7c047ed6e58",
+      "sourceBitmap": 7,
+      "sourceShape": 8,
+      "sourceInstance": "btn_a",
+      "sourceButton": 13,
+      "sourceState": "up",
+      "sourceAliases": []
+    },
+    "outer-items-over.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "4033ce8b82bf850510579b85d4181861f7db4c075d2d8d6a1f01f83e1f08be28",
+      "sourceBitmap": 9,
+      "sourceShape": 10,
+      "sourceInstance": "btn_a",
+      "sourceButton": 13,
+      "sourceState": "over",
+      "sourceAliases": [
+        {
+          "state": "down",
+          "bitmap": 11,
+          "shape": 12
+        }
+      ]
+    },
+    "outer-body-selected.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "eaf00bf00ffb98495f77a9289bac49c34bb4d5ebf1a5b8515b23419947f64c06",
+      "sourceBitmap": 14,
+      "sourceShape": 15,
+      "sourceInstance": "btn_b",
+      "sourceButton": 22,
+      "sourceState": "selected",
+      "sourceAliases": []
+    },
+    "outer-body-up.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "e12d0098be4db8867e6e0d61dcbf54d4ea84051f4e92a8ab484932b9c92f9282",
+      "sourceBitmap": 16,
+      "sourceShape": 17,
+      "sourceInstance": "btn_b",
+      "sourceButton": 22,
+      "sourceState": "up",
+      "sourceAliases": []
+    },
+    "outer-body-over.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "f71c6ebcbe8a98683d53c726f94b3fd4a00c7606bbd2202a7451e4db143eef66",
+      "sourceBitmap": 18,
+      "sourceShape": 19,
+      "sourceInstance": "btn_b",
+      "sourceButton": 22,
+      "sourceState": "over",
+      "sourceAliases": [
+        {
+          "state": "down",
+          "bitmap": 20,
+          "shape": 21
+        }
+      ]
+    },
+    "outer-clothes-selected.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "a996aa5aeb666576691ea80fccf59d139f9b8bd9de9e6361b0e90bcca3315af4",
+      "sourceBitmap": 23,
+      "sourceShape": 24,
+      "sourceInstance": "btn_c",
+      "sourceButton": 31,
+      "sourceState": "selected",
+      "sourceAliases": []
+    },
+    "outer-clothes-up.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "3a617a8b649ca79ecc67f3bf343fc3d8c68d59beaeeed8f4f242cba818b32ace",
+      "sourceBitmap": 25,
+      "sourceShape": 26,
+      "sourceInstance": "btn_c",
+      "sourceButton": 31,
+      "sourceState": "up",
+      "sourceAliases": []
+    },
+    "outer-clothes-over.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "437033ece53cdbc54b2b9176ef69a9f3f748190bcdeb318566940e8354a68183",
+      "sourceBitmap": 27,
+      "sourceShape": 28,
+      "sourceInstance": "btn_c",
+      "sourceButton": 31,
+      "sourceState": "over",
+      "sourceAliases": [
+        {
+          "state": "down",
+          "bitmap": 29,
+          "shape": 30
+        }
+      ]
+    },
+    "outer-accessories-selected.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "604336de244af901136f2789e908e508c1cce5f3e18813f5a5b5997eb8524c87",
+      "sourceBitmap": 32,
+      "sourceShape": 33,
+      "sourceInstance": "btn_d",
+      "sourceButton": 40,
+      "sourceState": "selected",
+      "sourceAliases": []
+    },
+    "outer-accessories-up.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "3d6f880abb1ccf376240d25bbb3be96964ef0474e49ddfd864d28a33ecd9622a",
+      "sourceBitmap": 34,
+      "sourceShape": 35,
+      "sourceInstance": "btn_d",
+      "sourceButton": 40,
+      "sourceState": "up",
+      "sourceAliases": []
+    },
+    "outer-accessories-over.png": {
+      "source": "data/image/item/item_inventory_ch.swf",
+      "sourceSha256": "58979cf575797c9745e7418b5adcc4c1a33516d3edcfe13f7d1d27a40f9ffa21",
+      "sha256": "7e1e464d66f87c20a4a39fbb596eeb4c9357d4f515c20ad70b5531ee66913e81",
+      "sourceBitmap": 36,
+      "sourceShape": 37,
+      "sourceInstance": "btn_d",
+      "sourceButton": 40,
+      "sourceState": "over",
+      "sourceAliases": [
+        {
+          "state": "down",
+          "bitmap": 38,
+          "shape": 39
+        }
+      ]
+    },
+    "inner-panel.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "ec219418f8fb24cb21bd852e3c6289b52a32e917063ce2ffa9c53834c2fce9bb",
+      "sourceShapes": [
+        1,
+        3,
+        3,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        18,
+        18,
+        18,
+        18,
+        20
+      ],
+      "sourceBitmaps": [
+        2,
+        5,
+        7,
+        9,
+        11,
+        13,
+        15,
+        17,
+        19
+      ],
+      "sourceFrame": 1
+    },
+    "inner-tab-selected.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "40e15061f8940f7332b68efbd8847ed9ffca80a29139018ff9176f1ab127247d",
+      "sourceShapes": [
+        62
+      ],
+      "sourceBitmaps": [
+        61
+      ],
+      "sourceFrame": 1
+    },
+    "inner-tab-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "1f016d01217b6927882be9ef8cf23436b9b954cf8d2b5e335493ddf3d00de6bd",
+      "sourceShapes": [
+        65
+      ],
+      "sourceBitmaps": [
+        64
+      ],
+      "sourceButton": 69,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "inner-tab-down.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "335d402c61874155001fed00ac982f3eab732999a85ed42aeb14fe860dae19e1",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceStates": [
+        "down"
+      ]
+    },
+    "inner-tab-hover-1.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "40f86e3441208c1d729ee37f10302b0f5193d2eac726c9a09c43691a49a377e6",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 1,
+      "sourceMatrix": "s0.08337402,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 51a+0"
+    },
+    "inner-tab-hover-2.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "071a79449da9a6cd32c2d7751b7802fce51b7bb7dd21d4ea8643e4d381fb4e3d",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 2,
+      "sourceMatrix": "s0.27044678,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 93a+0"
+    },
+    "inner-tab-hover-3.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "eb61c0f6fa432288d1dd63862da823a2d044b0d05d9cebf8783d5f18332cbc44",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 3,
+      "sourceMatrix": "s0.43881226,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 130a+0"
+    },
+    "inner-tab-hover-4.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "4ed26cf866dca5db7cba1a6c37b1ba47105ab9e9ac6166734a1c25ff768f9790",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 4,
+      "sourceMatrix": "s0.58847046,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 164a+0"
+    },
+    "inner-tab-hover-5.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "bad1058c79ba0a5791677012cc352c3c68e9f492a383ece758cee533407fc609",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 5,
+      "sourceMatrix": "s0.7194214,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 193a+0"
+    },
+    "inner-tab-hover-6.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "e34ebace4078be656b85e8a9c839cdbbe21a8edcaeca5294be16b5f49058d892",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 6,
+      "sourceMatrix": "s0.8316498,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 218a+0"
+    },
+    "inner-tab-hover-7.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "5049c801033bda474699bc8df96751babfa087eda451d68439a4225c7d021fb6",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 7,
+      "sourceMatrix": "s0.92518616,1.0 t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 239a+0"
+    },
+    "inner-tab-hover-8.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "335d402c61874155001fed00ac982f3eab732999a85ed42aeb14fe860dae19e1",
+      "sourceShapes": [
+        65,
+        66
+      ],
+      "sourceBlendMode": 5,
+      "sourceButton": 69,
+      "sourceSprite": 68,
+      "sourceFrame": 8,
+      "sourceMatrix": "t0,0",
+      "sourceColorTransform": "256r+0 256g+0 256b+0 256a+0"
+    },
+    "page-first-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "bcae5737295746293989b476f80bbd1d759348469db301c49bf9284510af5286",
+      "sourceShapes": [
+        22
+      ],
+      "sourceBitmaps": [
+        21
+      ],
+      "sourceInstance": "btn_p_first",
+      "sourceButton": 25,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "page-first-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "47094ce1179bdbc0404515387eb23df3c18846c2a4ae4b8884600d15fb7f4b98",
+      "sourceShapes": [
+        24
+      ],
+      "sourceBitmaps": [
+        23
+      ],
+      "sourceInstance": "btn_p_first",
+      "sourceButton": 25,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "page-previous-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "4161fc3940c0f14ca0cce3d9e90e653e988d0fa8ae5663162c4bf012ffbbe29d",
+      "sourceShapes": [
+        27
+      ],
+      "sourceBitmaps": [
+        26
+      ],
+      "sourceInstance": "btn_p_back",
+      "sourceButton": 30,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "page-previous-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "d16f2f18ef90100cf2a079bd9e6efb8df53aea1d7766b6beb06060c2f780ed75",
+      "sourceShapes": [
+        29
+      ],
+      "sourceBitmaps": [
+        28
+      ],
+      "sourceInstance": "btn_p_back",
+      "sourceButton": 30,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "page-next-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "b19b21867dbad13e39a134f511ffb827013eed08aba1f129de9e320ad52e58fc",
+      "sourceShapes": [
+        37
+      ],
+      "sourceBitmaps": [
+        36
+      ],
+      "sourceInstance": "btn_p_next",
+      "sourceButton": 40,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "page-next-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "870fd50020210b40c58090654d9bf318f1882ae9ae641d5aa77f659188345373",
+      "sourceShapes": [
+        39
+      ],
+      "sourceBitmaps": [
+        38
+      ],
+      "sourceInstance": "btn_p_next",
+      "sourceButton": 40,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "page-last-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "22f383d7f99d9d2f0c1c7e4882b6273f67327e471b7933f57cbfaeeb8e7570c0",
+      "sourceShapes": [
+        32
+      ],
+      "sourceBitmaps": [
+        31
+      ],
+      "sourceInstance": "btn_p_end",
+      "sourceButton": 35,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "page-last-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "71d385c407307a8ed7f337fbbde89461e4b1868ffd679e8013d02166c73087fe",
+      "sourceShapes": [
+        34
+      ],
+      "sourceBitmaps": [
+        33
+      ],
+      "sourceInstance": "btn_p_end",
+      "sourceButton": 35,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "use-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "a42e114f049ee34c55e5e46a3a51bdfc40452ae27c086c2b44708bb6a3de6e7f",
+      "sourceShapes": [
+        42
+      ],
+      "sourceBitmaps": [
+        41
+      ],
+      "sourceInstance": "btn_use",
+      "sourceButton": 45,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "use-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "08760b5924ce213a2452ddd7a5ff6feccadacce8b195c922ecd0b227756a80a3",
+      "sourceShapes": [
+        44
+      ],
+      "sourceBitmaps": [
+        43
+      ],
+      "sourceInstance": "btn_use",
+      "sourceButton": 45,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "remove-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "89bd3f6ccb96c421d9347c8cfc528cdd3b2fb627b85429c1e7594af888827ec9",
+      "sourceShapes": [
+        47
+      ],
+      "sourceBitmaps": [
+        46
+      ],
+      "sourceInstance": "btn_remove",
+      "sourceButton": 50,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "remove-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "d01c4d1c414ef1da5f328a4e6ae6fbee0a3c75806a0a23c88786d20816b97a9a",
+      "sourceShapes": [
+        49
+      ],
+      "sourceBitmaps": [
+        48
+      ],
+      "sourceInstance": "btn_remove",
+      "sourceButton": 50,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "drop-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "d9c47460b89b22336ab40c330cb91892636d7d2ddfbdceaf38df49a893a2ddc4",
+      "sourceShapes": [
+        57
+      ],
+      "sourceBitmaps": [
+        56
+      ],
+      "sourceInstance": "btn_drop",
+      "sourceButton": 60,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "drop-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "39bc30d34676253f4ea3c6d29c912b7274a690ad86940c578fd1947aa75518e5",
+      "sourceShapes": [
+        59
+      ],
+      "sourceBitmaps": [
+        58
+      ],
+      "sourceInstance": "btn_drop",
+      "sourceButton": 60,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "sell-up.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "de76ffb8d9ae8f13a4ae31e2c5610d0f18f182ce9b3340135c1f4c6d72733d4b",
+      "sourceShapes": [
+        52
+      ],
+      "sourceBitmaps": [
+        51
+      ],
+      "sourceInstance": "btn_sell",
+      "sourceButton": 55,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "sell-over.png": {
+      "source": "data/image/item/item_panel_ch.swf",
+      "sourceSha256": "cbf82ae008ddc012c94bb33d0ccce6fa1ffbdb0247d0f7902bdc4b38251c8293",
+      "sha256": "42fcb37ee01319d5f33ccd8c95608903182ac9179950e7d18b4d1ed3a3a272cb",
+      "sourceShapes": [
+        54
+      ],
+      "sourceBitmaps": [
+        53
+      ],
+      "sourceInstance": "btn_sell",
+      "sourceButton": 55,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "tile-selected.png": {
+      "source": "data/image/item/item_base.swf",
+      "sourceSha256": "c23eb83f57ebb441f9ecde51fffec8c539d5ebb20244f06485fb13e4c1897324",
+      "sha256": "674a977098e03cc8212f24d2055b0d6101c329a9889298238936bacb3be87dc8",
+      "sourceShapes": [
+        1
+      ],
+      "sourceBitmaps": [],
+      "sourceFrame": 1
+    },
+    "tile-up.png": {
+      "source": "data/image/item/item_base.swf",
+      "sourceSha256": "c23eb83f57ebb441f9ecde51fffec8c539d5ebb20244f06485fb13e4c1897324",
+      "sha256": "5befd1183ba2d18bec07ca952833b57bb1e60e191b84e57489c91a0ad0ce4d98",
+      "sourceShapes": [
+        1,
+        3
+      ],
+      "sourceBitmaps": [],
+      "sourceInstance": "btn_base",
+      "sourceButton": 7,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "tile-over.png": {
+      "source": "data/image/item/item_base.swf",
+      "sourceSha256": "c23eb83f57ebb441f9ecde51fffec8c539d5ebb20244f06485fb13e4c1897324",
+      "sha256": "fdbe3aa04f31b77b9c24f8b23255ef174ce2cc8cc07c75ea8375a4ce65ea0e88",
+      "sourceShapes": [
+        1,
+        5
+      ],
+      "sourceBitmaps": [],
+      "sourceInstance": "btn_base",
+      "sourceButton": 7,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "tile-equip.png": {
+      "source": "data/image/item/item_base.swf",
+      "sourceSha256": "c23eb83f57ebb441f9ecde51fffec8c539d5ebb20244f06485fb13e4c1897324",
+      "sha256": "24271e1053c74fa98fbdc8ae55194d74564fabbc991ce7367e55191e4090d528",
+      "sourceShapes": [
+        9
+      ],
+      "sourceBitmaps": [
+        8
+      ],
+      "sourceInstance": "equip",
+      "sourceFrame": 1
+    },
+    "main-item-title.woff": {
+      "source": "res/data/cwming.ttf",
+      "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "28a363ca0c25903c123c8a9aa2db97b651acbc67f67cc095c0b518f1d622eba7",
+      "glyphs": "品息所持訊"
+    },
+    "main-item-labels.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "a1af1ef3bfe344c86a59927e6304b1b592653709117b0fcac830cfb1be6f68b2",
+      "glyphs": "CET上下人任務嘴型對戰手擊擬服殊物特眼睛禮突臂臉色虛衣身鞋頭顏體髮"
+    },
+    "main-item-detail.woff": {
+      "source": "res/data/cwming.ttf",
+      "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "1b8d57762e6a8d5cffc3a367df6244d3aebbcbb820bf028acbf7823efea06328",
+      "glyphs": " %()+,-./0123456789:?ABCDEFGHILMOPRSUVW[]_abdeghilmnostuvxαβγ…。「」一三上下不丑世丘中丹主乃之乳乾了事亞亡人仔代以任伊伍休伯佛你使來侍依侵修個倫值假偶傑傘備傳傷像儀優元光克兜內全公其具典冠冥冬凱凶出刀分列判別利刪到制券刺前劍力加勒動務勝勞勵包化區升半協南卡印卷及友反取受口古只可史右合同名君含吸周命和咒品哇哈哥哭問啾喚單嘴器四回圈國圍圖在地坐型域基塊塔境墜增墨壞士夏外多夠夢大天太夫失夾奇奈套奧女好妖妙妮妲姆始姬姿威娃娜婦婪媞子字季守安完官定家寄寡寧審寫寶將專尋導小尤就尼尾居屐層屬山岩左巧巨差巾布希帕帶常帽幣年幸幻幼幽度庫康廉廢式弗強彈彩影往待律後得徙從復德心忍念怒思急性恢恩情惑惡惰愛憤憶懶成戒戮戰戲所手托扶找投披抽拉拐拖招持指掉探接提插搜搭摩撲擇擊擬擺收改放效救敗散數斗斛斯新方於旋旗日明昏星是時普晶暗曜曬曲書最會月有朋服朗期木本朱李材杖束杯板枕林果查柯核根格桂桃案桑梅梢械棄棍森棺楠極模樹橘橙機檳櫃櫥欄權次款此歪死殘殺每比毛氣水汀汪沃沌沒沙油況法波泰泳洋洛活浮浴海消液涼淚淡淨深淵混渦測準滿漏漸潑潔灘灰災炎為烈烏無熟熱爾片牌牛牡物特牽狐獎獲獸玄王玻珍珠現球琳琴瑞瑟瑪璃環瓜瓦甜生用甲界略畫異當痕發白的皇盒目直真眼睡瞬知短石砂破硬碎碧碼磁示神票福禮秘稀種空突竹符筒算管箱節篷籃籌籤米粉粽精糕糖紀紅純級素索紫組結絲經綠綢維綻綿緊緋緞緹縫縮繃繪繼續缸罩置羅羊美義羽翅習翠翡翼老者耳聖聲肖肩肯背能脛腰膀膝膠自至與舊色艷艾芒芙花苞若茉茱茵茶草莉莫菇菈菲萃萬葉著蒂蕉蕾薩薰藍藏藥蘑蘭虎虛號虹蚊蛙蝙蝠蝴蝶螺血行術衣衫袋袍裁裙裝製複褐褲襪襯襲西要覆見角計討記訝詛試詭話該誕諾證識議護變豔豬貝財貪貴質贈赤超越趴跡路跳身軍軟載輪近迪迷追送逃逐這通連週進逼遊運道達遠遮遷選那邸都里重量金針鈴銀銅鋼錄鍊鎧鏡鐘鐵鐺長門開閒間闇防阿附限除陸陽隆隊隨隱雄雅集雙難雨雪零雷電需露靈青靛面靴鞋音響頁頭顯風飢飾餅餓館首香馬馴驗驚骰體高髮鬍鬚鬥鬼魔魯鳥鹿麗麻黃黑點鼻齒龍（），７：ＡＢ",
+      "detailText": [
+        {
+          "source": "app/server/data/csv/ja/AvatarItems.csv",
+          "sourceSha256": "4621c7cf928cb37c289637cfc632f7dac7c1deb36e1bbdcc60fe88f143d936f9",
+          "columns": [
+            "name_tcn",
+            "caption_tcn"
+          ]
+        },
+        {
+          "source": "app/server/data/csv/ja/AvatarParts.csv",
+          "sourceSha256": "173518d3d7e1dcb75130ef1f1808d282bb5c4252c46d8bca2c7c5c3133eaa084",
+          "columns": [
+            "name_tcn",
+            "caption_tcn"
+          ]
+        }
+      ],
+      "missingGlyphs": "纸髪黒"
+    }
+  }
+}

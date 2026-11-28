@@ -267,6 +267,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
 
 新版加速主角色的瀏覽器計時，第二個帳號和 Ruby 使用真實時間。暫緩與放行由服務送出的 `SC12`，確認同一畫面在收到回覆前後的好友狀態。其餘檢查涵蓋搜尋、待刷新時關窗、設定的同登入頁次、邀請碼的窗體座標和轉場、剪貼簿及同一組連線。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [好友規格](lobby-views.md#好友定時刷新與邀請碼)
 
+### 重跑大廳整頁道具
+
+使用完成教學的隔離角色，先在原版結清啟動通知。測例持有魔女秘藥 #3、抽獎券 #9、虛擬人物道具 #27 及六件實體外觀，容量為 30，且付款表無待發放的已付款項目。兩版從大廳中央 `btn_e` 進入道具頁，切換身體、服飾、飾品，並返回同一大廳。另點魔女秘藥顯示詳情，再切到對戰清掉選取，核對空清單。[原版四分頁](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-source/original-four-tabs.png) · [原版詳情](/workspace/shared/unlight-web-port/flash-parity/lobby-main-item-live/original-detail/05-original-magic-potion-selected.png)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4396 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user friendpaneown --quest-start-password-file /path/to/private-password \
+  --lobby-main-item --screens /tmp/unlight-lobby-main-item
+```
+
+測例對照 Data `SC6` 內的實體道具、外觀、裝備位元、到期秒數及容量。核對 Lobby 的 `CS17`、`CS25(0)`、實際回覆與同一組連線。道具頁每個子分類按原版定義轉換，驗收沒有發出使用、裝備或丟棄的命令，並確認 SQLite 庫存及付款列。驗收器監看 `ulse02`、`ulse01` 的播放，並確認 `ulbgm02` 保留同一個持續播放的聲道。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [整頁道具規格](lobby-views.md#道具與外觀)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

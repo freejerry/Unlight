@@ -32,6 +32,7 @@ export const QUEST_EXP_REPLY = 7;
 export const QUEST_LEVEL_REPLY = 8;
 export const QUEST_GEMS_REPLY = 10;
 export const QUEST_ITEM_GRANTED_REPLY = 11;
+export const QUEST_PART_GRANTED_REPLY = 133;
 export const QUEST_CHARACTER_AWARD_REPLY = 13;
 export const QUEST_MAP_FLAG_REPLY = 26;
 export const QUEST_MAP_CLEAR_COUNT_REPLY = 28;
@@ -128,7 +129,8 @@ const settlementFields = {
 const questFields = [
   4, skipString, 11 * 4, // Avatar header.
   { key: 'partCount', width: 4 }, optionalList('partInventoryIds', MAX_PART_LIST_BYTES),
-  optionalList('partIds', MAX_PART_LIST_BYTES), optionalList('partUsage', MAX_PART_LIST_BYTES), skipString,
+  optionalList('partIds', MAX_PART_LIST_BYTES), optionalList('partUsage', MAX_PART_LIST_BYTES),
+  optionalList('partTimes', MAX_PART_LIST_BYTES),
   { key: 'itemCount', width: 4 }, optionalList('itemInventoryIds', MAX_CARD_LIST_BYTES),
   optionalList('itemIds', MAX_CARD_LIST_BYTES), optionalList('itemStates', MAX_CARD_LIST_BYTES),
   { key: 'deckCount', width: 4 }, optionalList('deckNames'), ...skipStrings(3),
@@ -149,7 +151,7 @@ const questFields = [
 ];
 const fields = [
   ...questFields,
-  { key: 'friendMax', width: 4 }, 4, { key: 'freeDuelCount', width: 1 }, // friend_max, part_max, free_duel_count.
+  { key: 'friendMax', width: 4 }, { key: 'partMax', width: 4 }, { key: 'freeDuelCount', width: 1 },
   3 * 4, { key: 'currentDeck', width: 1 }, // Original exp, gem and Quest find power, then current_deck.
   1 + 5 * 4, // Sale type/time, favorite character, tower floor, and event flag/count.
   { key: 'tutorialQuestFlag', width: 4 },
@@ -165,7 +167,7 @@ function integerList(csv, signed = false) {
   return list;
 }
 
-function readEquippedPartIds({ partCount, partInventoryIds, partIds, partUsage }) {
+function readPhysicalParts({ partCount, partInventoryIds, partIds, partUsage }) {
   if (!Number.isInteger(partCount) || partCount < 0 || [partInventoryIds, partIds, partUsage].includes(undefined)) {
     return null;
   }
@@ -178,7 +180,17 @@ function readEquippedPartIds({ partCount, partInventoryIds, partIds, partUsage }
     || usage.some((bits) => bits > MAX_INT32)) {
     return null;
   }
-  return Object.freeze(ids.filter((_, index) => (usage[index] & EQUIPPED_PART) === EQUIPPED_PART));
+  return { inventoryIds, ids, usage };
+}
+
+function readAvatarPartRows(values, receivedAt) {
+  const parts = readPhysicalParts(values);
+  if (!parts || values.partTimes === undefined) return null;
+  const remaining = integerList(values.partTimes, true);
+  if (remaining.length !== parts.ids.length || remaining.some(seconds => seconds < MIN_INT32 || seconds > MAX_INT32)) return null;
+  return Object.freeze(parts.inventoryIds.map((inventoryId, index) => Object.freeze({
+    inventoryId, partId: parts.ids[index], used: parts.usage[index], remainingSeconds: remaining[index], receivedAt,
+  })));
 }
 
 function readOwnedItems({ itemCount, itemInventoryIds, itemIds, itemStates }) {
@@ -554,6 +566,35 @@ export function readQuestItemReply(reply) {
   return { inventoryId, itemId };
 }
 
+export function readAvatarPartGrantReply(reply) {
+  const inventoryId = reply.int();
+  const partId = reply.int();
+  reply.done();
+  if (inventoryId < 1 || partId < 1) throw new Error('Invalid part grant.');
+  return { inventoryId, partId };
+}
+
+export function readAvatarPartEquipReply(reply) {
+  const inventoryId = reply.int();
+  const unequipped = integerList(reply.string(MAX_PART_LIST_BYTES, true));
+  const remainingSeconds = reply.int();
+  const used = reply.byte();
+  reply.done();
+  if (inventoryId < 0 || used < 0 || used > 3
+    || unequipped.some(id => id < 1 || id > MAX_INT32 || id === inventoryId)
+    || new Set(unequipped).size !== unequipped.length
+    || (inventoryId === 0 && (used !== 0 || remainingSeconds !== 0))) throw new Error('Invalid part equipment update.');
+  return { inventoryId, unequipped, remainingSeconds, used };
+}
+
+export function readAvatarPartVanishReply(reply) {
+  const inventoryId = reply.int();
+  const alert = readDuelBoolean(reply);
+  reply.done();
+  if (inventoryId < 1) throw new Error('Invalid removed part.');
+  return { inventoryId, alert };
+}
+
 function readDuelCardIds(reply) {
   const ids = integerList(reply.string(MAX_ID_LIST_BYTES, true));
   if (ids.some((id) => id === 0 || id > MAX_INT32)) throw new Error('Invalid duel card ID.');
@@ -872,7 +913,15 @@ export function createQuestDataReader() {
     },
     equippedPartIds() {
       try {
-        return readEquippedPartIds(values);
+        const parts = readPhysicalParts(values);
+        return parts ? Object.freeze(parts.ids.filter((_, index) => (parts.usage[index] & EQUIPPED_PART) !== 0)) : null;
+      } catch {
+        return null;
+      }
+    },
+    partInventory(receivedAt) {
+      try {
+        return readAvatarPartRows(values, receivedAt);
       } catch {
         return null;
       }
@@ -883,6 +932,10 @@ export function createQuestDataReader() {
     },
     friendMax() {
       const total = values.friendMax;
+      return total >= 0 ? total : null;
+    },
+    partMax() {
+      const total = values.partMax;
       return total >= 0 ? total : null;
     },
     deckChoices() {

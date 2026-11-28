@@ -1,6 +1,7 @@
 import { registerAccount, SessionError, startSession } from '/session.js';
 import { fadeTitleMusic, playBackClick, playLobbyClick, playQuestBattleEffect, playTitleAlert, selectQuestDuelMusic } from './bgm.js';
 import { mountLobby } from './lobby.js';
+import { mountLobbyMainItem } from './lobby-main-item.js';
 import { mountOnboarding } from './onboarding.js';
 import { mountOptions } from './options.js';
 import { mountQuestMap } from './quest-map.js';
@@ -73,6 +74,7 @@ let alertReturnFocus = null;
 let activeSession = null;
 let cleanupScreen;
 let optionExit;
+let itemRoute;
 let questRoute;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const lobbyFadeMs = 800 / 1.7;
@@ -268,6 +270,7 @@ function changeScreen(screen, soundscape = screen) {
   optionExit?.cancel();
   optionExit = undefined;
   delete stage.dataset.optionTransition;
+  delete stage.dataset.itemTransition;
   delete stage.dataset.questTransition;
   cleanupScreen?.();
   cleanupScreen = undefined;
@@ -281,6 +284,9 @@ function changeScreen(screen, soundscape = screen) {
 function returnToTitle(session, reason, focus = true) {
   if (activeSession !== session) return;
   activeSession = null;
+  itemRoute?.controller.abort();
+  itemRoute?.animation?.cancel();
+  itemRoute = undefined;
   questRoute?.controller.abort();
   questRoute?.animation?.cancel();
   questRoute = undefined;
@@ -312,6 +318,7 @@ function showLobby(session, returnFocus) {
     fadeIn,
     returnFocus,
     onOptions: () => switchOptions(session, true),
+    onMainItem: () => switchMainItem(session, true),
     onQuest: () => openQuest(session),
     onSelectableClaimed: confirmLobbyReward,
     onFriendSearchInvalid: showFriendSearchError,
@@ -323,7 +330,7 @@ function showLobby(session, returnFocus) {
 async function switchOptions(session, opening) {
   const current = opening ? 'lobby' : 'options';
   const view = postLogin.firstElementChild;
-  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit || questRoute) return;
+  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit || itemRoute || questRoute) return;
   if (opening) session.refreshLobbyAvatar?.();
 
   if (!reducedMotion.matches) {
@@ -352,6 +359,59 @@ async function switchOptions(session, opening) {
   } else {
     showLobby(session, '#lobby-option-open');
   }
+}
+
+async function switchMainItem(session, opening) {
+  const current = opening ? 'lobby' : 'main-item';
+  const view = postLogin.firstElementChild;
+  if (!view || activeSession !== session || stage.dataset.screen !== current || optionExit || questRoute) return;
+  if (opening ? Boolean(itemRoute) : !itemRoute || itemRoute.leaving) return;
+
+  if (opening) {
+    itemRoute = { controller: new AbortController() };
+    playLobbyClick();
+    session.checkLobbyItemEntry({ signal: itemRoute.controller.signal });
+  } else {
+    itemRoute.leaving = true;
+  }
+  const route = itemRoute;
+  const { signal } = route.controller;
+  view.inert = true;
+  stage.dataset.itemTransition = opening ? 'to-item' : 'from-item';
+  if (!reducedMotion.matches) {
+    const duration = lobbyFadeMs + (opening ? 0 : 500 / 1.7);
+    const frames = [{ opacity: 1, easing: sineOut }, { opacity: 0, offset: lobbyFadeMs / duration }];
+    // The ItemView exits through the AvatarView hide thread while the container is already black.
+    if (!opening) frames.push({ opacity: 0 });
+    route.animation = view.animate(frames, { duration, fill: 'forwards' });
+    await route.animation.finished.catch(() => {});
+    if (itemRoute !== route || signal.aborted) return;
+  }
+  if (!opening) {
+    itemRoute = undefined;
+    route.controller.abort();
+    showLobby(session, '#lobby-main-item-open');
+    return;
+  }
+
+  changeScreen('main-item', 'lobby');
+  stage.dataset.itemTransition = 'joining';
+  const scene = mountLobbyMainItem(postLogin, { session, signal, onBack: () => switchMainItem(session, false) });
+  cleanupScreen = scene.dispose;
+  const itemView = postLogin.firstElementChild;
+  itemView.inert = true;
+  if (!reducedMotion.matches) {
+    // ItemView joins the avatar and the title animations before attaching its container to the stage.
+    const joinMs = (0.2 + 1.5 + 0.8) * 1000 / 1.7;
+    route.animation = itemView.animate([{ opacity: 0 }, { opacity: 0 }], { duration: joinMs, fill: 'both' });
+  }
+  await Promise.allSettled([scene.ready, route.animation?.finished]);
+  if (itemRoute !== route || signal.aborted) return;
+  route.animation?.cancel();
+  route.animation = undefined;
+  itemView.inert = false;
+  delete stage.dataset.itemTransition;
+  itemView.querySelector('h1[tabindex="-1"]')?.focus({ preventScroll: true });
 }
 
 async function fadeQuestRoute(route, transition) {
@@ -413,7 +473,7 @@ async function leaveQuest(route) {
 }
 
 async function openQuest(session) {
-  if (activeSession !== session || stage.dataset.screen !== 'lobby' || questRoute || optionExit) return;
+  if (activeSession !== session || stage.dataset.screen !== 'lobby' || questRoute || optionExit || itemRoute) return;
   const route = { session, controller: new AbortController() };
   const { signal } = route.controller;
   questRoute = route;

@@ -21,7 +21,7 @@ const layout = `
         <li data-symbol="btn_i"><span class="sr-only">商店</span></li>
         <li data-symbol="btn_j"><span class="sr-only">暗房</span></li>
         <li data-symbol="btn_g"><span class="sr-only">牌組</span></li>
-        <li data-symbol="btn_e"><span class="sr-only">道具</span></li>
+        <li data-symbol="btn_e"><button id="lobby-main-item-open" class="source-lobby-item-entry" type="button" aria-label="道具"></button></li>
         <li data-symbol="btn_c"><span class="sr-only">圖書館</span></li>
       </ul>
       <ul class="play-entries" aria-label="遊戲入口">
@@ -102,7 +102,7 @@ export function bindLobbyFriendIndicator(trigger, { session, signal }) {
   }, { signal });
 }
 
-export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed,
+export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onMainItem, onQuest, onSelectableClaimed,
   onFriendSearchInvalid, onFriendConfirm, onFriendError }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
@@ -192,6 +192,12 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
   const canOpenQuest = typeof onQuest === 'function';
   quest.disabled = true;
   if (canOpenQuest) quest.addEventListener('click', onQuest, { signal });
+  const mainItem = view.querySelector('#lobby-main-item-open');
+  const canOpenMainItem = typeof onMainItem === 'function';
+  mainItem.disabled = true;
+  if (canOpenMainItem) mainItem.addEventListener('click', () => {
+    if (canOpenSidePanel() && !record.isOpen() && !item.isOpen() && !friend.isOpen()) onMainItem();
+  }, { signal });
   news.addEventListener('close', () => {
     title.focus({ preventScroll: true });
     presentNotices();
@@ -212,6 +218,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     ready = true;
     options.disabled = !canOpenOptions;
     quest.disabled = !canOpenQuest;
+    mainItem.disabled = !canOpenMainItem;
     recordTrigger.disabled = false;
     friendTrigger.disabled = false;
     itemTrigger.disabled = false;

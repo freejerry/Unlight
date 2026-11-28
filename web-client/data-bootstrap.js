@@ -43,6 +43,8 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
   let quests = createQuestDataReader();
   let equippedPartIds = null;
   let friendMax = null;
+  let partMax = null;
+  let partRows = null;
   let avatarItemInventory = null;
   const cancel = () => {
     void reader?.cancel().catch(() => {});
@@ -78,6 +80,8 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
         } catch {
           equippedPartIds = quests.equippedPartIds();
           friendMax = quests.friendMax();
+          partMax = quests.partMax();
+          partRows = quests.partInventory(receivedAt);
           avatarItemInventory = quests.itemInventory();
           quests.dispose();
           quests = null;
@@ -101,6 +105,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       energyReceivedAt: null,
       freeDuelCount: quests?.freeDuelCount() ?? null,
       friendMax: quests?.friendMax() ?? friendMax,
+      partMax: quests?.partMax() ?? partMax,
       equippedPartIds: quests?.equippedPartIds() ?? equippedPartIds,
       questDecks: quests?.deckChoices() ?? [],
     };
@@ -123,7 +128,8 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
     } catch {
       // A quest schema mismatch leaves the independently validated avatar available.
     }
-    const profile = { avatar, questData, avatarItemInventory };
+    const avatarPartInventory = { rows: quests?.partInventory(receivedAt) ?? partRows, receivedAt };
+    const profile = { avatar, questData, avatarItemInventory, avatarPartInventory };
     if (includeDeckCollection) {
       profile.deckCollection = quests?.deckCollection() ?? null;
       profile.selectedDeck = quests?.selectedDeck() ?? null;

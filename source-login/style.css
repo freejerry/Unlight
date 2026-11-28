@@ -67,7 +67,8 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 }
 
 #post-login { position: absolute; inset: 0; }
-#stage:is([data-option-transition], [data-quest-transition], [data-screen="quest-pending"], [data-screen="quest-exiting"]) {
+#stage:is([data-option-transition], [data-item-transition], [data-quest-transition],
+    [data-screen="quest-pending"], [data-screen="quest-exiting"]) {
   background: var(--source-stage-gutter) right top / 20px 100% no-repeat, #000;
 }
 

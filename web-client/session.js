@@ -31,7 +31,7 @@ import {
   QUEST_REWARD_HIGH_REQUEST, QUEST_REWARD_LOW_REQUEST, QUEST_REWARD_NEXT_REQUEST, QUEST_REWARD_TAKE_REQUEST,
   QUEST_REWARD_AWARD_REPLY, QUEST_REWARD_CANDIDATES_REPLY, QUEST_REWARD_BASE_DICE_REPLY,
   QUEST_REWARD_DECISION_REPLY, QUEST_REWARD_ROLLED_DICE_REPLY, QUEST_REWARD_FINAL_REPLY,
-  QUEST_ITEM_USE_REQUEST, QUEST_ITEM_GRANTED_REPLY, QUEST_ITEM_CONSUMED_REPLY,
+  QUEST_ITEM_USE_REQUEST, QUEST_ITEM_GRANTED_REPLY, QUEST_ITEM_CONSUMED_REPLY, QUEST_PART_GRANTED_REPLY,
   readQuestDeletedReply, readQuestDiscoveryReply, readQuestInventoryReply, readQuestMapReply,
   readQuestSearchReply, readQuestEnergyReply, readQuestErrorReply,
   readQuestNextLandReply, readQuestEncounterReply, readQuestDuelStartReply,
@@ -43,6 +43,7 @@ import {
   readQuestHandEffectReply,
   readQuestCharaChangeReply, readQuestRosterHpReply, readQuestCharaTransformReply,
   readQuestSettlementValueReply, readQuestCharacterAwardReply, readQuestRewardReply, readQuestItemReply,
+  readAvatarPartGrantReply, readAvatarPartEquipReply, readAvatarPartVanishReply,
 } from './quest-data.js';
 
 const AUTH_PORT = 12001;
@@ -79,9 +80,11 @@ const LOBBY_SELECTABLE_REWARD_REQUEST = 51;
 const LOBBY_PONG = 35;
 const LOBBY_REFRESH_AVATAR = 17;
 const LOBBY_USE_ITEM_REQUEST = 18;
+const LOBBY_PAID_INVENTORY_CHECK = 25;
 const LOBBY_ENERGY_REPLY = 17;
 const LOBBY_ENERGY_MAX_REPLY = 18;
 const LOBBY_FRIEND_MAX_REPLY = 19;
+const LOBBY_PART_MAX_REPLY = 20;
 const LOBBY_LEVEL_REPLY = 22;
 const LOBBY_DECK_EXP_REPLY = 23;
 const LOBBY_DECK_LEVEL_REPLY = 24;
@@ -90,7 +93,10 @@ const LOBBY_ITEM_GRANTED_REPLY = 27;
 const LOBBY_ITEM_CONSUMED_REPLY = 28;
 const LOBBY_CHARACTER_GRANTED_REPLY = 31;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
+const LOBBY_PART_EQUIP_REPLY = 43;
+const LOBBY_PART_GRANTED_REPLY = 44;
 const LOBBY_RECOVERY_INTERVAL_REPLY = 45;
+const LOBBY_PART_VANISH_REPLY = 50;
 const LOBBY_NOTICE_REPLY = 54;
 const LOBBY_SELECTABLE_OPTIONS_REPLY = 71;
 const LOBBY_SELECTABLE_RESULT_REPLY = 72;
@@ -571,6 +577,11 @@ function observeLobbyAvatar(reply, publish) {
         if (friendMax >= 0) patch = { friendMax };
         break;
       }
+      case LOBBY_PART_MAX_REPLY: {
+        const capacity = reply.int();
+        if (capacity >= 0) event = { kind: 'part-capacity', capacity, receivedAt: performance.now() };
+        break;
+      }
       case LOBBY_RECOVERY_INTERVAL_REPLY: {
         const energyRecoveryInterval = reply.int();
         if (energyRecoveryInterval > 0) patch = { energyRecoveryInterval };
@@ -600,6 +611,15 @@ function observeLobbyAvatar(reply, publish) {
         if (inventoryId > 0) event = { kind: 'item-used', inventoryId };
         break;
       }
+      case LOBBY_PART_EQUIP_REPLY:
+        event = { kind: 'part-equip', ...readAvatarPartEquipReply(reply), receivedAt: performance.now() };
+        break;
+      case LOBBY_PART_GRANTED_REPLY:
+        event = { kind: 'part-grant', ...readAvatarPartGrantReply(reply), receivedAt: performance.now() };
+        break;
+      case LOBBY_PART_VANISH_REPLY:
+        event = { kind: 'part-vanish', ...readAvatarPartVanishReply(reply) };
+        break;
       case LOBBY_NOTICE_REPLY:
         event = { kind: 'selectable-notices', achievementIds: readSelectableLobbyNotices(reply) };
         break;
@@ -3233,14 +3253,15 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   };
 }
 
-function activeSession(auth, channels, playerId, sessionKey, { questData, avatarItemInventory, ...initialData }, attachLobbyAvatar,
-  lobbyStartupComplete, startupLobbyEvents, achievementRecords) {
+function activeSession(auth, channels, playerId, sessionKey, { questData, avatarItemInventory, avatarPartInventory, ...initialData },
+  attachLobbyAvatar, lobbyStartupComplete, startupLobbyEvents, achievementRecords) {
   const lobby = channels.find(({ port }) => port === LOBBY_PORT);
   const data = channels.find(({ port }) => port === DATA_PORT);
   const registrationOptions = avatarRegistrationOptions(initialData.registration);
   let registrationState = registrationOptions ? 'available' : 'unavailable';
   let confirmedAvatar = null;
   let registrationLobbyPatch = null;
+  const registrationPartEvents = [];
   let lastLobbyRefresh = -Infinity;
   let lobbyStartupPending = Boolean(initialData.avatar && !lobbyStartupComplete);
   let lobbyRefresh;
@@ -3251,6 +3272,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
   const lobbyAchievementSubscriptions = new Set();
   const pendingLobbyAchievements = new Set();
   const checkedLobbyShows = new WeakSet();
+  const checkedItemEntries = new WeakSet();
   const selectableLobbyAchievements = new Map();
   let selectableLobbyNoticeIds = new Set();
   let selectableLobbyClaim;
@@ -3277,6 +3299,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
   const removedAvatarItems = new Set();
   const uncertainLobbyItemUses = new Set();
   let lobbyItemUse;
+  const avatarPartSubscriptions = new Set();
+  const removedAvatarParts = new Set();
+  let avatarParts = new Map((avatarPartInventory?.rows ?? []).map(part => [part.inventoryId, part]));
+  let avatarPartStatus = avatarPartInventory?.rows ? 'ready' : 'unknown';
+  let avatarPartBaselineAt = avatarPartInventory?.receivedAt ?? -Infinity;
+  let avatarPartSnapshot = partSnapshot();
   const friendLifetime = new AbortController();
   const friendPages = new Map();
   const friendAvatars = new Map();
@@ -3308,6 +3336,89 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     avatarItems = new Map((rows ?? []).map(item => [item.inventoryId, item]));
     avatarItemStatus = rows ? 'ready' : 'unknown';
     publishAvatarItems();
+  }
+
+  function partSnapshot() {
+    return Object.freeze({
+      status: avatarPartStatus, capacity: initialData?.avatar?.partMax ?? null,
+      rows: Object.freeze([...avatarParts.values()]),
+    });
+  }
+
+  function publishAvatarParts() {
+    avatarPartSnapshot = partSnapshot();
+    for (const subscription of [...avatarPartSubscriptions]) {
+      if (avatarPartSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, avatarPartSnapshot);
+    }
+  }
+
+  function replaceAvatarParts(inventory) {
+    avatarParts = new Map((inventory?.rows ?? []).map(part => [part.inventoryId, part]));
+    avatarPartStatus = inventory?.rows ? 'ready' : 'unknown';
+    avatarPartBaselineAt = inventory?.receivedAt ?? -Infinity;
+    removedAvatarParts.clear();
+    publishAvatarParts();
+  }
+
+  function updateEquippedParts() {
+    if (avatarPartStatus !== 'ready') return false;
+    const avatar = initialData.avatar;
+    const ids = [];
+    for (const part of avatarParts.values()) {
+      if (part.used & 1) ids.push(part.partId); // Original APS_USED, separate from APS_ACTIVATED.
+    }
+    if (avatar.equippedPartIds?.length === ids.length && avatar.equippedPartIds.every((id, index) => id === ids[index])) {
+      return false;
+    }
+    avatar.equippedPartIds = Object.freeze(ids);
+    return true;
+  }
+
+  function applyAvatarPartEquipment({ inventoryId, unequipped, remainingSeconds, used, receivedAt }) {
+    const part = avatarParts.get(inventoryId);
+    if ((inventoryId && !part) || unequipped.some(id => !avatarParts.has(id))) return false;
+    let changed = false;
+    for (const id of unequipped) {
+      const previous = avatarParts.get(id);
+      if (!(previous.used & 1)) continue;
+      avatarParts.set(id, Object.freeze({ ...previous, used: previous.used & ~1 }));
+      changed = true;
+    }
+    if (part && (part.used !== used || part.remainingSeconds !== remainingSeconds || remainingSeconds !== 0)) {
+      avatarParts.set(inventoryId, Object.freeze({ ...part, used, remainingSeconds, receivedAt }));
+      changed = true;
+    }
+    return changed;
+  }
+
+  function recordAvatarPartEvent(event) {
+    const avatar = initialData?.avatar;
+    if (!avatar) {
+      // After the accepted creation profile, retain later receipts through the Data rebind.
+      if (registrationLobbyPatch || confirmedAvatar) registrationPartEvents.push(event);
+      return;
+    }
+    const { kind, inventoryId, partId, receivedAt } = event;
+    if (kind === 'part-capacity') {
+      if (avatar.partMax === event.capacity || (avatar.partMax !== null && receivedAt < avatarPartBaselineAt)) return;
+      avatar.partMax = event.capacity;
+      publishAvatarParts();
+      publishAvatar();
+      return;
+    }
+    if (kind === 'part-grant') {
+      if (avatarParts.has(inventoryId) || removedAvatarParts.has(inventoryId)) return;
+      avatarParts.set(inventoryId, Object.freeze({ inventoryId, partId, used: 0, remainingSeconds: 0, receivedAt }));
+      if (avatarPartStatus === 'unknown') avatarPartStatus = 'partial';
+    } else if (kind === 'part-vanish') {
+      removedAvatarParts.add(inventoryId);
+      if (!avatarParts.delete(inventoryId)) return;
+    } else if (kind === 'part-equip') {
+      if (receivedAt < avatarPartBaselineAt || !applyAvatarPartEquipment(event)) return;
+    }
+    const equipmentChanged = updateEquippedParts();
+    publishAvatarParts();
+    if (equipmentChanged) publishAvatar();
   }
 
   function removeAvatarItem(inventoryId) {
@@ -3377,7 +3488,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     }
   }
 
-  function subscribeFriend(subscriptions, listener, signal) {
+  function subscribeSessionValue(subscriptions, listener, signal) {
     const subscription = { listener, unsubscribe() {
       subscriptions.delete(subscription);
       signal?.removeEventListener('abort', subscription.unsubscribe);
@@ -3527,6 +3638,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
   }
 
   function recordLobbyEvent(event) {
+    if (event.kind.startsWith('part-')) {
+      recordAvatarPartEvent(event);
+      return;
+    }
     if (!initialData?.avatar) return;
     if (event.kind === 'friend-write') {
       recordFriendWrite(event);
@@ -3755,6 +3870,34 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     }
   }
 
+  function refreshLobbyAvatar() {
+    const now = performance.now();
+    if (!initialData?.avatar || profileRequest || questRequest || questReturn) return false;
+    if (questScene?.energyOwned) {
+      if (!canRefreshSceneEnergy(questScene)) return false;
+      if (!lobbyRefresh) return sendLobbyRefresh(questScene);
+      if (!lobbyRefresh.scene) queuedEnergyRefresh = questScene;
+      return false;
+    }
+    if (now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
+    return sendLobbyRefresh();
+  }
+
+  function checkLobbyItemEntry({ signal } = {}) {
+    if (!(signal instanceof AbortSignal) || signal.aborted || checkedItemEntries.has(signal) || !initialData?.avatar
+      || !lobby.verified || profileRequest || questRequest || questReturn || questScene || adventure) return false;
+    try {
+      auth.assertOpen();
+      refreshLobbyAvatar();
+      // Ruby checks only existing paid orders. Only the usual typed inventory grants change the local stock.
+      lobby.socket.send(LOBBY_PAID_INVENTORY_CHECK, [0]);
+      checkedItemEntries.add(signal);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function canRefreshSceneEnergy(scene) {
     return scene && scene === questScene && scene.state === 'open' && scene.energyRefreshDue && !profileRequest
       && !questRequest && !questReturn && initialData?.avatar;
@@ -3843,6 +3986,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       questData = null;
       achievementRecords.close();
       for (const subscription of avatarItemSubscriptions) subscription.unsubscribe();
+      for (const subscription of avatarPartSubscriptions) subscription.unsubscribe();
+      registrationPartEvents.length = 0;
       for (const subscription of friendSubscriptions) subscription.unsubscribe();
       for (const subscription of friendChangeSubscriptions) subscription.unsubscribe();
       friendLifetime.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
@@ -3855,6 +4000,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       removedAvatarItems.clear();
       uncertainLobbyItemUses.clear();
       replaceAvatarItems(null);
+      replaceAvatarParts(null);
       confirmedAvatar = null;
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       for (const subscription of lobbyAchievementSubscriptions) subscription.unsubscribe();
@@ -3959,6 +4105,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     const task = queryQuest(playerId, sessionKey, controller.signal, read, (reply, channel) => {
       if (channel.verified) {
         try {
+          if (reply.command === QUEST_PART_GRANTED_REPLY) {
+            recordAvatarPartEvent({ kind: 'part-grant', ...readAvatarPartGrantReply(reply), receivedAt: performance.now() });
+            return true;
+          }
           if (observeAchievementReply(reply, QUEST_ACHIEVEMENT_REPLIES, achievementRecords.apply)) return true;
         } catch {
           return true;
@@ -4712,6 +4862,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     },
     canUseLobbyAvatarItem,
     useLobbyAvatarItem,
+    readAvatarParts() {
+      return avatarPartSnapshot;
+    },
+    subscribeAvatarParts(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      const unsubscribe = subscribeSessionValue(avatarPartSubscriptions, listener, signal);
+      notifyLobbyListener(listener, avatarPartSnapshot);
+      return unsubscribe;
+    },
+    checkLobbyItemEntry,
     async readLobbyFriendPage(type, offset, { signal, refresh = false } = {}) {
       if (!Number.isInteger(type) || type < 0 || type > 2 || !Number.isInteger(offset) || offset < 0 || offset > 0x7fffffff) {
         throw new SessionError('friend-data-unavailable');
@@ -4765,7 +4925,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     hasIncomingLobbyFriendRequest,
     subscribeLobbyFriendRequests(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
-      const unsubscribe = subscribeFriend(friendSubscriptions, listener, signal);
+      const unsubscribe = subscribeSessionValue(friendSubscriptions, listener, signal);
       notifyLobbyListener(listener, hasIncomingLobbyFriendRequest());
       return unsubscribe;
     },
@@ -4776,20 +4936,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     },
     subscribeLobbyFriendChanges(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
-      return subscribeFriend(friendChangeSubscriptions, listener, signal);
+      return subscribeSessionValue(friendChangeSubscriptions, listener, signal);
     },
-    refreshLobbyAvatar() {
-      const now = performance.now();
-      if (!initialData?.avatar || profileRequest || questRequest || questReturn) return false;
-      if (questScene?.energyOwned) {
-        if (!canRefreshSceneEnergy(questScene)) return false;
-        if (!lobbyRefresh) return sendLobbyRefresh(questScene);
-        if (!lobbyRefresh.scene) queuedEnergyRefresh = questScene;
-        return false;
-      }
-      if (now - lastLobbyRefresh < LOBBY_REFRESH_INTERVAL) return false;
-      return sendLobbyRefresh();
-    },
+    refreshLobbyAvatar,
     checkLobbyAchievements({ signal, onBatchReady } = {}) {
       const profileBusy = profileRequest && (profileRequest.channel !== lobby || profileRequest.owner?.kind !== 'friend-write');
       if (!(signal instanceof AbortSignal) || signal.aborted || checkedLobbyShows.has(signal) || !initialData?.avatar
@@ -4900,6 +5049,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
         throw error;
       } finally {
         registrationLobbyPatch = null;
+        if (registrationState !== 'confirmed') registrationPartEvents.length = 0;
       }
     },
     async enterAvatarTutorial({ signal } = {}) {
@@ -4916,12 +5066,16 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
           pong.done();
           requestSignal.throwIfAborted();
           socket.assertOpen();
-          const { questData: profileQuests, avatarItemInventory: profileItems, ...profile } = confirmedAvatar;
+          const { questData: profileQuests, avatarItemInventory: profileItems,
+            avatarPartInventory: profileParts, ...profile } = confirmedAvatar;
           initialData = { ...initialData, ...profile, registration: null };
           questData = profileQuests;
           replaceAvatarItems(profileItems);
           confirmedAvatar = null;
           registrationState = 'active';
+          replaceAvatarParts(profileParts);
+          for (const event of registrationPartEvents) recordAvatarPartEvent(event);
+          registrationPartEvents.length = 0;
           publishAvatar();
           return profile.avatar;
         });
@@ -4929,6 +5083,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
         registrationState = notified ? 'uncertain' : 'confirmed';
         if (notified) {
           confirmedAvatar = null;
+          registrationPartEvents.length = 0;
           throw new SessionError('avatar-tutorial-uncertain');
         }
         throw error;

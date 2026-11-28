@@ -670,6 +670,7 @@ def create_app(
                 "lobby-ap-tooltip.js", "lobby-ap-tooltip.css",
                 "lobby-record.js", "lobby-record.css",
                 "lobby-item.js", "lobby-item.css", "lobby-friend.js", "lobby-friend.css",
+                "lobby-main-item.js", "lobby-main-item.css", "item-inventory-data.js",
                 "lobby-friend-invite.js", "lobby-friend-invite.css", "friend-invite-code.js",
                 "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
@@ -707,6 +708,11 @@ def create_app(
                 if artifact.suffix in (".png", ".woff") or artifact.name == "index.json":
                     headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
                     app.router.add_get(f"/source-login/lobby-item-art/{artifact.name}", serve_file(artifact, headers))
+            for directory in ("lobby-main-item-art", "item-inventory-art"):
+                for artifact in sorted((SOURCE_LOGIN_ROOT / directory).glob("*")):
+                    if artifact.suffix in (".png", ".jpg", ".woff") or artifact.name == "index.json":
+                        headers = {"Content-Type": "font/woff"} if artifact.suffix == ".woff" else None
+                        app.router.add_get(f"/source-login/{directory}/{artifact.name}", serve_file(artifact, headers))
             lobby_friend_art = SOURCE_LOGIN_ROOT / "lobby-friend-art"
             for artifact in sorted(lobby_friend_art.glob("*")):
                 if artifact.suffix in (".png", ".woff") or artifact.name == "index.json":
