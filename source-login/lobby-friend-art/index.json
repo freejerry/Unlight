@@ -1035,8 +1035,44 @@
       "source": "res/data/cwming.ttf",
       "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
-      "sha256": "0f8502658ed8cbd783af75835d7c193e1dc75ecdccd625e0d080fe9413501591",
-      "glyphs": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~中信個刪字少搜擇最檢申確索要解認請證送選邀除需"
+      "sha256": "ae9aed92c25679c892f700c76dd41d48aabe9e510695546eba7cb1b4608042f2",
+      "glyphs": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~中了人信個值再刪到包友同名向含告單嗎大好字定家封對少已待從您意成把拒搜擇數方最朋檢此法為無玩申的確等索絕要解認請證警送達選邀鎖除需？",
+      "confirmationWording": [
+        {
+          "source": "app/client/src/view/scene/common/FriendListContainer.as",
+          "sourceSha256": "52f1233804757ce1e8764ec30d156fb08511077d21e9d995e32fd4b2847081fd",
+          "constants": [
+            "_TRANS_CONFIRM",
+            "_TRANS_DIA_MSG1",
+            "_TRANS_DIA_MSG2_PRE",
+            "_TRANS_DIA_MSG2",
+            "_TRANS_DIA_MSG3_PRE",
+            "_TRANS_DIA_MSG3",
+            "_TRANS_DIA_MSG5",
+            "_TRANS_DIA_MSG6"
+          ]
+        },
+        {
+          "source": "app/client/src/controller/BaseCtrl.as",
+          "sourceSha256": "bab9e060e0ca2006f1119341fe42799c4bd09251fc6ec256fddb576e430d3eb2",
+          "constants": [
+            "_TRANS_ALERT"
+          ]
+        },
+        {
+          "source": "app/client/lib/Const.as",
+          "sourceSha256": "5a435fb317e87df50bbdab59ffcd84c43415450f88ed7522c57bba176805330e",
+          "constants": [
+            "_TRANS_ERR_MSG60",
+            "_TRANS_ERR_MSG61",
+            "_TRANS_ERR_MSG62",
+            "_TRANS_ERR_MSG63",
+            "_TRANS_ERR_MSG64",
+            "_TRANS_ERR_MSG65",
+            "_TRANS_ERR_MSG66"
+          ]
+        }
+      ]
     },
     "friend-mincho-bold.woff": {
       "source": "res/data/wt004.ttf",

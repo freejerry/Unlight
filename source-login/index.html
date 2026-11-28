@@ -62,6 +62,14 @@
       </section>
       <button id="title-music-start" type="button">啟用音樂</button>
       <div id="post-login" hidden></div>
+      <dialog id="lobby-friend-confirm" class="stage-panel" role="alertdialog" aria-labelledby="lobby-friend-confirm-title" aria-describedby="lobby-friend-confirm-message">
+        <h2 id="lobby-friend-confirm-title">確認</h2>
+        <p id="lobby-friend-confirm-message"></p>
+        <form method="dialog" lang="en">
+          <button id="lobby-friend-confirm-yes" type="submit" value="yes">YES</button>
+          <button id="lobby-friend-confirm-no" type="submit" value="no" autofocus>NO</button>
+        </form>
+      </dialog>
       <dialog id="login-alert" class="stage-panel" role="alertdialog" aria-labelledby="login-alert-title" aria-describedby="login-alert-message">
         <h2 id="login-alert-title" class="stage-panel-title" lang="en">Error</h2>
         <div class="login-alert-body">

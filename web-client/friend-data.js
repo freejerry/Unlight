@@ -1,8 +1,30 @@
 export const FRIEND_PAGE_SIZE = 10;
+export const FRIEND_WRITES = {
+  apply: { request: 27, reply: 36, from: [7], status: 0, errors: [60, 63, 64] },
+  accept: { request: 28, reply: 37, from: [1], status: 2, errors: [61] },
+  remove: { request: 29, reply: 38, from: [0, 1, 2, 3, 6], status: null, errors: [62] },
+  block: { request: 41, reply: 62, from: [7], status: 3, errors: [65, 66] },
+};
+
+const FRIEND_WRITE_REPLIES = new Set(Object.values(FRIEND_WRITES).map(({ reply }) => reply));
 
 const MAX_INT32 = 0x7fffffff;
 const MAX_WIRE_STRING_BYTES = 1024 * 1024 - 6;
 const MAX_PAGE_VECTOR_BYTES = 11 * FRIEND_PAGE_SIZE;
+
+export function readFriendWriteReply(reply, errorCommand) {
+  if (reply.command === errorCommand) {
+    const friendCode = reply.int();
+    if (friendCode < 60 || friendCode > 66) return null;
+    reply.done();
+    return { kind: 'friend-write', friendCode };
+  }
+  if (!FRIEND_WRITE_REPLIES.has(reply.command)) return null;
+  const playerId = reply.int();
+  reply.done();
+  if (playerId < 1) throw new Error('Invalid friend write receipt.');
+  return { kind: 'friend-write', command: reply.command, playerId };
+}
 
 function readIdList(value, minimum, maximum = MAX_INT32) {
   if (!value) return [];

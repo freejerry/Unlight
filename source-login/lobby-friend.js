@@ -1,4 +1,5 @@
 import { renderLobbyAvatar } from './lobby-avatar.js';
+import { playBackClick } from './bgm.js';
 
 const art = new URL('./lobby-friend-art/', import.meta.url);
 const tabs = [
@@ -110,6 +111,7 @@ function addCard(parent, row, index, grid, source, wording) {
   place(name, ...source.labels.name);
   const level = add(card, 'span', null, 'lobby-friend-level');
   place(level, ...source.labels.level);
+  const actions = [];
   if (row.status === 0) {
     const waiting = add(card, 'span', null, 'lobby-friend-waiting');
     place(waiting, ...source.labels.waiting);
@@ -122,20 +124,28 @@ function addCard(parent, row, index, grid, source, wording) {
     action.classList.add('lobby-friend-card-action');
     action.disabled = true;
     buttonText(action, label, source.actionText, source.action.hit);
+    if (row.status === 1 || row.status === 7) {
+      action.dataset.friendAction = row.status === 1 ? 'accept' : 'apply';
+      actions.push(action);
+    }
   }
   if (source.remove) {
-    const remove = artButton(card, null, row.status === 3 ? wording.unblock : wording.delete, source.remove);
+    const label = row.status === 7 ? wording.block ?? '封鎖' : row.status === 3 ? wording.unblock : wording.delete;
+    const remove = artButton(card, null, label, source.remove);
     remove.classList.add('lobby-friend-card-remove');
+    remove.dataset.friendAction = row.status === 7 ? 'block' : 'remove';
     remove.disabled = true;
+    actions.push(remove);
   }
-  return { card, canvas, level, name };
+  return { card, canvas, level, name, actions };
 }
 
 export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOpen, onClosing, onClose,
-  onSearchInvalid } = {}) {
+  onSearchInvalid, onConfirm, onError } = {}) {
   const lifetime = new AbortController();
   const saved = viewsBySession.get(session) ?? {
     pages: [0, 0, 0, 0], retainedHover: new Set(), totals: null, uncertainSearch: false,
+    write: null, uncertainWrite: false, updateWriteControls: null,
   };
   const { pages, retainedHover } = saved;
   if (session) viewsBySession.set(session, saved);
@@ -157,12 +167,13 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
   async function close() {
     const instance = current;
     if (!instance || instance.panel.dataset.state === 'closing') return false;
-    const { shell, panel, controller, opening, stopRequests, y, start } = instance;
+    const { shell, panel, controller, opening, stopRequests, writeScope, y, start } = instance;
     const yOffset = panel.getBoundingClientRect().top - shell.getBoundingClientRect().top - y;
     panel.dataset.state = 'closing';
     panel.inert = true;
     opening.abort();
     stopRequests();
+    writeScope.abort();
     onClosing?.();
     if (!await slide(panel, yOffset, start, manifest.motion.closeMs, time => Math.sin(time * Math.PI / 2), controller.signal)) return false;
     controller.abort();
@@ -196,6 +207,8 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     const controller = new AbortController();
     const opening = new AbortController();
     const scope = controller.signal;
+    const writeScope = new AbortController();
+    const writeSignal = writeScope.signal;
     const shell = add(view, 'dialog', 'shell');
     shell.setAttribute('aria-label', '好友名單');
     const panel = add(shell, 'section', true);
@@ -247,14 +260,18 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     buttonText(submit, manifest.search.label, manifest.search.buttonText, manifest.search.button.hit);
 
     const profiles = new Map();
+    const handledChanges = new WeakSet();
     let selectedTab = 0;
     let request;
     let searchData;
     let lastQuery = '';
-    current = { shell, panel, controller, opening, stopRequests, y, start };
+    current = { shell, panel, controller, opening, stopRequests, writeScope, y, start };
+    saved.updateWriteControls = updateWriteControls;
     scope.addEventListener('abort', () => {
       opening.abort();
       stopRequests();
+      writeScope.abort();
+      if (saved.updateWriteControls === updateWriteControls) saved.updateWriteControls = null;
     }, { once: true });
 
     function stopRequests() { request?.abort(); }
@@ -266,6 +283,66 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     function status(nextStatus) {
       panel.dataset.status = nextStatus;
       rows.setAttribute('aria-busy', String(nextStatus === 'loading'));
+      updateWriteControls();
+    }
+
+    function updateWriteControls() {
+      const state = saved.write?.phase ?? session?.getLobbyFriendWriteState?.() ?? (saved.uncertainWrite ? 'uncertain' : 'idle');
+      panel.dataset.writeState = state;
+      const available = panel.dataset.state === 'open' && panel.dataset.status === 'ready' && onConfirm && session?.changeLobbyFriend;
+      for (const button of rows.querySelectorAll('button')) {
+        if (!button.dataset.friendAction) continue;
+        const confirmingButton = state === 'confirming' && saved.write?.focus === button;
+        button.disabled = !available || button.dataset.friendReady !== 'true' || (state !== 'idle' && !confirmingButton);
+      }
+    }
+
+    function applyChange(result) {
+      if (!result || writeSignal.aborted || handledChanges.has(result)) return;
+      handledChanges.add(result);
+      saved.uncertainWrite = false;
+      const matches = row => row.playerId === result.playerId && row.avatarId === result.avatarId;
+      const focus = saved.write?.focus;
+      if (focus && rows.contains(focus)) tabButtons[selectedTab].focus({ preventScroll: true });
+      if (selectedTab === 3) {
+        if (searchData?.rows.some(matches)) {
+          searchData.rows = searchData.rows.filter(row => !matches(row));
+          if (panel.dataset.searchState !== 'searching') paintSearch();
+        }
+      } else {
+        if (!tabs[selectedTab].statuses.includes(result.status)) {
+          for (const card of Array.from(rows.children)) {
+            if (matches({ playerId: Number(card.dataset.playerId), avatarId: Number(card.dataset.avatarId) })) card.remove();
+          }
+        }
+        void loadPage({ preserve: true });
+      }
+      updateWriteControls();
+    }
+
+    async function writeFriend(action, row, name, focus) {
+      if (writeSignal.aborted || focus.disabled || !rows.contains(focus) || saved.write) return;
+      const write = { phase: 'confirming', focus };
+      saved.write = write;
+      updateWriteControls();
+      if (action === 'remove' || action === 'block') playBackClick();
+      let confirmed = false;
+      try {
+        confirmed = await onConfirm(action, { name, status: row.status, focus, signal: writeSignal });
+        if (confirmed !== true || writeSignal.aborted || !rows.contains(focus)) return;
+        write.phase = 'pending';
+        updateWriteControls();
+        applyChange(await session.changeLobbyFriend(action, row, { signal: writeSignal }));
+      } catch (error) {
+        if (error?.kind === 'friend-write-uncertain') saved.uncertainWrite = true;
+        if (!writeSignal.aborted && error?.kind === 'friend-write-rejected') {
+          onError?.(error.friendCode, { focus, signal: writeSignal });
+        }
+      } finally {
+        if (saved.write === write) saved.write = null;
+        saved.updateWriteControls?.();
+        if (!confirmed && !writeSignal.aborted && rows.contains(focus)) focus.focus({ preventScroll: true });
+      }
     }
     function pageCount() {
       const sourceCount = selectedTab === 3 ? searchData?.count : saved.totals?.[tabs[selectedTab].count];
@@ -295,7 +372,7 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     }
 
     async function paintProfile(row, elements, rowSignal) {
-      const { card, canvas, level, name } = elements;
+      const { card, canvas, level, name, actions } = elements;
       try {
         const profile = profiles.get(row.avatarId) ?? await session.readLobbyFriendAvatar(row.avatarId, { signal: rowSignal });
         if (rowSignal.aborted) return;
@@ -312,6 +389,15 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
         card.dataset.avatarState = 'ready';
         name.textContent = profile.name;
         level.textContent = `${manifest.wording.levelPrefix}${profile.level}`;
+        if (profile.name) {
+          for (const button of actions) {
+            button.dataset.friendReady = 'true';
+            button.addEventListener('click', () => {
+              void writeFriend(button.dataset.friendAction, row, profile.name, button);
+            });
+          }
+          updateWriteControls();
+        }
       } catch {
         if (!rowSignal.aborted) {
           card.dataset.avatarState = 'unavailable';
@@ -331,11 +417,11 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
       });
     }
 
-    async function loadPage() {
+    async function loadPage({ preserve = false } = {}) {
       const readSignal = newRequest();
       const tab = tabs[selectedTab];
       const offset = pages[selectedTab] * pageSize;
-      rows.replaceChildren();
+      if (!preserve) rows.replaceChildren();
       status('loading');
       paintNavigation();
       try {
@@ -458,8 +544,10 @@ export function mountLobbyFriend(view, { session, trigger, signal, canOpen, onOp
     onOpen?.();
     void loadPage();
     session?.subscribeAvatar?.(paintNavigation, { signal: scope });
+    session?.subscribeLobbyFriendChanges?.(applyChange, { signal: scope });
     if (!await slide(panel, start, 0, manifest.motion.openMs, time => 1 - (1 - time) ** 2, opening.signal)) return false;
     panel.dataset.state = 'open';
+    updateWriteControls();
     closeButton.focus({ preventScroll: true });
     return true;
   }

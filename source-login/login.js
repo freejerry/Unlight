@@ -22,6 +22,10 @@ const loginAlert = document.querySelector('#login-alert');
 const loginAlertTitle = document.querySelector('#login-alert-title');
 const loginAlertMessage = document.querySelector('#login-alert-message');
 const loginAlertOK = document.querySelector('#login-alert-ok');
+const friendConfirm = document.querySelector('#lobby-friend-confirm');
+const friendConfirmForm = friendConfirm.querySelector('form');
+const friendConfirmMessage = document.querySelector('#lobby-friend-confirm-message');
+const friendConfirmNo = document.querySelector('#lobby-friend-confirm-no');
 
 const failureMessages = {
   credentials: '認證失敗',
@@ -45,6 +49,24 @@ const registrationRejectionDetails = [
   '「郵件地址無效」',
   '無法與伺服器連線。請按下更新鈕,重新登錄。',
 ];
+
+const friendPrompts = {
+  apply: name => `要向${name}\n申請成為朋友嗎？`,
+  accept: name => `要同意${name}\n成為您的朋友嗎？`,
+  remove: (name, status) => status === 3 ? `要解除對${name}的封鎖嗎？` : `要把${name}\n從朋友名單中刪除嗎？`,
+  block: name => `確定要封鎖 ${name} 嗎？`,
+};
+
+// BaseCtrl.errorAlert uses the Traditional Chinese Const.ERROR_STR values directly.
+const friendWarnings = {
+  60: '無法向此玩家申請好友',
+  61: '玩家拒絕您的申請',
+  62: '無法刪除此玩家',
+  63: '朋友數已到達最大值,無法再申請了(包含等待認證中的)',
+  64: '對方好友數已達到最大值無法申請',
+  65: '無法封鎖此玩家',
+  66: '已達到最大封鎖人數',
+};
 
 let currentAttempt = null;
 let alertReturnFocus = null;
@@ -83,15 +105,66 @@ function showError(kind, message, field, alertKind = 'error') {
   openAlert(alertKind, 'Error', message, field);
 }
 
-function showFriendSearchError(field, signal) {
-  if (signal.aborted || loginAlert.open) return;
-  openAlert('lobby-friend-search-error', 'Error', '最少需要3個字', field);
+function showFriendAlert(kind, heading, message, field, signal) {
+  if (signal.aborted || loginAlert.open || friendConfirm.open) return;
+  openAlert(kind, heading, message, field);
   loginAlertOK.focus({ preventScroll: true });
+  const listeners = new AbortController();
+  loginAlert.addEventListener('close', () => {
+    if (!loginAlert.open) listeners.abort();
+  }, { signal: listeners.signal });
   const closeOnAbort = () => {
-    if (loginAlert.dataset.kind === 'lobby-friend-search-error') loginAlert.close();
+    listeners.abort();
+    if (loginAlert.open && loginAlert.dataset.kind === kind) {
+      alertReturnFocus = null;
+      loginAlert.close();
+    }
   };
-  signal.addEventListener('abort', closeOnAbort, { once: true });
-  loginAlert.addEventListener('close', () => signal.removeEventListener('abort', closeOnAbort), { once: true });
+  signal.addEventListener('abort', closeOnAbort, { once: true, signal: listeners.signal });
+}
+
+function showFriendSearchError(field, signal) {
+  showFriendAlert('lobby-friend-search-error', 'Error', '最少需要3個字', field, signal);
+}
+
+function showFriendWarning(code, { focus, signal }) {
+  if (Number.isInteger(code) && Object.hasOwn(friendWarnings, code)) {
+    showFriendAlert('lobby-friend-warning', '警告', friendWarnings[code], focus, signal);
+  }
+}
+
+function confirmLobbyFriend(action, { name, status, focus, signal }) {
+  if (signal.aborted || loginAlert.open || friendConfirm.open || !Object.hasOwn(friendPrompts, action) ||
+      typeof name !== 'string' || !name) return Promise.resolve(false);
+
+  friendConfirm.dataset.action = action;
+  friendConfirmMessage.textContent = friendPrompts[action](name, status);
+  friendConfirm.showModal();
+  friendConfirmNo.focus({ preventScroll: true });
+  return new Promise(resolve => {
+    const listeners = new AbortController();
+    function finish(answer, clicked) {
+      listeners.abort();
+      friendConfirm.close();
+      delete friendConfirm.dataset.action;
+      friendConfirmMessage.textContent = '';
+      if (clicked) playBackClick();
+      if (!signal.aborted && focus?.isConnected) focus.focus({ preventScroll: true });
+      resolve(answer && !signal.aborted);
+    }
+    friendConfirmForm.addEventListener('submit', event => {
+      event.preventDefault();
+      finish(event.submitter?.value === 'yes', true);
+    }, { signal: listeners.signal });
+    friendConfirm.addEventListener('cancel', event => {
+      event.preventDefault();
+      finish(false, true);
+    }, { signal: listeners.signal });
+    friendConfirm.addEventListener('close', () => {
+      if (!friendConfirm.open) finish(false, false);
+    }, { signal: listeners.signal });
+    signal.addEventListener('abort', () => finish(false, false), { once: true, signal: listeners.signal });
+  });
 }
 
 function confirmLobbyReward({ name }, signal) {
@@ -242,6 +315,8 @@ function showLobby(session, returnFocus) {
     onQuest: () => openQuest(session),
     onSelectableClaimed: confirmLobbyReward,
     onFriendSearchInvalid: showFriendSearchError,
+    onFriendConfirm: confirmLobbyFriend,
+    onFriendError: showFriendWarning,
   });
 }
 
@@ -271,6 +346,8 @@ async function switchOptions(session, opening) {
       session,
       onBack: () => switchOptions(session, false),
       onFriendSearchInvalid: showFriendSearchError,
+      onFriendConfirm: confirmLobbyFriend,
+      onFriendError: showFriendWarning,
     });
   } else {
     showLobby(session, '#lobby-option-open');

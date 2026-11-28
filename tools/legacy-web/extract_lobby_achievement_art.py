@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the pinned Lobby Record notice and its q3 reward art.
+"""Extract the pinned Lobby Record notices and their reward art.
 
 Usage: python3 -B tools/legacy-web/extract_lobby_achievement_art.py ASSETS OUTPUT \
     --swfdump /path/to/swfdump --mincho-font /path/to/wt004.ttf
@@ -31,6 +31,8 @@ ITEMS = {
 }
 TITLE = "Record"
 NOVICE_ACHIEVEMENTS = ("180", "181", "182")
+ACHIEVEMENT_MASTER = ("tcn/Achievements.csv", "889a5f176fbe3aa83cc3e1f16d7ef42b5a48edf9cf5c5220c82bbaed85fc755e")
+ACHIEVEMENT_IDS = {"1", "2", "3", "31", "32", "37", "38", *NOVICE_ACHIEVEMENTS}
 CHALLENGE_MESSAGE = "追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。"
 SELECTABLE_MESSAGE = "恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。"
 SELECTION_PROMPT = "請選擇"
@@ -44,6 +46,25 @@ def master_rows(file, ids):
     if rows.keys() != set(ids):
         raise ValueError(f"Missing pinned master rows in {file}")
     return rows
+
+
+def achievement_rows():
+    checked_source(MASTER, ACHIEVEMENT_MASTER)
+    return master_rows(ACHIEVEMENT_MASTER[0], ACHIEVEMENT_IDS)
+
+
+def achievement_font(mincho_font, destination, items, characters, achievements):
+    glyphs = TITLE + "0123456789x Lv." + "".join(row["name"] for row in characters.values()) + "".join(
+        row["name_tcn"] + row["caption_tcn"] for row in items.values()
+    ) + "".join(row["caption"] for row in achievements.values()) + SELECTION_PROMPT + CONFIRMATION_TITLE
+    glyphs += CHALLENGE_MESSAGE + SELECTABLE_MESSAGE + CONFIRMATION_MESSAGE
+    write_font(mincho_font, destination, [{"name_tcn": glyphs}])
+    return {
+        "source": "res/data/wt004.ttf", "sourceRevision": FONT_REVISION, "sourceSha256": FONT_SHA,
+        "sha256": sha256(destination.read_bytes()).hexdigest(), "glyphs": glyphs,
+        "captionSource": f"app/server/data/csv/{ACHIEVEMENT_MASTER[0]}",
+        "captionSourceSha256": ACHIEVEMENT_MASTER[1],
+    }
 
 
 def reused_art(index, layer):
@@ -149,7 +170,7 @@ def extract(args):
     if sha256(args.mincho_font.read_bytes()).hexdigest() != FONT_SHA:
         raise ValueError("Expected the original wt004.ttf")
     items = master_rows("ja/AvatarItems.csv", ITEMS)
-    achievements = master_rows("tcn/Achievements.csv", {"1", "2", "3", "31", "32", *NOVICE_ACHIEVEMENTS})
+    achievements = achievement_rows()
     choice_ids = selectable_card_ids(achievements["2"])
     characters, illustrations = character_faces(args.assets, [10006, 10007, *choice_ids])
     if (characters["10006"]["kind"], characters["10007"]["kind"]) != (3, 3) or any(
@@ -194,13 +215,7 @@ def extract(args):
     new_challenge = challenge_skin(args.assets, publish)
 
     font = "achievement-mincho.woff"
-    glyphs = TITLE + "0123456789x Lv." + "".join(row["name"] for row in characters.values()) + "".join(
-        row["name_tcn"] + row["caption_tcn"] for row in items.values()
-    ) + "".join(row["caption"] for row in achievements.values()) + SELECTION_PROMPT + CONFIRMATION_TITLE
-    glyphs += CHALLENGE_MESSAGE + SELECTABLE_MESSAGE + CONFIRMATION_MESSAGE
-    write_font(args.mincho_font, args.output / font, [{"name_tcn": glyphs}])
-    provenance[font] = {"source": "res/data/wt004.ttf", "sourceRevision": FONT_REVISION, "sourceSha256": FONT_SHA,
-                         "sha256": sha256((args.output / font).read_bytes()).hexdigest(), "glyphs": glyphs}
+    provenance[font] = achievement_font(args.mincho_font, args.output / font, items, characters, achievements)
 
     faces = {}
     for id, (path, digest, frame) in ITEMS.items():

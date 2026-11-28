@@ -102,7 +102,8 @@ export function bindLobbyFriendIndicator(trigger, { session, signal }) {
   }, { signal });
 }
 
-export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed, onFriendSearchInvalid }) {
+export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed,
+  onFriendSearchInvalid, onFriendConfirm, onFriendError }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -153,6 +154,8 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     onClosing: () => checkAchievements(AbortSignal.any([signal])),
     onClose: presentNotices,
     onSearchInvalid: focus => onFriendSearchInvalid?.(focus, signal),
+    onConfirm: onFriendConfirm,
+    onError: onFriendError,
   });
   bindLobbyFriendIndicator(friendTrigger, { session, signal });
 

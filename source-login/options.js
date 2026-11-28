@@ -41,7 +41,7 @@ const layout = `
     <button id="options-item-open" class="source-item-open" type="button" aria-label="道具" aria-haspopup="dialog"></button>
   </section>`;
 
-export function mountOptions(host, { session, onBack, onFriendSearchInvalid }) {
+export function mountOptions(host, { session, onBack, onFriendSearchInvalid, onFriendConfirm, onFriendError }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -92,6 +92,8 @@ export function mountOptions(host, { session, onBack, onFriendSearchInvalid }) {
     canOpen: () => !record.isOpen() && !item.isOpen(),
     onClosing: () => session.checkLobbyAchievements({ signal: AbortSignal.any([signal]) }),
     onSearchInvalid: focus => onFriendSearchInvalid?.(focus, signal),
+    onConfirm: onFriendConfirm,
+    onError: onFriendError,
   });
   bindLobbyFriendIndicator(friendTrigger, { session, signal });
   void prepareLobbyArt(view, signal);

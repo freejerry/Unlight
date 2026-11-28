@@ -59,6 +59,8 @@
     "3": "虛擬人物Lv到達5",
     "31": "突破初期地區",
     "32": "突破HexRealm",
+    "37": "增加好友1人",
+    "38": "增加好友5人",
     "180": "完成落日大蝙蝠1次",
     "181": "完成落日大蝙蝠2次",
     "182": "完成落日大蝙蝠3次"
@@ -716,8 +718,10 @@
       "source": "res/data/wt004.ttf",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
       "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
-      "sha256": "06f2a640e9f2a1aa16c30f7525f19356d16d7881a0447089429cdb227c42e4b9",
-      "glyphs": "Record0123456789x Lv.庫勒尼西傑多阿奇波爾多馬庫斯布列依斯伯恩哈德弗雷特里西瑪格莉特多妮妲史普拉多貝琳達羅索艾妲薩爾卡多蕾格烈芙里斯沃肯佛羅倫斯帕茉阿修羅布朗寧記憶的碎片時間的碎片魔女秘藥完全恢復虛擬人物的行動力。抽獎券抽獎券創立虛擬人物虛擬人物Lv到達3虛擬人物Lv到達5突破初期地區突破HexRealm完成落日大蝙蝠1次完成落日大蝙蝠2次完成落日大蝙蝠3次請選擇情報追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。獲得了__NAME__。"
+      "sha256": "36f03e4580f891ae7316027d1d599176ab219d3ec45e11f071cb6885efdeeea3",
+      "glyphs": "Record0123456789x Lv.庫勒尼西傑多阿奇波爾多馬庫斯布列依斯伯恩哈德弗雷特里西瑪格莉特多妮妲史普拉多貝琳達羅索艾妲薩爾卡多蕾格烈芙里斯沃肯佛羅倫斯帕茉阿修羅布朗寧記憶的碎片時間的碎片魔女秘藥完全恢復虛擬人物的行動力。抽獎券抽獎券創立虛擬人物虛擬人物Lv到達3虛擬人物Lv到達5突破初期地區突破HexRealm增加好友1人增加好友5人完成落日大蝙蝠1次完成落日大蝙蝠2次完成落日大蝙蝠3次請選擇情報追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。獲得了__NAME__。",
+      "captionSource": "app/server/data/csv/tcn/Achievements.csv",
+      "captionSourceSha256": "889a5f176fbe3aa83cc3e1f16d7ef42b5a48edf9cf5c5220c82bbaed85fc755e"
     },
     "item-3.png": {
       "source": "public/image/avatar_items/item_c_a000.swf",

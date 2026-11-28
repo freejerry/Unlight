@@ -234,6 +234,20 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 以 SQLite 核對關係和搜尋成員，以實際 `SC12`、`SC9` 和 `SC26` 核對順序、角色裝備及畫面。`populated` 比對 10+1 分頁、四個分類、紅色提示、兩字搜尋錯誤、同服結果和空搜尋。大廳與設定各驗關閉時送出原版成就檢查，且名單瀏覽沿用登入連線及 BGM。重開設定不重送有效快取內的分頁查詢。封包證據只摘錄數字欄位，並在操作前後核對關係表。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [好友規格](lobby-views.md#右側好友清單)
 
+### 重跑雙角色好友關係操作
+
+在隔離 Ruby 準備同服、已完成教學的兩個角色「聯絡驗收甲」與「聯絡驗收乙」。起始無任何關係，好友容量都是 10。第三個角色「聯絡驗收丙」用原版 `Avatar#inc_friend_max(-10)` 準備好友容量 0，提供真實伺服器拒絕。各角色先用原版模型結清啟動成就通知。好友成功後才滿足的成就仍由實際客戶端操作關閉並確認。[隔離服務](../../../tools/legacy-server/README.md) · [原版關係錯誤碼](../../../app/server/src/constants/common_constants.rb#L1419)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user friendwritea --quest-start-password-file /path/to/private-a \
+  --lobby-friend-write --friend-peer-user friendwriteb --friend-peer-password-file /path/to/private-b \
+  --screens /tmp/unlight-lobby-friend-write
+```
+
+逐一登入甲、乙、甲、乙、甲。驗證 NO 後無關係命令，暫緩真 `SC36` 時 SQLite 已有待認證資料但畫面保持原狀，放行才更新搜尋與等待分頁。乙確認認證後使用同一筆關係列，甲刪除後搜尋並封鎖。乙重新登入讀到狀態 4 且清單留空。甲解除封鎖後用第三個角色觸發容量錯誤 `SC34=64`。全程比對實際封包、原角色 ID、SQLite、已驗證的真角色卡及固定舞台。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [寫入規格](lobby-views.md#好友確認與關係寫入)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

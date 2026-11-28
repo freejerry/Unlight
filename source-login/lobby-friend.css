@@ -159,8 +159,9 @@
   pointer-events: none;
 }
 
-.lobby-friend-card-remove { visibility: hidden; }
-.lobby-friend-card:hover .lobby-friend-card-remove { visibility: visible; }
+.lobby-friend-card-remove { opacity: 0; pointer-events: none; }
+.lobby-friend-card:hover .lobby-friend-card-remove,
+.lobby-friend-card-remove:focus-visible { opacity: 1; pointer-events: auto; }
 
 #lobby-friend-search-input {
   position: absolute;

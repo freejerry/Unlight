@@ -305,7 +305,9 @@ def observe_session_codec(page, origin):
           : command === 5 && fields?.length === 1 && Number.isInteger(fields[0]) ? fields
           : command === 15 && fields?.length === 1 && typeof fields[0] === 'string' ? [new TextEncoder().encode(fields[0]).length]
           : []);
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, lobbyItem, notice, claim, key, friendRead});
+        const friendWrite = window.qaQuestWire?.friends && [27, 28, 29, 41].includes(command) &&
+          fields?.length === 1 && Number.isInteger(fields[0]) ? fields[0] : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, lobbyItem, notice, claim, key, friendRead, friendWrite});
         return frame;
       }
       export function readReply(body) {
@@ -326,6 +328,9 @@ def observe_session_codec(page, origin):
         const friends = window.qaQuestWire?.readingFriends;
         if (friends && [9, 12, 26].includes(reply.command)) {
           friends.replies.push([reply.command, body.byteLength, ...friendReplyFields(body, reply.command)]);
+        }
+        if (lobby?.friendWrites && body.byteLength === 6 && [34, 36, 37, 38, 62].includes(reply.command)) {
+          lobby.friendWrites.replies.push([reply.command, body.byteLength, read(body).int()]);
         }
         if (lobby && reply.command === 9 && body.byteLength === 6) {
           lobby.replies.push([9, body.byteLength, new DataView(body.buffer, body.byteOffset, body.byteLength).getInt32(2)]);
@@ -401,7 +406,10 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         wire.itemBootstrap = [];
         wire.lobby.items = {{sent: [], replies: []}};
       }}
-      if ({str(lobby_friends).lower()}) wire.friends = {{sent: [], replies: []}};
+      if ({str(lobby_friends).lower()}) {{
+        wire.friends = {{sent: [], replies: []}};
+        wire.lobby.friendWrites = {{sent: [], replies: []}};
+      }}
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -460,6 +468,9 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
           if (this.lobbyTrace && encoded && encoded.deck !== null) this.lobbyTrace.sent.push([encoded.command, frame.byteLength, encoded.deck]);
           if (this.lobbyTrace?.items && encoded?.command === 18 && encoded.lobbyItem !== null) {{
             this.lobbyTrace.items.sent.push([18, frame.byteLength, encoded.lobbyItem]);
+          }}
+          if (this.lobbyTrace?.friendWrites && encoded && encoded.friendWrite !== null) {{
+            this.lobbyTrace.friendWrites.sent.push([encoded.command, frame.byteLength, encoded.friendWrite]);
           }}
           if (this.lobbyTrace?.achievement && encoded) {{
             const hold = wire.lobbyHold;
@@ -3288,13 +3299,18 @@ def check_friend_rows(rows, database, expected):
     actual = rows.evaluate_all("""rows => rows.map(({dataset: data}) =>
       [Number(data.playerId), Number(data.avatarId), Number(data.status)])""")
     assert actual == expected, (actual, expected)
-    for index, (player_id, avatar_id, _) in enumerate(expected):
+    actions = {0: ["remove"], 1: ["accept", "remove"], 2: ["remove"], 3: ["remove"], 6: ["remove"], 7: ["apply", "block"]}
+    for index, (player_id, avatar_id, status) in enumerate(expected):
         ((display_name, level),) = query(database, "SELECT name, level FROM avatars WHERE id = ? AND player_id = ?", avatar_id, player_id)
         row = rows.nth(index)
         expect(row.locator(".lobby-friend-name")).to_have_text(display_name, timeout=TIMEOUT)
         expect(row.locator(".lobby-friend-level")).to_have_text(f"Level: {level}")
         expect(row.locator("canvas.lobby-friend-avatar")).to_have_attribute("data-avatar-state", "ready")
-        assert row.locator("button:enabled").count() == 0
+        relation = row.locator("[data-friend-action]")
+        assert sorted(relation.evaluate_all("buttons => buttons.map(button => button.dataset.friendAction)")) == actions[status]
+        for action in relation.all():
+            expect(action).to_be_enabled()
+        assert row.locator("button:not([data-friend-action]):enabled").count() == 0
 
 
 def check_friend_invites(panel, *, visible=True):
@@ -3528,6 +3544,297 @@ def check_lobby_friends(page, origin, database, name, password, directory, mode)
                     "closeFence": end["timeline"][len(start["timeline"]):], "motion": motion,
                     "geometry": geometry, "framesBefore": before, "framesWhileBrowsing": browse, "options": options_proof}
         (directory / "lobby-friend-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
+
+
+def friend_mutation_role(database, name):
+    ((player_id, flags),) = player(database, name)
+    ((avatar_id, display_name, server),) = query(database, "SELECT id, name, server_type FROM avatars WHERE player_id = ?", player_id)
+    assert flags == 0
+    return {"player": player_id, "avatar": avatar_id, "name": display_name, "server": server}
+
+
+def friend_mutation_pair(database, first, other):
+    a, b = sorted((first["player"], other["player"]))
+    return query(database, """SELECT id, relating_player_id, related_player_id, friend_type FROM friend_links
+        WHERE server_type = ? AND ((relating_player_id = ? AND related_player_id = ?)
+                                  OR (relating_player_id = ? AND related_player_id = ?)) ORDER BY id""",
+                 first["server"], a, b, b, a)
+
+
+def open_friend_mutation_view(page, origin, role, login, password):
+    stage, live, errors = open_quest_fixture(page, origin, role["player"], login, password, startup_records=True, lobby_friends=True)
+    page.locator("#lobby-friend-open").click()
+    panel = page.locator("#lobby-friend-shell[open] #lobby-friend")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    return stage, panel, live, errors
+
+
+def select_friend_mutation_tab(panel, tab):
+    if panel.get_attribute("data-tab") != tab:
+        panel.locator(f"#lobby-friend-tab-{tab}").click()
+    expect(panel).to_have_attribute("data-tab", tab)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    return panel.locator("#lobby-friend-rows [data-player-id]")
+
+
+def find_friend_mutation_target(panel, other):
+    rows = select_friend_mutation_tab(panel, "search")
+    field = panel.locator("#lobby-friend-search-input")
+    field.fill(other["name"])
+    field.press("Enter")
+    expect(rows).to_have_count(1, timeout=TIMEOUT)
+    row = rows.first
+    expect(row).to_have_attribute("data-player-id", str(other["player"]))
+    expect(row).to_have_attribute("data-avatar-id", str(other["avatar"]))
+    expect(row).to_have_attribute("data-status", "7")
+    expect(row.locator(".lobby-friend-name")).to_have_text(other["name"], timeout=TIMEOUT)
+    return row
+
+
+def confirm_friend_mutation(page, panel, row, action):
+    row.hover()
+    button = row.locator(f'[data-friend-action="{action}"]')
+    expect(button).to_be_visible()
+    expect(button).to_be_enabled()
+    button.click()
+    confirm = page.locator(f'#lobby-friend-confirm[open][data-action="{action}"]')
+    expect(confirm).to_be_visible()
+    expect(confirm.locator("#lobby-friend-confirm-title")).to_have_text("確認")
+    expect(panel).to_have_attribute("data-write-state", "confirming")
+    return confirm, button
+
+
+def check_friend_confirmation(stage, confirm, action, status, name):
+    messages = {
+        "apply": f"要向{name}\n申請成為朋友嗎？",
+        "accept": f"要同意{name}\n成為您的朋友嗎？",
+        "remove": f"要解除對{name}的封鎖嗎？" if status == "3" else f"要把{name}\n從朋友名單中刪除嗎？",
+        "block": f"確定要封鎖 {name} 嗎？",
+    }
+    message = confirm.locator("#lobby-friend-confirm-message").text_content()
+    assert message == messages[action], repr(message)
+    outer, box = stage.bounding_box(), confirm.bounding_box()
+    assert outer and box and (outer["width"], outer["height"]) == (780, 680), (outer, box)
+    geometry = (box["x"] + box["width"] / 2 - outer["x"], box["y"] - outer["y"], box["height"])
+    assert all(abs(actual - source) <= 1 for actual, source in zip(geometry, (380, 280, 150))), geometry
+    for button_id, label, center_x in (("yes", "YES", 345), ("no", "NO", 415)):
+        button = confirm.locator(f"#lobby-friend-confirm-{button_id}")
+        expect(button).to_have_text(label)
+        hit = button.bounding_box()
+        assert hit
+        center = (hit["x"] + hit["width"] / 2 - outer["x"], hit["y"] + hit["height"] / 2 - outer["y"])
+        assert abs(center[0] - center_x) <= 1 and abs(center[1] - 391.5) <= 1, (button_id, center)
+
+
+def finish_friend_mutation(page, stage, panel, row, action, target, directory, filename, *, held=None, refused=False):
+    commands = {"apply": (27, 36), "accept": (28, 37), "remove": (29, 38), "block": (41, 62)}
+    request, reply = commands[action]
+    trace = "window.qaQuestWire.lobby.friendWrites"
+    start = page.evaluate(trace)
+    lobby_start = read_lobby_achievement_trace(page)["sent"]
+    status = row.get_attribute("data-status")
+    confirm, button = confirm_friend_mutation(page, panel, row, action)
+    check_friend_confirmation(stage, confirm, action, status, target["name"])
+    capture(stage, directory, f"{Path(filename).stem.removesuffix('-verified')}-before-yes.png", animations="allow")
+    assert page.evaluate(trace) == start
+    if held:
+        box = button.bounding_box()
+        assert box
+        hold_lobby_reply(page, request, reply, 6)
+    confirm.locator("#lobby-friend-confirm-yes").click()
+    expect(confirm).to_have_count(0)
+
+    scoped_evidence = {}
+    no_alert = page.locator("#login-alert[open]")
+    expected_send = [request, 9, target["player"]]
+    if held:
+        wait_held_lobby_reply(page)
+        try:
+            expect(panel).to_have_attribute("data-write-state", "pending")
+            expect(row).to_have_attribute("data-status", "7")
+            expect(button).to_be_disabled()
+            expect(no_alert).to_have_count(0)
+            pending = page.evaluate(trace)
+            assert pending["sent"][len(start["sent"]):] == [expected_send] and pending["replies"] == start["replies"], pending
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            expect(confirm).to_have_count(0)
+            assert page.evaluate(trace) == pending
+            scoped_evidence["heldStored"] = held()
+            capture(stage, directory, "02-friend-apply-held-original-ack.png", animations="allow")
+        finally:
+            release_lobby_reply(page)
+
+    page.wait_for_function(f"offset => {trace}.replies.length > offset", arg=len(start["replies"]), timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-write-state", "idle", timeout=TIMEOUT)
+    if refused:
+        warning = page.locator('#login-alert[open][data-kind="lobby-friend-warning"]')
+        expect(warning.locator("#login-alert-title")).to_have_text("警告")
+        expect(warning.locator("#login-alert-message")).to_have_text("對方好友數已達到最大值無法申請")
+        expect(row).to_have_attribute("data-status", "7")
+        capture(stage, directory, filename, animations="allow")
+        warning.locator("#login-alert-ok").press("Enter")
+        expect(warning).to_have_count(0)
+        expect(button).to_be_focused()
+    else:
+        expect(row).to_have_count(0, timeout=TIMEOUT)
+        expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+        expect(no_alert).to_have_count(0)
+        capture(stage, directory, filename, animations="allow")
+    end = page.evaluate(trace)
+    sends, replies = end["sent"][len(start["sent"]):], end["replies"][len(start["replies"]):]
+    assert sends == [expected_send], sends
+    assert replies == [[34, 6, 64] if refused else [reply, 6, target["player"]]], replies
+    assert [packet[0] for packet in read_lobby_achievement_trace(page)["sent"][len(lobby_start):]] == [request]
+    return {"sent": sends, "replies": replies, **scoped_evidence}
+
+
+def check_first_friend_record(page, stage, panel, database, avatar_id, directory):
+    initial = wait_lobby_achievement_check(page, 1)
+    items = set(owned_avatar_items(database, avatar_id))
+    state_sql = "SELECT state FROM achievement_inventories WHERE avatar_id = ? AND achievement_id = 37"
+    assert query(database, state_sql, avatar_id) == [(0,)]
+    panel.locator("#lobby-friend-close").click()
+    expect(panel).to_have_count(0)
+    settled = wait_lobby_achievement_check(page, 2)
+    sends = settled["sent"][len(initial["sent"]):]
+    replies = settled["replies"][lobby_check_reply_offset(settled, 2):]
+    assert [packet[0] for packet in sends] == [35, 3], sends
+    reward = [51, 22, 37, 3, 3, 1, 0]
+    assert [packet for packet in replies if packet[0] == 51] == [reward], replies
+    (grant,) = [packet for packet in replies if packet[:2] == [27, 10]]
+    assert grant[3] == 3 and (grant[2], 3, 0) not in items, grant
+    assert set(owned_avatar_items(database, avatar_id)) == items | {(grant[2], 3, 0)}
+    assert query(database, state_sql, avatar_id) == [(1,)]
+
+    notice = page.locator('#lobby-achievement-notice[open][data-kind="achievement"][data-achievement-id="37"]')
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(notice).to_have_attribute("data-treasure-type", "3")
+    expect(notice).to_have_attribute("data-item-id", "3")
+    expect(notice).to_have_attribute("data-amount", "1")
+    expect(notice).to_have_attribute("data-slot-type", "0")
+    expect(notice.locator("#lobby-achievement-notice-title")).to_have_text("Record")
+    expect(notice.locator("#lobby-achievement-notice-message")).to_contain_text("增加好友1人")
+    expect(notice.locator(".lobby-achievement-card-face")).to_be_visible()
+    ok = notice.locator("#lobby-achievement-notice-ok")
+    expect(ok).to_be_focused()
+    capture(stage, directory, "06a-friend-first-friend-record.png", animations="allow")
+    ok.click()
+    expect(notice).to_have_count(0)
+    if [52, 6, 38] in replies:
+        confirm_new_lobby_challenge(page, stage, directory, 38, "06b-friend-new-challenge.png")
+    expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
+    final = read_lobby_achievement_trace(page)
+    assert final["sent"] == settled["sent"]
+    assert not any(packet[0] in (27, 51) for packet in final["replies"][len(settled["replies"]):])
+    assert set(owned_avatar_items(database, avatar_id)) == items | {(grant[2], 3, 0)}
+    return {"sent": sends, "replies": replies, "inventoryAdded": grant[2:]}
+
+
+def check_lobby_friend_mutations(page, origin, database, name, password, peer_name, peer_password, directory):
+    first = friend_mutation_role(database, name)
+    peer = friend_mutation_role(database, peer_name)
+    ((third_player, third_avatar, capacity),) = query(database, """SELECT player_id, id, friend_max FROM avatars
+        WHERE server_type = ? AND name = ?""", first["server"], "聯絡驗收丙")
+    third = {"player": third_player, "avatar": third_avatar, "name": "聯絡驗收丙", "server": first["server"]}
+    assert first["server"] == peer["server"] and capacity == 0
+    assert len({actor["player"] for actor in (first, peer, third)}) == 3
+    assert not friend_mutation_pair(database, first, peer) and not friend_mutation_pair(database, first, third)
+
+    def stored_pair(other=peer):
+        return friend_mutation_pair(database, first, other)
+
+    def finish_role(current_page, role, live, errors):
+        assert len(live) == 4 and all(not socket.is_closed() for socket in live) and not errors, errors
+        return reopen_lobby_fixture(current_page, database, role["player"], errors)
+
+    def pending_pair():
+        (pending,) = stored_pair()
+        assert pending[1:] == (first["player"], peer["player"], 0), pending
+        return pending
+
+    stage, panel, live, errors = open_friend_mutation_view(page, origin, first, name, password)
+    candidate = find_friend_mutation_target(panel, peer)
+    cancel_lobby = read_lobby_achievement_trace(page)["sent"]
+    cancel_data = page.evaluate("window.qaQuestWire.friends.sent")
+    confirm, button = confirm_friend_mutation(page, panel, candidate, "apply")
+    check_friend_confirmation(stage, confirm, "apply", "7", peer["name"])
+    capture(stage, directory, "01-friend-apply-confirmation.png", animations="allow")
+    confirm.locator("#lobby-friend-confirm-no").press("Enter")
+    expect(confirm).to_have_count(0)
+    expect(button).to_be_focused()
+    expect(candidate).to_have_attribute("data-status", "7")
+    cancelled = page.evaluate("window.qaQuestWire.lobby.friendWrites")
+    assert cancelled == {"sent": [], "replies": []} and not stored_pair(), cancelled
+    assert read_lobby_achievement_trace(page)["sent"] == cancel_lobby
+    assert page.evaluate("window.qaQuestWire.friends.sent") == cancel_data
+
+    applied = finish_friend_mutation(page, stage, panel, candidate, "apply", peer, directory,
+                                     "03-friend-apply-verified.png", held=pending_pair)
+    pending = pending_pair()
+    assert tuple(applied["heldStored"]) == pending
+    applied["storedAfter"] = [pending]
+    rows = select_friend_mutation_tab(panel, "waiting")
+    check_friend_rows(rows, database, [[peer["player"], peer["avatar"], 0]])
+    capture(stage, directory, "04-friend-outgoing-waiting.png", animations="allow")
+
+    page = finish_role(page, first, live, errors)
+    stage, panel, live, errors = open_friend_mutation_view(page, origin, peer, peer_name, peer_password)
+    rows = select_friend_mutation_tab(panel, "waiting")
+    check_friend_rows(rows, database, [[first["player"], first["avatar"], 1]])
+    capture(stage, directory, "05-friend-incoming-before-accept.png", animations="allow")
+    accepted = finish_friend_mutation(page, stage, panel, rows.first, "accept", first, directory, "06-friend-accept-verified.png")
+    assert stored_pair() == [pending[:3] + (1,)]
+    accepted["storedAfter"] = stored_pair()
+    rows = select_friend_mutation_tab(panel, "friend")
+    check_friend_rows(rows, database, [[first["player"], first["avatar"], 2]])
+    accepted["firstFriendRecord"] = check_first_friend_record(page, stage, panel, database, peer["avatar"], directory)
+
+    page = finish_role(page, peer, live, errors)
+    stage, panel, live, errors = open_friend_mutation_view(page, origin, first, name, password)
+    rows = select_friend_mutation_tab(panel, "friend")
+    check_friend_rows(rows, database, [[peer["player"], peer["avatar"], 2]])
+    removed = finish_friend_mutation(page, stage, panel, rows.first, "remove", peer, directory, "07-friend-delete-verified.png")
+    assert not stored_pair()
+    removed["storedAfter"] = []
+    candidate = find_friend_mutation_target(panel, peer)
+    blocked = finish_friend_mutation(page, stage, panel, candidate, "block", peer, directory, "08-friend-block-verified.png")
+    (block,) = stored_pair()
+    assert block[1:] == (first["player"], peer["player"], 2), block
+    blocked["storedAfter"] = [block]
+    rows = select_friend_mutation_tab(panel, "block")
+    check_friend_rows(rows, database, [[peer["player"], peer["avatar"], 3]])
+    capture(stage, directory, "09-friend-owned-block.png", animations="allow")
+
+    page = finish_role(page, first, live, errors)
+    stage, panel, live, errors = open_friend_mutation_view(page, origin, peer, peer_name, peer_password)
+    rows = select_friend_mutation_tab(panel, "block")
+    expect(rows).to_have_count(0)
+    incoming = page.evaluate("window.qaQuestWire.friends")
+    (read_block,) = [packet for packet in incoming["replies"] if packet[0] == 12 and packet[2] == 2]
+    assert read_block[2:] == [2, 0, 0, 0, 0, [[first["player"], first["avatar"], 4]]], read_block
+    assert not any(packet[0] == 5 for packet in incoming["sent"]), incoming
+    assert stored_pair() == [block]
+    capture(stage, directory, "10-friend-incoming-block-hidden.png", animations="allow")
+
+    page = finish_role(page, peer, live, errors)
+    stage, panel, live, errors = open_friend_mutation_view(page, origin, first, name, password)
+    rows = select_friend_mutation_tab(panel, "block")
+    check_friend_rows(rows, database, [[peer["player"], peer["avatar"], 3]])
+    unblocked = finish_friend_mutation(page, stage, panel, rows.first, "remove", peer, directory, "11-friend-unblock-verified.png")
+    assert not stored_pair()
+    unblocked["storedAfter"] = []
+
+    candidate = find_friend_mutation_target(panel, third)
+    refused = finish_friend_mutation(page, stage, panel, candidate, "apply", third, directory, "12-friend-true-capacity-refusal.png",
+                                     refused=True)
+    assert not stored_pair(third) and not stored_pair()
+    refused["storedAfter"] = []
+    assert len(live) == 4 and all(not socket.is_closed() for socket in live) and not errors, errors
+    if directory is not None:
+        evidence = {"cancel": cancelled, "apply": applied, "accept": accepted, "remove": removed,
+                    "block": blocked, "deferredBlock": read_block, "unblock": unblocked, "serverRefusal": refused}
+        (directory / "lobby-friend-mutation-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
 
 
 def check_lobby_record(page, origin, database, name, password, directory):
@@ -6359,6 +6666,10 @@ def main():
                         help="Verify the original basic Item drawer and optional real potion use")
     parser.add_argument("--lobby-friend", choices=("populated", "empty"), nargs="?", const="populated",
                         help="Verify the original read-only Friends viewer on the matching disposable fixture")
+    parser.add_argument("--lobby-friend-write", action="store_true",
+                        help="Verify original Friends mutations with two disposable authenticated roles")
+    parser.add_argument("--friend-peer-user", help="Second disposable account for --lobby-friend-write")
+    parser.add_argument("--friend-peer-password-file", type=Path, help="Private password file for --friend-peer-user")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
@@ -6417,6 +6728,13 @@ def main():
                               or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
                               or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record or args.lobby_item):
         parser.error("--lobby-friend requires --quest-start-user with the matching disposable Friends fixture")
+    if args.lobby_friend_write and (not args.quest_start_user or not args.friend_peer_user or not args.friend_peer_password_file
+                                    or args.quest_start_fault or args.quest_next_turn or args.quest_terminal or args.quest_next_land
+                                    or args.quest_complete_q3 or args.quest_peaceful or args.quest_high_low or args.lobby_selectable
+                                    or args.lobby_record or args.lobby_item or args.lobby_friend):
+        parser.error("--lobby-friend-write requires --quest-start-user and the --friend-peer credentials as its own case")
+    if not args.lobby_friend_write and (args.friend_peer_user or args.friend_peer_password_file):
+        parser.error("--friend-peer credentials require --lobby-friend-write")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -6453,6 +6771,11 @@ def main():
                     check_lobby_friends(page, origin, args.database, args.quest_start_user,
                                         args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens, args.lobby_friend)
                     print(f"Original Friends lists and same-peer close check passed ({args.lobby_friend}).")
+                elif args.lobby_friend_write:
+                    check_lobby_friend_mutations(page, origin, args.database, args.quest_start_user,
+                                                 args.quest_start_password_file.read_text().rstrip("\r\n"), args.friend_peer_user,
+                                                 args.friend_peer_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Original Friends confirmation, exact authenticated writes, and persisted relationship transitions passed.")
                 elif args.quest_high_low:
                     page_errors = []
                     page.on("pageerror", lambda error: page_errors.append(str(error)))

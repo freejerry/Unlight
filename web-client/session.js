@@ -1,7 +1,9 @@
 import { createAuthExchange, createRegistrationVerifier } from './srp.js';
 import { applySessionKey, createFrameParser, encodeCommand, readReply, signedByte } from './wire.js';
 import { createAchievementRecords, readAchievementRows, readAchievementVectorFields } from './achievement-data.js';
-import { FRIEND_PAGE_SIZE, readFriendAvatarReply, readFriendPageReply, readFriendSearchReply } from './friend-data.js';
+import {
+  FRIEND_PAGE_SIZE, FRIEND_WRITES, readFriendAvatarReply, readFriendPageReply, readFriendSearchReply, readFriendWriteReply,
+} from './friend-data.js';
 import {
   AVATAR_COMMAND, LOBBY_AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readLobbyAvatar, readVersions,
 } from './data-bootstrap.js';
@@ -243,6 +245,9 @@ const messages = {
   'friend-data-uncertain': '好友資料尚未確認，請重新登入後再試。',
   'friend-search-invalid': '請輸入三到十二個字元搜尋。',
   'friend-search-uncertain': '搜尋結果尚未確認，請重新登入後再試。',
+  'friend-write-unavailable': '目前無法變更這筆好友關係。',
+  'friend-write-rejected': '遊戲服務未接受這項好友操作。',
+  'friend-write-uncertain': '好友操作結果尚未確認，可以重新查看好友清單。',
 };
 
 export class SessionError extends Error {
@@ -358,8 +363,8 @@ class SessionSocket {
     this.#expireCommand = command;
   }
 
-  observe(commands, receive) {
-    const observer = { commands, receive };
+  observe(commands, receive, accepts) {
+    const observer = { commands, receive, accepts };
     this.#observer = observer;
     return () => { if (this.#observer === observer) this.#observer = null; };
   }
@@ -408,12 +413,13 @@ class SessionSocket {
         applySessionKey(body, this.#key);
         const reply = readReply(body);
         const waiter = this.#waiting;
+        const observer = this.#observer;
         if (waiter?.replies.includes(reply.command)) {
           waiter.onReply?.(reply);
           this.#waiting = null;
           waiter.resolve(reply);
-        } else if (this.#observer?.commands.includes(reply.command)) {
-          this.#observer.receive(reply);
+        } else if (observer?.commands.includes(reply.command) && (!observer.accepts || observer.accepts(readReply(body)))) {
+          observer.receive(reply);
         } else if (reply.command === this.#expireCommand) {
           this.#fail(new SessionError('network'), 'expired');
         } else if (!this.#onPushedReply?.(reply) && waiter && !waiter.allowOther && !waiter.skip?.includes(reply.command)) {
@@ -541,6 +547,11 @@ function observeLobbyAvatar(reply, publish) {
   try {
     if (observeAchievementReply(reply, LOBBY_ACHIEVEMENT_REPLIES,
       (update) => publish(undefined, reply.command, undefined, update))) return true;
+    const friendWrite = readFriendWriteReply(reply, LOBBY_ERROR_REPLY);
+    if (friendWrite) {
+      publish(undefined, reply.command, undefined, friendWrite);
+      return true;
+    }
     switch (reply.command) {
       case LOBBY_ENERGY_REPLY: {
         const energy = reply.int();
@@ -899,6 +910,10 @@ async function submitDeckAppend(socket, { inventoryId, deckIndex, position }, si
           invalid = true;
           reject(new SessionError('protocol'));
         }
+      }, (reply) => {
+        if (reply.command !== LOBBY_ERROR_REPLY) return true;
+        // A definitive late friend error belongs to the Lobby stream, even during a deck edit.
+        try { return !readFriendWriteReply(reply, LOBBY_ERROR_REPLY); } catch { return true; }
       });
   });
   try {
@@ -3266,9 +3281,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
   const friendPages = new Map();
   const friendAvatars = new Map();
   const friendSubscriptions = new Set();
+  const friendChangeSubscriptions = new Set();
+  const friendChangedRows = new Map();
   const uncertainFriendReads = new Set();
   let friendSearchRows = [];
+  let friendSearchReceivedAt = -Infinity;
   let friendReadQueue;
+  let friendRevision = 0;
+  let friendWrite;
   const blockedQuestItems = new Set();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
@@ -3346,11 +3366,37 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     return [...friendPages.values()].some(({ page }) => page.rows.some(({ status }) => status === 1));
   }
 
+  function publishFriendRequests(before) {
+    const after = hasIncomingLobbyFriendRequest();
+    if (before !== after) publishFriendChange(friendSubscriptions, after);
+  }
+
+  function publishFriendChange(subscriptions, value) {
+    for (const subscription of [...subscriptions]) {
+      if (subscriptions.has(subscription)) notifyLobbyListener(subscription.listener, value);
+    }
+  }
+
+  function subscribeFriend(subscriptions, listener, signal) {
+    const subscription = { listener, unsubscribe() {
+      subscriptions.delete(subscription);
+      signal?.removeEventListener('abort', subscription.unsubscribe);
+    } };
+    subscriptions.add(subscription);
+    signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+    return subscription.unsubscribe;
+  }
+
   function cachedFriendPage(key) {
     const entry = friendPages.get(key);
-    if (entry && entry.avatarId === initialData?.avatar?.id && performance.now() - entry.receivedAt <= FRIEND_PAGE_CACHE_MS) {
+    if (entry?.revision === friendRevision && entry.avatarId === initialData?.avatar?.id
+      && performance.now() - entry.receivedAt <= FRIEND_PAGE_CACHE_MS) {
       return entry.page;
     }
+  }
+
+  function knownFriendRows() {
+    return [...[...friendChangedRows.values()].map(({ row }) => row), ...[...friendPages.values()].flatMap(({ page }) => page.rows)];
   }
 
   function readFriendData(signal, key, work) {
@@ -3368,18 +3414,25 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       if (signal?.aborted) throw new SessionError('cancelled');
       wait.throwIfAborted();
       auth.assertOpen();
-      let dispatched = false;
-      function request(command, fields, replyCommand, decode, matches) {
-        return requestFriendReply(data.socket, wait, command, fields, replyCommand, decode, matches, () => { dispatched = true; });
+      async function request(command, fields, replyCommand, decode, matches) {
+        for (;;) {
+          if (signal?.aborted) throw new SessionError('cancelled');
+          const revision = friendRevision;
+          let dispatched = false;
+          let value;
+          try {
+            value = await requestFriendReply(data.socket, wait, command, fields, replyCommand, decode, matches,
+              () => { dispatched = true; });
+          } catch (error) {
+            if (!dispatched || wait.aborted) throw error;
+            uncertainFriendReads.add(key);
+            throw new SessionError(uncertain);
+          }
+          if (revision === friendRevision || replyCommand === DATA_FRIEND_AVATAR_REPLY) return value;
+          // A Lobby receipt changed the relationship while this Data read was in flight.
+        }
       }
-      let result;
-      try {
-        result = await work(request);
-      } catch (error) {
-        if (!dispatched || wait.aborted) throw error;
-        uncertainFriendReads.add(key);
-        throw new SessionError(uncertain);
-      }
+      const result = await work(request);
       if (signal?.aborted) throw new SessionError('cancelled');
       wait.throwIfAborted();
       return result;
@@ -3390,13 +3443,95 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
 
   function referencesFriendAvatar(avatarId) {
     if (friendSearchRows.some(row => row.avatarId === avatarId)) return true;
-    return [...friendPages.values()].some(({ page }) => page.rows.some(
-      row => row.avatarId === avatarId && row.status !== 4 && row.status !== 5,
-    ));
+    return knownFriendRows().some(row => row.avatarId === avatarId && row.status !== 4 && row.status !== 5);
+  }
+
+  function ownsFriendRow(row) {
+    if (!row || row.playerId === playerId || !Number.isInteger(row.avatarId) || row.avatarId < 1) return false;
+    const matches = (known) => known.playerId === row.playerId && known.avatarId === row.avatarId && known.status === row.status;
+    if (row.status === 7) {
+      return performance.now() - friendSearchReceivedAt <= FRIEND_PAGE_CACHE_MS && friendSearchRows.some(matches)
+        && !knownFriendRows().some(known => known.playerId === row.playerId);
+    }
+    const changed = friendChangedRows.get(row.playerId);
+    if (changed) return performance.now() - changed.receivedAt <= FRIEND_PAGE_CACHE_MS && matches(changed.row);
+    return [...friendPages.keys()].some(key => cachedFriendPage(key)?.rows.some(matches));
+  }
+
+  function recordFriendWrite(event) {
+    const ongoing = friendWrite;
+    if (!ongoing?.dispatched) return;
+    const { action, definition, playerId, avatarId, complete } = ongoing;
+    if (event.friendCode !== undefined) {
+      if (definition.errors.includes(event.friendCode)) {
+        friendWrite = undefined;
+        complete({ friendCode: event.friendCode });
+      }
+      return;
+    }
+    if (event.command !== definition.reply || event.playerId !== playerId) return;
+    friendWrite = undefined;
+    const before = hasIncomingLobbyFriendRequest();
+    const result = Object.freeze({ action, playerId, avatarId, status: definition.status });
+    friendRevision += 1;
+    for (const entry of friendPages.values()) {
+      const { page } = entry;
+      const rows = page.rows.filter(row => row.playerId !== playerId);
+      if (rows.length !== page.rows.length) entry.page = Object.freeze({ ...page, rows: Object.freeze(rows) });
+    }
+    if (definition.status === null) friendChangedRows.delete(playerId);
+    else friendChangedRows.set(playerId, { row: result, receivedAt: performance.now() });
+    friendSearchRows = Object.freeze(friendSearchRows.filter(row => row.playerId !== playerId));
+    complete(result);
+    publishFriendRequests(before);
+    publishFriendChange(friendChangeSubscriptions, result);
+  }
+
+  async function changeLobbyFriend(action, row, { signal } = {}) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (friendWrite?.uncertain) throw new SessionError('friend-write-uncertain');
+    if (profileRequest || friendWrite || questRequest || questReturn || questScene || adventure) throw new SessionError('busy');
+    const definition = Object.hasOwn(FRIEND_WRITES, action) ? FRIEND_WRITES[action] : null;
+    if (!initialData?.avatar || !lobby.verified || !definition?.from.includes(row?.status) || !ownsFriendRow(row)) {
+      throw new SessionError('friend-write-unavailable');
+    }
+    auth.assertOpen();
+    const proof = { playerId: row.playerId, avatarId: row.avatarId, status: row.status };
+    const operation = { kind: 'friend-write', action, definition, ...proof, dispatched: false };
+    friendWrite = operation;
+    let result;
+    try {
+      result = await withRegistrationChannel(lobby, undefined, async (socket, requestSignal) => {
+        if (signal?.aborted) throw new SessionError('cancelled');
+        if (!ownsFriendRow(proof)) throw new SessionError('friend-write-unavailable');
+        const receive = new Promise(resolve => { operation.complete = resolve; });
+        socket.send(definition.request, [operation.playerId]);
+        operation.dispatched = true;
+        return await bounded(receive, requestSignal);
+      }, operation);
+    } catch (error) {
+      if (!operation.dispatched || !initialData || friendWrite !== operation) throw error;
+      operation.uncertain = true;
+      friendRevision += 1;
+      throw new SessionError('friend-write-uncertain');
+    } finally {
+      if (friendWrite === operation && !operation.uncertain) friendWrite = undefined;
+    }
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (result.friendCode !== undefined) {
+      const error = new SessionError('friend-write-rejected', result.friendCode);
+      error.friendCode = result.friendCode;
+      throw error;
+    }
+    return result;
   }
 
   function recordLobbyEvent(event) {
     if (!initialData?.avatar) return;
+    if (event.kind === 'friend-write') {
+      recordFriendWrite(event);
+      return;
+    }
     if (event.kind === 'selectable-notices') {
       selectableLobbyNoticeIds = new Set(event.achievementIds);
       for (const { offer, state } of selectableLobbyAchievements.values()) {
@@ -3709,9 +3844,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       achievementRecords.close();
       for (const subscription of avatarItemSubscriptions) subscription.unsubscribe();
       for (const subscription of friendSubscriptions) subscription.unsubscribe();
+      for (const subscription of friendChangeSubscriptions) subscription.unsubscribe();
       friendLifetime.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+      friendWrite = undefined;
       friendPages.clear();
       friendAvatars.clear();
+      friendChangedRows.clear();
       uncertainFriendReads.clear();
       friendSearchRows = [];
       removedAvatarItems.clear();
@@ -3780,7 +3918,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     for (const { socket } of channels) socket.assertOpen();
   }
 
-  async function withRegistrationChannel(channel, signal, work) {
+  async function withRegistrationChannel(channel, signal, work, owner) {
     const controller = new AbortController();
     const requestSignal = controller.signal;
     const cancel = () => controller.abort(new SessionError('cancelled'));
@@ -3791,7 +3929,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       requestSignal.throwIfAborted();
       return work(channel.socket, requestSignal);
     })();
-    profileRequest = { channel, controller, task };
+    profileRequest = { channel, controller, task, owner };
     try {
       return await task;
     } finally {
@@ -4589,13 +4727,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
         const page = await request(DATA_FRIEND_PAGE_REQUEST, [type, offset, FRIEND_PAGE_SIZE], DATA_FRIEND_PAGE_REPLY,
           readFriendPageReply, value => value.type === type && value.offset === offset);
         const before = hasIncomingLobbyFriendRequest();
-        friendPages.set(key, { avatarId, page, receivedAt: performance.now() });
-        const after = hasIncomingLobbyFriendRequest();
-        if (before !== after) {
-          for (const subscription of [...friendSubscriptions]) {
-            if (friendSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, after);
-          }
-        }
+        for (const row of page.rows) friendChangedRows.delete(row.playerId);
+        friendPages.set(key, { avatarId, page, revision: friendRevision, receivedAt: performance.now() });
+        publishFriendRequests(before);
         return page;
       });
     },
@@ -4605,13 +4739,14 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       }
       return readFriendData(signal, 'search', async request => {
         const results = await request(DATA_FRIEND_SEARCH_REQUEST, [query], DATA_FRIEND_SEARCH_REPLY, readFriendSearchReply);
-        const known = new Set([...friendPages.values()].flatMap(({ page }) => page.rows.map(({ avatarId }) => avatarId)));
+        const known = new Set(knownFriendRows().map(({ avatarId }) => avatarId));
         const rows = results.filter(row => {
           if (row.playerId === playerId || known.has(row.avatarId)) return false;
           known.add(row.avatarId);
           return true;
         });
         friendSearchRows = Object.freeze(rows);
+        friendSearchReceivedAt = performance.now();
         return Object.freeze({ count: results.length, rows: friendSearchRows });
       });
     },
@@ -4622,6 +4757,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
         if (friendAvatars.has(avatarId)) return friendAvatars.get(avatarId);
         const profile = await request(DATA_FRIEND_AVATAR_REQUEST, [avatarId], DATA_FRIEND_AVATAR_REPLY,
           readFriendAvatarReply, value => value.avatarId === avatarId);
+        if (!referencesFriendAvatar(avatarId)) throw new SessionError('friend-data-unavailable');
         friendAvatars.set(avatarId, profile);
         return profile;
       });
@@ -4629,14 +4765,18 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     hasIncomingLobbyFriendRequest,
     subscribeLobbyFriendRequests(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
-      const subscription = { listener, unsubscribe() {
-        friendSubscriptions.delete(subscription);
-        signal?.removeEventListener('abort', subscription.unsubscribe);
-      } };
-      friendSubscriptions.add(subscription);
-      signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+      const unsubscribe = subscribeFriend(friendSubscriptions, listener, signal);
       notifyLobbyListener(listener, hasIncomingLobbyFriendRequest());
-      return subscription.unsubscribe;
+      return unsubscribe;
+    },
+    changeLobbyFriend,
+    getLobbyFriendWriteState() {
+      if (friendWrite?.uncertain) return 'uncertain';
+      return friendWrite ? 'pending' : 'idle';
+    },
+    subscribeLobbyFriendChanges(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      return subscribeFriend(friendChangeSubscriptions, listener, signal);
     },
     refreshLobbyAvatar() {
       const now = performance.now();
@@ -4651,8 +4791,9 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       return sendLobbyRefresh();
     },
     checkLobbyAchievements({ signal, onBatchReady } = {}) {
+      const profileBusy = profileRequest && (profileRequest.channel !== lobby || profileRequest.owner?.kind !== 'friend-write');
       if (!(signal instanceof AbortSignal) || signal.aborted || checkedLobbyShows.has(signal) || !initialData?.avatar
-        || !lobby.verified || profileRequest || questRequest || questReturn || questScene || adventure) return false;
+        || !lobby.verified || profileBusy || questRequest || questReturn || questScene || adventure) return false;
       try {
         auth.assertOpen();
         lobby.socket.send(LOBBY_ACHIEVEMENT_CHECK, [signedByte(1)]);

@@ -10,6 +10,7 @@ import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 
 from extract_character_card_art import FONT_REVISION, FONT_SHA, REVISION
 from extract_lobby_record_art import DEVICE_FONT
@@ -25,7 +26,8 @@ PINS = {
     "btn_delete": "35b47ad7c76560a1328b80ff9597d2e456c126ceb73d908bd4d8fdf4e079abb8",
     "btn_invite": "c66d17febcbbcb905209010be1aa2b1324e423e25e54e8efd4c5e4a1257ee65c",
 }
-SOURCE_LOGIN = Path(__file__).resolve().parents[2] / "source-login"
+REPO = Path(__file__).resolve().parents[2]
+SOURCE_LOGIN = REPO / "source-login"
 SHARED_HOVER = "/source-login/lobby-art/hover/"
 NORMAL_ENTRY_DIGESTS = {
     "up": "f8d90475b710a02425b6f629ac5d6950052efd36ca14e2a2db09a922aad41da3",
@@ -39,6 +41,29 @@ WORDING = {
 }
 SEARCH_WORDING = {"label": "搜索", "pending": "檢索中", "minimumPrefix": "最少需要", "minimumSuffix": "個字"}
 INVITE_LABELS = {"sns": "邀請", "code": "邀請Code"}
+CONFIRM_WORDING_SOURCES = {
+    "app/client/src/view/scene/common/FriendListContainer.as": (
+        "_TRANS_CONFIRM", "_TRANS_DIA_MSG1", "_TRANS_DIA_MSG2_PRE", "_TRANS_DIA_MSG2",
+        "_TRANS_DIA_MSG3_PRE", "_TRANS_DIA_MSG3", "_TRANS_DIA_MSG5", "_TRANS_DIA_MSG6",
+    ),
+    "app/client/src/controller/BaseCtrl.as": ("_TRANS_ALERT",),
+    "app/client/lib/Const.as": tuple(f"_TRANS_ERR_MSG{code}" for code in range(60, 67)),
+}
+
+
+def confirmation_glyphs():
+    glyphs, provenance = set(), []
+    for path, names in CONFIRM_WORDING_SOURCES.items():
+        source = (REPO / path).read_bytes()
+        constants = dict(re.findall(
+            r'CONFIG::LOCALE_TCN\s+private static const\s+(\w+)\s*:\s*String\s*=\s*("(?:\\.|[^"\\])*");',
+            source.decode("utf8"),
+        ))
+        for name in names:
+            label = json.loads(constants[name]).replace("__AVATAR_NAME__", "")
+            glyphs.update(letter for letter in label if letter.isprintable())
+        provenance.append({"source": path, "sourceSha256": sha256(source).hexdigest(), "constants": list(names)})
+    return "".join(sorted(glyphs)), provenance
 
 
 def extract(assets, output, swfdump, device_font, mincho_font):
@@ -171,8 +196,9 @@ def extract(assets, output, swfdump, device_font, mincho_font):
             "app/client/data/css/UL.css.cn",
         ],
     }
+    confirmation, wording_sources = confirmation_glyphs()
     glyphs = "".join(map(chr, range(32, 127))) + "".join(
-        (*WORDING.values(), *SEARCH_WORDING.values(), *INVITE_LABELS.values())
+        (*WORDING.values(), *SEARCH_WORDING.values(), *INVITE_LABELS.values(), confirmation)
     )
     index["fonts"] = {
         "mincho": font_subset(device_font, output, "friend-mincho.woff", DEVICE_FONT, glyphs, provenance),
@@ -180,6 +206,7 @@ def extract(assets, output, swfdump, device_font, mincho_font):
                                   ("res/data/wt004.ttf", FONT_SHA), WORDING["waiting"], provenance),
         "bradley": {"file": "bradley-gratis.ttf", "url": "/source-login/fonts/bradley-gratis.ttf"},
     }
+    provenance[index["fonts"]["mincho"]["file"]]["confirmationWording"] = wording_sources
     bradley_path = SOURCE_LOGIN / "fonts/bradley-gratis.ttf"
     if sha256(bradley_path.read_bytes()).hexdigest() != BRADLEY[1]:
         raise ValueError("Expected the exact historical nbr.ttf for Friend List levels")

@@ -71,8 +71,23 @@
 
 - 大廳與設定的好友按鈕實際點擊區是 `(712,528,48,32)`，原紅色提示圖在 `(712,521)`。只以已讀關係中待本人確認的狀態 1 啟用紅色提示。兩種待確認總數含送出與收到。528×408 窗體以 300 ms Quad-out 從 `(125,-120)` 到 `(125,150)`，關閉用 150 ms sine-out。開啟時阻止底層點擊。每頁五欄兩列，卡片從原始裝備部件繪製角色，旁列真實角色名、等級及上線狀態。[按鈕狀態](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [進退場](../../../app/client/src/view/FriendListView.as#L249) · [窗體與名片素材](../../../source-login/lobby-friend-art/index.json)
 - 好友、等待、封鎖由已認證 Data `CS8` 以類型 1、0、2 取每頁十筆，`SC12` 另帶各類總數。顯示已披露的正整數角色 ID 時送 `CS5` 等 `SC9`，介面只使用實際角色資料。好友容量取已認證的 Data `SC6` 或創角 Lobby `SC4`，後續由 Lobby `SC19` 更新。同登入短時間內翻回及重開沿用五分鐘快取。原分頁在總數恰為十的倍數時多一空頁。封鎖資料可能包含被對方封鎖的關係，畫面只列本人封鎖，且不補取對方封鎖列的角色名片。[原版清單快取](../../../app/client/src/model/FriendLink.as#L175) · [原版資料服務](../../../app/server/src/controller/data_controller.rb#L24) · [封鎖計數與排序](../../../app/server/src/model/friend_link.rb#L84)
-- 搜尋以三至十二個 UTF-16 碼元為限，使用 Enter 或按鈕。非空短名稱顯示 `Error` 和「最少需要3個字」，不送封包。有效搜尋由 Data `CS15` 與 `SC26` 確認同伺服器的角色名稱前綴，收到結果後維持原版的一秒等候，再更新名單。無結果清單清空。好友、等待及封鎖分頁顯示原版「邀請」與「邀請Code」，搜尋時兩者收起。關閉會觸發 Lobby `CS35(true)` 成就檢查。好友申請、接受、刪除、封鎖與邀請流程需經各自的原版確認及伺服器回覆，另以隔離角色驗收。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版搜尋限制](../../../app/server/src/controller/data_controller.rb#L152) · [關閉行為](../../../app/client/src/view/FriendListView.as#L319) · [原版關係寫入](../../../app/server/src/controller/lobby_controller.rb#L235)
-- **已實跑。** 原版與新版均驗證 10+1 分頁、等待與封鎖的兩個方向、空清單、短名稱、同服搜尋及設定。原 `SC26` 回傳角色 ID 20、19，原版畫面依序呈現 19、20，新版沿用該畫面次序。鼠標點選後的橙字皮膚跨設定保留。關閉時檢查成就，瀏覽前後關係列一致。原版開啟中定時刷新及所有關係寫入仍待各自驗收。[原版搜尋物件迭代](../../../app/client/src/view/scene/common/FriendListContainer.as#L514) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-live/README.md)
+- 搜尋以三至十二個 UTF-16 碼元為限，使用 Enter 或按鈕。非空短名稱顯示 `Error` 和「最少需要3個字」，不送封包。有效搜尋由 Data `CS15` 與 `SC26` 確認同伺服器的角色名稱前綴，收到結果後維持原版的一秒等候，再更新名單。無結果清單清空。好友、等待及封鎖分頁顯示原版「邀請」與「邀請Code」，搜尋時兩者收起。關閉會觸發 Lobby `CS35(true)` 成就檢查。邀請及寄送流程另驗。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版搜尋限制](../../../app/server/src/controller/data_controller.rb#L152) · [關閉行為](../../../app/client/src/view/FriendListView.as#L319)
+- **已實跑。** 原版與新版均驗證 10+1 分頁、等待與封鎖的兩個方向、空清單、短名稱、同服搜尋及設定。原 `SC26` 回傳角色 ID 20、19，原版畫面依序呈現 19、20，新版沿用該畫面次序。鼠標點選後的橙字皮膚跨設定保留。關閉時檢查成就，瀏覽前後關係列一致。原版開啟中定時刷新另驗。[原版搜尋物件迭代](../../../app/client/src/view/scene/common/FriendListContainer.as#L514) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-live/README.md)
+
+#### 好友確認與關係寫入
+
+- 搜尋角色卡的「申請」、等待分頁收到的「認證」與卡片滑入後的 X 共用原版 `ConfirmPanel`。窗體在 `y280`，高 150，寬為內文寬加 60，水平以遊戲區的 `x380` 為中心。YES 與 NO 中心為 `(345,391)` 與 `(415,391)`。底層覆原版半透明深灰。取消只收起確認窗。原版 X 在開確認前播放 `ulse01`，YES／NO 操作也播放該音效，伺服器拒絕另走 `Alerter` 的「警告」與 `ulse02`。[原版確認窗](../../../app/client/src/view/utils/ConfirmPanel.as#L50) · [好友操作](../../../app/client/src/view/scene/common/FriendListContainer.as#L1234)
+
+| 操作 | 原版列狀態 | Lobby 封包 | 真實 SQLite |
+| --- | --- | --- | --- |
+| 申請 | 搜尋結果 7 | `CS27 → SC36` | 建立發送者指向收件者的 type 0 |
+| 認證 | 收到申請 1 | `CS28 → SC37` | 同一筆關係改為 type 1，方向相同 |
+| 刪除、拒絕或撤回 | 0／1／2／6 的 X | `CS29 → SC38` | 關係列消失 |
+| 封鎖 | 搜尋結果 7 的 X | `CS41 → SC62` | 建立本人指向對方的 type 2。本人看到狀態 3，對方的狀態 4 不顯示 |
+| 解除封鎖 | 本人封鎖 3 的 X | `CS29 → SC38` | 原封鎖列消失 |
+
+- 請求與成功回覆參數均為對方玩家 ID。接到該筆回覆才更新畫面、待確認提示及相應分頁快取。已發送的操作即使畫面離開仍等候同一 Lobby 的回覆。來源 `SC34` 以錯誤碼 60 至 66 區分拒絕原因，沒有玩家 ID。逾時結果不明時保留舊操作的識別與寫入鎖，資料清單仍可獨立讀取。上一個請求的晚回覆不能當成下一筆操作的結果。[原版命令](../../../app/client/src/net/command/LobbyCommand.as#L348) · [Ruby 關係變更](../../../app/server/src/controller/lobby_controller.rb#L235) · [新版驗證與快取](../../../web-client/session.js)
+- **已實跑。** 兩版以隔離角色甲、乙驗取消、申請、認證、刪除、封鎖及解除。認證沿用同一筆關係。被封鎖者讀到狀態 4，畫面維持空白。解除後可再次搜尋對方。另用容量 0 的同服角色觸發真的 `SC34=64`，點原版 OK 後維持原搜尋結果。新版暫緩真 `SC36` 驗證沒有提前移除搜尋列。認證後關閉面板的真 `CS35` 發出首位好友成就 #37、魔女秘藥一份，並銜接 #38 新挑戰。原版在認證後以已驗證的 SQLite 隔離存檔接續下半程。[操作、封包及並排畫面](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-write-live/README.md)
 
 ### 右側紀錄清單
 
