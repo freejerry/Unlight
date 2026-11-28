@@ -122,7 +122,7 @@
 1. 落日大蝙蝠的勝利與敗北已實跑繁中 Flash 及新版的兩次 OK 和返回。新版也已跑完 18 回合和局。接續繁中 Flash 和局，核對 Draw、音效、報酬、兩次確認及任務歸檔。地圖結算使用任務失敗圖。[原版回合順序](../../../app/server/src/rule/event/multi_duel_event.rb#L45) · [原版任務結算](../../../app/server/src/controller/quest_controller.rb#L608)
 2. 接續換角與其他戰鬥分支。單卡、多卡與必要換角各有案例。逐項補戰鬥日誌、有效牌標記、事件牌效果、其餘卡面來源與疊層、任務中放棄及其他地形入場。[原版卡面圖層](../../../app/client/src/view/scene/common/CharaCardClip.as)
 3. 依原版入口驗收獎勵骰。先取 q568 第 5 格的 Next、High／Low、Get／Exit 和獎勵交接，再擴及終格勝利、重試及原版額外選項。其餘搜尋索引、區域與特殊分支按各自的可達狀態驗收。[高低獎勵骰](#高低獎勵骰)
-4. q3 大蝙蝠之群已完成首區頭目固定蝙蝠卡寶箱、通關與區域切換。q4 山丘矮人勝利、q32 紫色泥沼澤2兩線終局及左線先鋒卡均有原版與新版操作紀錄。Q82 已驗收雙卡主動換角，接續強制換角和先鋒卡的全租借牌組條件。 [道路終局與泥潭後續格](#道路終局與泥潭後續格) · [泥潭左線與先鋒卡](#泥潭左線與先鋒卡) · [雙卡主動換角](#雙卡主動換角)
+4. q3 大蝙蝠之群已完成首區頭目固定蝙蝠卡寶箱、通關與區域切換。q4 山丘矮人勝利、q32 紫色泥沼澤2兩線終局及左線先鋒卡均有原版與新版操作紀錄。Q82 已驗收雙卡主動換角，Q1 已驗收死亡後換角。先鋒卡的全租借牌組條件另待覆蓋。 [道路終局與泥潭後續格](#道路終局與泥潭後續格) · [泥潭左線與先鋒卡](#泥潭左線與先鋒卡) · [雙卡主動換角](#雙卡主動換角)
 5. 測試延遲登入 Pong 後按 Back、遺失 CS5 的真 SC6/SC4、扣完 AP 缺 SC17、進格缺 SC40、缺 SC46、缺己方卡片 ACK、終局漏 SC24、伺服器或瀏覽器送 CLOSE 兩種方向。依隔離 Ruby 的 SQLite 查核持久化結果，測試紀錄只保存非敏感資料。早期原版、共享傳輸和暫停分支各自有測例，固定舞台狀態依本分支實跑結果更新。
 
 | 首組之後的狀態 | 下一段原版驗收依據 |
@@ -184,7 +184,13 @@
 
 原版操作只送一次 `CS35(1)`。Ruby 先確認我方槽 1／卡 21，再確認敵方槽 0／卡 1008。`SC50` 開始收起面板並切換立繪與主戰卡，面板和卡片使用 500 ms ease-out sine。收到攻防開始訊息後，原版顯示古魯瓦爾多的 7/7 生命、技能「猛擊」及防禦操作。 [原版換角後畫面](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/14-original-confirmed-grunwald-in-combat.png) · [原版實際回覆](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/wire.json) · [Ruby 階段](../../../app/server/src/controller/duel_controller.rb#L511)
 
-新版以同一副牌組、同一種子實跑。逐幀確認移動切入肖像退場後，同一個選角面板仍保持開啟。暫緩 `SC72` 和 `SC50` 時，格雷高爾的立繪、角色卡、技能和 11/11 生命仍維持已確認狀態。放行 `SC50` 後顯示古魯瓦爾多為主戰角色，格雷高爾改列候補，攻防操作仍鎖定。收到真正的 `SC51` 及後續 `SC53` 才能防禦，沿用同一條 Quest 連線。候補卡滑入檢視及死亡換角另待驗收。 [新版封包與畫面進度](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/native/battle-numbered-wire.json) · [兩版選角對照](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/choice-panel-comparison.png)
+新版以同一副牌組、同一種子實跑。逐幀確認移動切入肖像退場後，同一個選角面板仍保持開啟。暫緩 `SC72` 和 `SC50` 時，格雷高爾的立繪、角色卡、技能和 11/11 生命仍維持已確認狀態。放行 `SC50` 後顯示古魯瓦爾多為主戰角色，格雷高爾改列候補，攻防操作仍鎖定。收到真正的 `SC51` 及後續 `SC53` 才能防禦，沿用同一條 Quest 連線。候補卡滑入檢視另待驗收。 [新版封包與畫面進度](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/native/battle-numbered-wire.json) · [兩版選角對照](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/choice-panel-comparison.png)
+
+### 死亡後換角
+
+原版接到 `SC57` 後，依序清我方和敵方的牌桌，再開啟選角。封包指定或鎖定的牌送回牌庫方向 `(40,105)`，其餘桌牌依原版規則回手。已在攻防演出中清掉的同一張牌只處理一次。倒下角色的卡面保留原尺寸及位置，亮度由 100% 降到 50%。底部 OK 或 60 秒倒數到期會送 `CS35` 選第一個存活欄位。新版保留原版右上角 X 的外觀並停用，原版 Ruby 只接受存活欄位。 [原版清桌](../../../app/client/src/model/Duel.as#L469) · [牌片動畫](../../../app/client/src/view/scene/game/BaseHand.as#L437) · [原版預設操作](../../../app/client/src/view/scene/game/DuelTable.as#L897)
+
+`SC72` 確認指定欄位及角色，`SC58` 開始收起候補選擇與切換角色。後續 `SC43` 確認下回合，原始 `SC44/45` 提供行動牌與事件牌，`SC46` 才開放本回合 Move。固定繁中 Flash 和新版都以 Q1 的同一牌序實跑，古魯瓦爾多遠距離空桌防禦後扣 1 點至 0，馬庫斯接替並以 8/8 進入第二回合。原版倒下卡面量測的 RGB 皆為原值 0.5，新版核對相同亮度。 [兩版選角畫面](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/forced-choice-comparison.png) · [原版第二回合](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/original/14-original-confirmed-reserve-in-next-move.png) · [新版實跑封包](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/native/battle-numbered-wire.json)
 
 ### 首回合第一組攻防
 

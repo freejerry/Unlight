@@ -76,7 +76,7 @@ function showThinker(parent, source, side, distance) {
   return { node, stop() { cancelAnimationFrame(frame); } };
 }
 
-/** Original voluntary chooser, once Move has settled and SC49 has made the selection available. */
+/** Original chooser after the preceding battle presentation and confirmed SC49 or SC57. */
 export function createQuestBattleChange(battle, {
   scene, encounterKey, signal, isCurrent, assets, definitions, animate, startTimer, status,
 }) {
@@ -90,17 +90,38 @@ export function createQuestBattleChange(battle, {
 
   function choiceFor(view, index) {
     const change = snapshot?.characterChange;
-    if (!live() || view !== current || snapshot.phase !== 'character-change' || change?.kind !== 'movement' ||
+    if (!live() || view !== current || snapshot.phase !== 'character-change' || change?.kind !== view.kind ||
         change.turn !== view.turn || change.playerDone || change.closed || change.canSelect !== true ||
         snapshot.operation || view.request || typeof scene.chooseCharacter !== 'function') return;
-    const card = snapshot.roster?.player?.cards?.find(row => row.index === index);
+    const player = snapshot.roster?.player;
+    const card = player?.cards?.find(row => row.index === index);
+    if (view.kind === 'defeated' && (index === player?.activeIndex || card?.alive !== true)) return;
     return change.choices?.find(row => row.index === index && row.cardId === card?.cardId);
   }
 
+  function fallbackChoice(view) {
+    const player = snapshot.roster?.player;
+    if (view.kind === 'movement') return choiceFor(view, player?.activeIndex);
+    // Entrant.liveCharaCardIndex uses the first living member in original party order.
+    for (const card of player?.cards ?? []) {
+      const choice = choiceFor(view, card.index);
+      if (choice) return choice;
+    }
+  }
+
+  function chooseFallback(view) {
+    const choice = fallbackChoice(view);
+    if (choice) void choose(view, choice.index, choice.cardId);
+  }
+
   function paint(view) {
-    for (const { node, index, cardId } of view.controls) {
-      const choice = choiceFor(view, index);
-      node.disabled = !choice || choice.cardId !== cardId;
+    for (const { node, index, cardId, fallback } of view.controls) {
+      const choice = fallback ? fallbackChoice(view) : choiceFor(view, index);
+      node.disabled = !choice || (!fallback && choice.cardId !== cardId);
+      if (fallback && view.kind === 'defeated') {
+        if (choice) node.dataset.fallbackSlot = String(choice.index);
+        else delete node.dataset.fallbackSlot;
+      }
       node.setAttribute('aria-disabled', String(node.disabled));
     }
     view.root.dataset.state = view.request || Number.isInteger(snapshot.characterChange?.requestedIndex)
@@ -130,11 +151,14 @@ export function createQuestBattleChange(battle, {
   function open(change) {
     const player = snapshot.roster?.player;
     const activeCard = player?.cards?.find(row => row.index === player.activeIndex);
+    const choosing = !change.playerDone && activeCard;
+    const forced = change.kind === 'defeated';
     const root = document.createElement('section');
     root.id = 'quest-battle-character-change';
     root.className = 'quest-battle-layer';
     root.style.zIndex = '30'; // DuelCharaCards depth.
     root.dataset.turn = String(change.turn);
+    root.dataset.kind = change.kind;
     root.setAttribute('aria-label', '更換角色');
     const panel = document.createElement('div');
     panel.className = 'quest-battle-layer';
@@ -142,16 +166,22 @@ export function createQuestBattleChange(battle, {
     const thinkerLayer = document.createElement('div');
     thinkerLayer.className = 'quest-battle-layer';
     thinkerLayer.style.zIndex = '2'; // The think sprite belongs to StandChara, behind the selector.
-    const view = { root, panel, thinkerLayer, turn: change.turn, controls: [], previews: [], thinkers: [] };
+    const view = { root, panel, thinkerLayer, kind: change.kind, turn: change.turn, controls: [], previews: [], thinkers: [] };
     current = view;
     const startedFromKeyboard = document.activeElement === status || document.activeElement?.matches(':focus-visible');
-    if (!change.playerDone && activeCard) {
-      image(panel, artSet.panel);
+    if (choosing) image(panel, artSet.panel);
+    if (choosing || forced) {
       if (assets.done?.plate) image(panel, assets.done.plate);
-      const stay = () => choose(view, activeCard.index, activeCard.cardId);
-      for (const [id, label, source] of [['close', '保留出戰角色', artSet.close], ['done', '完成並保留出戰角色', assets.done]]) {
-        const node = button(panel, id, label, source, stay, signal);
-        if (node) view.controls.push({ node, index: activeCard.index, cardId: activeCard.cardId });
+      const done = button(panel, 'done', forced ? '讓第一名存活角色出戰' : '完成並保留出戰角色',
+        assets.done, () => chooseFallback(view), signal);
+      if (done) view.controls.push({ node: done, fallback: true });
+    }
+    if (choosing) {
+      // The shared SWF still draws Close for a defeat, but the defeated slot cannot be submitted.
+      const close = button(panel, 'close', forced ? '關閉換人選擇' : '保留出戰角色', artSet.close,
+        () => choose(view, activeCard.index, activeCard.cardId), signal);
+      if (close) {
+        view.controls.push({ node: close, index: activeCard.index, cardId: activeCard.cardId });
       }
       const reserves = player.cards.filter(row => row.index !== player.activeIndex);
       reserves.forEach((row, index) => {
@@ -206,8 +236,7 @@ export function createQuestBattleChange(battle, {
       void animate(canvas, [{ transform: `translate(${fromX - x}px, ${680 - y}px)`, opacity: 0 },
         { transform: 'none', opacity: 1 }], duration, signal);
     }
-    view.stopTimer = startTimer?.(!change.playerDone && activeCard
-      ? () => choose(view, activeCard.index, activeCard.cardId) : undefined);
+    view.stopTimer = startTimer?.(choosing ? () => chooseFallback(view) : undefined);
   }
 
   function close() {
@@ -260,7 +289,8 @@ export function createQuestBattleChange(battle, {
       if (!live() || !artSet?.panel || !next) return;
       snapshot = next;
       const change = snapshot.characterChange;
-      if (!presentable || snapshot.phase !== 'character-change' || change?.kind !== 'movement' || change.closed) {
+      if (!presentable || snapshot.phase !== 'character-change' ||
+          (change?.kind !== 'movement' && change?.kind !== 'defeated') || change.closed) {
         close();
       } else if (current) {
         paint(current);

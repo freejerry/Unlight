@@ -50,7 +50,7 @@ def observe_battle_receipts(page, origin):
       export function readReply(body) {
         const reply = read(body);
         const trace = window.qaQuestWire?.receiving;
-        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,49,50,51,52,53,54,55,56,60,61,62,65,66,67,68,69,72,73,83,107,108,109,110,115,120].includes(reply.command)) return reply;
+        if (!trace || captured.has(body) || ![40,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,60,61,62,65,66,67,68,69,72,73,83,107,108,109,110,115,120].includes(reply.command)) return reply;
         captured.add(body);
         const audit = read(body);
         const values = reply.command === 40 && body.byteLength === 7 ? [audit.byte(), audit.byte(), audit.byte()]
@@ -59,6 +59,7 @@ def observe_battle_receipts(page, origin):
           : reply.command === 109 && body.byteLength === 19 ? [audit.byte(), audit.int(), audit.int(), audit.int(), audit.int()]
           : reply.command === 120 && body.byteLength >= 15 ? [audit.byte(), audit.int(), audit.int(), audit.string(4096, true)]
           : reply.command === 72 && body.byteLength >= 12 ? [audit.byte(), audit.byte(), audit.int(), audit.string(4096, true)]
+          : reply.command === 57 && body.byteLength >= 12 ? [audit.byte(), audit.byte(), audit.string(4096, true), audit.string(4096, true)]
           : reply.command === 49 && body.byteLength === 4 ? [audit.byte(), audit.byte()]
           : [51,67,68,69].includes(reply.command) && body.byteLength === 3 ? [audit.byte()] : [];
         (trace.battleAudit ??= []).push([reply.command, body.byteLength, ...values, performance.now()]);
@@ -90,7 +91,7 @@ def observe_battle_motion(page):
     page.evaluate("""() => {
       const evidence = window.qaBattleMotion = {
         deals: {}, backs: {}, sweeps: {}, moveSweeps: {}, standing: [], stages: [], health: [], featSlots: [], featFrames: {},
-        chooserMotion: [],
+        chooserMotion: [], forcedSweeps: {},
       };
       const identities = new WeakMap();
       const bounds = ['x', 'y', 'width', 'height'];
@@ -190,9 +191,10 @@ def observe_battle_motion(page):
             }
             const hp = ['player', 'opponent'].map(side => Number(battle.querySelector('#quest-battle-' + side + '-hp')?.dataset.hp));
             const comparison = [...exchange.querySelectorAll('#quest-battle-dice-symbols img')].some(painted);
-            const state = JSON.stringify([exchangeKey, presentation, received, slots, clips, Boolean(dice), comparison, hp]);
+            const change = battle.dataset.characterChangePresentation ?? null;
+            const state = JSON.stringify([exchangeKey, presentation, received, slots, clips, Boolean(dice), comparison, hp, change]);
             if (state !== featKey) {
-              evidence.featSlots.push({at: now, exchangeKey, presentation, received, slots, clips, dice: Boolean(dice), comparison, hp});
+              evidence.featSlots.push({at: now, exchangeKey, presentation, received, slots, clips, dice: Boolean(dice), comparison, hp, change});
               featKey = state;
             }
           }
@@ -210,6 +212,9 @@ def observe_battle_motion(page):
             if (moveDiscard) {
               series(evidence.moveSweeps, node, root, now, {distance, up: node.dataset.up ?? null});
             } else if (sweep === 'moving') series(evidence.sweeps, node, root, now);
+            else if (battle.dataset.characterChangeKind === 'defeated' && battle.dataset.characterChangePresentation === 'sweeping') {
+              series(evidence.forcedSweeps, node, root, now);
+            }
           }
           if (moveDiscard || ((phase === 'move' || ['revealing', 'sweeping'].includes(moveResult)) && now - lastStanding >= 50)) {
             const actors = Array.from(battle.querySelectorAll('.quest-battle-stand'));
@@ -1034,7 +1039,7 @@ def gregor_feat_receipts(page):
     return [item[:-1] for item in qa.read_movement_trace(page)['battleAudit'] if item[0] == 109]
 
 
-def check_gregor_cast_frames(page):
+def check_gregor_cast_frames(page, exchange_key='1:2'):
     assert page.evaluate("matchMedia('(prefers-reduced-motion: no-preference)').matches")
     manifest = page.request.get(urljoin(page.url, '/source-login/quest-feat-art/index.json'))
     assert manifest.ok
@@ -1048,7 +1053,7 @@ def check_gregor_cast_frames(page):
         assert len({sample['file'] for sample in samples}) >= 3, samples
         assert samples[-1]['at'] - samples[0]['at'] >= 300, samples
         assert len({sample['sequence'] for sample in samples}) == 1, samples
-        assert all(sample['side'] == 'player' and sample['exchangeKey'] == '1:2' for sample in samples), samples
+        assert all(sample['side'] == 'player' and sample['exchangeKey'] == exchange_key for sample in samples), samples
         last = -1
         for sample in samples:
             last = expected.index(sample['file'], last + 1)
@@ -1384,6 +1389,263 @@ def play_borrower_changes(page, stage, battle, directory):
     return check
 
 
+def check_forced_change(page, stage, battle, directory, opening_hand):
+    front = battle.locator('#quest-battle-player-character')
+    stands = battle.locator('.quest-battle-stand[data-side="player"]')
+    health = battle.locator('#quest-battle-player-hp')
+    chooser = battle.locator('#quest-battle-character-change')
+    combat_done = battle.locator('button[data-combat-command="done"]')
+    move_done = battle.locator('button[data-move-command="done"]')
+    expect(battle).to_have_attribute('data-exchange-phase', 'defense', timeout=qa.TIMEOUT)
+    expect(battle).to_have_attribute('data-exchange-index', '1')
+    expect(health).to_have_text('1/7')
+    expect(front).to_have_attribute('data-card-id', '21')
+    expect(battle.locator('#quest-battle-player-table [data-card-id]')).to_have_count(0)
+    before_defense = sent_quest_actions(page)
+
+    def receipts():
+        return [row[:-1] for row in qa.read_movement_trace(page)['battleAudit'] if row[0] in (57, 58, 72)]
+
+    qa.hold_movement_reply(page, 34, combat_done.click, before=[57])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 57
+        trace = qa.read_movement_trace(page)
+        damage, = [packet for packet in trace['replies'] if packet[0] == 73]
+        dice, = [packet for packet in trace['replies'] if packet[0] == 56]
+        assert damage == [73, 8, 1, 1, 0] and trace['replies'].index(dice) < trace['replies'].index(damage), trace['replies']
+        assert dice[2] == 0 and (len(dice[3]), len(dice[4])) == (13, 5), dice
+        assert trace['combat'] == [[34, '', '']] and receipts() == []
+        expect(chooser).to_have_count(0)
+        expect(health).to_have_text('0/7', timeout=qa.TIMEOUT)
+        before = snapshot(page, stage, directory, '04-q1-confirmed-defeat-with-forced-chooser-receipt-held')
+    finally:
+        qa.release_movement_reply(page)
+
+    expect(chooser).to_have_attribute('data-kind', 'defeated', timeout=qa.TIMEOUT)
+    expect(chooser).to_have_attribute('data-state', 'open', timeout=qa.TIMEOUT)
+    expect(chooser).to_have_attribute('data-turn', '1')
+    expect(front).to_have_attribute('data-roster-index', '0')
+    expect(front).to_have_attribute('data-defeated', 'true')
+    expect(front.locator('canvas.quest-battle-character-card')).to_have_css('filter', 'brightness(0.5)')
+    expect(front).to_have_attribute('data-card-id', '21')
+    expect(stands).to_have_attribute('data-card-id', '21')
+    expect(chooser.locator('[data-character-change-card][data-slot="1"][data-card-id="82"]')).to_be_visible()
+    expect(chooser.locator('[data-character-change-card]')).to_have_count(1)
+    expect(chooser.locator('#quest-battle-change-close')).to_be_disabled()
+    expect(chooser.locator('#quest-battle-change-left[data-slot="1"][data-card-id="82"]')).to_be_enabled()
+    fallback = chooser.locator('#quest-battle-change-done')
+    expect(fallback).to_have_attribute('data-fallback-slot', '1')
+    expect(fallback).to_be_enabled()
+    source_start = [57, 12, 0, 1, '', '']
+    assert receipts() == [source_start]
+    expect(battle.locator('#quest-battle-result')).to_have_count(0)
+    opened = snapshot(page, stage, directory, '04-q1-genuine-forced-character-chooser')
+    page.evaluate('window.qaQuestWire.sockets.at(-1).characterRequests = []')
+
+    weapon = '0,0,0,0,0,0,0,0,'
+    switched = [source_start, [72, 28, 1, 1, 82, weapon], [72, 28, 0, 0, 1004, weapon]]
+    qa.hold_movement_reply(page, 35, fallback.click, before=[72])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 72
+        assert receipts() == [source_start]
+        assert qa.read_movement_trace(page)['characterRequests'] == [[35, 6, 1]]
+        expect(chooser).to_have_attribute('data-state', 'submitting')
+        expect(fallback).to_be_disabled()
+        expect(front).to_have_attribute('data-card-id', '21')
+        roster_pending = snapshot(page, stage, directory, '04-q1-forced-selection-before-original-sc72')
+    finally:
+        defer_battle_frames(page, 58)
+
+    try:
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 58', timeout=qa.TIMEOUT)
+        assert receipts() == switched
+        expect(chooser).to_have_attribute('data-state', 'submitting')
+        expect(front).to_have_attribute('data-card-id', '21')
+        expect(stands).to_have_attribute('data-card-id', '21')
+        expect(health).to_have_text('0/7')
+        expect(move_done).to_be_hidden()
+        close_pending = snapshot(page, stage, directory, '04-q1-forced-roster-awaiting-original-sc58')
+    finally:
+        release_battle_frames(page, next_gate=43)
+
+    try:
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 43', timeout=qa.TIMEOUT)
+        assert receipts() == [*switched, [58, 2]]
+        expect(chooser).to_be_hidden(timeout=qa.TIMEOUT)
+        expect(front).to_have_attribute('data-card-id', '82', timeout=qa.TIMEOUT)
+        expect(front).to_have_attribute('data-roster-index', '1')
+        expect(front).not_to_have_attribute('data-defeated', 'true')
+        expect(stands).to_have_attribute('data-card-id', '82')
+        expect(health).to_have_text('8/8')
+        expect(battle).not_to_have_attribute('data-ready-turn', '2')
+        expect(move_done).to_be_hidden()
+        closed = snapshot(page, stage, directory, '04-q1-forced-cinema-finished-before-original-turn-two')
+    finally:
+        release_battle_frames(page, next_gate=46)
+
+    try:
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 46', timeout=qa.TIMEOUT)
+        trace = qa.read_movement_trace(page)
+        assert [packet[2] for packet in trace['replies'] if packet[0] == 43] == [1, 2]
+        assert [packet[2:] for packet in trace['replies'] if packet[0] in (44, 45)][-2:] == [
+            [[], 0, 3], [[61], 1, 1],
+        ]
+        expect(battle).not_to_have_attribute('data-ready-turn', '2')
+        expect(battle.locator(f'{HAND} [data-card-id="61"]')).to_have_count(0)
+        expect(move_done).to_be_hidden()
+        draw_pending = snapshot(page, stage, directory, '04-q1-turn-two-draw-awaiting-original-sc46')
+    finally:
+        release_battle_frames(page)
+
+    expect(battle).to_have_attribute('data-ready-turn', '2', timeout=qa.TIMEOUT)
+    expect(battle).to_have_attribute('data-phase', 'move', timeout=qa.TIMEOUT)
+    expect(health).to_have_text('8/8')
+    expect(battle.locator('.quest-battle-skill-name[data-side="player"][data-roster-index="1"][data-skill-id="100"]')).to_be_visible()
+    expect(move_done).to_be_visible()
+    expect(move_done).to_be_enabled()
+    expect(battle.locator('button[data-move-command="change"]')).to_be_disabled()
+    qa.check_dealt_cards(battle.locator(f'{HAND} .quest-battle-hand-card'), [*opening_hand, [61, True, 'event']])
+    defeated_tab = battle.locator('#quest-battle-reserve-tabs [data-roster-index="0"][data-card-id="21"]')
+    expect(defeated_tab.locator('[data-reserve-field="hp"]')).to_have_text('')
+    trace = qa.read_movement_trace(page)
+    assert trace['movement'] == [[23, 1], [26, '', '']]
+    assert trace['combat'] == [[34, '', '']] and trace['characterRequests'] == [[35, 6, 1]]
+    assert sent_quest_actions(page)[len(before_defense):] == [[34, 9], [35, 6]]
+    assert not any(packet[0] in (41, 49, 50) for packet in trace['replies'])
+    after = snapshot(page, stage, directory, '04-q1-new-active-markus-in-authoritative-turn-two')
+    return {'dice': dice, 'damage': damage, 'receipts': receipts(), 'beforeChooser': before, 'opened': opened,
+            'rosterPending': roster_pending, 'closePending': close_pending, 'closed': closed,
+            'drawPending': draw_pending, 'confirmed': after}
+
+
+def check_forced_change_before_dice(page, stage, battle, directory, opening_hand):
+    front = battle.locator('#quest-battle-player-character')
+    health = battle.locator('#quest-battle-player-hp')
+    chooser = battle.locator('#quest-battle-character-change')
+    hand = battle.locator(f'{HAND} .quest-battle-hand-card')
+    table = battle.locator('#quest-battle-player-table [data-card-id]')
+    dice = battle.locator('#quest-battle-dice-roll')
+    done = battle.locator('button[data-combat-command="done"]')
+    move_done = battle.locator('button[data-move-command="done"]')
+    expect(battle).to_have_attribute('data-exchange-phase', 'attack', timeout=qa.TIMEOUT)
+    expect(battle).to_have_attribute('data-exchange-index', '1')
+    expect(front).to_have_attribute('data-card-id', '635')
+    expect(health).to_have_text('1/11')
+    observe_feat_sound(page, associate_skill=True)
+    played = [40, 15, 35]
+    survivors = [card for card in opening_hand if card[0] not in played]
+    commands = place_gregor_cards(page, battle, [(card, True) for card in played], attack=True)
+    assert commands == [[28, 40, 0, 1], [28, 15, 1, 1], [28, 35, 1, 1]], commands
+    expect(table).to_have_count(3)
+    expect(battle.locator('.quest-battle-skill-name[data-side="player"][data-skill-id="1262"]')).to_have_attribute('data-ready', 'true')
+
+    # SC110 and the self-hit precede SC55 in the stock stream. Delay the final reveal independently of SC57.
+    qa.hold_movement_reply(page, 33, done.click, before=[55])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 55
+        trace = qa.read_movement_trace(page)
+        sequence = [packet[:-1] for packet in trace['battleAudit'] if packet[0] in (55, 56, 57, 73, 110)]
+        assert [packet[0] for packet in sequence] == [110, 110, 73], sequence
+        assert sequence[:2] == [[110, 7, 1, 1262], [110, 7, 1, 1264]], sequence
+        damage, = [packet for packet in trace['replies'] if packet[0] == 73]
+        assert damage == [73, 8, 1, 1, 1], damage
+        expect(battle.locator('.quest-battle-feat, [data-sweep="discard"]')).to_have_count(0)
+        expect(health).to_have_text('1/11')
+        expect(chooser).to_have_count(0)
+        reveal_pending = snapshot(page, stage, directory, '04-q82-self-hit-before-original-shared-reveal')
+    finally:
+        defer_battle_frames(page, 57)
+
+    try:
+        page.wait_for_function('() => window.qaQuestWire.battleFrameHold.frames[0]?.command === 57', timeout=qa.TIMEOUT)
+        trace = qa.read_movement_trace(page)
+        reveal, = [packet for packet in trace['replies'] if packet[0] == 55]
+        assert reveal[2:] == [[[card, True] for card in played], [], 0, 0], reveal
+        casts = []
+        for feat in (1262, 1264):
+            art = battle.locator(f'.quest-battle-feat[data-side="player"][data-activated-skill-id="{feat}"] img:visible').first
+            expect(art).to_be_visible(timeout=qa.TIMEOUT)
+            assert art.evaluate('image => image.complete && image.naturalWidth > 0')
+            casts.append(snapshot(page, stage, directory, f'04-q82-self-defeat-authorized-skill-{feat}'))
+        expect(health).to_have_text('0/11', timeout=qa.TIMEOUT)
+        expect(chooser).to_have_count(0)
+        expect(dice).to_have_count(0)
+        expect(table).to_have_count(0)
+        before = snapshot(page, stage, directory, '04-q82-self-defeat-before-original-sc57')
+    finally:
+        release_battle_frames(page)
+
+    expect(chooser).to_have_attribute('data-kind', 'defeated', timeout=qa.TIMEOUT)
+    expect(chooser).to_have_attribute('data-state', 'open', timeout=qa.TIMEOUT)
+    expect(front).to_have_attribute('data-defeated', 'true')
+    expect(front.locator('canvas.quest-battle-character-card')).to_have_css('filter', 'brightness(0.5)')
+    expect(chooser.locator('#quest-battle-change-close')).to_be_disabled()
+    expect(chooser.locator('[data-character-change-card][data-slot="1"][data-card-id="21"]')).to_be_visible()
+    choose = chooser.locator('#quest-battle-change-left[data-slot="1"][data-card-id="21"]')
+    expect(choose).to_be_enabled()
+    expect(table).to_have_count(0)
+    qa.check_dealt_cards(hand, survivors)
+    opened = snapshot(page, stage, directory, '04-q82-self-defeat-after-single-table-cleanup')
+    page.evaluate('window.qaQuestWire.sockets.at(-1).characterRequests = []')
+    qa.hold_movement_reply(page, 35, choose.click, before=[46])
+    try:
+        assert page.evaluate('window.qaQuestWire.actionHold.blocked') == 46
+        trace = qa.read_movement_trace(page)
+        weapon = '0,0,0,0,0,0,0,0,'
+        receipts = [packet[:-1] for packet in trace['battleAudit'] if packet[0] in (57, 58, 72)]
+        assert receipts == [[57, 20, 0, 1, '40,15,35', ''], [72, 28, 1, 1, 21, weapon],
+                            [72, 28, 0, 0, 1008, weapon], [58, 2]], receipts
+        assert trace['characterRequests'] == [[35, 6, 1]], trace['characterRequests']
+        assert [packet[2:] for packet in trace['replies'] if packet[0] in (44, 45)][-2:] == [
+            [[48, 43, 47], 7, 0], [[61], 1, 1],
+        ]
+        expect(front).to_have_attribute('data-card-id', '21', timeout=qa.TIMEOUT)
+        expect(front).to_have_attribute('data-roster-index', '1')
+        expect(health).to_have_text('7/7')
+        expect(battle).not_to_have_attribute('data-ready-turn', '2')
+        expect(move_done).to_be_hidden()
+        ready_pending = snapshot(page, stage, directory, '04-q82-new-active-before-original-turn-two-ready')
+    finally:
+        qa.release_movement_reply(page)
+
+    expect(battle).to_have_attribute('data-ready-turn', '2', timeout=qa.TIMEOUT)
+    expect(battle).to_have_attribute('data-phase', 'move', timeout=qa.TIMEOUT)
+    expect(move_done).to_be_enabled()
+    expect(move_done).to_be_visible()
+    expect(battle.locator('button[data-move-command="change"]')).to_be_disabled()
+    expect(battle.locator('.quest-battle-stand[data-side="player"]')).to_have_attribute('data-card-id', '21')
+    expect(battle.locator('#quest-battle-opponent-hp')).to_have_text('5/5')
+    expect(battle.locator('#quest-battle-reserve-tabs [data-roster-index="0"][data-card-id="635"] [data-reserve-field="hp"]')).to_have_text('')
+    qa.check_dealt_cards(hand, [*survivors, *[[card, True, 'action'] for card in (48, 43, 47)], [61, True, 'event']])
+    after = snapshot(page, stage, directory, '04-q82-next-genuine-move-after-self-defeat')
+
+    trace = qa.read_movement_trace(page)
+    assert trace['combat'] == [*commands, [33, '', '']]
+    assert trace['movement'] == [[23, 1], [26, '', '']]
+    assert not any(packet[0] in (41, 49, 50, 56) for packet in trace['replies'])
+    motion = page.evaluate('window.qaBattleMotion')
+    assert not any(frame['dice'] for frame in motion['stages']), motion['stages']
+    sweeps = [series for collection in ('sweeps', 'forcedSweeps') for series in motion[collection].values()]
+    assert sorted(series[0]['cardId'] for series in sweeps) == sorted(played), sweeps
+    for series in sweeps:
+        origin_x, origin_y, *_ = series[0]['position']
+        end_x, end_y, *_ = series[-1]['position']
+        assert len(series) > 1 and end_x < origin_x - 60 and end_y < origin_y - 60, series
+        assert all(frame['zone'] == 'quest-battle-player-table' for frame in series), series
+
+    frames = check_gregor_cast_frames(page, '1:1')
+    timeline = [frame for frame in motion['featSlots'] if frame['exchangeKey'] == '1:1']
+    zero_hp = next(frame for frame in timeline if frame['hp'] == [0, 5])
+    chooser_frame = next(frame for frame in timeline if frame['change'] == 'choosing')
+    assert frames['1262'][0]['at'] < frames['1264'][0]['at'] <= zero_hp['at'] <= chooser_frame['at'], timeline
+    cues = page.evaluate('window.qaStarterSkillPlayback')
+    assert [(cue['featId'], cue['played']) for cue in cues] == [(1262, True), (1264, True)], cues
+    return {'casts': casts, 'damage': damage, 'reveal': reveal, 'receipts': receipts, 'sweeps': sweeps,
+            'revealPending': reveal_pending,
+            'timeline': timeline, 'sounds': cues, 'beforeChooser': before, 'opened': opened,
+            'readyPending': ready_pending, 'confirmed': after}
+
+
 def verify_terminal(page, stage, directory, live, quest_id, quest):
     result = page.locator('#quest-battle-result')
     result_ok = result.locator('#quest-battle-result-ok')
@@ -1432,13 +1694,15 @@ def check_battle(page, args, plan):
     replacement = args.case == 'feat-replacement'
     voluntary = args.case == 'voluntary-change'
     borrower = args.case == 'borrower-change'
-    two_cards = voluntary or borrower
+    forced = args.case == 'forced-change'
+    forced_before_dice = args.case == 'forced-change-before-dice'
+    two_cards = voluntary or borrower or forced or forced_before_dice
     stage, battle, live, errors, avatar_id, quest, deck = enter_battle(
         page, origin, args.database, args.user, args.password_file.read_text().rstrip('\r\n'), args.screens, quest_id,
         hold_condition=eased, roster_size=2 if two_cards else 1)
     assert deck[0][1] == player_card, deck
     if two_cards:
-        assert [entry[1] for entry in deck] == [635, 21], deck
+        assert [entry[1] for entry in deck] == ([21, 82] if forced else [635, 21]), deck
     evidence = {'case': args.case, 'questId': quest_id, 'inventoryId': quest[0], 'cardId': player_card}
     try:
         if eased:
@@ -1455,15 +1719,26 @@ def check_battle(page, args, plan):
             evidence['2-and-6'] = check_draw(page, stage, battle, args.screens)
         if 'openingActions' in plan:
             assert [row[0] for row in evidence['2-and-6']['hand'] if row[2] == 'action'] == plan['openingActions']
-        if replacement or two_cards:
+        if forced:
+            qa.music(page, 'quest-duel', 'bgm000.mp3')
+            encounter, = [packet for packet in qa.read_movement_trace(page)['replies'] if packet[0] == 37]
+            assert encounter[4:] == ['21,82', '1004', 11, 6, 0, 0, 0, 0, 0], encounter
+            assert quest[6:] == (6, 0, 0), quest
+            assert evidence['2-and-6']['deckStart'] == [52, 12, 18]
+            assert [card for card in evidence['2-and-6']['hand'] if card[2] == 'event'] == [[262, True, 'event']]
+            evidence['encounter'] = encounter
+        elif replacement or two_cards:
             qa.music(page, 'quest-duel', 'bgm003.mp3')
             encounter, = [packet for packet in qa.read_movement_trace(page)['replies'] if packet[0] == 37]
-            assert encounter[4:] == ['635,21' if two_cards else '635', '1008', 3, 0, 0, 0, 0, 0, 0], encounter
+            injury = 10 if forced_before_dice else 0
+            assert encounter[4:] == ['635,21' if two_cards else '635', '1008', 3, injury, 0, 0, 0, 0, 0], encounter
             evidence['encounter'] = encounter
             if two_cards:
                 assert evidence['2-and-6']['deckStart'] == [53, 12, 6]
-                event = 460 if borrower else 262
+                event = 460 if borrower or forced_before_dice else 262
                 assert [card for card in evidence['2-and-6']['hand'] if card[2] == 'event'] == [[event, True, 'event']]
+            if forced_before_dice:
+                assert quest[6:] == (10, 0, 0), quest
         else:
             evidence['5-and-7'] = check_attention_controls(page, stage, battle, args.screens,
                                                            player_card, plan['skillId'], plan['skillName'])
@@ -1472,13 +1747,25 @@ def check_battle(page, args, plan):
         assert move[2] in (0, 1) and move[3] == plan['range'], move
         if plan.get('playerFirst') is not None:
             assert bool(move[2]) is plan['playerFirst'], move
+        if forced:
+            assert move[4:] == [[], [[51, False]], 0, 1, 0, 0], move
+        if forced_before_dice:
+            assert move[4:] == [[], [], 0, 0, 0, 0], move
         if not move[2] and not (replacement or two_cards):
             if args.case == 'presentation':
                 evidence['3-and-8'] = check_enemy_first(page, stage, battle, args.screens, plan.get('defense', []))
             else:
                 wait_for_own_attack(page, battle, plan.get('defense', []))
         if two_cards:
-            if borrower:
+            if forced:
+                evidence['4']['forcedChange'] = check_forced_change(
+                    page, stage, battle, args.screens, evidence['2-and-6']['hand'],
+                )
+            elif forced_before_dice:
+                evidence['4']['forcedChange'] = check_forced_change_before_dice(
+                    page, stage, battle, args.screens, evidence['2-and-6']['hand'],
+                )
+            elif borrower:
                 evidence['1'] = play_borrower_changes(page, stage, battle, args.screens)
             else:
                 evidence['4']['voluntaryChange'] = check_voluntary_change(page, stage, battle, args.screens)
@@ -1523,15 +1810,22 @@ def main():
     parser.add_argument('--screens', required=True, type=Path)
     parser.add_argument('--chromium', default='/usr/bin/chromium')
     parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition',
-                                          'feat-replacement', 'voluntary-change', 'borrower-change'),
+                                          'feat-replacement', 'voluntary-change', 'borrower-change', 'forced-change',
+                                          'forced-change-before-dice'),
                         default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
     if (args.case == 'skill') != (args.plan is not None):
         parser.error('--case skill and its original --plan must be used together')
-    if args.case == 'borrower-change':
+    if args.case == 'forced-change':
         plan = {
-            'questId': 82, 'cardId': 635, 'direction': 0, 'openingActions': [40, 38, 15, 35, 49],
+            'questId': 1, 'cardId': 21, 'direction': 1, 'openingActions': [12, 18, 4, 2, 39],
+            'playerFirst': False, 'range': 3, 'wins': False,
+        }
+    elif args.case in ('borrower-change', 'forced-change-before-dice'):
+        plan = {
+            'questId': 82, 'cardId': 635, 'direction': int(args.case == 'forced-change-before-dice'),
+            'openingActions': [40, 38, 15, 35, 49],
             'playerFirst': True, 'range': 2, 'wins': False,
         }
     elif args.case == 'voluntary-change':

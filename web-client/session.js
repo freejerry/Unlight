@@ -2463,9 +2463,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       && (characterChange.kind === 'movement' || card.index !== roster.player.activeIndex));
   }
 
-  function openCharacterChange(kind, { playerDone, opponentDone }) {
+  function openCharacterChange(kind, { playerDone, opponentDone }, sweep) {
     characterChange = {
       kind, turn, playerDone, opponentDone, closed: false, requestedIndex: null, applied: { player: null, opponent: null },
+      ...(sweep ? { exchangeKey: `${exchange.turn}:${exchange.index}`, sweep } : {}),
     };
     phase = 'character-change';
     waitForCombat(kind === 'movement' ? QUEST_CHARA_CHANGE_FINISH_REPLY : QUEST_DEAD_CHARA_CHANGE_FINISH_REPLY,
@@ -2506,8 +2507,17 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     } else pending.reject(new SessionError('quest-character-overridden'));
   }
 
+  function defeatedCardSweep({ playerCards, opponentCards }) {
+    const revealed = exchange.cards && new Set(exchange.cards.opponentCards.map(({ id }) => id));
+    return Object.freeze({
+      playerCardIds: Object.freeze(playerCards),
+      opponentCardCount: opponentCards.length,
+      opponentCardIds: revealed && opponentCards.every((id) => revealed.has(id)) ? Object.freeze(opponentCards) : null,
+    });
+  }
+
   function receiveCharacterChange(reply) {
-    const state = readQuestCombatBoundaryReply(reply);
+    const state = readQuestCombatBoundaryReply(reply, { includeOpponentCards: Boolean(onStateChange) });
     if (reply.command === QUEST_CHARA_CHANGE_START_REPLY) {
       if (phase !== 'moved' || nextCombatReply !== QUEST_ATTACK_PHASE_START_REPLY) throw new SessionError('protocol');
       confirmActiveCharacters();
@@ -2516,7 +2526,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       if (phase !== 'moved' || !finishCombat('complete', 'character-change')) throw new SessionError('protocol');
       const discarded = new Set(state.playerCards);
       hand = hand.filter((card) => !discarded.has(card.id));
-      openCharacterChange('defeated', state);
+      openCharacterChange('defeated', state, onStateChange ? defeatedCardSweep(state) : undefined);
     } else {
       if (phase !== 'character-change' || nextCombatReply !== reply.command) throw new SessionError('protocol');
       const { kind, playerDone, opponentDone, applied } = characterChange;
@@ -3289,7 +3299,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       });
       const freezeChoice = (choice) => choice && Object.freeze({ index: choice.index, cardId: choice.cardId });
       const freezeChangedSides = ({ player, opponent }) => ({ player: freezeChoice(player), opponent: freezeChoice(opponent) });
-      const choices = characterChange?.kind === 'movement' ? characterChoices() : [];
+      const choices = characterChoices();
       return Object.freeze({
         phase, turn, startDistance: startDistance ?? encounter.duel.distance, moveStartedAt,
         encounterKey: `${inventoryId}:${slot}`,
@@ -3319,6 +3329,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           canSelect: characterChange.requestedIndex === null && choices.length > 0,
           choices: Object.freeze(choices.map(freezeChoice)),
           applied: characterChange.closed ? Object.freeze(freezeChangedSides(characterChange.applied)) : null,
+          ...(characterChange.sweep ? { exchangeKey: characterChange.exchangeKey, sweep: characterChange.sweep } : {}),
         }),
         lastCharacterChange: lastCharacterChange && Object.freeze({
           kind: lastCharacterChange.kind, turn: lastCharacterChange.turn,
@@ -5347,10 +5358,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
             },
             async chooseCharacter(index, { signal, moveTurn, encounterKey } = {}) {
               if (!Number.isInteger(index) || index < 0 || index >= CHARACTER_DECK_SIZE) throw new SessionError('quest-character-unavailable');
-              return runQuestSceneBattle(scene, 'character', signal, (battle, active) => {
-                if (scene.snapshot.adventure.battle.characterChange?.kind !== 'movement') throw new SessionError('quest-character-unavailable');
-                return battle.chooseCharacter(index, active);
-              }, moveTurn, encounterKey);
+              return runQuestSceneBattle(scene, 'character', signal, (battle, active) => battle.chooseCharacter(index, active), moveTurn, encounterKey);
             },
             async rotateMoveCard(cardId, { signal, moveTurn, encounterKey } = {}) {
               if (!validQuestCardId(cardId)) throw new SessionError('quest-card-unavailable');

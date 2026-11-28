@@ -55,6 +55,8 @@ export function createQuestBattleExchange(battle, {
   let featInsertion;
   let rolled = false;
   let hitCount = 0;
+  let earlyHp = [];
+  let interrupted = false;
   let hpGate = Promise.resolve();
   let diceSettled = Promise.resolve();
   let pointsKey;
@@ -270,6 +272,21 @@ export function createQuestBattleExchange(battle, {
   }
 
   function displayHits(exchange, distance) {
+    const waitingForFinalCards = !exchange.cards && !exchange.boundary && !interrupted;
+    if (!waitingForFinalCards && earlyHp.length) {
+      const staged = earlyHp;
+      earlyHp = [];
+      if (!interrupted) {
+        const mountedFeats = featInsertion;
+        hpGate = hpGate.then(async () => {
+          await mountedFeats;
+          for (const apply of staged) {
+            if (interrupted) break;
+            await apply();
+          }
+        });
+      }
+    }
     const pending = exchange.damage.slice(hitCount);
     hitCount = exchange.damage.length;
     if (pending.length) {
@@ -302,9 +319,7 @@ export function createQuestBattleExchange(battle, {
     }
     if (pending.length || !Object.is(previous.player, health.player) || !Object.is(previous.opponent, health.opponent)) {
       const confirmedHp = { ...health };
-      const beforeHp = rolled ? diceSettled : Promise.all([tableCloseTask, featInsertion]);
-      hpGate = hpGate.then(async () => {
-        await beforeHp;
+      async function apply() {
         if (!live()) return;
         if (!hits.length) {
           await updateHp(confirmedHp);
@@ -319,7 +334,14 @@ export function createQuestBattleExchange(battle, {
           await updateHp(targetHp);
           if (hit.damage > 0) await wait(1000, signal);
         }
-      });
+      }
+      // Direct skill damage can arrive before SC55 publishes the matching feat receipts.
+      if (waitingForFinalCards && (earlyHp.length || pending.some(hit => hit.nonHostile && hit.damage > 0))) {
+        earlyHp.push(apply);
+      } else {
+        const beforeHp = rolled ? diceSettled : Promise.all([tableCloseTask, featInsertion]);
+        hpGate = hpGate.then(() => beforeHp).then(apply);
+      }
     }
   }
 
@@ -348,6 +370,7 @@ export function createQuestBattleExchange(battle, {
   function update(state) {
     const exchange = state?.exchange;
     if (!exchange || !live()) return;
+    interrupted = ['uncertain', 'closed'].includes(exchange.phase) || ['uncertain', 'closed'].includes(state.phase);
     root.dataset.exchangeKey = exchange.key ?? `${exchange.turn}:${exchange.index}`;
     battle.dataset.exchangeIndex = String(exchange.index);
     battle.dataset.exchangePhase = exchange.phase;

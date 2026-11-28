@@ -872,12 +872,13 @@ export function readQuestRosterHpReply(reply) {
   return { player, index, kind, value };
 }
 
-export function readQuestCombatBoundaryReply(reply) {
+export function readQuestCombatBoundaryReply(reply, { includeOpponentCards = false } = {}) {
   if (reply.command === QUEST_CHARA_CHANGE_START_REPLY || reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
     const change = { playerDone: readDuelBoolean(reply), opponentDone: readDuelBoolean(reply) };
     if (reply.command === QUEST_DEAD_CHARA_CHANGE_REPLY) {
       change.playerCards = readDuelCardIds(reply);
-      reply.discardString(MAX_ID_LIST_BYTES, true);
+      if (includeOpponentCards) change.opponentCards = readDuelCardIds(reply);
+      else reply.discardString(MAX_ID_LIST_BYTES, true);
     }
     reply.done();
     return change;

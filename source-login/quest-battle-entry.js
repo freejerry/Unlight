@@ -757,7 +757,7 @@ function moveStands(parent, distance, signal, distanceArt) {
 
 function confirmedBattleActors(snapshot) {
   const { roster, characterChange } = snapshot;
-  const applied = characterChange?.kind === 'movement' && characterChange.closed ? characterChange.applied : null;
+  const applied = characterChange?.closed && ['movement', 'defeated'].includes(characterChange.kind) ? characterChange.applied : null;
   const actors = {};
   for (const side of ['player', 'opponent']) {
     const party = roster?.[side];
@@ -793,8 +793,8 @@ function renderReserveTabs(battle, artwork, definitions) {
         tab.dataset.cardId = String(row.cardId);
         tab.dataset.rosterIndex = String(row.index);
         const image = plate => sprite(tab, { ...plate, x: x + plate.x, y: y + plate.y });
-        image(artwork.base);
         const dead = row.alive === false || (Number.isInteger(row.hp) && row.hp <= 0);
+        image(dead && artwork.dead ? artwork.dead : artwork.base);
         const hp = Number.isInteger(row.hp) ? row.hp : null;
         const values = { name: card?.name ?? '', hp: dead ? '' : hp ?? '?', level: card?.level ?? '?',
           attack: card?.ap ?? '?', defense: card?.dp ?? '?', maxHp: card?.hp ?? '?' };
@@ -812,7 +812,6 @@ function renderReserveTabs(battle, artwork, definitions) {
           place(label, x + left, y + top, width, height);
           tab.append(label);
         }
-        if (dead && artwork.dead) image(artwork.dead);
       });
     },
   };
@@ -1470,6 +1469,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   let duelResult;
   let resultStatus;
   let characterPresentation;
+  let defeatedChange;
   const featPlayback = createQuestFeatPlayback(battle, { signal, isCurrent, onSound: onBattleSound, wait });
   const damageScopes = createDamageScopes(standees, signal, visualRoster);
   signal.addEventListener('abort', () => tableLoop?.cancel(), { once: true });
@@ -1549,10 +1549,11 @@ async function renderBattleHud(battle, sourceAvatar, {
     return !signal.aborted && isCurrent();
   }
 
-  function startCharacterPresentation(turn) {
-    if (characterPresentation?.turn === turn) return;
-    const presentation = { turn, settled: false };
+  function startCharacterPresentation(turn, kind) {
+    if (characterPresentation?.turn === turn && characterPresentation.kind === kind) return;
+    const presentation = { turn, kind, settled: false };
     characterPresentation = presentation;
+    battle.dataset.characterChangeKind = kind;
     battle.dataset.characterChangePresentation = 'changing';
     void Promise.all([presentChangedActors(), closeMoveCutIns()]).then(([settled]) => settled, () => false).then(settled => {
       if (signal.aborted || !isCurrent() || characterPresentation !== presentation) return;
@@ -1564,6 +1565,57 @@ async function renderBattleHud(battle, sourceAvatar, {
         status.className = 'quest-battle-status';
       }
     });
+  }
+
+  function rememberDefeatedChange(snapshot) {
+    const change = snapshot.characterChange;
+    if (change?.kind !== 'defeated' || !change.sweep || typeof change.exchangeKey !== 'string') return;
+    if (defeatedChange?.change.exchangeKey === change.exchangeKey) {
+      defeatedChange.change = change;
+      return;
+    }
+    const player = snapshot.roster?.player;
+    const outgoing = player?.cards[player.activeIndex];
+    defeatedChange = { change, outgoing, sweepState: 'pending' };
+  }
+
+  async function finishDefeatedSweep(state) {
+    const { playerCardIds, opponentCardIds, opponentCardCount } = state.change.sweep;
+    const ownIds = new Set(playerCardIds);
+    for (const node of Array.from(hands.player.children)) if (ownIds.has(Number(node.dataset.cardId))) node.remove();
+    await sweepQuestTableCards(hands, {
+      playerCards: playerCardIds.map(id => ({ id })),
+      opponentCards: (opponentCardIds ?? []).map(id => ({ id })),
+      opponentBackCount: opponentCardIds === null ? opponentCardCount : 0,
+    }, { signal, isCurrent, animate, wait, retained: true });
+    if (signal.aborted || !isCurrent() || defeatedChange !== state) return;
+    const { outgoing } = state;
+    if (!state.change.playerDone && outgoing?.cardId === actors.player.cardId && outgoing.index === actors.player.index &&
+        (outgoing.alive === false || (Number.isInteger(outgoing.hp) && outgoing.hp <= 0))) {
+      activeFace.card.dataset.defeated = 'true';
+      activeFace.canvas.style.filter = 'brightness(.5)';
+      void animate(activeFace.canvas, [{ filter: 'brightness(1)' }, { filter: 'brightness(.5)' }], 500, signal, 0, 'linear');
+    }
+    state.sweepState = 'settled';
+    battle.dataset.characterChangePresentation = 'choosing';
+    showTable('change');
+    advance();
+  }
+
+  function advanceDefeatedChange(exchange) {
+    const state = defeatedChange;
+    if (state?.change.exchangeKey !== exchange.key) return false;
+    if (state.sweepState === 'pending') {
+      state.sweepState = 'sweeping';
+      battle.dataset.characterChangeKind = 'defeated';
+      battle.dataset.characterChangePresentation = 'sweeping';
+      void finishDefeatedSweep(state);
+    }
+    if (state.sweepState !== 'settled') return false;
+    const complete = latest.lastCharacterChange;
+    if (!state.change.closed && (complete?.kind !== 'defeated' || complete.turn !== exchange.turn)) return false;
+    startCharacterPresentation(exchange.turn, 'defeated');
+    return characterPresentation.settled && latest.turn === exchange.turn + 1;
   }
 
   function closeMoveCutIns() {
@@ -1833,6 +1885,7 @@ async function renderBattleHud(battle, sourceAvatar, {
     delete battle.dataset.exchangePhase;
     delete battle.dataset.combatRole;
     delete battle.dataset.playerAttacks;
+    delete battle.dataset.characterChangeKind;
     delete battle.dataset.characterChangePresentation;
     main.querySelector('#quest-battle-move-result')?.remove();
     battle.dataset.turn = String(turnNumber);
@@ -1848,9 +1901,12 @@ async function renderBattleHud(battle, sourceAvatar, {
 
   function advance() {
     if (!latest || signal.aborted || !isCurrent()) return;
-    const presentable = battle.dataset.moveResult === 'settled';
+    const change = latest.characterChange;
+    const presentable = change?.kind === 'defeated'
+      ? defeatedChange?.change.exchangeKey === change.exchangeKey && defeatedChange?.sweepState === 'settled'
+      : battle.dataset.moveResult === 'settled';
     changeView.update(latest, { presentable });
-    const pickerActive = presentable && latest.characterChange?.kind === 'movement';
+    const pickerActive = presentable && (change?.kind === 'movement' || change?.kind === 'defeated');
     const actorChanging = characterPresentation?.turn === visibleTurn && !characterPresentation.settled;
     reserveTabs?.update(visualRoster()?.player, pickerActive || actorChanging);
     const outcome = latest.outcome;
@@ -1876,7 +1932,10 @@ async function renderBattleHud(battle, sourceAvatar, {
         updateCombat(nextExchange);
         return;
       }
-      if (source?.boundary !== 'next-turn' || latest.turn !== visibleTurn + 1) return;
+      if (source?.boundary === 'character-change') {
+        if (['uncertain', 'closed'].includes(latest.phase)) { paint(latest.phase); return; }
+        if (!advanceDefeatedChange(active)) return;
+      } else if (source?.boundary !== 'next-turn' || latest.turn !== visibleTurn + 1) return;
       archiveCombat();
       startDraw(latest.turn);
     }
@@ -1926,7 +1985,7 @@ async function renderBattleHud(battle, sourceAvatar, {
               }
               return;
             }
-            startCharacterPresentation(visibleTurn);
+            startCharacterPresentation(visibleTurn, 'movement');
             if (characterChange || !characterPresentation.settled) return;
           }
           if (latest.phase === 'character-change' || source?.boundary === 'character-change') {
@@ -1953,6 +2012,7 @@ async function renderBattleHud(battle, sourceAvatar, {
   function receive(next) {
     if (signal.aborted || !isCurrent() || !next.adventure?.battle) return;
     latest = next.adventure.battle;
+    rememberDefeatedChange(latest);
     damageScopes.sync();
     featPlayback.preload(latest.feats?.used);
     observeCurrentSkills();

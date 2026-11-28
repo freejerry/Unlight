@@ -79,19 +79,26 @@ export function animateInitialDeckCount(total, paint, signal) {
   return cancel;
 }
 
-export async function sweepQuestTableCards(hands, reveal, { signal, isCurrent, animate, wait }) {
+export async function sweepQuestTableCards(hands, reveal, { signal, isCurrent, animate, wait, retained = false }) {
   const live = () => !signal.aborted && isCurrent();
   const sides = [
-    [hands.playerTable, reveal.playerCards, false],
-    [hands.opponentTable, reveal.opponentCards, reveal.opponentLocked],
+    [hands.playerTable, reveal.playerCards, false, 0],
+    [hands.opponentTable, reveal.opponentCards, reveal.opponentLocked, reveal.opponentBackCount ?? 0],
   ];
 
-  for (const [table, cards, locked] of sides) {
+  for (const [table, cards, locked, backs] of sides) {
     if (!live()) return;
     const ids = new Set(cards.map(({ id }) => String(id)));
-    const spent = Array.from(table.children).filter(node =>
-      node.classList.contains('quest-battle-reveal-card') &&
+    const nodes = Array.from(table.children);
+    const spent = nodes.filter(node =>
+      (node.classList.contains('quest-battle-reveal-card') || (retained && node.classList.contains('quest-battle-hand-card'))) &&
       (locked ? node.dataset.locked === 'true' : ids.has(node.dataset.cardId))).slice(0, cards.length);
+    if (backs > 0) {
+      spent.push(...nodes.filter(node => node.dataset.cardId === undefined && (node.classList.contains('quest-battle-dealt-back') ||
+        (node.classList.contains('quest-battle-reveal-card') && node.dataset.locked === 'true'))).slice(0, backs));
+    }
+    const hidden = table.hidden;
+    if (retained && spent.length) table.hidden = false;
     await Promise.all(spent.map(async (card, index) => {
       const x = 40 - Number.parseFloat(card.style.left);
       const y = 105 - Number.parseFloat(card.style.top);
@@ -103,7 +110,10 @@ export async function sweepQuestTableCards(hands, reveal, { signal, isCurrent, a
       } else if (live()) playQuestBattleEffect('deal', signal);
       if (live()) card.remove();
     }));
-    if (live()) table.dataset.count = String(table.children.length);
+    if (live()) {
+      table.dataset.count = String(table.children.length);
+      if (retained) table.hidden = hidden;
+    }
   }
 
   if (live()) hands.opponentTable.setAttribute('aria-label', `對手已放置 ${hands.opponentTable.children.length} 張牌`);

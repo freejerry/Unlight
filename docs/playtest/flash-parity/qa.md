@@ -219,6 +219,21 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case voluntary-change \
 
 另以全新角色和同一牌組、搜尋種子 29、戰鬥種子 33 重跑 `--case borrower-change`。首回合停留在中距離，攻擊使用 #40、#15、#35 三張正向牌，防禦用正向事件牌 #460。收到實際技能交換後，第二回合主動換到槽 1，第三回合主動換回槽 0，兩回合的攻防皆空桌確認。回到格雷高爾時核對技能列與滑入仍為「噴毒」，第三回合結束才依真實 `SC109` 還原。 [原版 Ruby 可重跑牌序](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/stock-ruby-skill-swap-through-voluntary-switches.json)
 
+### 重跑 Q1 死亡後換角
+
+隔離角色的 Deck 1 依序放古魯瓦爾多 #21、馬庫斯 #82。先以搜尋種子 0 執行原版 `get_quest(1, 0)`，確認取得 Q1、AP 4。以原版 `AvatarQuestInventory#set_damage_set([6,0,0])` 儲存進場前傷勢。首格 1 為場地 11、洞窟蝙蝠 #1004。只在這個角色的原版 `MultiDuel` 初始化前設戰鬥種子 32。第一回合 SC44 為 `[12,18,4,2,39]`，事件牌 #262。古魯瓦爾多以 1/7 生命開始，馬庫斯 8/8。
+
+選後退、空桌確認移動。依真實 `SC48` 核對遠距離、敵方先攻，再空桌確認防禦。Ruby 的實際 `SC56` 含 13 顆攻擊骰及 5 顆防禦骰，`SC73` 扣 1 至 0。暫緩原始 `SC57`、`SC72`、`SC58`、`SC43` 和 `SC46`，依序確認選角、角色確認、畫面切換、回合與 Move 開放。底部 OK 只送一次 `CS35(1)`，第二回合仍使用同一條 Quest 連線。 [原版 Ruby 牌序及封包](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/stock-ruby-knockout-and-replacement.json)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case forced-change \
+  --port 4397 --database "$proof_dir/forced-change-ruby/app/server/data/game_dev2.db" \
+  --user questforced --password-file "$proof_dir/questforced-password" \
+  --screens "$proof_dir/forced-change-native"
+```
+
+另以 `--case forced-change-before-dice` 測 Q82 的技能自身扣血。Deck 1 放格雷高爾 #635 和古魯瓦爾多 #21，沿用無名之丘搜尋種子 29，將傷勢 `[10,0,0]` 用原版模型存入任務。場地 3、毒蛙 #1008，對局初始化前種子 33。首回合後退，空桌確認移動後以 #40、#15、#35 正向攻擊。Ruby 依序發出兩個技能確認、我方自身傷害、`SC55` 及含三張牌 ID 的 `SC57`。核對兩段特寫掛載、血量到 0、各牌只離桌一次，接著選古魯瓦爾多並進入第二回合。 [原版 Ruby 自身扣血案例](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/stock-ruby-before-dice-self-knockout.json)
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。
