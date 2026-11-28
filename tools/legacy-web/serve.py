@@ -695,7 +695,7 @@ def create_app(
                 "lobby-friend-invite.js", "lobby-friend-invite.css", "friend-invite-code.js",
                 "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
-                "quest-battle-move.js", "quest-battle-change.js", "quest-battle-exchange.js", "quest-battle-feat.js",
+                "quest-battle-move.js", "quest-battle-change.js", "quest-battle-reserve.js", "quest-battle-exchange.js", "quest-battle-feat.js",
                 "quest-dice-roll.js", "quest-hit-effect.js",
                 "quest-battle-result.js", "quest-battle-bonus.js", "quest-treasure-panel.js",
                 "character-card.js", "battle-card.js",

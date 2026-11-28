@@ -184,13 +184,23 @@
 
 原版操作只送一次 `CS35(1)`。Ruby 先確認我方槽 1／卡 21，再確認敵方槽 0／卡 1008。`SC50` 開始收起面板並切換立繪與主戰卡，面板和卡片使用 500 ms ease-out sine。收到攻防開始訊息後，原版顯示古魯瓦爾多的 7/7 生命、技能「猛擊」及防禦操作。 [原版換角後畫面](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/14-original-confirmed-grunwald-in-combat.png) · [原版實際回覆](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/original/wire.json) · [Ruby 階段](../../../app/server/src/controller/duel_controller.rb#L511)
 
-新版以同一副牌組、同一種子實跑。逐幀確認移動切入肖像退場後，同一個選角面板仍保持開啟。暫緩 `SC72` 和 `SC50` 時，格雷高爾的立繪、角色卡、技能和 11/11 生命仍維持已確認狀態。放行 `SC50` 後顯示古魯瓦爾多為主戰角色，格雷高爾改列候補，攻防操作仍鎖定。收到真正的 `SC51` 及後續 `SC53` 才能防禦，沿用同一條 Quest 連線。候補卡滑入檢視另待驗收。 [新版封包與畫面進度](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/native/battle-numbered-wire.json) · [兩版選角對照](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/choice-panel-comparison.png)
+新版以同一副牌組、同一種子實跑。逐幀確認移動切入肖像退場後，同一個選角面板仍保持開啟。暫緩 `SC72` 和 `SC50` 時，格雷高爾的立繪、角色卡、技能和 11/11 生命仍維持已確認狀態。放行 `SC50` 後顯示古魯瓦爾多為主戰角色，格雷高爾改列候補，攻防操作仍鎖定。收到真正的 `SC51` 及後續 `SC53` 才能防禦，沿用同一條 Quest 連線。 [新版封包與畫面進度](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/native/battle-numbered-wire.json) · [兩版選角對照](/workspace/shared/unlight-web-port/flash-parity/quest-voluntary-character-change/choice-panel-comparison.png)
 
 ### 死亡後換角
 
 原版接到 `SC57` 後，依序清我方和敵方的牌桌，再開啟選角。封包指定或鎖定的牌送回牌庫方向 `(40,105)`，其餘桌牌依原版規則回手。已在攻防演出中清掉的同一張牌只處理一次。倒下角色的卡面保留原尺寸及位置，亮度由 100% 降到 50%。底部 OK 或 60 秒倒數到期會送 `CS35` 選第一個存活欄位。新版保留原版右上角 X 的外觀並停用，原版 Ruby 只接受存活欄位。 [原版清桌](../../../app/client/src/model/Duel.as#L469) · [牌片動畫](../../../app/client/src/view/scene/game/BaseHand.as#L437) · [原版預設操作](../../../app/client/src/view/scene/game/DuelTable.as#L897)
 
 `SC72` 確認指定欄位及角色，`SC58` 開始收起候補選擇與切換角色。後續 `SC43` 確認下回合，原始 `SC44/45` 提供行動牌與事件牌，`SC46` 才開放本回合 Move。固定繁中 Flash 和新版都以 Q1 的同一牌序實跑，古魯瓦爾多遠距離空桌防禦後扣 1 點至 0，馬庫斯接替並以 8/8 進入第二回合。原版倒下卡面量測的 RGB 皆為原值 0.5，新版核對相同亮度。 [兩版選角畫面](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/forced-choice-comparison.png) · [原版第二回合](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/original/14-original-confirmed-reserve-in-next-move.png) · [新版實跑封包](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/native/battle-numbered-wire.json)
+
+### 我方候補卡檢視
+
+第一、第二張候補卡維持 x168、336，寬 168。收起時卡身在 y680，只有 y648 起的 32 px 狀態列可見。滑入後卡身在 150 ms 內升至 y440，狀態列同步升至 y408，卡身逐漸顯示。離開狀態列與卡身的範圍後以 80 ms 收回，兩段皆使用原版 Quad-out。展開的卡身可點擊翻面，播放原版 `ulse23.mp3`。姓名、生命值及技能條件依各欄位已知資料呈現。我方需要選擇接替角色時，候補列交給換角面板使用。 [原版候補滑入](../../../app/client/src/view/scene/game/DuelCharaCards.as#L1036) · [原版翻面](../../../app/client/src/view/scene/common/CharaCardClip.as#L852) · [角色欄位資料](../../../web-client/session.js#L3295)
+
+固定繁中 Flash 的 Q82 實跑確認，指標從狀態列移進卡身時保持展開。滑入正面顯示銀色「CLICK」，點擊可翻面，收起後再次展開仍顯示背面。原版兩次候補檢視期間均未送出額外戰鬥指令。實際 `CS35(1)` 換角後，原主戰格雷高爾出現在同一候補位置。 [原版展開](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/original/11-before-change-original-raised-front.png) · [原版再次展開](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/original/11-before-change-original-reopened-face.png) · [原版換角後](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/original/15-after-change-original-raised-front.png) · [原版封包](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/original/wire.json)
+
+新版用同一副牌組與種子實跑。換角前後，候補狀態列與卡身皆依相同座標收合和展開。滑入正面播放 SWF 拆出的「CLICK」素材及 16 幀淡入，點擊可往返翻面。古魯瓦爾多 7/7、格雷高爾 11/11 在主戰與候補模式使用的正面畫布各自逐像素相同。瀏覽器驗證兩張卡均保留收合前的卡背，各次檢視的 Quest 指令數維持零。候補狀態列另可用鍵盤開啟、用 Escape 收合。 [兩版正面](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/raised-front-comparison.png) · [兩版再次展開](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/reopened-reverse-comparison.png) · [兩版換角後](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/after-change-comparison.png) · [新版封包與試玩紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/native/battle-numbered-wire.json)
+
+Q1 新版第二回合，馬庫斯以 8/8 接替後，仍可滑入檢視已倒下的古魯瓦爾多。候補正反面亮度為 50%，狀態列保留名稱及最大 7 HP，省略目前 HP。倒下後的主戰畫布與候補畫布逐像素相同。再次展開保留卡背，來回操作沒有新增 Quest 指令。 [倒下候補正面](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/04-q1-bench-21-original-rollover-front.png) · [倒下候補背面](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/04-q1-bench-21-authored-reverse.png) · [Q1 封包及畫面紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-reserve-inspection/defeated-native/battle-numbered-wire.json)
 
 ### 首回合第一組攻防
 

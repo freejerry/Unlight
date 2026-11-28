@@ -5,14 +5,19 @@ import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
+from struct import unpack_from
 from subprocess import check_output
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
 
 from PIL import Image, ImageChops
 
-from extract_character_card_art import DisplayList, FRAME as CHARACTER_FRAME, REVISION, bitmap, checked_source, matrix, timeline
-from extract_quest_detail_art import STAND_ALIASES, kind, png_bytes, rasterize_svg
+from extract_character_card_art import (
+    DisplayList, FRAME as CHARACTER_FRAME, OVERLAYS as CHARACTER_OVERLAYS, REVISION,
+    bitmap, checked_source, matrix, timeline,
+)
+from extract_quest_detail_art import QUEST_STAGE_FRAME_RATE, STAND_ALIASES, kind, png_bytes, rasterize_svg
+from source_stage_art import tags
 
 
 STANDS = {
@@ -116,7 +121,29 @@ def requirement_chips(open_movie, save):
             "sources": sources, "origin": [64, 52], "offset": list(offset), "stepX": 20, "stepY": 30}
 
 
-def character_reverse(open_movie, save):
+def character_front_turn(assets, save):
+    pin = CHARACTER_OVERLAYS["normal"]
+    source = checked_source(assets, pin)
+    source_bitmap = 114
+    # The normal overlay's turn button uses this same transparent JPEG for
+    # over/down. Sprite 116 holds its authored alpha ramp at frame 16.
+    (record,) = [(code, payload) for code, payload in tags(source)
+                 if code == 35 and unpack_from("<H", payload)[0] == source_bitmap]
+    image = bitmap(source, *record)
+    if image.size != (88, 48):
+        raise ValueError("Unexpected original character turn cue dimensions")
+    file = save("chara-front-turn.png", image, pin, sourceBitmap=source_bitmap,
+                sourceShape=115, sourceSprite=116, sourceButton=118, sourceDepth=50)
+    return {
+        "file": file, "x": 48, "y": 104, "width": 87.95, "height": 47.95,
+        "pixelWidth": image.width, "pixelHeight": image.height, "hit": [1, 1, 166, 238],
+        "state": ["over", "down"], "framesPerSecond": QUEST_STAGE_FRAME_RATE,
+        "alphaSteps256": [0, 17, 34, 51, 68, 85, 102, 119, 137, 154, 171, 188, 205, 222, 239, 256],
+        "holdLast": True,
+    }
+
+
+def character_reverse(open_movie, save, assets):
     movie = open_movie(CHARACTER_FRAME)
     bounds = (0, 0, 168, 240)
     root = movie.frame(movie.movie, 1)
@@ -150,6 +177,7 @@ def character_reverse(open_movie, save):
                        for n, key in enumerate(("近", "中", "遠"))},
         },
         "requirementChips": requirement_chips(open_movie, save),
+        "frontTurn": character_front_turn(assets, save),
     }
 
 
@@ -342,7 +370,7 @@ def generate(args):
         return DisplayList(checked_source(args.assets, pin), args.swfdump)
 
     if args.character_reverse:
-        index["characterReverse"] = character_reverse(open_movie, save)
+        index["characterReverse"] = character_reverse(open_movie, save, args.assets)
         index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
         return
 
@@ -434,7 +462,7 @@ def generate(args):
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "stands": stands, "actionFrames": action_frames,
              "actionValues": values, "eventValues": events, "actionControls": controls,
-             "characterReverse": character_reverse(open_movie, save),
+             "characterReverse": character_reverse(open_movie, save, args.assets),
              "exchange": {"diceResult": dice_result, "diceRoll": dice_roll, "damage": damage},
              "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n")

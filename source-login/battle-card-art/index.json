@@ -4787,6 +4787,16 @@
       "sha256": "e74b9d1f1cd2c5ecc0f9acdcbda255cf9020d08efec81254327cf8786eb5ca2a",
       "sourceInstance": "up",
       "sourceShape": 2
+    },
+    "chara-front-turn.png": {
+      "source": "data/image/ccframe_a_over.swf",
+      "sourceSha256": "b1dbca3f720850122eef106f688fa5dc6bb5f196523567a56f52c8bca1b7a267",
+      "sha256": "a7213ca93ec24822914bf4aafb23360c98ce59b9aff236a4b8006aa0f39e7793",
+      "sourceBitmap": 114,
+      "sourceShape": 115,
+      "sourceSprite": 116,
+      "sourceButton": 118,
+      "sourceDepth": 50
     }
   },
   "characterReverse": {
@@ -4938,6 +4948,45 @@
       ],
       "stepX": 20,
       "stepY": 30
+    },
+    "frontTurn": {
+      "file": "chara-front-turn.png",
+      "x": 48,
+      "y": 104,
+      "width": 87.95,
+      "height": 47.95,
+      "pixelWidth": 88,
+      "pixelHeight": 48,
+      "hit": [
+        1,
+        1,
+        166,
+        238
+      ],
+      "state": [
+        "over",
+        "down"
+      ],
+      "framesPerSecond": 40.8,
+      "alphaSteps256": [
+        0,
+        17,
+        34,
+        51,
+        68,
+        85,
+        102,
+        119,
+        137,
+        154,
+        171,
+        188,
+        205,
+        222,
+        239,
+        256
+      ],
+      "holdLast": true
     }
   }
 }

@@ -246,6 +246,118 @@ def snapshot(page, stage, directory, name):
     return {'frame': name, 'sent': sent_quest_actions(page), 'replies': len(qa.read_movement_trace(page)['replies'])}
 
 
+def character_raster(character):
+    canvas = character.locator('canvas.quest-battle-character-card')
+    expect(canvas).to_be_visible()
+    pixels = canvas.evaluate("""async canvas => {
+      const {width, height} = canvas;
+      const {data} = canvas.getContext('2d').getImageData(0, 0, width, height);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const sha256 = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+      return {width, height, sha256, opaque: data.filter((alpha, i) => i % 4 === 3 && alpha === 255).length};
+    }""")
+    assert (pixels['width'], pixels['height']) == (168, 240) and pixels['opaque'] > 10000, pixels
+    return pixels
+
+
+def match_reserve_bounds(locator, battle, expected):
+    expect(locator).to_be_visible()
+    bounds = locator.bounding_box()
+    base = battle.bounding_box()
+    observed = [bounds['x'] - base['x'], bounds['y'] - base['y'], bounds['width'], bounds['height']]
+    assert all(abs(actual - source) < 1 for actual, source in zip(observed, expected, strict=True)), (observed, expected)
+    return observed
+
+
+def check_bench_hover(page, stage, battle, directory, *, reserve_index, card_id, hp, skill_id,
+                      max_hp=None, name=None, prefix='04-q82'):
+    tabs = battle.locator('#quest-battle-reserve-tabs')
+    tab = tabs.locator(f'.quest-battle-reserve-tab[data-roster-index="{reserve_index}"][data-card-id="{card_id}"]')
+    trigger = tab.locator('[data-reserve-trigger]')
+    card = battle.locator(f'#quest-battle-reserve-character-{reserve_index}')
+    slide = card.locator('xpath=..')
+    active = battle.locator('#quest-battle-player-character')
+    plate_kind = 'dead' if hp == 0 else 'base'
+    plate = tab.locator(f'img[src$="quest-battle-reserve-tab-{plate_kind}.png"]')
+    expect(tabs.locator('.quest-battle-reserve-tab')).to_have_count(1)
+    expect(tab.locator('[data-reserve-field="hp"]')).to_have_text(str(hp) if hp else '')
+    expect(tab.locator('[data-reserve-field="maxHp"]')).to_have_text(str(max_hp if max_hp is not None else hp))
+    if name:
+        expect(tab.locator('[data-reserve-field="name"]')).to_have_text(name)
+    expect(trigger).to_have_attribute('aria-expanded', 'false')
+    expect(card).to_be_hidden()
+    closed_bounds = match_reserve_bounds(plate, battle, [168, 648, 168, 32])
+    trigger_bounds = match_reserve_bounds(trigger, battle, [168, 648, 168, 32])
+    expect(plate).to_have_js_property('naturalWidth', 168)
+    expect(plate).to_have_js_property('naturalHeight', 32)
+    active_id = active.get_attribute('data-card-id')
+    active_health = battle.locator('#quest-battle-player-hp').inner_text()
+    sent = sent_quest_actions(page)
+    base = battle.bounding_box()
+    page.mouse.move(base['x'] + 252, base['y'] + 664)
+    expect(trigger).to_have_attribute('aria-expanded', 'true')
+    expect(card).to_have_attribute('data-card-id', str(card_id))
+    expect(card).to_have_attribute('data-face', 'front')
+    expect(card).to_have_css('opacity', '1')
+    expect(slide).to_have_css('transition-duration', '0.15s')
+    expect(card).to_have_css('filter', 'brightness(0.5)' if hp == 0 else 'none')
+    page.wait_for_function("""index => {
+      const view = document.getElementById('quest-battle-reserve-character-' + index);
+      const board = document.getElementById('quest-map-battle');
+      return view && Math.abs(view.getBoundingClientRect().top - board.getBoundingClientRect().top - 440) < 0.25;
+    }""", arg=reserve_index, timeout=qa.TIMEOUT)
+    open_bounds = match_reserve_bounds(card, battle, [168, 440, 168, 240])
+    open_plate = match_reserve_bounds(plate, battle, [168, 408, 168, 32])
+    pixels = character_raster(card)
+    flip = card.locator('.quest-battle-character-flip')
+    cue = flip.locator('img.quest-battle-character-turn-cue[src$="/battle-card-art/chara-front-turn.png"]')
+    expect(flip).to_be_visible()
+    expect(flip).to_be_enabled()
+    page.mouse.move(base['x'] + 252, base['y'] + 547)
+    expect(trigger).to_have_attribute('aria-expanded', 'true')
+    expect(cue).to_be_visible()
+    expect(cue).to_have_js_property('naturalWidth', 88)
+    expect(cue).to_have_js_property('naturalHeight', 48)
+    expect(cue).to_have_css('opacity', '1')
+    cue_bounds = match_reserve_bounds(cue, battle, [216, 544, 87.95, 47.95])
+    opened = snapshot(page, stage, directory, f'{prefix}-bench-{card_id}-original-rollover-front')
+
+    flip.click(position={'x': 84, 'y': 180})
+    expect(card).to_have_attribute('data-face', 'back')
+    expect(flip).to_be_enabled()
+    expect(cue).to_be_hidden()
+    expect(card.locator(f'.quest-battle-character-feat[data-feat-id="{skill_id}"]')).to_be_visible()
+    if hp == 0:
+        expect(card).to_have_css('filter', 'brightness(0.5)')
+    reverse = snapshot(page, stage, directory, f'{prefix}-bench-{card_id}-authored-reverse')
+    page.mouse.move(base['x'] + 380, base['y'] + 600)
+    expect(trigger).to_have_attribute('aria-expanded', 'false')
+    expect(card).to_have_js_property('inert', True)
+    expect(card).to_have_css('opacity', '0')
+    page.mouse.move(base['x'] + 252, base['y'] + 664)
+    expect(trigger).to_have_attribute('aria-expanded', 'true')
+    expect(card).to_have_attribute('data-face', 'back')
+    expect(card).to_have_css('opacity', '1')
+    expect(cue).to_be_hidden()
+    reopened = snapshot(page, stage, directory, f'{prefix}-bench-{card_id}-retained-reverse-after-reopening')
+    flip.click(position={'x': 84, 'y': 180})
+    expect(card).to_have_attribute('data-face', 'front')
+    expect(flip).to_be_enabled()
+    page.mouse.move(base['x'] + 380, base['y'] + 600)
+    expect(trigger).to_have_attribute('aria-expanded', 'false')
+    expect(card).to_have_js_property('inert', True)
+    expect(card).to_have_css('opacity', '0')
+    expect(slide).to_have_css('transition-duration', '0.08s')
+    restored = match_reserve_bounds(plate, battle, [168, 648, 168, 32])
+    expect(active).to_have_attribute('data-card-id', active_id)
+    expect(battle.locator('#quest-battle-player-hp')).to_have_text(active_health)
+    assert sent_quest_actions(page) == sent
+    closed = snapshot(page, stage, directory, f'{prefix}-bench-{card_id}-after-original-rollout')
+    return {'opened': opened, 'reverse': reverse, 'reopened': reopened, 'closed': closed, 'plateBounds': closed_bounds,
+            'triggerBounds': trigger_bounds, 'expandedBounds': open_bounds, 'expandedPlateBounds': open_plate,
+            'turnCueBounds': cue_bounds, 'restoredBounds': restored, 'raster': pixels}
+
+
 def close_battle_lobby_notices(page, stage, origin):
     check = qa.wait_lobby_achievement_check(page, 1)
     response = page.request.get(origin + '/source-login/lobby-achievement-art/index.json')
@@ -1427,6 +1539,7 @@ def check_forced_change(page, stage, battle, directory, opening_hand):
     expect(front).to_have_attribute('data-roster-index', '0')
     expect(front).to_have_attribute('data-defeated', 'true')
     expect(front.locator('canvas.quest-battle-character-card')).to_have_css('filter', 'brightness(0.5)')
+    defeated_raster = character_raster(front)
     expect(front).to_have_attribute('data-card-id', '21')
     expect(stands).to_have_attribute('data-card-id', '21')
     expect(chooser.locator('[data-character-change-card][data-slot="1"][data-card-id="82"]')).to_be_visible()
@@ -1513,9 +1626,12 @@ def check_forced_change(page, stage, battle, directory, opening_hand):
     assert sent_quest_actions(page)[len(before_defense):] == [[34, 9], [35, 6]]
     assert not any(packet[0] in (41, 49, 50) for packet in trace['replies'])
     after = snapshot(page, stage, directory, '04-q1-new-active-markus-in-authoritative-turn-two')
+    defeated_reserve = check_bench_hover(page, stage, battle, directory, reserve_index=0, card_id=21,
+                                        hp=0, max_hp=7, skill_id=25, name='古魯瓦爾多', prefix='04-q1')
+    assert defeated_reserve['raster'] == defeated_raster, defeated_reserve
     return {'dice': dice, 'damage': damage, 'receipts': receipts(), 'beforeChooser': before, 'opened': opened,
             'rosterPending': roster_pending, 'closePending': close_pending, 'closed': closed,
-            'drawPending': draw_pending, 'confirmed': after}
+            'drawPending': draw_pending, 'confirmed': after, 'defeatedReserve': defeated_reserve}
 
 
 def check_forced_change_before_dice(page, stage, battle, directory, opening_hand):
@@ -1692,7 +1808,8 @@ def check_battle(page, args, plan):
     quest_id = plan['questId']
     eased = args.case == 'eased-condition'
     replacement = args.case == 'feat-replacement'
-    voluntary = args.case == 'voluntary-change'
+    bench_hover = args.case == 'bench-hover'
+    voluntary = args.case in ('voluntary-change', 'bench-hover')
     borrower = args.case == 'borrower-change'
     forced = args.case == 'forced-change'
     forced_before_dice = args.case == 'forced-change-before-dice'
@@ -1742,6 +1859,13 @@ def check_battle(page, args, plan):
         else:
             evidence['5-and-7'] = check_attention_controls(page, stage, battle, args.screens,
                                                            player_card, plan['skillId'], plan['skillName'])
+        if bench_hover:
+            active = battle.locator('#quest-battle-player-character')
+            expect(active).to_have_attribute('data-card-id', '635')
+            gregor_raster = character_raster(active)
+            evidence['benchHover'] = {'before': check_bench_hover(
+                page, stage, battle, args.screens, reserve_index=1, card_id=21, hp=7, skill_id=25,
+            )}
         evidence['4'] = play_movement(page, stage, battle, args.screens, plan['direction'], plan.get('movementCards', []))
         move = evidence['4']['receipt']
         assert move[2] in (0, 1) and move[3] == plan['range'], move
@@ -1769,6 +1893,15 @@ def check_battle(page, args, plan):
                 evidence['1'] = play_borrower_changes(page, stage, battle, args.screens)
             else:
                 evidence['4']['voluntaryChange'] = check_voluntary_change(page, stage, battle, args.screens)
+                if bench_hover:
+                    expect(active).to_have_attribute('data-card-id', '21')
+                    grunwald_raster = character_raster(active)
+                    bench = evidence['benchHover']
+                    bench['after'] = check_bench_hover(
+                        page, stage, battle, args.screens, reserve_index=0, card_id=635, hp=11, skill_id=1262,
+                    )
+                    assert bench['before']['raster'] == grunwald_raster, bench['before']
+                    assert bench['after']['raster'] == gregor_raster, bench['after']
             assert len(live) == 5 and all(not socket.is_closed() for socket in live), live
             assert qa.quest_inventory(args.database, avatar_id) == [quest[:2] + (2,) + quest[3:]]
             expected_lock = [entry[:3] + (1,) for entry in deck]
@@ -1811,7 +1944,7 @@ def main():
     parser.add_argument('--chromium', default='/usr/bin/chromium')
     parser.add_argument('--case', choices=('presentation', 'skill', 'counter-guard', 'eased-condition',
                                           'feat-replacement', 'voluntary-change', 'borrower-change', 'forced-change',
-                                          'forced-change-before-dice'),
+                                          'forced-change-before-dice', 'bench-hover'),
                         default='presentation')
     parser.add_argument('--plan', type=Path, help='Verified original duel plan for the scoped skill fixture')
     args = parser.parse_args()
@@ -1828,7 +1961,7 @@ def main():
             'openingActions': [40, 38, 15, 35, 49],
             'playerFirst': True, 'range': 2, 'wins': False,
         }
-    elif args.case == 'voluntary-change':
+    elif args.case in ('voluntary-change', 'bench-hover'):
         plan = {
             'questId': 82, 'cardId': 635, 'direction': 3, 'openingActions': [13, 19, 4, 2, 39],
             'playerFirst': False, 'range': 2, 'wins': False,

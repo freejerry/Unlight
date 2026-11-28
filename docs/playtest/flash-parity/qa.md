@@ -234,6 +234,17 @@ python3 -Bu tools/legacy-web/check_source_battle.py --case forced-change \
 
 另以 `--case forced-change-before-dice` 測 Q82 的技能自身扣血。Deck 1 放格雷高爾 #635 和古魯瓦爾多 #21，沿用無名之丘搜尋種子 29，將傷勢 `[10,0,0]` 用原版模型存入任務。場地 3、毒蛙 #1008，對局初始化前種子 33。首回合後退，空桌確認移動後以 #40、#15、#35 正向攻擊。Ruby 依序發出兩個技能確認、我方自身傷害、`SC55` 及含三張牌 ID 的 `SC57`。核對兩段特寫掛載、血量到 0、各牌只離桌一次，接著選古魯瓦爾多並進入第二回合。 [原版 Ruby 自身扣血案例](/workspace/shared/unlight-web-port/flash-parity/quest-forced-character-change/stock-ruby-before-dice-self-knockout.json)
 
+### 重跑 Q82 候補卡檢視
+
+沿用 Q82 雙卡主動換角的隔離角色、牌組和種子 32。第一回合 Move 從 `(380,630)` 移到候補列 `(248,661)`，再移進卡身 `(248,575)`。核對狀態列和候補卡的展開座標、正面銀色「CLICK」的素材和位置。點卡身核對卡背，離開後收回，再展開確認仍顯示卡背。完成一次真正的 `CS35(1)` 後，用相同指標路徑檢視退到候補的格雷高爾。兩次各核對收合和展開位置、HP、卡面與主戰畫布相同，以及指標檢視、翻面期間的 Quest 指令數維持零。Q1 的 `forced-change` 在第二回合另驗倒下的候補可翻面、正反面亮度為 50%，且狀態列保留名稱和最大 HP。 [原版候補欄邏輯](../../../app/client/src/view/scene/game/DuelCharaCards.as#L1036)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_battle.py --case bench-hover \
+  --port 4397 --database "$proof_dir/bench-hover-ruby/app/server/data/game_dev2.db" \
+  --user questbench --password-file "$proof_dir/questbench-password" \
+  --screens "$proof_dir/bench-hover-native"
+```
+
 ### 重跑同回合攻守互換與次回合
 
 以另一位全新隔離角色使用上一節的 `--quest-start-user` 指令，加上 `--quest-next-turn`。用 Ruby 實際先手決定哪一組可放防禦牌，攻擊組以空桌確認。暫緩第二筆 `SC51` 後放行。核對同回合攻守反轉、首組完整結算、兩組獨立的牌與骰值，以及唯一的 `CS33` 和 `CS34`。攻擊骰為空的組別略過 3D 擲骰和骰聲。核對第二組雙方點數使用真正的 `SC82`，包含牌清單為空而舊遮罩仍有位元的情況。

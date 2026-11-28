@@ -168,6 +168,7 @@
 .quest-battle-character-inspect, .quest-battle-character-review { position: absolute; }
 .quest-battle-character-inspect, .quest-battle-character-review { transform-origin: 80px 120px; }
 .quest-battle-character-inspect :is(.quest-battle-character-review, .quest-battle-character-card) { inset: 0; }
+.quest-battle-character-review { pointer-events: none; }
 .quest-battle-layer :is(.quest-battle-character-flip, .quest-battle-character-feat) {
   pointer-events: auto;
   cursor: pointer;

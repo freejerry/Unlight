@@ -3,6 +3,7 @@ import { BATTLE_CARD_ART, battleCardControls, battleCharacterReverse, battleExch
 import { renderCharacterCard } from './character-card.js';
 import { createQuestBattleExchange } from './quest-battle-exchange.js';
 import { createQuestBattleChange } from './quest-battle-change.js';
+import { createQuestBattleReserve } from './quest-battle-reserve.js';
 import { createQuestFeatPlayback } from './quest-battle-feat.js';
 import {
   animateInitialDeckCount, createCoveredOpponentCards, createQuestBattleMove, sweepQuestTableCards,
@@ -325,9 +326,52 @@ function battleSkillChips(raw) {
   });
 }
 
-function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 0) {
+function mountCharacterTurnCue(button, artwork, signal, canShow) {
+  if (!artwork?.file) return;
+  const [left, top] = artwork.hit;
+  place(button, ...artwork.hit);
+  const cue = sprite(button, { ...artwork, x: artwork.x - left, y: artwork.y - top }, BATTLE_CARD_ART);
+  cue.className = 'quest-battle-character-turn-cue';
+  cue.style.pointerEvents = 'none';
+  cue.setAttribute('aria-hidden', 'true');
+  cue.hidden = true;
+  const frames = artwork.alphaSteps256.map(alpha => ({ opacity: alpha / 256, easing: 'steps(1, end)' }));
+  const duration = (frames.length - 1) * 1000 / artwork.framesPerSecond;
+  let hovered = false;
+  let loaded = false;
+  let reveal;
+  function refresh() {
+    if (signal.aborted || !loaded || !hovered || !canShow()) {
+      reveal?.cancel();
+      reveal = undefined;
+      cue.hidden = true;
+    } else if (cue.hidden) {
+      cue.hidden = false;
+      if (!reduced()) reveal = cue.animate(frames, { duration, fill: 'both' });
+    }
+  }
+  function leave() {
+    hovered = false;
+    refresh();
+  }
+  button.addEventListener('pointerenter', event => {
+    if (event.pointerType === 'touch') return;
+    hovered = true;
+    refresh();
+  }, { signal });
+  button.addEventListener('pointerleave', leave, { signal });
+  button.addEventListener('pointercancel', leave, { signal });
+  signal.addEventListener('abort', refresh, { once: true });
+  void cue.decode().then(() => {
+    loaded = true;
+    refresh();
+  }).catch(() => {});
+  return refresh;
+}
+
+function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 0, elementId = 'quest-battle-player-character') {
   const card = document.createElement('div');
-  card.id = 'quest-battle-player-character';
+  card.id = elementId;
   card.className = 'quest-battle-character-inspect';
   card.dataset.cardId = String(id);
   card.dataset.rosterIndex = String(rosterIndex);
@@ -349,7 +393,9 @@ function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 
   rear.className = 'quest-battle-character-review';
   rear.hidden = true;
   card.append(rear);
+  const requirementsId = elementId === 'quest-battle-player-character' ? 'quest-battle-character-requirements' : `${elementId}-requirements`;
   let flipping = false;
+  let refreshTurnCue;
   let overrides;
   let refreshConditions = () => {};
   function updateConditions(row) {
@@ -429,7 +475,7 @@ function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 
           content.querySelectorAll('button')[i].focus({ preventScroll: true });
         });
         const holder = document.createElement('div');
-        holder.id = `quest-battle-character-requirements-${i}`;
+        holder.id = `${requirementsId}-${i}`;
         feat.setAttribute('aria-describedby', holder.id);
         if (!atlas) {
           holder.className = 'quest-battle-character-requirements';
@@ -447,6 +493,7 @@ function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 
       refreshConditions();
     }
     select(0);
+    refreshTurnCue = mountCharacterTurnCue(flip, art.frontTurn, signal, () => !flipping && card.dataset.face === 'front');
     canvas.setAttribute('aria-hidden', 'true');
     flip.hidden = false;
   });
@@ -454,6 +501,7 @@ function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 
   flip.addEventListener('click', async () => {
     if (flipping || signal.aborted) return;
     flipping = true;
+    refreshTurnCue?.();
     flip.setAttribute('aria-disabled', 'true');
     const showRear = card.dataset.face === 'front';
     const start = showRear ? 0 : 180;
@@ -481,6 +529,7 @@ function inspectCharacter(parent, definition, id, damage, signal, rosterIndex = 
     rear.style.transform = '';
     flip.removeAttribute('aria-disabled');
     flipping = false;
+    refreshTurnCue?.();
   });
   return { card, canvas, ready, updateConditions };
 }
@@ -768,53 +817,6 @@ function confirmedBattleActors(snapshot) {
     actors[side] = row;
   }
   return actors;
-}
-
-function renderReserveTabs(battle, artwork, definitions) {
-  if (!artwork?.base) return;
-  const root = layer(battle, 'quest-battle-reserve-tabs', 30, 'quest-battle-reserve-tabs');
-  root.setAttribute('aria-label', '候補角色');
-  let previous;
-  return {
-    root,
-    update(party, hidden) {
-      root.hidden = hidden;
-      if (hidden || !party) return;
-      const rows = party.cards.filter(({ index }) => index !== party.activeIndex);
-      const key = JSON.stringify(rows.map(({ index, cardId, hp, alive }) => [index, cardId, hp, alive]));
-      if (key === previous) return;
-      previous = key;
-      root.replaceChildren();
-      rows.forEach((row, index) => {
-        const card = definitions.get(row.cardId);
-        const x = (index + 1) * 168 + artwork.offsets.player[0];
-        const y = 680 + artwork.offsets.player[1];
-        const tab = layer(root, 'quest-battle-reserve-tab', index);
-        tab.dataset.cardId = String(row.cardId);
-        tab.dataset.rosterIndex = String(row.index);
-        const image = plate => sprite(tab, { ...plate, x: x + plate.x, y: y + plate.y });
-        const dead = row.alive === false || (Number.isInteger(row.hp) && row.hp <= 0);
-        image(dead && artwork.dead ? artwork.dead : artwork.base);
-        const hp = Number.isInteger(row.hp) ? row.hp : null;
-        const values = { name: card?.name ?? '', hp: dead ? '' : hp ?? '?', level: card?.level ?? '?',
-          attack: card?.ap ?? '?', defense: card?.dp ?? '?', maxHp: card?.hp ?? '?' };
-        for (const [field, [left, top, width, height]] of Object.entries(artwork.labels)) {
-          const label = document.createElement('span');
-          label.dataset.reserveField = field;
-          label.textContent = values[field];
-          Object.assign(label.style, { position: 'absolute', textAlign: 'center', color: '#4c4c4c',
-            font: 'bold 9px/14px Verdana, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden' });
-          if (field === 'maxHp') label.style.color = '#b3b3b3';
-          if (field === 'name') Object.assign(label.style, { textAlign: 'left', color: '#3c3c3c',
-            font: '14px/18px "Unlight Card Mincho", serif', letterSpacing: '1px' });
-          if (field === 'hp') Object.assign(label.style, { font: '24px/25px "Bradley Gratis", serif', letterSpacing: '2px',
-            color: hp === null || hp >= card?.hp ? '#fff' : hp >= card?.hp / 2 ? '#ffff30' : '#ff7070' });
-          place(label, x + left, y + top, width, height);
-          tab.append(label);
-        }
-      });
-    },
-  };
 }
 
 function openingNames(parent, encounter, definitions, signal) {
@@ -1429,7 +1431,16 @@ async function renderBattleHud(battle, sourceAvatar, {
   }
   const deck = mountDeckStock(battle, encounter.duel.deckSize, signal);
   const roster = layer(battle, 'quest-battle-roster', 30);
-  const reserveTabs = renderReserveTabs(battle, hud.characterChange?.reserveTab, definitions);
+  const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
+  status.setAttribute('role', 'status');
+  status.tabIndex = -1;
+  const reserveTabs = createQuestBattleReserve(battle, {
+    artwork: hud.characterChange?.reserveTab, definitions, signal,
+    inspect: (parent, definition, row, damage, cardSignal) => inspectCharacter(
+      parent, definition, row.cardId, damage, cardSignal, row.index, `quest-battle-reserve-character-${row.index}`,
+    ),
+    restoreFocus: () => status.focus({ preventScroll: true }),
+  });
   const actors = {
     player: { index: 0, cardId: player }, opponent: { index: 0, cardId: encounter.opponentCardIds[0] },
   };
@@ -1440,9 +1451,6 @@ async function renderBattleHud(battle, sourceAvatar, {
   const hands = createHands(battle);
   const covered = createCoveredOpponentCards(hands, signal);
   const battleChrome = [standees, base, deck.root, skills?.strip, skills?.detailLayer, handPlate, avatar, main, chat, roster, reserveTabs?.root].filter(Boolean);
-  const status = output(main, 'quest-battle-status', 'sr-only', 178, 24);
-  status.setAttribute('role', 'status');
-  status.tabIndex = -1;
   const move = createQuestBattleMove({ battle, scene, encounterKey: encounter.key, hud, hands, controls, combatControls, status,
     multi: encounter.duel.multi, signal, isCurrent });
   const changeView = createQuestBattleChange(battle, { scene, encounterKey: encounter.key, signal, isCurrent, assets: hud, definitions,
@@ -1908,8 +1916,10 @@ async function renderBattleHud(battle, sourceAvatar, {
     changeView.update(latest, { presentable });
     const pickerActive = presentable && (change?.kind === 'movement' || change?.kind === 'defeated');
     const actorChanging = characterPresentation?.turn === visibleTurn && !characterPresentation.settled;
-    reserveTabs?.update(visualRoster()?.player, pickerActive || actorChanging);
     const outcome = latest.outcome;
+    const inspectionEnabled = !outcome?.duel && !['uncertain', 'closed', 'terminal'].includes(latest.phase)
+      && latest.exchange?.phase !== 'uncertain';
+    reserveTabs?.update(visualRoster()?.player, pickerActive || actorChanging, { enabled: inspectionEnabled });
     if (outcome) updateDuelOutcome(outcome);
     if (terminalTask) return;
     if (!combatView && latest.phase === 'terminal' && outcome?.duel) {
@@ -2037,7 +2047,9 @@ async function renderBattleHud(battle, sourceAvatar, {
   paint('preparing');
   scene.subscribe(receive, { signal });
   void scene.readyBattle({ signal, encounterKey: encounter.key }).then(() => receive(scene.snapshot)).catch(() => {
-    if (!signal.aborted && isCurrent()) paint('uncertain');
+    if (signal.aborted || !isCurrent()) return;
+    reserveTabs?.update(visualRoster()?.player, false, { enabled: false });
+    paint('uncertain');
   });
 }
 
