@@ -53,90 +53,59 @@ module Unlight
        self.updated_at = Time.now.utc
     end
 
-    # 内容をクリア
-    def clear_body(n)
-      refresh
-      ret = []
-      s = self.body.split("|")
-      if n
-        n.times do
-          ret.push(s.pop)
+    # Use the owning avatar's row even when the first notice does not exist yet.
+    SQLITE_NOTICE_LOCK = Mutex.new
+
+    def self.with_owner_lock(avatar_id)
+      options = DB.database_type == :sqlite ? { :mode => :immediate } : {}
+      operation = proc do
+        DB.transaction(options) do
+          yield if DB[:avatars].where(:id => avatar_id).for_update.get(:id)
         end
-        self.body = s.join("|").force_encoding("UTF-8")
-        self.save_changes
       end
-      ret
+      if DB.database_type == :sqlite && !DB.in_transaction?
+        # The legacy SQLite driver's busy handler can block another Ruby thread from finishing.
+        SQLITE_NOTICE_LOCK.synchronize(&operation)
+      else
+        operation.call
+      end
     end
 
-    # ログを書く
-    def AvatarNotice::write_notice(an, a_id, b)
-      if an
-        if an.body == "".force_encoding("UTF-8")
-          an.body = "#{b}".force_encoding("UTF-8")
+    def self.write_notice(avatar_id, message)
+      with_owner_lock(avatar_id) do
+        notice = where(:avatar_id => avatar_id).order(:id).first
+        if notice
+          notice.body = (notice.body.to_s.split("|") + [message]).join("|").force_encoding("UTF-8")
+          notice.save_changes
         else
-          an.body += "|#{b}".force_encoding("UTF-8")
+          create(:avatar_id => avatar_id, :body => message)
         end
-        an.save_changes
-      else
-        AvatarNotice.new do |d|
-          d.avatar_id = a_id
-          d.body = "#{b}".force_encoding("UTF-8")
-          d.save
+      end
+    end
+
+    # Pop only notices eligible for this command, keeping the original newest-first order.
+    def self.clear_types(avatar_id, count, types, matching)
+      return [] unless count && count > 0
+
+      with_owner_lock(avatar_id) do
+        removed = []
+        where(:avatar_id => avatar_id).order(Sequel.desc(:id)).each do |notice|
+          break if removed.length == count
+          tokens = notice.body.to_s.split("|")
+          candidates = tokens.each_index.select { |i| types.include?(tokens[i].to_i) == matching }
+          candidates.last(count - removed.length).reverse_each do |index|
+            removed << tokens.delete_at(index)
+          end
+          notice.body = tokens.join("|").force_encoding("UTF-8")
+          notice.save_changes
         end
+        removed
       end
     end
 
     # スタックしている未送信のメッセージを配列で取得
     def AvatarNotice::get_massage_notice(time)
       AvatarNotice.filter(Sequel.cast_string(:updated_at) > time ).and(~{:body => ""}).all
-    end
-
-    # 特定のタイプのノーティスを引き抜く
-    def get_type_message(types=[])
-      refresh
-      ret = []
-      if types&&types.size > 0
-        match_str = types.join("|")
-        body_arr = self.body.split("|")
-        leave_arr = []
-        body_arr.each do |mes|
-          mes_arr = mes.split(":") if mes
-          if types.include?(mes_arr.first.to_i)
-            ret << mes
-          else
-            leave_arr << mes
-          end
-        end
-        reset_arr = leave_arr + ret
-        # 指定のものを引き抜いた分を再度Bodyに入れなおす
-        self.body = reset_arr.join("|").force_encoding("UTF-8")
-        self.save_changes
-      end
-      ret.join("|")
-    end
-
-    # 指定したノーティス以外を取得
-    def get_other_type_message(types=[])
-      refresh
-      ret = []
-      if types&&types.size > 0
-        match_str = types.join("|")
-        body_arr = self.body.split("|")
-        leave_arr = []
-        body_arr.each do |mes|
-          mes_arr = mes.split(":") if mes
-          if types.include?(mes_arr.first.to_i)
-            leave_arr << mes
-          else
-            ret << mes
-          end
-        end
-        reset_arr = leave_arr + ret
-        # 指定のものを引き抜いた分を再度Bodyに入れなおす
-        self.body = reset_arr.join("|").force_encoding("UTF-8")
-        self.save_changes
-      end
-      ret.join("|")
     end
 
   end

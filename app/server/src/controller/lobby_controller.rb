@@ -352,8 +352,13 @@ module Unlight
       def cs_achievement_clear_check(notice_check)
         if @avatar
           @avatar.achievement_check
-          n = @avatar.get_notice if notice_check
-          sc_add_notice(n) if n!=""&&n!=nil
+          if notice_check
+            body = @avatar.get_notice
+            unless body.empty?
+              sc_add_notice(body)
+              @avatar.selectable_notice_offers(body).each { |offer| sc_notice_selectable_offer(*offer) }
+            end
+          end
         end
       end
 
@@ -602,9 +607,10 @@ module Unlight
       end
 
       def cs_get_notice_selectable_item(args)
-        SERVER_LOG.info("<UID:#{@uid}>#{$SERVER_NAME}: [#{__method__}] args:#{args}")
         if @avatar
-          @avatar.get_notice_selectable_item(args)
+          @avatar.get_notice_selectable_item(args).each do |result|
+            DB.after_commit { sc_notice_selectable_result(*result) }
+          end
         end
       end
 

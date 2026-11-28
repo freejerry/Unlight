@@ -4675,83 +4675,102 @@ module Unlight
     end
 
     def get_notice
-      ret = ""
-      if self.avatar_notice
-        ret = self.avatar_notice.body
-      end
-      ret
+      AvatarNotice.where(:avatar_id => self.id).order(:id).select_map(:body).reject { |body| body.to_s.empty? }.join("|")
     end
 
     def clear_notice(n,args)
-      arg_set = Hash[*(args.split(","))]
-      if self.avatar_notice
-        # 渦と選択レコード関連以外を消すように調整
-        noncheck_types = PRF_NOTICE_TYPES.clone.push(NOTICE_TYPE_GET_SELECTABLE_ITEM)
-        self.avatar_notice.get_other_type_message(noncheck_types)
-        cleared_notice_set = self.avatar_notice.clear_body(n)
-        cleared_notice_set.each_with_index do |nc, i|
-          a = nc.split(":") if nc
-          if a
-            case a.first.to_i
-            when NOTICE_TYPE_SALE_START
-              # セールのスタートチェック
-              p = a[-1].split(",")
-              type = p.shift().to_i
-              time = p.shift().to_i
-              self.set_sale_limit(time,type)
-            when NOTICE_TYPE_INVITE_SUCC
-              # 招待成功時のレコード更新チェック
-              # 招待処理は被招待者が行う為、レコードが更新されない場合がある
-              @event.update_achievement_info_event(*self.get_achievement_info_set) if @event
-            when NOTICE_TYPE_GET_SELECTABLE_ITEM
-            end
-          end
+      protected_types = PRF_NOTICE_TYPES + [NOTICE_TYPE_GET_SELECTABLE_ITEM]
+      Array(AvatarNotice.clear_types(self.id, n, protected_types, false)).each do |notice|
+        type, payload = notice.split(":", 2)
+        case type.to_i
+        when NOTICE_TYPE_SALE_START
+          sale_type, time = payload.to_s.split(",").map(&:to_i)
+          self.set_sale_limit(time, sale_type) if sale_type && time
+        when NOTICE_TYPE_INVITE_SUCC
+          @event.update_achievement_info_event(*self.get_achievement_info_set) if @event
         end
       end
+    end
+
+    # Advertise only one-card choices which the authenticated claim can fulfill.
+    def selectable_notice_offers(body)
+      ids = body.to_s.split("|").map do |token|
+        type, key = token.split(":", 2)
+        Integer(key, 10) if type == NOTICE_TYPE_GET_SELECTABLE_ITEM.to_s && /\A[1-9][0-9]{0,9}\z/.match(key)
+      end.compact
+      ids.group_by { |id| id }.map do |achievement_id, occurrences|
+        next unless occurrences.length == 1 && achievement_id <= 2_147_483_647
+        options = selectable_notice_options(achievement_id)
+        next if options.empty?
+        [achievement_id, options.each_with_index.map { |option, index| [index, *option].join("/") }.join(",")]
+      end.compact
     end
 
     def get_notice_selectable_item(args)
-      arg_set = Hash[*(args.split(","))]
-      cnt = self.avatar_notice.get_type_message([NOTICE_TYPE_GET_SELECTABLE_ITEM]).split("|").size
-      if cnt > 0&&arg_set.keys.size > 0
-        cleared_notice_set = self.avatar_notice.clear_body(cnt)
-        cleared_notice_set.each_with_index do |nc, i|
-          a = nc.split(":") if nc
-          if a
-            case a.first.to_i
-            when NOTICE_TYPE_GET_SELECTABLE_ITEM
-              select_index = 255
-              a_id = a.last.to_i
-              select_index = arg_set[a.last].to_i if arg_set[a.last]
-              item_set = Achievement[a_id].get_selectable_array
-              if item_set.size > select_index
-                item = item_set[select_index]
-                r = get_treasures(item[0], item[1], item[3], item[2], false)
-              end
-            end
-          end
+      fields = args.to_s.split(",", -1)
+      return [] unless fields.length.even? && fields.all? { |field| /\A-?[0-9]{1,10}\z/.match(field) }
+      values = fields.map { |field| Integer(field, 10) }
+      return [] unless values.all? { |value| (-2_147_483_648..2_147_483_647).cover?(value) }
+
+      values.each_slice(2).map do |achievement_id, index|
+        resolved = claim_selectable_notice(achievement_id, index)
+        [achievement_id, index, *resolved] if resolved
+      end.compact
+    end
+
+    def selectable_notice_options(achievement_id)
+      achievement = Achievement[achievement_id] if achievement_id > 0
+      return [] unless achievement && achievement.loop == 0 && achievement.check_expiration &&
+                       achievement.items && achievement.get_selectable_items
+
+      choices = achievement.get_selectable_array
+      return [] unless choices.all? { |type, card_id, count, slot_type|
+        type == TG_CHARA_CARD && card_id && count == 1 && slot_type == 0 && CharaCard[card_id]
+      }
+
+      choices
+    end
+    private :selectable_notice_options
+
+    def claim_selectable_notice(achievement_id, index)
+      AvatarNotice.with_owner_lock(self.id) do
+        token = "#{NOTICE_TYPE_GET_SELECTABLE_ITEM}:#{achievement_id}"
+        matches = AvatarNotice.where(:avatar_id => self.id).for_update.all.flat_map do |notice|
+          notice.body.to_s.split("|").select { |entry| entry == token }.map { notice }
         end
+        next [2, 0, 0] unless matches.length == 1
+
+        choices = selectable_notice_options(achievement_id)
+        next [2, 0, 0] if choices.empty?
+        next [1, 0, 0] unless index >= 0 && index < choices.length
+
+        card_id = choices[index][1]
+        card = get_chara_card(card_id)
+        raise Sequel::Rollback unless card && card.id && card.id > 0
+
+        # Original card callbacks may append notices. Read the locked row again before removing one token.
+        notice = matches.first.refresh
+        tokens = notice.body.to_s.split("|")
+        raise Sequel::Rollback unless tokens.count(token) == 1
+        tokens.delete_at(tokens.index(token))
+        notice.body = tokens.join("|").force_encoding("UTF-8")
+        notice.save_changes
+        [0, card.id, card_id]
       end
     end
+    private :claim_selectable_notice
 
     def write_notice(type, body, r = true)
       refresh if r
-      AvatarNotice::write_notice(self.avatar_notice, self.id, "#{type}:#{body}")
+      AvatarNotice.write_notice(self.id, "#{type}:#{body}")
     end
 
     def get_profound_notice
-      ret = ""
-      if self.avatar_notice
-        ret = self.avatar_notice.get_type_message(PRF_NOTICE_TYPES)
-      end
-      ret
+      get_notice.split("|").select { |notice| PRF_NOTICE_TYPES.include?(notice.to_i) }.join("|")
     end
 
     def profound_notice_clear(n)
-      if self.avatar_notice
-        ret = self.avatar_notice.get_type_message(PRF_NOTICE_TYPES)
-        self.avatar_notice.clear_body(n)
-      end
+      AvatarNotice.clear_types(self.id, n, PRF_NOTICE_TYPES, true)
     end
 
     # クエストを友人に送る

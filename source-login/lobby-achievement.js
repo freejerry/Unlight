@@ -2,6 +2,7 @@ import { renderCharacterCard } from './character-card.js';
 
 const art = new URL('./lobby-achievement-art/', import.meta.url);
 const resultArt = new URL('./quest-result-art/', import.meta.url);
+const noticeTypes = { achievement: 1, 'new-achievement': 2, 'selectable-achievement': 26 };
 
 function add(parent, tag, name) {
   const node = parent.ownerDocument.createElement(tag);
@@ -102,8 +103,16 @@ function isNewAchievement(receipt) {
   return receipt?.kind === 'new-achievement' && Number.isSafeInteger(receipt.achievementId) && receipt.achievementId > 0;
 }
 
+function isSelectableAchievement(receipt) {
+  return receipt?.kind === 'selectable-achievement' && Number.isSafeInteger(receipt.achievementId) && receipt.achievementId > 0;
+}
+
+function isNotice(receipt) {
+  return isAchievementReward(receipt) || isNewAchievement(receipt) || isSelectableAchievement(receipt);
+}
+
 function follows(first, next) {
-  return first.kind === next.kind ? first.achievementId > next.achievementId : first.kind === 'new-achievement';
+  return first.kind === next.kind ? first.achievementId > next.achievementId : noticeTypes[first.kind] > noticeTypes[next.kind];
 }
 
 // LobbyNotice.as:545–565 returns -1 on ties. Ruffle 0.8.0's Vector.sort uses array.rs:qsort,
@@ -173,8 +182,154 @@ async function makeFace(doc, artSource, receipt, signal) {
   return { caption, face, name };
 }
 
+async function makePresentation(doc, source, receipt, signal, options) {
+  if (receipt.kind === 'achievement') return makeFace(doc, source, receipt, signal);
+  const caption = source.achievements?.[receipt.achievementId];
+  if (!caption) return null;
+  if (isSelectableAchievement(receipt)) {
+    const selectable = source.selectable;
+    const authored = selectable?.choices?.[receipt.achievementId];
+    if (!Array.isArray(authored) || !Array.isArray(options) || !options.length || typeof selectable.messageTemplate !== 'string') return null;
+    const choices = options.map(option => {
+      const definition = source.card.characters?.[option.itemId];
+      if (option.type !== 1 || option.amount !== 1 || option.slotType !== 0 || authored[option.index] !== option.itemId || !definition) return null;
+      return { ...option, name: `${definition.name} Lv.${definition.level}` };
+    });
+    if (choices.some(choice => !choice) || new Set(choices.map(({ index }) => index)).size !== choices.length) return null;
+    return { caption, choices };
+  }
+  const challenge = source.newChallenge;
+  if (typeof challenge?.messageTemplate !== 'string') return null;
+  const artLayer = challenge.beginnerIds.includes(receipt.achievementId) ? challenge.beginnerArt : challenge.art;
+  const artwork = await decode(artLayer);
+  if (!artwork) return null;
+  return { caption, artwork };
+}
+
+function noticeMessage(receipt, source, caption) {
+  const layout = isNewAchievement(receipt) ? source.newChallenge : isSelectableAchievement(receipt) ? source.selectable : null;
+  if (layout) return layout.messageTemplate.replace('__ARCHIEVEMENT_CAPTION__', caption);
+  return `恭喜。您達成了「${caption}」的成就。請收下紀念道具。`;
+}
+
+function rewardChoice(parent, options, layout, signal, onSelect) {
+  const holder = add(parent, 'div', 'choice-container');
+  const { x, y, width, height, dropdownWidth, rowCount, prompt } = layout;
+  place(holder, x, y, width, height);
+  const combo = add(holder, 'button', 'choice');
+  const menu = add(holder, 'ul', 'choice-list');
+  combo.type = 'button';
+  combo.textContent = prompt;
+  combo.setAttribute('role', 'combobox');
+  combo.setAttribute('aria-label', '選擇獎勵');
+  combo.setAttribute('aria-controls', menu.id);
+  combo.setAttribute('aria-expanded', 'false');
+  combo.setAttribute('aria-haspopup', 'listbox');
+  menu.hidden = true;
+  menu.setAttribute('role', 'listbox');
+  menu.style.width = `${dropdownWidth}px`;
+  menu.style.setProperty('--achievement-choice-rows', String(rowCount));
+  let cursor = 0;
+  let selected = -1;
+
+  const rows = options.map((option, position) => {
+    const row = add(menu, 'li', `choice-option-${option.index}`);
+    row.setAttribute('role', 'option');
+    row.setAttribute('aria-selected', 'false');
+    row.dataset.index = String(option.index);
+    row.dataset.itemId = String(option.itemId);
+    row.textContent = option.name;
+    row.addEventListener('pointermove', () => highlight(position), { signal });
+    row.addEventListener('mousedown', event => event.preventDefault(), { signal });
+    row.addEventListener('click', () => choose(position), { signal });
+    return row;
+  });
+
+  function highlight(position) {
+    cursor = Math.min(rows.length - 1, Math.max(0, position));
+    const current = rows[cursor];
+    for (const row of rows) row.dataset.active = String(row === current);
+    combo.setAttribute('aria-activedescendant', current.id);
+    if (current.offsetTop < menu.scrollTop) menu.scrollTop = current.offsetTop;
+    else if (current.offsetTop + current.offsetHeight > menu.scrollTop + menu.clientHeight) {
+      menu.scrollTop = current.offsetTop + current.offsetHeight - menu.clientHeight;
+    }
+  }
+
+  function open(position) {
+    if (combo.disabled) return;
+    menu.hidden = false;
+    combo.setAttribute('aria-expanded', 'true');
+    if (position !== undefined) highlight(position);
+    else {
+      cursor = Math.max(0, selected);
+      for (const row of rows) delete row.dataset.active;
+      menu.scrollTop = selected < 0 ? 0 : Math.max(0, rows[selected].offsetTop - menu.clientHeight + rows[selected].offsetHeight);
+    }
+  }
+
+  function close() {
+    menu.hidden = true;
+    combo.setAttribute('aria-expanded', 'false');
+    combo.removeAttribute('aria-activedescendant');
+  }
+
+  function choose(position) {
+    if (combo.disabled || menu.hidden) return;
+    close();
+    combo.focus({ preventScroll: true });
+    if (position === selected) return;
+    selected = position;
+    for (const [rowIndex, row] of rows.entries()) row.setAttribute('aria-selected', String(rowIndex === position));
+    combo.textContent = options[position].name;
+    onSelect(options[position]);
+  }
+
+  combo.addEventListener('click', () => menu.hidden ? open() : close(), { signal });
+  combo.addEventListener('keydown', event => {
+    combo.dataset.keyboard = '';
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'ArrowUp':
+        event.preventDefault();
+        if (menu.hidden) open(selected < 0 && event.key === 'ArrowUp' ? rows.length - 1 : Math.max(0, selected));
+        else highlight(cursor + (event.key === 'ArrowDown' ? 1 : -1));
+        break;
+      case 'Home':
+      case 'End':
+      case 'PageUp':
+      case 'PageDown':
+        if (menu.hidden) break;
+        event.preventDefault();
+        highlight(event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : cursor + (event.key === 'PageDown' ? rowCount : -rowCount));
+        break;
+      case 'Enter':
+      case ' ':
+        if (!menu.hidden) { event.preventDefault(); choose(cursor); }
+        break;
+      case 'Escape':
+      case 'Tab':
+        if (!menu.hidden) {
+          if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); }
+          close();
+        }
+        break;
+    }
+  }, { signal });
+  parent.addEventListener('pointerdown', event => {
+    if (!holder.contains(event.target)) close();
+  }, { signal });
+  return { combo, dispose: () => holder.remove(), lock(locked) {
+    close();
+    combo.disabled = locked;
+  } };
+}
+
 /** Present same-session server achievement receipts. OK only acknowledges the visible receipt. */
-export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowledge, onIdle, returnFocus } = {}) {
+export function mountLobbyAchievementNotices(view, {
+  signal, getSelectableOptions, getSelectableState, onFlip, onChoice, onAcknowledge, onClaimSelectable, onSelectableClaimed,
+  onIdle, returnFocus,
+} = {}) {
   const controller = new AbortController();
   const visual = controller.signal;
   const doc = view.ownerDocument;
@@ -205,11 +360,15 @@ export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowled
 
   function open(source) {
     const dialog = add(view, 'dialog', true);
+    dialog.tabIndex = -1;
     const content = add(dialog, 'div');
     content.className = 'lobby-achievement-content';
     const title = add(content, 'h2', 'title');
     const message = add(content, 'p', 'message');
     const reward = add(content, 'div', 'reward');
+    const status = add(content, 'p', 'status');
+    status.hidden = true;
+    status.setAttribute('role', 'status');
     const ok = add(content, 'button', 'ok');
     const heading = source.title;
     title.textContent = heading.text;
@@ -222,13 +381,13 @@ export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowled
     dialog.setAttribute('aria-describedby', message.id);
     dialog.dataset.state = 'entering';
     draw(content, source.panel);
-    draw(content, source.portrait);
+    const portrait = draw(content, source.portrait);
     const [x, y, width, height] = source.ok.hit;
     place(ok, x, y, width, height);
     for (const key of ['up', 'over', 'down']) draw(ok, source.ok[key], x, y).dataset.buttonState = key;
-    ok.addEventListener('click', acknowledge, { signal: visual });
+    ok.addEventListener('click', activateOK, { signal: visual });
     dialog.addEventListener('cancel', event => event.preventDefault(), { signal: visual });
-    modal = { dialog, content, message, reward, ok, y: -120 };
+    modal = { dialog, content, message, reward, ok, portrait, status, y: -120 };
     position();
     return modal;
   }
@@ -244,96 +403,261 @@ export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowled
     if (index >= 0) queue.splice(index, 1);
   }
 
-  async function reveal(receipt, source, face, signal, entering) {
-    const { dialog, reward, ok } = modal;
-    const { pivot, face: faceOrigin, width, height, quantity: quantityBounds } = source.card;
+  function show(entering, focus = modal.ok) {
+    const { dialog } = modal;
+    let arrival;
+    if (entering) {
+      dialog.dataset.state = 'entering';
+      dialog.showModal();
+      arrival = slide(modal, 0, 300, ratio => 1 - (1 - ratio) ** 2);
+    } else dialog.dataset.state = 'waiting';
+    focus.focus({ preventScroll: true });
+    return arrival;
+  }
+
+  function drawCardBack(source, layout) {
+    return draw(modal.reward, { ...source.back, x: source.back.x + layout.pivot[0] - source.card.pivot[0],
+      y: source.back.y + layout.pivot[1] - source.card.pivot[1] });
+  }
+
+  async function reveal(receipt, source, face, signal, { layout = source.card, selected, shown = false } = {}) {
+    const { dialog, reward } = modal;
+    const { width, height, quantity: quantityBounds } = source.card;
+    const { pivot, face: faceOrigin } = layout;
     const { backHoldMs, flipDurationMs, flipDegrees, showFaceAtDeg } = source.card.motion;
-    const back = draw(reward, source.back);
+    reward.replaceChildren();
+    const back = drawCardBack(source, layout);
     const quantity = add(reward, 'span', 'quantity');
     quantity.className = 'lobby-achievement-quantity';
     const [quantityX, quantityY, quantityWidth, quantityHeight] = quantityBounds;
     place(quantity, pivot[0] + quantityX, pivot[1] + quantityY, quantityWidth, quantityHeight);
     quantity.append('x');
-    add(quantity, 'span').textContent = String(receipt.amount);
+    add(quantity, 'span').textContent = String(selected?.amount ?? receipt.amount);
     quantity.hidden = true;
     reward.append(face);
     face.hidden = true;
     place(face, 2 * pivot[0] - faceOrigin[0] - width, faceOrigin[1], width, height);
     reward.style.transformOrigin = `${pivot[0]}px ${pivot[1]}px`;
     face.style.transform = 'scaleX(-1)';
-    if (entering) {
-      dialog.showModal();
-      void slide(modal, 0, 300, ratio => 1 - (1 - ratio) ** 2);
-    } else dialog.dataset.state = 'waiting';
-    ok.disabled = false;
-    ok.focus({ preventScroll: true });
-    if (!await wait(reduced.matches ? 0 : backHoldMs, signal)) return;
-    dialog.dataset.state = 'flipping';
-    try { void Promise.resolve(onFlip?.(receipt)).catch(() => {}); } catch { /* The receipt remains visible without audio. */ }
-    const settled = await animate(reduced.matches ? 0 : flipDurationMs, signal, ratio => {
-      const angle = ratio === 1 ? flipDegrees : flipDegrees * (1 - 2 ** (-10 * ratio));
-      reward.style.transform = `rotateY(${angle}deg)`;
-      face.hidden = angle < showFaceAtDeg;
-      back.hidden = !face.hidden;
-    });
-    if (!settled || signal.aborted) return;
+    if (!await wait(reduced.matches || selected ? 0 : backHoldMs, signal)) return;
+    if (!shown) {
+      if (!current?.claiming && !current?.blocked) dialog.dataset.state = 'flipping';
+      try { void Promise.resolve(onFlip?.(receipt, selected)).catch(() => {}); } catch { /* The receipt remains visible without audio. */ }
+      const settled = await animate(reduced.matches ? 0 : flipDurationMs, signal, ratio => {
+        const angle = ratio === 1 ? flipDegrees : flipDegrees * (1 - 2 ** (-10 * ratio));
+        reward.style.transform = `rotateY(${angle}deg)`;
+        face.hidden = angle < showFaceAtDeg;
+        back.hidden = !face.hidden;
+      });
+      if (!settled || signal.aborted) return;
+    }
     reward.style.transform = face.style.transform = '';
     place(face, ...faceOrigin, width, height);
     back.hidden = true;
     face.hidden = false;
-    quantity.hidden = receipt.treasureType === 5 || receipt.amount === 1;
-    dialog.dataset.state = 'ready';
+    quantity.hidden = (selected?.type ?? receipt.treasureType) === 5 || (selected?.amount ?? receipt.amount) === 1;
+    if (!current?.claiming && !current?.blocked) dialog.dataset.state = 'ready';
+  }
+
+  async function showChallenge(artwork, signal, entering) {
+    const { dialog, reward, ok } = modal;
+    draw(reward, artwork).id = 'lobby-achievement-notice-challenge';
+    ok.disabled = false;
+    await show(entering);
+    if (!signal.aborted) dialog.dataset.state = 'ready';
+  }
+
+  async function showSelectable(entry, source, choices, signal, entering) {
+    const { dialog, content, ok } = modal;
+    const { selectable } = source;
+    drawCardBack(source, selectable);
+    ok.disabled = true;
+    entry.faces = new Map();
+    entry.revealed = new Set();
+    entry.choiceControl = rewardChoice(content, choices, selectable.dropdown, signal, choice => {
+      void selectReward(entry, source, choice, signal);
+    });
+    const { combo } = entry.choiceControl;
+    const resumed = getSelectableState?.(entry.receipt);
+    if (resumed === 'uncertain' || resumed === 'claiming' || resumed === 'unavailable') {
+      entry.choiceControl.lock(true);
+      await show(entering, dialog);
+      if (!signal.aborted) showClaimFailure(entry, resumed === 'unavailable' ? 'unavailable' : 'uncertain');
+      return;
+    }
+    await show(entering, combo);
+    if (!signal.aborted && !entry.selection) dialog.dataset.state = 'ready';
+  }
+
+  async function selectReward(entry, source, choice, signal) {
+    if (signal.aborted || entry.claiming || entry.blocked || current !== entry) return;
+    const { dialog, reward, ok, status } = modal;
+    entry.preview?.abort();
+    entry.preview = new AbortController();
+    const preview = AbortSignal.any([signal, entry.preview.signal]);
+    entry.selection = choice;
+    dialog.dataset.selectionIndex = String(choice.index);
+    dialog.dataset.selectionItemId = String(choice.itemId);
+    dialog.dataset.state = 'selection-loading';
+    status.hidden = true;
+    ok.disabled = false;
+    reward.replaceChildren();
+    reward.style.transform = '';
+    reward.setAttribute('aria-label', choice.name);
+    drawCardBack(source, source.selectable);
+    try { void Promise.resolve(onChoice?.(entry.receipt, choice)).catch(() => {}); } catch { /* A muted choice still stays selected. */ }
+    if (!entry.faces.has(choice.index)) {
+      const proof = { ...entry.receipt, treasureType: choice.type, itemId: choice.itemId, amount: choice.amount };
+      entry.faces.set(choice.index, makeFace(doc, source, proof, signal).catch(() => null));
+    }
+    const card = await entry.faces.get(choice.index);
+    if (preview.aborted || current !== entry) return;
+    if (!card) {
+      entry.faces.delete(choice.index);
+      if (!entry.claiming && !entry.blocked) dialog.dataset.state = 'ready';
+      return;
+    }
+    const shown = entry.revealed.has(choice.index);
+    entry.revealed.add(choice.index);
+    await reveal(entry.receipt, source, card.face, preview, { layout: source.selectable, selected: choice, shown });
+  }
+
+  function showClaimFailure(entry, outcome) {
+    const { dialog, status, ok } = modal;
+    entry.claiming = false;
+    entry.blocked = outcome !== 'retry';
+    dialog.dataset.state = entry.blocked ? outcome : 'ready';
+    status.textContent = {
+      retry: '無法領取獎勵。請重新選擇或重試。',
+      unavailable: '這項獎勵目前無法領取。',
+      uncertain: '無法確認獎勵是否已領取。請重新登入後查看。',
+    }[outcome];
+    status.hidden = false;
+    ok.disabled = entry.blocked;
+    entry.choiceControl.lock(entry.blocked);
+    if (!entry.blocked) ok.focus({ preventScroll: true });
+  }
+
+  async function closeNotice() {
+    modal.dialog.dataset.state = 'leaving';
+    await slide(modal, -120, 150, ratio => Math.sin(Math.PI * ratio / 2));
+    if (visual.aborted) return;
+    finishClose();
+    (returnFocus ?? view.querySelector('#lobby-title'))?.focus({ preventScroll: true });
+  }
+
+  async function claimSelectable(entry) {
+    const { receipt, selection, alive, confirmation } = entry;
+    if (!selection || entry.claiming || entry.blocked || alive.aborted) return;
+    entry.claiming = true;
+    const { dialog, ok, status } = modal;
+    dialog.dataset.state = 'claiming';
+    ok.disabled = true;
+    status.hidden = true;
+    entry.choiceControl.lock(true);
+    const startedAt = performance.now();
+    let result;
+    try {
+      result = await onClaimSelectable(receipt, selection.index, { signal: alive });
+    } catch (error) {
+      if (alive.aborted) return;
+      const retry = error?.kind === 'busy' || error?.kind === 'cancelled' ||
+        (error?.kind === 'lobby-reward-rejected' && error.code === 1);
+      const unavailable = error?.kind === 'lobby-reward-unavailable' ||
+        (error?.kind === 'lobby-reward-rejected' && error.code === 2);
+      showClaimFailure(entry, retry ? 'retry' : unavailable ? 'unavailable' : 'uncertain');
+      return;
+    }
+    if (alive.aborted) return;
+    if (result?.achievementId !== receipt.achievementId || result.selectionIndex !== selection.index ||
+        !Array.isArray(result.grants) || result.grants.length !== selection.amount ||
+        !result.grants.every(grant => grant.cardId === selection.itemId && Number.isSafeInteger(grant.inventoryId) && grant.inventoryId > 0) ||
+        new Set(result.grants.map(({ inventoryId }) => inventoryId)).size !== result.grants.length) {
+      showClaimFailure(entry, 'uncertain');
+      return;
+    }
+    removeReceipt(receipt);
+    entry.revealLifetime.abort();
+    await closeNotice();
+    const delay = Math.max(0, confirmation.delayMs - (performance.now() - startedAt));
+    if (!await wait(delay, visual)) return;
+    // The original alert is scheduled after OK. Display it only after the matched physical grant has committed.
+    try { await onSelectableClaimed?.({ receipt, choice: selection, name: selection.name, grants: result.grants }); }
+    finally {
+      current = undefined;
+      if (!visual.aborted) void advance();
+    }
   }
 
   async function advance() {
     if (processing || current || visual.aborted) return;
     processing = true;
     try {
-      if (queue.some(isAchievementReward)) artwork ??= loadArtwork(visual).catch(() => null);
+      if (queue.length) artwork ??= loadArtwork(visual).catch(() => null);
       const source = artwork ? await artwork : null;
       while (!visual.aborted && queue.length) {
         sortNoticeList(queue);
-        const receipt = queue.find(isAchievementReward);
-        if (!receipt) break;
-        const card = source ? await makeFace(doc, source, receipt, visual).catch(() => null) : null;
+        const receipt = queue[0];
+        const options = isSelectableAchievement(receipt) && typeof onClaimSelectable === 'function' ? getSelectableOptions?.(receipt) : null;
+        const card = source ? await makePresentation(doc, source, receipt, visual, options).catch(() => null) : null;
         if (visual.aborted) return;
         if (!card) {
           removeReceipt(receipt);
           continue;
         }
         const entering = !modal;
-        const { dialog, message, reward } = modal ?? open(source);
+        const { dialog, message, reward, portrait, status, ok } = modal ?? open(source);
         const { achievementId, treasureType, itemId, amount, slotType } = receipt;
-        Object.assign(dialog.dataset, { achievementId: String(achievementId), treasureType: String(treasureType),
+        Object.assign(dialog.dataset, { kind: receipt.kind, achievementId: String(achievementId) });
+        for (const key of ['treasureType', 'itemId', 'amount', 'slotType']) delete dialog.dataset[key];
+        delete dialog.dataset.selectionIndex;
+        delete dialog.dataset.selectionItemId;
+        status.hidden = true;
+        if (receipt.kind === 'achievement') Object.assign(dialog.dataset, { treasureType: String(treasureType),
           itemId: String(itemId), amount: String(amount), slotType: String(slotType) });
-        message.textContent = `恭喜。您達成了「${card.caption}」的成就。請收下紀念道具。`;
+        message.textContent = noticeMessage(receipt, source, card.caption);
         reward.replaceChildren();
         reward.style.transform = '';
-        reward.setAttribute('role', 'img');
-        reward.setAttribute('aria-label', treasureType !== 5 && amount > 1 ? `${card.name} ×${amount}` : card.name);
+        portrait.hidden = receipt.kind === 'new-achievement';
+        if (!isNewAchievement(receipt)) {
+          reward.setAttribute('role', 'img');
+          const name = isSelectableAchievement(receipt) ? source.selectable.dropdown.prompt :
+            treasureType !== 5 && amount > 1 ? `${card.name} ×${amount}` : card.name;
+          reward.setAttribute('aria-label', name);
+        } else {
+          reward.removeAttribute('role');
+          reward.removeAttribute('aria-label');
+        }
         const revealLifetime = new AbortController();
-        current = { receipt, revealLifetime };
-        void reveal(receipt, source, card.face, AbortSignal.any([visual, revealLifetime.signal]), entering);
+        const alive = AbortSignal.any([visual, revealLifetime.signal]);
+        current = { receipt, revealLifetime, alive };
+        if (isAchievementReward(receipt)) {
+          ok.disabled = false;
+          show(entering);
+          void reveal(receipt, source, card.face, alive);
+        } else if (isNewAchievement(receipt)) void showChallenge(card.artwork, alive, entering);
+        else {
+          current.confirmation = source.selectable.confirmation;
+          void showSelectable(current, source, card.choices, alive, entering);
+        }
         return;
       }
       if (visual.aborted) return;
-      if (modal) {
-        modal.dialog.dataset.state = 'leaving';
-        await slide(modal, -120, 150, ratio => Math.sin(Math.PI * ratio / 2));
-        if (visual.aborted) return;
-        finishClose();
-        (returnFocus ?? view.querySelector('#lobby-title'))?.focus({ preventScroll: true });
-      }
+      if (modal) await closeNotice();
     } finally {
       processing = false;
     }
     if (visual.aborted) return;
-    if (queue.some(isAchievementReward)) void advance();
+    if (queue.length) void advance();
     else onIdle?.();
   }
 
-  function acknowledge() {
-    if (!current || visual.aborted) return;
+  function activateOK() {
+    if (!current || visual.aborted || modal.ok.disabled) return;
+    if (isSelectableAchievement(current.receipt)) {
+      void claimSelectable(current);
+      return;
+    }
     const { receipt, revealLifetime } = current;
     current = undefined;
     revealLifetime.abort();
@@ -361,7 +685,7 @@ export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowled
       if (visual.aborted) return;
       let inserted = false;
       for (const receipt of receipts) {
-        if (!(isAchievementReward(receipt) || isNewAchievement(receipt)) || received.has(receipt)) continue;
+        if (!isNotice(receipt) || received.has(receipt)) continue;
         received.add(receipt);
         const prior = queue.findIndex(row => row.achievementId === receipt.achievementId);
         if (isNewAchievement(queue[prior])) queue[prior] = receipt;
@@ -371,7 +695,7 @@ export function mountLobbyAchievementNotices(view, { signal, onFlip, onAcknowled
       }
       if (inserted) void advance();
     },
-    hasPending: () => !!(processing || modal || queue.some(isAchievementReward)),
+    hasPending: () => !!(processing || modal || queue.length),
     dispose,
   };
 }

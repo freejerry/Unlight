@@ -341,16 +341,16 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
 #login-alert[data-kind="registration-error"] { min-block-size: 150px; }
 #login-alert[data-kind="registration-error"] #login-alert-message { white-space: pre-line; }
 
-/* Quest's compact Flex alerts share a stretched skin and focused OK frame. */
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"])::before {
+/* Compact Flex alerts share a stretched skin and focused OK frame. */
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"])::before {
   content: "";
   border: 0;
   background: url("/source-login/assets/panel_gene.png") 0 0 / 100% 100% no-repeat;
 }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"]) > .stage-panel-skin { display: none; }
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"]) > .stage-panel-skin { display: none; }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"]) #login-alert-ok {
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"]) #login-alert-ok {
   position: absolute;
   top: 68px;
   left: 55px;
@@ -365,7 +365,7 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   letter-spacing: 1px;
 }
 
-#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"]) #login-alert-ok:focus {
+#login-alert:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"]) #login-alert-ok:focus {
   border-color: #650000 #640000 #4d0000;
   outline: none;
 }
@@ -380,7 +380,7 @@ body { min-inline-size: 780px; margin: 0; padding-block-start: var(--stage-top);
   animation: login-scrim-in 100ms ease-out both;
 }
 
-#stage:has(#login-alert[open]:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"]))::after {
+#stage:has(#login-alert[open]:is([data-kind="quest-empty-deck"], [data-kind="quest-reward-item-used"], [data-kind="lobby-selectable-reward"]))::after {
   backdrop-filter: blur(1px);
 }
 

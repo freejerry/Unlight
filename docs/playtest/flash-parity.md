@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
-| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復、首次登入成就 #1、q3 返回大廳的 #2／#31 四筆直接獎勵。**部分**大廳其他入口及共用提示。 | 新挑戰、可選獎品的命令版本，以及 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
+| [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復、首次登入成就 #1 及新挑戰、q3 返回的四筆直接獎勵、Lv3 可選角色卡實體入庫。**部分**其餘成就及大廳入口。 | AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
 | [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝敗、大蝙蝠之群兩戰及蝙蝠卡寶箱、山丘矮人勝利、紫色泥沼澤2左右線及左線先鋒卡。q568 已實跑獎勵骰敗猜、重擲、補正、終局空獎品 Exit、直接 Get 與返回。新版另實跑落日大蝙蝠 18 回合和局與山丘矮人敗北。**部分**戰鬥 HUD 與其他高低獎勵。 | 終局實體獎品、繁中 Flash 落日大蝙蝠和局、山丘矮人敗北與 AP 更新時點、攻防開場時序及換角。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
@@ -152,3 +152,9 @@
 
 - 兩版實跑首次登入的三件抽獎券，以及同一角色重新登入後完成 q3 兩戰。旗標 0→1，Back 前 124 Gem。回到同一條 Lobby 後確實加發兩件道具、七張記憶的碎片和 3,000 Gem。四張 Record 依序顯示抽獎券、記憶的碎片、Gem、魔女秘藥。新版另實跑逐張翻牌聲和本機 OK、底層入口互斥、焦點恢復與再次返回時的防重。[首次登入並排](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/initial-record-ticket-comparison.png) · [返回大廳的逐項畫面與封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/README.md)
 - 已重跑設定、大廳、搜尋、重新登入及 q568 終局直接 Get。起始旗標 21 的 q568 隔離角色於進任務前已由 Lobby 發放成就 31，首戰前為 3,100 Gem。Quest 的直接 Get 仍只額外發 3 Gem，兩個 OK 後正常返回。[設定返回大廳](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/regressions/options-return-to-lobby.png) · [q568 回歸封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/regressions/q568-terminal-get-wire.json)
+
+### 大廳新挑戰與可選角色卡
+
+- 首次登入實跑 #1 抽獎券後的 #2、#31、#180 新挑戰。玩家逐一確認後返回同一大廳，SQLite 只增加原始三件抽獎券。固定繁中 Ruffle 的 #2 畫面可見，該次三處 OK 實點未能關閉。新版使用原始大廳外框、一般與新手「新挑戰」標誌及 ActionScript 的本機確認流程。[新挑戰並排](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-live/new-challenge-comparison.png) · [原版點擊紀錄](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-original/README.md)
+- Lv3 可選角色卡實跑核對 21 個原始選項、選取音、翻牌聲及登入後的待領狀態。實際 `CS51` 只送一次，暫緩 `SC72` 時不提前顯示成功，放行後 SQLite 的 Binder 只有一張新增角色卡，重新登入沒有再次發放。固定 Flash 先前會顯示領取提示，但 `CS52` 和 `CS37` 清除待領且沒有實體卡。兩版保留獨立的封包與存檔證據。[選卡及確認並排](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-live/README.md) · [重跑可選角色卡](flash-parity/qa.md#重跑可選角色卡)
+- 新版與未改動的 Ruby 重跑 q3 兩戰、寶箱及返回。四筆直接獎勵後依序顯示 #3、#32 新挑戰。再次進出任務沒有重發，舊 Ruby 的 `26:2` 持續待領。[#3 新挑戰](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-live/q3-return/42-record-new-challenge.png) · [#32 新挑戰](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-live/q3-return/42-record-hexrealm-challenge.png) · [回歸封包](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-live/q3-return/lobby-achievement-wire.json)

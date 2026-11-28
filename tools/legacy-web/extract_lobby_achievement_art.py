@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the pinned Lobby Record notice and its fixed q3 reward art.
+"""Extract the pinned Lobby Record notice and its q3 reward art.
 
 Usage: python3 -B tools/legacy-web/extract_lobby_achievement_art.py ASSETS OUTPUT \
     --swfdump /path/to/swfdump --mincho-font /path/to/wt004.ttf
@@ -11,6 +11,8 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from struct import unpack_from
+
+from PIL import Image
 
 from extract_character_card_art import (
     BITMAP_TAGS, FONT_REVISION, FONT_SHA, REVISION, bitmap, checked_source, decode_card_illustration, write_font,
@@ -27,8 +29,13 @@ ITEMS = {
     "3": ("public/image/avatar_items/item_c_a000.swf", "589c5ba7c05d521907c6ad6996fd4898cf0352f076446f6cdf737b24ef62712c", 3),
     "9": ("public/image/avatar_items/item_c_d000.swf", "97cbf340ad3d39279f5928e44b2efa918a94fcbd59272fb57cb4b781dfe4ec18", 1),
 }
-MEMORY = ("public/image/cmem0.swf", "3fab6f5badc93be13add3729e638ba17634e1b4b548d77e809cdff9b8e552509")
 TITLE = "Record"
+NOVICE_ACHIEVEMENTS = ("180", "181", "182")
+CHALLENGE_MESSAGE = "追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。"
+SELECTABLE_MESSAGE = "恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。"
+SELECTION_PROMPT = "請選擇"
+CONFIRMATION_TITLE = "情報"
+CONFIRMATION_MESSAGE = "獲得了__NAME__。"
 
 
 def master_rows(file, ids):
@@ -73,25 +80,87 @@ def notice_skin(assets, publish):
     return panel, portrait, {"up": up, "over": over, "down": over, "hit": hit}
 
 
+def challenge_skin(assets, publish):
+    source = checked_source(assets, INFO)
+    bitmaps = {unpack_from("<H", data)[0]: bitmap(source, code, data)
+               for code, data in tags(source) if code == 36 and unpack_from("<H", data)[0] in {11, 14}}
+    challenge, novice_label = bitmaps[11], bitmaps[14]
+    if challenge.size != (300, 160) or novice_label.size != (498, 88):
+        raise ValueError("Unexpected original New Challenge sizes")
+    publish("new-challenge.png", png_bytes(challenge), INFO, sourceBitmap=11, sourceShape=12,
+            sourceSprite=13, sourceDepth=6, sourceInstance="record", sourceFrame=1)
+    # Root novice is (380,416), containing its label at (-249,0) and the record at (-150,-152).
+    novice = Image.new("RGBA", (498, 240))
+    novice.alpha_composite(novice_label, (0, 152))
+    novice.alpha_composite(challenge, (99, 0))
+    publish("new-challenge-novice.png", png_bytes(novice), INFO, sourceBitmaps=[14, 11], sourceShapes=[15, 12],
+            sourceSprites=[16, 13], sourceDepth=8, sourceInstance="novice", sourceFrame=1)
+    return {
+        "art": {"file": "new-challenge.png", "x": 230, "y": 264, "width": 300, "height": 160},
+        "beginnerArt": {"file": "new-challenge-novice.png", "x": 131, "y": 264, "width": 498, "height": 240},
+        "beginnerIds": [int(id) for id in NOVICE_ACHIEVEMENTS],
+        "messageTemplate": CHALLENGE_MESSAGE,
+    }
+
+
+def selectable_card_ids(achievement):
+    groups = [items[1:] for items in achievement["items"].split("+") if items.startswith("S")]
+    if len(groups) != 1:
+        raise ValueError("Expected one original selectable award group")
+    ids = []
+    for entry in groups[0].split("|"):
+        kind, id, count, slot_type = map(int, entry.split("/"))
+        if (kind, count, slot_type) != (1, 1, 0) or id <= 0 or id in ids:
+            raise ValueError(f"Unexpected original selectable character award {entry}")
+        ids.append(id)
+    return ids
+
+
+def character_faces(assets, ids):
+    cards = master_rows("ja/CharaCards.csv", {str(id) for id in ids})
+    known = json.loads((REPO / "source-login/card-art/illustration-sources.json").read_text())["files"]
+    faces = {}
+    sources = {}
+    for id, card in cards.items():
+        name = card["name_tcn"]
+        file = card["chara_image"]
+        if not name or file not in known or card["kind"] not in {"0", "3"}:
+            raise ValueError(f"Unexpected original character card definition {id}")
+        relative = f"public/image/{file}"
+        digest = known[file]
+        illustration = checked_source(assets, (relative, digest))
+        if decode_card_illustration(illustration) is None:
+            raise ValueError(f"Existing original card illustration is not renderable: {file}")
+        faces[id] = {"id": int(id), "name": name,
+                     **{key: int(card[key]) for key in ("kind", "level", "slot", "hp", "ap", "dp")}}
+        sources[id] = {"source": relative, "sourceSha256": digest}
+    return faces, sources
+
+
+def item_icon(assets, swfdump, source_path, digest, frame):
+    source = Movie(assets, Path(source_path).stem, swfdump, pin=(source_path, digest))
+    _, parts = list(timeline(source.root))[frame - 1]
+    artwork, shape_ids = authored_primitives(source, parts, preserve_stroke_alpha=True)
+    image, x, y = rasterize(artwork)
+    return image, x, y, shape_ids
+
+
 def extract(args):
     if sha256(args.mincho_font.read_bytes()).hexdigest() != FONT_SHA:
         raise ValueError("Expected the original wt004.ttf")
     items = master_rows("ja/AvatarItems.csv", ITEMS)
-    memory = master_rows("ja/CharaCards.csv", {"10006"})["10006"]
-    achievements = master_rows("tcn/Achievements.csv", {"1", "2", "31"})
-    if memory["kind"] != "3" or memory["chara_image"] != Path(MEMORY[0]).name or not memory["name_tcn"]:
-        raise ValueError("Unexpected original memory card definition")
-    illustration = checked_source(args.assets, MEMORY)
-    known = json.loads((REPO / "source-login/card-art/illustration-sources.json").read_text())["files"]
-    if known.get(illustration.name) != MEMORY[1] or decode_card_illustration(illustration) is None:
-        raise ValueError("Existing original memory illustration is not renderable")
+    achievements = master_rows("tcn/Achievements.csv", {"1", "2", "3", "31", "32", *NOVICE_ACHIEVEMENTS})
+    choice_ids = selectable_card_ids(achievements["2"])
+    characters, illustrations = character_faces(args.assets, [10006, 10007, *choice_ids])
+    if (characters["10006"]["kind"], characters["10007"]["kind"]) != (3, 3) or any(
+        characters[str(id)]["kind"] != 0 for id in choice_ids
+    ):
+        raise ValueError("Unexpected character-card kinds in the Lobby rewards")
 
-    item_sources = {}
-    for id, (path, digest, frame) in ITEMS.items():
+    for id, (path, _, frame) in ITEMS.items():
         info = items[id]
         if (info["image"], int(info["image_frame"])) != (Path(path).name, frame) or not info["name_tcn"] or not info["caption_tcn"]:
             raise ValueError(f"Unexpected original item definition {id}")
-        item_sources[id] = Movie(args.assets, Path(path).stem, args.swfdump, pin=(path, digest))
 
     existing = json.loads((QUEST_ART / "index.json").read_text(encoding="utf-8"))
     if existing["assetRevision"] != REVISION:
@@ -122,22 +191,21 @@ def extract(args):
         }
 
     panel, portrait, ok = notice_skin(args.assets, publish)
+    new_challenge = challenge_skin(args.assets, publish)
 
     font = "achievement-mincho.woff"
-    glyphs = TITLE + "0123456789x" + memory["name_tcn"] + "".join(
+    glyphs = TITLE + "0123456789x Lv." + "".join(row["name"] for row in characters.values()) + "".join(
         row["name_tcn"] + row["caption_tcn"] for row in items.values()
-    )
+    ) + "".join(row["caption"] for row in achievements.values()) + SELECTION_PROMPT + CONFIRMATION_TITLE
+    glyphs += CHALLENGE_MESSAGE + SELECTABLE_MESSAGE + CONFIRMATION_MESSAGE
     write_font(args.mincho_font, args.output / font, [{"name_tcn": glyphs}])
     provenance[font] = {"source": "res/data/wt004.ttf", "sourceRevision": FONT_REVISION, "sourceSha256": FONT_SHA,
                          "sha256": sha256((args.output / font).read_bytes()).hexdigest(), "glyphs": glyphs}
 
     faces = {}
     for id, (path, digest, frame) in ITEMS.items():
-        source = item_sources[id]
-        _, parts = list(timeline(source.root))[frame - 1]
         # ItemCardClip positions AvatarItemImage at the same original local anchor as GemCardClip.
-        artwork, shape_ids = authored_primitives(source, parts, preserve_stroke_alpha=True)
-        icon, x, y = rasterize(artwork)
+        icon, x, y, shape_ids = item_icon(args.assets, args.swfdump, path, digest, frame)
         filename = f"item-{id}.png"
         publish(filename, png_bytes(icon), (path, digest), sourceFrame=frame, shapeIds=shape_ids, anchor=[83, 100])
         faces[id] = {
@@ -152,11 +220,19 @@ def extract(args):
         "assetLicense": "CC-BY-ND-4.0", "panel": panel, "portrait": portrait, "ok": ok, "font": font,
         "title": {"text": TITLE, "x": 300, "y": 166, "width": 150, "height": 30},
         "achievements": {key: row["caption"] for key, row in achievements.items()},
+        "newChallenge": new_challenge,
+        "selectable": {
+            "pivot": [375, 371], "face": [295, 251], "messageTemplate": SELECTABLE_MESSAGE,
+            "dropdown": {"x": 300, "y": 493, "width": 160, "height": 18,
+                         "dropdownWidth": 125, "rowCount": 7, "prompt": SELECTION_PROMPT},
+            "choices": {"2": choice_ids},
+            "confirmation": {"delayMs": 399, "height": 100, "title": CONFIRMATION_TITLE,
+                             "messageTemplate": CONFIRMATION_MESSAGE},
+        },
         "card": {
             "back": back, "pivot": [px, py], "width": 168, "height": 240, "face": [px - 80, py - 120],
             "gem": gem, "items": faces,
-            "characters": {"10006": {"id": 10006, "name": memory["name_tcn"],
-                                    **{key: int(memory[key]) for key in ("kind", "level", "slot", "hp", "ap", "dp")}}},
+            "characters": characters,
             "quantity": [30, 80, 96, 48],
             "motion": {"backHoldMs": 200, "flipDurationMs": 300, "flipDegrees": 180, "showFaceAtDeg": 94},
         },
@@ -164,7 +240,7 @@ def extract(args):
             file: existing["provenance"][file] for file in (
                 back["file"], gem["frame"]["file"], gem["icon"]["file"], gem["title"]["font"],
             )
-        } | {"memoryIllustration": {"source": MEMORY[0], "sourceSha256": MEMORY[1]}},
+        } | {"memoryIllustration": illustrations["10006"], "characterIllustrations": illustrations},
         "provenance": provenance,
     }
     (args.output / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

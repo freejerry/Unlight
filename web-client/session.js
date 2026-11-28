@@ -65,6 +65,7 @@ const LOBBY_MOVE_DECK_CARD_FAILED_REPLY = 10;
 const LOBBY_ERROR_REPLY = 34;
 const LOBBY_MOVE_DECK_CARD_FINISH_REPLY = 67;
 const LOBBY_ACHIEVEMENT_CHECK = 35;
+const LOBBY_SELECTABLE_REWARD_REQUEST = 51;
 const LOBBY_PONG = 35;
 const LOBBY_REFRESH_AVATAR = 17;
 const LOBBY_ENERGY_REPLY = 17;
@@ -78,6 +79,12 @@ const LOBBY_CHARACTER_GRANTED_REPLY = 31;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
 const LOBBY_ACHIEVEMENT_CLEAR_REPLY = 51;
 const LOBBY_ACHIEVEMENT_NEW_REPLY = 52;
+const LOBBY_NOTICE_REPLY = 54;
+const LOBBY_SELECTABLE_OPTIONS_REPLY = 71;
+const LOBBY_SELECTABLE_RESULT_REPLY = 72;
+const LOBBY_SELECTABLE_NOTICE_TYPE = '26';
+const LOBBY_NOTICE_MAX_BYTES = 1024 * 1024 - 6;
+const LOBBY_SELECTABLE_OPTIONS_MAX_BYTES = 4096;
 const LOBBY_REFRESH_INTERVAL = 2000;
 // Destination levels with a nonzero LEVEL_ENG_BOUNUS in the original Ruby table (levels 1–150).
 const ENERGY_CAP_GROWTH_LEVELS = [2, 4, 6, 8, 10, 13, 17, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 73, 80, 90, 100,
@@ -216,6 +223,9 @@ const messages = {
   'quest-reward-item-insufficient': '骰點差超出這個道具的補正範圍。',
   'quest-return-unavailable': '任務服務尚未確認可返回地圖。',
   'quest-return-uncertain': '未能確認原版任務連線已釋放。',
+  'lobby-reward-unavailable': '目前無法領取這項成就獎勵。',
+  'lobby-reward-rejected': '伺服器未接受這次獎勵選擇。',
+  'lobby-reward-uncertain': '尚未確認獎勵是否入庫，請重新登入查看。',
 };
 
 export class SessionError extends Error {
@@ -441,6 +451,50 @@ function readAchievementEvent(reply, isNew) {
   return { kind: 'achievement', achievementId, treasureType, itemId, amount, slotType };
 }
 
+function readSelectableLobbyNotices(reply) {
+  const body = reply.string(LOBBY_NOTICE_MAX_BYTES, true);
+  const unique = new Set();
+  for (const row of body.split('|')) {
+    if (!row.startsWith(`${LOBBY_SELECTABLE_NOTICE_TYPE}:`)) continue;
+    const idText = row.slice(LOBBY_SELECTABLE_NOTICE_TYPE.length + 1);
+    const achievementId = Number(idText);
+    if (!/^[1-9]\d{0,9}$/.test(idText) || achievementId > 0x7fffffff || unique.has(achievementId)) {
+      throw new SessionError('protocol');
+    }
+    unique.add(achievementId);
+  }
+  return [...unique];
+}
+
+function readSelectableLobbyOptions(reply) {
+  const achievementId = reply.int();
+  const packed = reply.string(LOBBY_SELECTABLE_OPTIONS_MAX_BYTES);
+  if (achievementId <= 0) throw new SessionError('protocol');
+  let previous = -1;
+  const choices = packed.split(',').map((row) => {
+    if (!/^\d{1,10}(\/\d{1,10}){4}$/.test(row)) throw new SessionError('protocol');
+    const [index, type, itemId, amount, slotType] = row.split('/').map(Number);
+    if (index <= previous || index >= 255 || type !== 1 || itemId < 1 || itemId > 0x7fffffff || amount !== 1 || slotType !== 0) {
+      throw new SessionError('protocol');
+    }
+    previous = index;
+    return Object.freeze({ index, type, itemId, amount, slotType });
+  });
+  return { kind: 'selectable-options', achievementId, choices: Object.freeze(choices) };
+}
+
+function readSelectableLobbyResult(reply, achievementId, selectionIndex) {
+  const id = reply.int();
+  const index = reply.int();
+  const code = reply.byte();
+  const inventoryId = reply.int();
+  const cardId = reply.int();
+  reply.done();
+  if (id !== achievementId || index !== selectionIndex || (code === 0 && (inventoryId < 1 || cardId < 1))
+    || (code !== 0 && ((code !== 1 && code !== 2) || inventoryId !== 0 || cardId !== 0))) throw new SessionError('protocol');
+  return { code, inventoryId, cardId };
+}
+
 function observeLobbyAvatar(reply, publish) {
   let patch;
   let marker;
@@ -482,6 +536,12 @@ function observeLobbyAvatar(reply, publish) {
       case LOBBY_ACHIEVEMENT_CLEAR_REPLY:
       case LOBBY_ACHIEVEMENT_NEW_REPLY:
         event = readAchievementEvent(reply, reply.command === LOBBY_ACHIEVEMENT_NEW_REPLY);
+        break;
+      case LOBBY_NOTICE_REPLY:
+        event = { kind: 'selectable-notices', achievementIds: readSelectableLobbyNotices(reply) };
+        break;
+      case LOBBY_SELECTABLE_OPTIONS_REPLY:
+        event = readSelectableLobbyOptions(reply);
         break;
       case LOBBY_FREE_DUEL_COUNT_REPLY: {
         const freeDuelCount = reply.byte();
@@ -3116,6 +3176,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
   const lobbyAchievementSubscriptions = new Set();
   const pendingLobbyAchievements = new Set();
   const checkedLobbyShows = new WeakSet();
+  const selectableLobbyAchievements = new Map();
+  let selectableLobbyNoticeIds = new Set();
+  let selectableLobbyClaim;
+  let uncertainSelectableCardId;
   let lobbyAchievementFenceUncertain = false;
   let profileRequest;
   let deckEditState;
@@ -3185,6 +3249,23 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
 
   function recordLobbyEvent(event) {
     if (!initialData?.avatar) return;
+    if (event.kind === 'selectable-notices') {
+      selectableLobbyNoticeIds = new Set(event.achievementIds);
+      for (const { offer, state } of selectableLobbyAchievements.values()) {
+        if (state === 'available' && !selectableLobbyNoticeIds.has(offer.achievementId)) {
+          invalidateLobbyReward(offer);
+        }
+      }
+      return;
+    }
+    if (event.kind === 'selectable-options') {
+      const { achievementId, choices } = event;
+      if (!selectableLobbyNoticeIds.has(achievementId) || selectableLobbyAchievements.has(achievementId)) return;
+      const offer = Object.freeze({ kind: 'selectable-achievement', achievementId, choices });
+      selectableLobbyAchievements.set(achievementId, { offer, state: 'available' });
+      publishLobbyEvent(offer);
+      return;
+    }
     if (event.kind === 'item') {
       try {
         if (knownQuestItems && !rememberItemGrant(event)) return;
@@ -3201,14 +3282,95 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
         || deckCollection?.deck.cards.some((card) => card.inventoryId === inventoryId)
         || selectedDeck?.cards.some((card) => card.inventoryId === inventoryId)
         || deckChoices?.some(({ cards }) => cards.some((card) => card.inventoryId === inventoryId))) return;
+      if (selectableLobbyClaim?.dispatched && selectableLobbyClaim.choice.itemId === cardId) {
+        if (selectableLobbyClaim.grant) selectableLobbyClaim.duplicate = true;
+        else selectableLobbyClaim.grant = Object.freeze({ inventoryId, cardId });
+        return;
+      }
+      if (uncertainSelectableCardId === cardId) return;
       if (deckCollection) {
         const card = Object.freeze({ inventoryId, cardId });
         const binder = Object.freeze([...deckCollection.binder, card]);
         initialData.deckCollection = Object.freeze({ ...deckCollection, binder });
       }
     }
-    const receipt = Object.freeze(event);
-    if (receipt.kind === 'achievement' || receipt.kind === 'new-achievement') pendingLobbyAchievements.add(receipt);
+    publishLobbyEvent(Object.freeze(event));
+  }
+
+  function lobbyRewardEntry(receipt) {
+    if (receipt?.kind !== 'selectable-achievement') return null;
+    const entry = selectableLobbyAchievements.get(receipt.achievementId);
+    return entry?.offer === receipt ? entry : null;
+  }
+
+  function invalidateLobbyReward(receipt) {
+    const entry = lobbyRewardEntry(receipt);
+    if (entry) entry.state = 'unavailable';
+    pendingLobbyAchievements.delete(receipt);
+  }
+
+  async function claimLobbyReward(receipt, selectionIndex, signal) {
+    if (signal?.aborted) throw new SessionError('cancelled');
+    if (!initialData?.avatar || !initialData.deckCollection || !lobby.verified) throw new SessionError('lobby-reward-unavailable');
+    if (selectableLobbyClaim || profileRequest || questRequest || questReturn || questScene || adventure) throw new SessionError('busy');
+    if (uncertainSelectableCardId !== undefined) throw new SessionError('lobby-reward-uncertain');
+    const entry = lobbyRewardEntry(receipt);
+    const choice = entry?.offer.choices.find(({ index }) => index === selectionIndex);
+    if (entry?.state !== 'available' || !choice) throw new SessionError('lobby-reward-unavailable');
+    auth.assertOpen();
+    const { achievementId } = receipt;
+    const claim = { choice, dispatched: false };
+    selectableLobbyClaim = claim;
+    entry.state = 'claiming';
+    try {
+      // A view may leave after sending. Keep observing the session's authoritative reply.
+      return await withRegistrationChannel(lobby, undefined, async (socket, requestSignal) => {
+        if (signal?.aborted) throw new SessionError('cancelled');
+        if (!selectableLobbyNoticeIds.has(achievementId)) throw new SessionError('lobby-reward-unavailable');
+        let grantAtResult;
+        const reply = await socket.ask(LOBBY_SELECTABLE_REWARD_REQUEST, [`${achievementId},${selectionIndex}`],
+          [LOBBY_SELECTABLE_RESULT_REPLY], {
+            signal: requestSignal,
+            allowOther: true,
+            onSend() { claim.dispatched = true; },
+            onReply() { grantAtResult = claim.grant; },
+          });
+        const result = readSelectableLobbyResult(reply, achievementId, selectionIndex);
+        if (result.code !== 0) {
+          if (claim.grant) throw new SessionError('protocol');
+          claim.dispatched = false;
+          if (result.code === 2) invalidateLobbyReward(receipt);
+          throw new SessionError('lobby-reward-rejected', result.code);
+        }
+        if (!grantAtResult || claim.duplicate || result.inventoryId !== grantAtResult.inventoryId
+          || result.cardId !== choice.itemId || !initialData) throw new SessionError('protocol');
+        claim.dispatched = false;
+        entry.state = 'claimed';
+        pendingLobbyAchievements.delete(receipt);
+        selectableLobbyNoticeIds.delete(achievementId);
+        recordLobbyEvent({ kind: 'card', ...grantAtResult });
+        return Object.freeze({ achievementId, selectionIndex, grants: Object.freeze([grantAtResult]) });
+      });
+    } catch (error) {
+      if (claim.dispatched) {
+        entry.state = 'uncertain';
+        uncertainSelectableCardId = choice.itemId;
+        throw new SessionError('lobby-reward-uncertain');
+      }
+      if (entry.state === 'claiming') {
+        if (selectableLobbyNoticeIds.has(achievementId)) entry.state = 'available';
+        else invalidateLobbyReward(receipt);
+      }
+      throw error;
+    } finally {
+      selectableLobbyClaim = null;
+    }
+  }
+
+  function publishLobbyEvent(receipt) {
+    if (['achievement', 'new-achievement', 'selectable-achievement'].includes(receipt.kind)) {
+      pendingLobbyAchievements.add(receipt);
+    }
     for (const subscription of [...lobbyAchievementSubscriptions]) {
       if (lobbyAchievementSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, receipt);
     }
@@ -3356,6 +3518,8 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       for (const subscription of avatarSubscriptions) subscription.unsubscribe();
       for (const subscription of lobbyAchievementSubscriptions) subscription.unsubscribe();
       pendingLobbyAchievements.clear();
+      selectableLobbyAchievements.clear();
+      selectableLobbyNoticeIds.clear();
       boundQuestDecks.clear();
       attemptedDiscoveries.clear();
       questConfirmations.clear();
@@ -4219,7 +4383,17 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
       return subscription.unsubscribe;
     },
     acknowledgeLobbyAchievement(receipt) {
-      return receipt?.kind === 'achievement' && pendingLobbyAchievements.delete(receipt);
+      return (receipt?.kind === 'achievement' || receipt?.kind === 'new-achievement')
+        && pendingLobbyAchievements.delete(receipt);
+    },
+    getLobbyAchievementOptions(receipt) {
+      return lobbyRewardEntry(receipt)?.offer.choices ?? null;
+    },
+    getLobbyAchievementRewardState(receipt) {
+      return lobbyRewardEntry(receipt)?.state ?? 'unavailable';
+    },
+    claimLobbyAchievementReward(receipt, selectionIndex, { signal } = {}) {
+      return claimLobbyReward(receipt, selectionIndex, signal);
     },
     subscribeAvatar(listener, { signal } = {}) {
       if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};

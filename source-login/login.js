@@ -83,6 +83,24 @@ function showError(kind, message, field, alertKind = 'error') {
   openAlert(alertKind, 'Error', message, field);
 }
 
+function confirmLobbyReward({ name }, signal) {
+  if (signal.aborted || loginAlert.open) return Promise.resolve();
+  openAlert('lobby-selectable-reward', '情報', `獲得了${name}。`);
+  loginAlertOK.focus({ preventScroll: true });
+  return new Promise(resolve => {
+    const listeners = new AbortController();
+    function finish() {
+      listeners.abort();
+      resolve();
+    }
+    loginAlert.addEventListener('close', finish, { once: true, signal: listeners.signal });
+    signal.addEventListener('abort', () => {
+      if (loginAlert.dataset.kind === 'lobby-selectable-reward') loginAlert.close();
+      finish();
+    }, { once: true, signal: listeners.signal });
+  });
+}
+
 function confirmRegistration(signal) {
   if (signal.aborted) return Promise.resolve(false);
   showStatus('success');
@@ -211,6 +229,7 @@ function showLobby(session, returnFocus) {
     returnFocus,
     onOptions: () => switchOptions(session, true),
     onQuest: () => openQuest(session),
+    onSelectableClaimed: confirmLobbyReward,
   });
 }
 

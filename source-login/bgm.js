@@ -14,7 +14,7 @@ const questCueFiles = new Map([
   ["slash", "ulse09.mp3"], ["bullet", "ulse10_f.mp3"], ["phase", "ulse12.mp3"],
   ["lose", "ulse15.mp3"], ["win", "ulse16.mp3"],
   ["bonus-select", "ulse17.mp3"], ["bonus-success", "ulse18.mp3"], ["bonus-failure", "ulse19.mp3"],
-  ["flip", "ulse23.mp3"],
+  ["lobby-choice", "ulse22.mp3"], ["flip", "ulse23.mp3"],
   ["reveal-locked", "ulse28.mp3"], ["reveal", "ulse29.mp3"],
 ]);
 const questCueAudio = new Map();
@@ -239,6 +239,7 @@ function playSceneMusic() {
   if (!active || !sceneEntered()) return;
   const scene = stage.dataset.soundscape ?? "title";
   if (scene === "quest" || scene === "lobby") prepareQuestCue("flip");
+  if (scene === "lobby") prepareQuestCue("lobby-choice");
   if (scene === "title" && music === titleMusic && titleFade) return;
   entryObserver.disconnect();
   const wasWarming = warmingMusic;

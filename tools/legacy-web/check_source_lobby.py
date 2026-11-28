@@ -15,6 +15,7 @@ from subprocess import run
 from time import monotonic
 from urllib.parse import urljoin, urlsplit
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect, sync_playwright
 
 from check_native_browser import observe
@@ -246,6 +247,17 @@ def observe_session_codec(page, origin):
             const csv = () => fields.string(1024 * 1024, true).split(',').filter(Boolean).map(Number);
             return [csv(), csv()];
           }
+          case 71: {
+            const id = fields.int();
+            const options = fields.string(4096).split(',').map(row => row.split('/').map(Number));
+            fields.done();
+            return [id, options];
+          }
+          case 72: {
+            const result = [fields.int(), fields.int(), fields.byte(), fields.int(), fields.int()];
+            fields.done();
+            return result;
+          }
           default: return [];
         }
       }
@@ -268,7 +280,8 @@ def observe_session_codec(page, origin):
         const item = command === 7 && fields?.length === 2
           ? fields.map(field => field.value ?? field) : null;
         const notice = command === 35 && fields?.length === 1 ? fields[0]?.value : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, notice, key});
+        const claim = command === 51 && fields?.length === 1 && /^[0-9]+,[0-9]+$/.test(fields[0]) ? fields[0] : null;
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, notice, claim, key});
         return frame;
       }
       export function readReply(body) {
@@ -283,7 +296,7 @@ def observe_session_codec(page, origin):
         if (lobby && reply.command === 9 && body.byteLength === 6) {
           lobby.replies.push([9, body.byteLength, new DataView(body.buffer, body.byteOffset, body.byteLength).getInt32(2)]);
         }
-        if (lobby?.achievement && [25, 27, 31, 35, 51, 52, 54, 56].includes(reply.command)) {
+        if (lobby?.achievement && [25, 27, 31, 35, 51, 52, 54, 56, 71, 72].includes(reply.command)) {
           lobby.achievement.replies.push([reply.command, body.byteLength, ...achievementFields(body, reply.command)]);
           lobby.achievement.timeline.push(['lobby', 'reply', reply.command]);
         }
@@ -391,12 +404,14 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False):
           }}
           if (this.lobbyTrace && encoded && encoded.deck !== null) this.lobbyTrace.sent.push([encoded.command, frame.byteLength, encoded.deck]);
           if (this.lobbyTrace?.achievement && encoded) {{
-            const hold = wire.lobbyPong;
-            if (hold && encoded.command === 3 && this.lobbyTrace.achievement.sent.at(-1)?.[0] === 35) hold.key = encoded.key;
+            const hold = wire.lobbyHold;
+            if (hold && encoded.command === hold.request && (hold.after === null ||
+                this.lobbyTrace.achievement.sent.at(-1)?.[0] === hold.after)) hold.key = encoded.key;
             this.lobbyTrace.achievement.sent.push([encoded.command, frame.byteLength,
               encoded.notice ?? null, document.getElementById('stage')?.dataset.screen,
               document.getElementById('lobby-avatar')?.dataset.avatarState ?? null]);
             this.lobbyTrace.achievement.timeline.push(['lobby', 'send', encoded.command]);
+            if (encoded.claim) (this.lobbyTrace.achievement.claims ??= []).push([encoded.command, frame.byteLength, encoded.claim]);
           }}
           super.send(frame);
         }}
@@ -416,17 +431,17 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False):
               try {{ handler.call(this, event); }} finally {{ wire.readingLobby = null; }}
             }};
             if (!wire.startupData) {{ super.onmessage = receive; return; }}
-            // Preserve complete original frames so the one selected authenticated Pong can wait.
+            // Preserve complete original frames while the selected authenticated reply waits.
             let buffered = new Uint8Array();
             const forward = () => {{
               while (buffered.length >= 4) {{
                 const size = new DataView(buffered.buffer, buffered.byteOffset).getUint32(0) + 5;
                 if (buffered.length < size) return;
-                const hold = wire.lobbyPong;
-                if (size === 7 && hold?.key) {{
+                const hold = wire.lobbyHold;
+                if (hold?.key && size === hold.bodyLength + 5) {{
                   const high = buffered[4] ^ hold.key[0];
                   const low = buffered[5] ^ hold.key[1 % hold.key.length];
-                  if (high === 0 && low === 35) {{
+                  if ((high << 8 | low) === hold.reply) {{
                     hold.resume = forward;
                     return;
                   }}
@@ -2210,12 +2225,13 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
 
 
 def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achievements=False, startup_records=False,
-                       q3_bootstrap_record=False, startup_directory=None):
+                       q3_bootstrap_record=False, startup_directory=None, defer_lobby_notices=False):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
     observe_session_codec(page, origin)
-    observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records, startup_data=lobby_achievements)
+    observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records,
+                       startup_data=lobby_achievements or startup_records)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
@@ -2224,10 +2240,10 @@ def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achieve
     page.locator("#login-submit").click()
     screen(stage, "lobby")
     if q3_bootstrap_record:
-        close_q3_startup_record(page, stage, startup_directory)
+        close_q3_startup_record(page, stage, origin, startup_directory)
     elif startup_records:
         close_lobby_startup_records(page, stage, origin)
-    else:
+    elif not defer_lobby_notices:
         close_lobby_news(page, stage, None)
     active_session_traffic(sockets, live, 0, player_id)
     return stage, live, errors
@@ -2676,6 +2692,23 @@ def read_lobby_achievement_trace(page):
     return page.evaluate("window.qaQuestWire.lobby.achievement")
 
 
+def hold_lobby_reply(page, request, reply, body_length, *, after=None):
+    page.evaluate("hold => { window.qaQuestWire.lobbyHold = hold; }",
+                  {"request": request, "reply": reply, "bodyLength": body_length, "after": after})
+
+
+def wait_held_lobby_reply(page):
+    page.wait_for_function("() => typeof window.qaQuestWire.lobbyHold?.resume === 'function'", timeout=TIMEOUT)
+
+
+def release_lobby_reply(page):
+    page.evaluate("""() => {
+      const {resume} = window.qaQuestWire.lobbyHold;
+      window.qaQuestWire.lobbyHold = null;
+      resume();
+    }""")
+
+
 def wait_lobby_achievement_check(page, number, *, since=0):
     page.wait_for_function("""({number, since}) => {
       const trace = window.qaQuestWire.lobby.achievement;
@@ -2693,7 +2726,28 @@ def wait_lobby_achievement_check(page, number, *, since=0):
     return trace
 
 
-def close_q3_startup_record(page, stage, directory):
+def confirm_new_lobby_challenge(page, stage, directory, achievement_id, filename):
+    notice = page.locator(f'#lobby-achievement-notice[open][data-kind="new-achievement"][data-achievement-id="{achievement_id}"]')
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    picture = notice.locator("#lobby-achievement-notice-challenge")
+    expect(picture).to_be_visible()
+    assert picture.evaluate("image => image.complete && image.naturalWidth > 0")
+    expect(notice.locator("#lobby-achievement-notice-message")).not_to_be_empty()
+    ok = notice.locator("#lobby-achievement-notice-ok")
+    expect(ok).to_be_focused()
+    capture(stage, directory, filename, animations="allow")
+    ok.press("Enter")
+    expect(notice).to_have_count(0)
+
+
+def startup_challenges(page, trace, assets):
+    data = page.evaluate("window.qaQuestWire.startupData")
+    ids = {p[2] for p in data if p[:2] == [23, 6]} | {p[2] for p in trace["replies"] if p[:2] == [52, 6]}
+    completed = {p[2] for p in data if p[:2] == [22, 22]} | {p[2] for p in trace["replies"] if p[:2] == [51, 22]}
+    return sorted(achievement_id for achievement_id in ids - completed if str(achievement_id) in assets["achievements"])
+
+
+def close_q3_startup_record(page, stage, origin, directory):
     startup = page.evaluate("window.qaQuestWire.startupData")
     profile_offset = next(index for index, packet in enumerate(startup) if packet[0] == 6)
     before_profile = startup[:profile_offset]
@@ -2702,15 +2756,24 @@ def close_q3_startup_record(page, stage, directory):
     assert [23, 6, 2] in before_profile and any(p[0] == 25 for p in before_profile), startup
     trace = wait_lobby_achievement_check(page, 1)
     assert not any(p[0] == 51 for p in trace["replies"]), trace["replies"]
+    response = page.request.get(origin + "/source-login/lobby-achievement-art/index.json")
+    assert response.ok
+    pending_challenges = startup_challenges(page, trace, response.json())
+    assert pending_challenges and pending_challenges[0] == 2, pending_challenges
     news_seen = record_seen = False
     notice = page.locator("#lobby-achievement-notice[open]")
-    while not (news_seen and record_seen):
+    while pending_challenges or not (news_seen and record_seen):
         page.wait_for_function("""() => document.querySelector('#lobby-news[open], #lobby-achievement-notice[open][data-state="ready"]')""",
                                timeout=TIMEOUT)
         if page.locator("#lobby-news[open]").is_visible():
             assert not news_seen
-            close_lobby_news(page, stage, None, restores_title=record_seen)
+            close_lobby_news(page, stage, None, restores_title=record_seen and not pending_challenges)
             news_seen = True
+        elif notice.get_attribute("data-kind") == "new-achievement":
+            assert record_seen and pending_challenges
+            challenge_id = pending_challenges.pop(0)
+            filename = "11a-record-cold-new-challenge.png" if challenge_id == 2 else f"11b-record-cold-challenge-{challenge_id}.png"
+            confirm_new_lobby_challenge(page, stage, directory, challenge_id, filename)
         else:
             assert not record_seen
             for field, value in (("achievement-id", 1), ("treasure-type", 3), ("item-id", 9), ("amount", 3), ("slot-type", 0)):
@@ -2722,7 +2785,7 @@ def close_q3_startup_record(page, stage, directory):
             expect(ok).to_be_focused()
             capture(stage, directory, "11-record-bootstrap-avatar-created.png", animations="allow")
             ok.press("Enter")
-            expect(notice).to_have_count(0)
+            expect(notice.and_(page.locator('[data-kind="achievement"][data-achievement-id="1"]'))).to_have_count(0)
             record_seen = True
     expect(page.locator("#lobby-title")).to_be_focused()
     assert read_lobby_achievement_trace(page)["sent"] == trace["sent"]
@@ -2731,12 +2794,10 @@ def close_q3_startup_record(page, stage, directory):
 def close_lobby_startup_records(page, stage, origin):
     trace = wait_lobby_achievement_check(page, 1)
     rewards = [p[2:] for p in trace["replies"] if p[:2] == [51, 22]]
-    if not rewards:
-        close_lobby_news(page, stage, None)
-        return
     response = page.request.get(origin + "/source-login/lobby-achievement-art/index.json")
     assert response.ok
     assets = response.json()
+    pending_challenges = startup_challenges(page, trace, assets)
     cards = assets["card"]
     pending = []
     for reward in rewards:
@@ -2746,13 +2807,16 @@ def close_lobby_startup_records(page, stage, origin):
             pending.append(reward)
     news_seen = False
     notice = page.locator("#lobby-achievement-notice[open]")
-    while pending or not news_seen:
+    while pending or pending_challenges or not news_seen:
         page.wait_for_function("""() => document.querySelector('#lobby-news[open], #lobby-achievement-notice[open][data-state="ready"]')""",
                                timeout=TIMEOUT)
         if page.locator("#lobby-news[open]").is_visible():
             assert not news_seen
-            close_lobby_news(page, stage, None, restores_title=not pending)
+            close_lobby_news(page, stage, None, restores_title=not pending and not pending_challenges)
             news_seen = True
+        elif notice.get_attribute("data-kind") == "new-achievement":
+            assert not pending and pending_challenges
+            confirm_new_lobby_challenge(page, stage, None, pending_challenges.pop(0), "")
         else:
             receipt = notice.evaluate("""({dataset: data}) =>
               ['achievementId', 'treasureType', 'itemId', 'amount', 'slotType'].map(field => +data[field])""")
@@ -2772,6 +2836,185 @@ def pending_selectable_record(database, avatar_id):
     return any("26:2" in body.split("|") for (body,) in query(database, "SELECT body FROM avatar_notices WHERE avatar_id = ?", avatar_id))
 
 
+def open_selectable_lobby(page, origin, player_id, name, password):
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=True,
+                                            defer_lobby_notices=True)
+    trace = wait_lobby_achievement_check(page, 1)
+    notices = [p[2] for p in trace["replies"] if p[0] == 54]
+    assert any({"type": 26, "achievementId": 2} in notice for notice in notices), trace["replies"]
+    source = (51, 61, 71, 81, 91, 121, 131, 141, 151, 161, 171, 181, 191, 211, 221, 231, 251, 261, 271, 281, 291)
+    choices = [[index, 1, card, 1, 0] for index, card in enumerate(source)]
+    assert [p[2:] for p in trace["replies"] if p[0] == 71] == [[2, choices]], trace["replies"]
+    assert next(i for i, p in enumerate(trace["replies"]) if p[0] == 54) < next(i for i, p in enumerate(trace["replies"]) if p[0] == 71)
+    notice = page.locator('#lobby-achievement-notice[open][data-kind="selectable-achievement"][data-achievement-id="2"]')
+    page.wait_for_function("""() => document.querySelector('#lobby-news[open], #lobby-achievement-notice[open]')""", timeout=TIMEOUT)
+    if page.locator("#lobby-news[open]").is_visible():
+        close_lobby_news(page, stage, None, restores_title=False)
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(notice.locator("#lobby-achievement-notice-message")).to_contain_text("虛擬人物Lv到達3")
+    return stage, notice, live, errors, source, trace
+
+
+def reopen_lobby_fixture(page, database, player_id, errors):
+    browser = page.context.browser
+    assert browser is not None
+    assert page.reload(wait_until="domcontentloaded").ok
+    wait_logout(page, database, player_id)
+    assert not errors, errors
+    page.close()
+    return browser.new_page(viewport={"width": 780, "height": 680}, device_scale_factor=1, reduced_motion="no-preference")
+
+
+def check_lobby_selectable(page, origin, database, name, password, directory):
+    ((player_id, flags),) = player(database, name)
+    before = bonus_profile(database, player_id)
+    avatar_id = before["profile"][0]
+    assert flags == 0 and before["profile"][2] >= 3 and pending_selectable_record(database, avatar_id)
+    assert lobby_achievement_states(database, avatar_id).get(2) == 1
+    page.emulate_media(reduced_motion="no-preference")
+    stage, notice, live, errors, choices, trace = open_selectable_lobby(page, origin, player_id, name, password)
+    combo = notice.get_by_role("combobox", name="選擇獎勵")
+    menu = notice.get_by_role("listbox", include_hidden=True)
+    ok = notice.locator("#lobby-achievement-notice-ok")
+    expect(combo).to_be_focused()
+    expect(ok).to_be_disabled()
+    expect(menu).to_be_hidden()
+    capture(stage, directory, "01-selectable-awaiting-choice.png", animations="allow")
+    page.keyboard.press("Escape")
+    expect(notice).to_be_visible()
+    quest = page.locator("#lobby-quest-load").bounding_box()
+    assert quest
+    page.mouse.click(quest["x"] + quest["width"] / 2, quest["y"] + quest["height"] / 2)
+    page.keyboard.press("Tab")
+    assert page.evaluate("() => !document.activeElement?.matches('#lobby-quest-load, #lobby-option-open')")
+    expect(ok).to_be_disabled()
+    expect(stage).to_have_attribute("data-screen", "lobby")
+    assert len(live) == 4 and not read_lobby_achievement_trace(page).get("claims")
+
+    notice.evaluate("""node => {
+      window.qaChoiceFlips = [];
+      window.qaChoiceSounds = [];
+      const originalPlay = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function (...args) {
+        const file = this.src.split('/').at(-1);
+        if (!['ulse22.mp3', 'ulse23.mp3'].includes(file)) return originalPlay.apply(this, args);
+        const cue = {file, playback: 'pending'};
+        window.qaChoiceSounds.push(cue);
+        const playback = originalPlay.apply(this, args);
+        void playback.then(() => { cue.playback = 'played'; }, () => { cue.playback = 'rejected'; });
+        return playback;
+      };
+      new MutationObserver(() => {
+        if (node.dataset.state === 'flipping') window.qaChoiceFlips.push(Number(node.dataset.selectionIndex));
+      }).observe(node, {attributes: true, attributeFilter: ['data-state']});
+    }""")
+    combo.click()
+    expect(menu).to_be_visible()
+    assert menu.get_by_role("option").evaluate_all("rows => rows.map(row => Number(row.dataset.itemId))") == list(choices)
+    capture(stage, directory, "02-source-ordered-choice-menu.png", animations="allow")
+    combo.press("Escape")
+    expect(menu).to_be_hidden()
+    expect(combo).to_be_focused()
+    expect(ok).to_be_disabled()
+    combo.press("ArrowDown")
+    combo.press("ArrowDown")
+    combo.press("Enter")
+    expect(notice).to_have_attribute("data-selection-item-id", "61")
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(ok).to_be_enabled()
+    capture(stage, directory, "03-keyboard-selected-second-card.png", animations="allow")
+    combo.click()
+    menu.locator('[role="option"][data-index="0"][data-item-id="51"]').click()
+    expect(notice).to_have_attribute("data-selection-item-id", "51")
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(notice.locator(".lobby-achievement-card-face canvas")).to_be_visible()
+    selected_name = combo.inner_text()
+    assert page.evaluate("window.qaChoiceFlips") == [1, 0]
+    try:
+        page.wait_for_function("() => window.qaChoiceSounds.length >= 4 && window.qaChoiceSounds.every(cue => cue.playback !== 'pending')",
+                               timeout=TIMEOUT)
+    except PlaywrightTimeoutError as error:
+        raise AssertionError(f"Incomplete selectable reward playback: {page.evaluate('window.qaChoiceSounds')}") from error
+    preview_sounds = page.evaluate("window.qaChoiceSounds")
+    assert preview_sounds == [{"file": file, "playback": "played"} for file in ("ulse22.mp3", "ulse23.mp3") * 2], preview_sounds
+    capture(stage, directory, "04-pointer-switched-first-card.png", animations="allow")
+    previews = read_lobby_achievement_trace(page)
+    assert [p for p in previews["sent"] if p[0] != 3] == [p for p in trace["sent"] if p[0] != 3]
+    assert not previews.get("claims") and pending_selectable_record(database, avatar_id)
+    assert bonus_profile(database, player_id)["cards"] == before["cards"]
+
+    page = reopen_lobby_fixture(page, database, player_id, errors)
+    stage, notice, warm_live, errors, _, restored = open_selectable_lobby(page, origin, player_id, name, password)
+    assert len(warm_live) == 4 and all(peer not in live for peer in warm_live)
+    assert pending_selectable_record(database, avatar_id)
+    assert not restored.get("claims") and bonus_profile(database, player_id)["cards"] == before["cards"]
+    combo = notice.get_by_role("combobox")
+    ok = notice.locator("#lobby-achievement-notice-ok")
+    expect(ok).to_be_disabled()
+    combo.press("ArrowDown")
+    combo.press("Enter")
+    expect(notice).to_have_attribute("data-selection-index", "0")
+    expect(notice).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(ok).to_be_enabled()
+
+    size = ok.bounding_box()
+    assert size
+    hold_lobby_reply(page, 51, 72, 19)
+    ok.click()
+    wait_held_lobby_reply(page)
+    try:
+        expect(notice).to_have_attribute("data-state", "claiming")
+        expect(combo).to_be_disabled()
+        expect(ok).to_be_disabled()
+        expect(page.locator("#login-alert[open]")).to_have_count(0)
+        held = read_lobby_achievement_trace(page)
+        assert held["claims"] == [[51, 10, "2,0"]]
+        (grant,) = [p for p in held["replies"][len(restored["replies"]):] if p[:2] == [31, 10]]
+        assert grant[2] > 0 and grant[3] == 51 and not any(p[0] == 72 for p in held["replies"]), held
+        page.mouse.click(size["x"] + size["width"] / 2, size["y"] + size["height"] / 2)
+        assert read_lobby_achievement_trace(page)["claims"] == held["claims"]
+        assert len(warm_live) == 4 and all(not peer.is_closed() for peer in warm_live)
+        capture(stage, directory, "05-real-card-event-with-postcommit-held.png", animations="allow")
+    finally:
+        release_lobby_reply(page)
+    alert = page.locator('#login-alert[open][data-kind="lobby-selectable-reward"]')
+    expect(alert).to_be_visible(timeout=TIMEOUT)
+    expect(alert.locator("#login-alert-title")).to_have_text("情報")
+    expect(alert.locator("#login-alert-message")).to_have_text(f"獲得了{selected_name}。")
+    expect(alert.locator("#login-alert-ok")).to_be_focused()
+    capture(stage, directory, "06-verified-selectable-card-info.png", animations="allow")
+    alert.locator("#login-alert-ok").press("Enter")
+    expect(notice).to_have_count(0)
+    expect(alert).to_have_count(0)
+
+    settled = read_lobby_achievement_trace(page)
+    delta = settled["replies"][len(restored["replies"]):]
+    receipt = [72, 19, 2, 0, 0, grant[2], 51]
+    assert [p for p in delta if p[0] in (31, 72)] == [grant, receipt], delta
+    assert settled["claims"] == held["claims"] and not any(p[0] in (37, 52) for p in settled["sent"]), settled
+    assert not pending_selectable_record(database, avatar_id)
+    after = bonus_profile(database, player_id)
+    assert after["cards"] - before["cards"] == {(grant[2], 51)} and before["cards"] <= after["cards"]
+    assert after["items"] == before["items"] and after["slotCards"] == before["slotCards"]
+    assert after["profile"][2:5] == before["profile"][2:5]
+    assert query(database, """SELECT d.name, i.chara_card_id FROM card_inventories i
+        JOIN chara_card_decks d ON i.chara_card_deck_id = d.id WHERE d.avatar_id = ? AND i.id = ?""", avatar_id, grant[2]) == [("Binder", 51)]
+
+    page = reopen_lobby_fixture(page, database, player_id, errors)
+    stage, final_live, errors = open_quest_fixture(page, origin, player_id, name, password, lobby_achievements=True)
+    final = wait_lobby_achievement_check(page, 1)
+    assert len(final_live) == 4 and all(peer not in warm_live for peer in final_live)
+    expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
+    assert not any(p[0] in (31, 71, 72) for p in final["replies"]) and not final.get("claims"), final
+    assert not pending_selectable_record(database, avatar_id)
+    assert bonus_profile(database, player_id)["cards"] == after["cards"] and not errors, errors
+    capture(stage, directory, "07-signed-in-again-without-duplicate.png", animations="allow")
+    if directory is not None:
+        evidence = {"preview": previews, "previewSounds": preview_sounds, "restored": restored, "held": held, "settled": settled, "relogin": final,
+                    "binderCard": grant[2:], "pendingToken": {"before": True, "restored": True, "settled": False, "relogin": False}}
+        (directory / "lobby-selectable-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
+
+
 def observe_lobby_achievement_notices(page):
     page.evaluate("""() => {
       const trace = window.qaQuestWire.lobby.achievement;
@@ -2781,7 +3024,7 @@ def observe_lobby_achievement_notices(page):
       const receipt = data => [data.achievementId, data.treasureType, data.itemId, data.amount, data.slotType].map(Number);
       const sample = () => {
         const dialog = document.getElementById('lobby-achievement-notice');
-        if (!dialog?.open || !dialog.dataset.achievementId) return;
+        if (!dialog?.open || !dialog.dataset.achievementId || dialog.dataset.kind !== 'achievement') return;
         const step = [...receipt(dialog.dataset), dialog.dataset.state];
         if (String(trace.notices.at(-1)) !== String(step)) {
           trace.notices.push(step);
@@ -2795,7 +3038,7 @@ def observe_lobby_achievement_notices(page):
       HTMLMediaElement.prototype.play = function (...args) {
         const dialog = document.querySelector('#lobby-achievement-notice[open]');
         const file = this.src.split('/').at(-1);
-        if (stage.dataset.screen !== 'lobby' || !dialog || !/^ulse(?:01|02|23)\\.mp3$/.test(file)) {
+        if (stage.dataset.screen !== 'lobby' || dialog?.dataset.kind !== 'achievement' || !/^ulse(?:01|02|23)\\.mp3$/.test(file)) {
           return originalPlay.apply(this, args);
         }
         const cue = {file, receipt: receipt(dialog.dataset), state: dialog.dataset.state, playback: 'pending'};
@@ -2809,7 +3052,7 @@ def observe_lobby_achievement_notices(page):
 
 def check_q3_lobby_achievement(page, stage, directory, database, player_id, live, *, before, first_trace):
     avatar_id = before["profile"][0]
-    page.wait_for_function("() => typeof window.qaQuestWire.lobbyPong?.resume === 'function'", timeout=TIMEOUT)
+    wait_held_lobby_reply(page)
     held = read_lobby_achievement_trace(page)
     try:
         raw = held["replies"][len(first_trace["replies"]):]
@@ -2820,11 +3063,7 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
         expect(page.locator("#lobby-achievement-notice[open]")).to_have_count(0)
         capture(stage, directory, "42-lobby-records-awaiting-actual-pong.png", animations="allow")
     finally:
-        page.evaluate("""() => {
-          const {resume} = window.qaQuestWire.lobbyPong;
-          window.qaQuestWire.lobbyPong = null;
-          resume();
-        }""")
+        release_lobby_reply(page)
     trace = wait_lobby_achievement_check(page, 2, since=len(first_trace["replies"]))
     check_offsets = [index for index, event in enumerate(trace["timeline"]) if event == ["lobby", "send", 35]]
     first_return_reply = sum(event[:2] == ["lobby", "reply"] for event in trace["timeline"][:check_offsets[1]])
@@ -2885,6 +3124,8 @@ def check_q3_lobby_achievement(page, stage, directory, database, player_id, live
             assert len(live) == 5
         ok.press("Enter") if number == 1 else ok.click()
         expect(notice.and_(page.locator(f'[data-state="ready"][data-achievement-id="{receipt[0]}"][data-item-id="{receipt[2]}"]'))).to_have_count(0)
+    confirm_new_lobby_challenge(page, stage, directory, 3, "42-record-new-challenge.png")
+    confirm_new_lobby_challenge(page, stage, directory, 32, "42-record-hexrealm-challenge.png")
     expect(notice).to_have_count(0)
     expect(page.locator("#lobby-quest-load")).to_be_focused()
     settled = read_lobby_achievement_trace(page)
@@ -3038,7 +3279,7 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
                 assert not before_back["pendingSelectable"]
                 assert [p for p in read_lobby_achievement_trace(page)["sent"] if p[0] == 35] == [[35, 6, 1, "lobby", "ready"]]
                 observe_lobby_achievement_notices(page)
-                page.evaluate("() => { window.qaQuestWire.lobbyPong = {}; }")
+                hold_lobby_reply(page, 3, 35, 2, after=35)
             page.locator("#quest-map-back").click()
             screen(stage, "lobby")
     else:
@@ -5147,6 +5388,8 @@ def main():
                         help="Use an owned q3 fixture to win both battles and hold the genuine fixed treasure reply")
     parser.add_argument("--lobby-achievements", action="store_true",
                         help="Extend the original boss fixture through native Lobby record awards and a second Return")
+    parser.add_argument("--lobby-selectable", action="store_true",
+                        help="Verify the pending original Record 2 choice and saved physical Binder card")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
@@ -5189,11 +5432,15 @@ def main():
     if args.quest_high_low and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
                                 or args.quest_terminal or args.quest_next_land or args.quest_complete_q3 or args.quest_peaceful):
         parser.error("--quest-high-low requires --quest-start-user and its own case")
+    if args.lobby_selectable and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
+                                  or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
+                                  or args.quest_peaceful or args.quest_high_low):
+        parser.error("--lobby-selectable requires --quest-start-user with an unclaimed Record 2 fixture")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
             "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-        ])
+        ], ignore_default_args=["--hide-scrollbars"] if args.lobby_selectable else None)
         portraits = []
         try:
             if args.refresh_user is not None or args.quest_user is not None or args.quest_start_user is not None:
@@ -5209,6 +5456,10 @@ def main():
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
+                elif args.lobby_selectable:
+                    check_lobby_selectable(page, origin, args.database, args.quest_start_user,
+                                           args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens)
+                    print("Real Lobby Record 2 selection, held claim, Binder storage, and re-login passed.")
                 elif args.quest_high_low:
                     page_errors = []
                     page.on("pageerror", lambda error: page_errors.append(str(error)))

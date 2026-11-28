@@ -56,7 +56,85 @@
   "achievements": {
     "1": "創立虛擬人物",
     "2": "虛擬人物Lv到達3",
-    "31": "突破初期地區"
+    "3": "虛擬人物Lv到達5",
+    "31": "突破初期地區",
+    "32": "突破HexRealm",
+    "180": "完成落日大蝙蝠1次",
+    "181": "完成落日大蝙蝠2次",
+    "182": "完成落日大蝙蝠3次"
+  },
+  "newChallenge": {
+    "art": {
+      "file": "new-challenge.png",
+      "x": 230,
+      "y": 264,
+      "width": 300,
+      "height": 160
+    },
+    "beginnerArt": {
+      "file": "new-challenge-novice.png",
+      "x": 131,
+      "y": 264,
+      "width": 498,
+      "height": 240
+    },
+    "beginnerIds": [
+      180,
+      181,
+      182
+    ],
+    "messageTemplate": "追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。"
+  },
+  "selectable": {
+    "pivot": [
+      375,
+      371
+    ],
+    "face": [
+      295,
+      251
+    ],
+    "messageTemplate": "恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。",
+    "dropdown": {
+      "x": 300,
+      "y": 493,
+      "width": 160,
+      "height": 18,
+      "dropdownWidth": 125,
+      "rowCount": 7,
+      "prompt": "請選擇"
+    },
+    "choices": {
+      "2": [
+        51,
+        61,
+        71,
+        81,
+        91,
+        121,
+        131,
+        141,
+        151,
+        161,
+        171,
+        181,
+        191,
+        211,
+        221,
+        231,
+        251,
+        261,
+        271,
+        281,
+        291
+      ]
+    },
+    "confirmation": {
+      "delayMs": 399,
+      "height": 100,
+      "title": "情報",
+      "messageTemplate": "獲得了__NAME__。"
+    }
   },
   "card": {
     "back": {
@@ -179,9 +257,229 @@
       }
     },
     "characters": {
+      "51": {
+        "id": 51,
+        "name": "庫勒尼西",
+        "kind": 0,
+        "level": 1,
+        "slot": 0,
+        "hp": 7,
+        "ap": 4,
+        "dp": 7
+      },
+      "61": {
+        "id": 61,
+        "name": "傑多",
+        "kind": 0,
+        "level": 1,
+        "slot": 1,
+        "hp": 6,
+        "ap": 4,
+        "dp": 5
+      },
+      "71": {
+        "id": 71,
+        "name": "阿奇波爾多",
+        "kind": 0,
+        "level": 1,
+        "slot": 4,
+        "hp": 8,
+        "ap": 6,
+        "dp": 5
+      },
+      "81": {
+        "id": 81,
+        "name": "馬庫斯",
+        "kind": 0,
+        "level": 1,
+        "slot": 0,
+        "hp": 8,
+        "ap": 6,
+        "dp": 3
+      },
+      "91": {
+        "id": 91,
+        "name": "布列依斯",
+        "kind": 0,
+        "level": 1,
+        "slot": 1,
+        "hp": 7,
+        "ap": 6,
+        "dp": 6
+      },
+      "121": {
+        "id": 121,
+        "name": "伯恩哈德",
+        "kind": 0,
+        "level": 1,
+        "slot": 2,
+        "hp": 7,
+        "ap": 5,
+        "dp": 6
+      },
+      "131": {
+        "id": 131,
+        "name": "弗雷特里西",
+        "kind": 0,
+        "level": 1,
+        "slot": 1,
+        "hp": 7,
+        "ap": 6,
+        "dp": 5
+      },
+      "141": {
+        "id": 141,
+        "name": "瑪格莉特",
+        "kind": 0,
+        "level": 1,
+        "slot": 5,
+        "hp": 6,
+        "ap": 5,
+        "dp": 6
+      },
+      "151": {
+        "id": 151,
+        "name": "多妮妲",
+        "kind": 0,
+        "level": 1,
+        "slot": 2,
+        "hp": 9,
+        "ap": 5,
+        "dp": 3
+      },
+      "161": {
+        "id": 161,
+        "name": "史普拉多",
+        "kind": 0,
+        "level": 1,
+        "slot": 3,
+        "hp": 6,
+        "ap": 8,
+        "dp": 4
+      },
+      "171": {
+        "id": 171,
+        "name": "貝琳達",
+        "kind": 0,
+        "level": 1,
+        "slot": 4,
+        "hp": 9,
+        "ap": 5,
+        "dp": 5
+      },
+      "181": {
+        "id": 181,
+        "name": "羅索",
+        "kind": 0,
+        "level": 1,
+        "slot": 3,
+        "hp": 7,
+        "ap": 5,
+        "dp": 6
+      },
+      "191": {
+        "id": 191,
+        "name": "艾妲",
+        "kind": 0,
+        "level": 1,
+        "slot": 0,
+        "hp": 6,
+        "ap": 6,
+        "dp": 7
+      },
+      "211": {
+        "id": 211,
+        "name": "薩爾卡多",
+        "kind": 0,
+        "level": 1,
+        "slot": 7,
+        "hp": 7,
+        "ap": 5,
+        "dp": 6
+      },
+      "221": {
+        "id": 221,
+        "name": "蕾格烈芙",
+        "kind": 0,
+        "level": 1,
+        "slot": 6,
+        "hp": 8,
+        "ap": 6,
+        "dp": 5
+      },
+      "231": {
+        "id": 231,
+        "name": "里斯",
+        "kind": 0,
+        "level": 1,
+        "slot": 1,
+        "hp": 7,
+        "ap": 6,
+        "dp": 5
+      },
+      "251": {
+        "id": 251,
+        "name": "沃肯",
+        "kind": 0,
+        "level": 1,
+        "slot": 5,
+        "hp": 8,
+        "ap": 2,
+        "dp": 7
+      },
+      "261": {
+        "id": 261,
+        "name": "佛羅倫斯",
+        "kind": 0,
+        "level": 1,
+        "slot": 0,
+        "hp": 7,
+        "ap": 5,
+        "dp": 7
+      },
+      "271": {
+        "id": 271,
+        "name": "帕茉",
+        "kind": 0,
+        "level": 1,
+        "slot": 1,
+        "hp": 7,
+        "ap": 4,
+        "dp": 5
+      },
+      "281": {
+        "id": 281,
+        "name": "阿修羅",
+        "kind": 0,
+        "level": 1,
+        "slot": 6,
+        "hp": 7,
+        "ap": 5,
+        "dp": 4
+      },
+      "291": {
+        "id": 291,
+        "name": "布朗寧",
+        "kind": 0,
+        "level": 1,
+        "slot": 7,
+        "hp": 6,
+        "ap": 4,
+        "dp": 6
+      },
       "10006": {
         "id": 10006,
         "name": "記憶的碎片",
+        "kind": 3,
+        "level": 0,
+        "slot": 0,
+        "hp": 0,
+        "ap": 0,
+        "dp": 0
+      },
+      "10007": {
+        "id": 10007,
+        "name": "時間的碎片",
         "kind": 3,
         "level": 0,
         "slot": 0,
@@ -241,6 +539,100 @@
     "memoryIllustration": {
       "source": "public/image/cmem0.swf",
       "sourceSha256": "3fab6f5badc93be13add3729e638ba17634e1b4b548d77e809cdff9b8e552509"
+    },
+    "characterIllustrations": {
+      "51": {
+        "source": "public/image/cc06_01.swf",
+        "sourceSha256": "c26749dbe6ee61d365e3a6493099d1109131eb17a96426d630a85281e6ffdd7d"
+      },
+      "61": {
+        "source": "public/image/cc07_01.swf",
+        "sourceSha256": "9a4f8ae9e2b6ce66c7d01244b50567bcc27683e328bbb24ef01d13593d9c0003"
+      },
+      "71": {
+        "source": "public/image/cc08_01.swf",
+        "sourceSha256": "75b794d2ce840f3c5fd2fe313248108035efe81eb561eaab75469ec0bac3bf56"
+      },
+      "81": {
+        "source": "public/image/cc09_01.swf",
+        "sourceSha256": "b0f2ab0c15e25f65d2c8aca51491125698195cbe3e5967de0ded4a85ef8167fb"
+      },
+      "91": {
+        "source": "public/image/cc10_01.swf",
+        "sourceSha256": "9de65a6e1a33b11722b6c19f7cfafcb5dad5f17c3ffdd1a3392db3f213cfc823"
+      },
+      "121": {
+        "source": "public/image/cc13_01.swf",
+        "sourceSha256": "d42e22a04969bb22cf16da4a20e101bc5c400a004ba85dd71b0db44ccb77236c"
+      },
+      "131": {
+        "source": "public/image/cc14_01.swf",
+        "sourceSha256": "48b7aef571f576c55a10a1994575fe7d0921ead08b3ee0d805c2cb0d11888318"
+      },
+      "141": {
+        "source": "public/image/cc15_01.swf",
+        "sourceSha256": "6c3eff5e4d68beefa37b34bd4987d33b7e3228a857b8494b3af199f4a50b734e"
+      },
+      "151": {
+        "source": "public/image/cc16_01.swf",
+        "sourceSha256": "ba2ee559c7f7f94ecb4aa961b572f6dd6d0283b51518a0571a71ab0792afb602"
+      },
+      "161": {
+        "source": "public/image/cc17_01.swf",
+        "sourceSha256": "5a22d124b1a87ea131630365bcc5866850048daf338d7e89a8146c9d31fba2b6"
+      },
+      "171": {
+        "source": "public/image/cc18_01.swf",
+        "sourceSha256": "644f3b3ffa434c9f01b56334a8f333c9adfb7b93b2c36eafb916770a11e9437f"
+      },
+      "181": {
+        "source": "public/image/cc19_01.swf",
+        "sourceSha256": "7758b63572d079107b89b0bf4221d3e479af027eeeb599ae94729d52af123c32"
+      },
+      "191": {
+        "source": "public/image/cc20_01.swf",
+        "sourceSha256": "fb09c5caa6610f79d976f15c68013afd0977f9bd43c41c17763a307c26cc77b8"
+      },
+      "211": {
+        "source": "public/image/cc22_01.swf",
+        "sourceSha256": "a677883016868fd6285efc6001bc406fc3ba96c541c063fd3f438a03318f3db4"
+      },
+      "221": {
+        "source": "public/image/cc23_01.swf",
+        "sourceSha256": "2703b4043b78780e04cea9a65f88591a0dede2be03734055aa19ba711b6ba273"
+      },
+      "231": {
+        "source": "public/image/cc24_01.swf",
+        "sourceSha256": "2796d8148fc2a1c6228aaf1bd375941245f131a0635049568da0d0ab4079275d"
+      },
+      "251": {
+        "source": "public/image/cc26_01.swf",
+        "sourceSha256": "e9b99f47cd569d2e64853ff6e7bccc2fa5e90b0fdcff6954cf672abaa0d54c53"
+      },
+      "261": {
+        "source": "public/image/cc27_01.swf",
+        "sourceSha256": "734a4f8635cbd63b35f875590deeb5a4ca6598c3ced1e5ebdd34da58c6a2a638"
+      },
+      "271": {
+        "source": "public/image/cc28_01.swf",
+        "sourceSha256": "f9a95f4e0080161c017f2ae5d37ba0851f47734571b3b3f6848aa8621ecddb45"
+      },
+      "281": {
+        "source": "public/image/cc29_01.swf",
+        "sourceSha256": "0e7976b7699fcdacf8cba47c1f009f4cc0688020c68ca690bce84581779edea5"
+      },
+      "291": {
+        "source": "public/image/asgaeogiar.swf",
+        "sourceSha256": "61bfd18178ba6f3309fc22538facf95b531a289ba895dc47d3ff156142808c66"
+      },
+      "10006": {
+        "source": "public/image/cmem0.swf",
+        "sourceSha256": "3fab6f5badc93be13add3729e638ba17634e1b4b548d77e809cdff9b8e552509"
+      },
+      "10007": {
+        "source": "public/image/cmem1.swf",
+        "sourceSha256": "9c6cd5958c841a95e42a6c9e4f26d5e78136debd30d8a7dfbca3a3bac8fd3784"
+      }
     }
   },
   "provenance": {
@@ -289,12 +681,43 @@
         "hitTest"
       ]
     },
+    "new-challenge.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "07df08c541d4ac012e48a6775d9764728321ea47cc06c76eb3a9815a45d82ce7",
+      "sourceBitmap": 11,
+      "sourceShape": 12,
+      "sourceSprite": 13,
+      "sourceDepth": 6,
+      "sourceInstance": "record",
+      "sourceFrame": 1
+    },
+    "new-challenge-novice.png": {
+      "source": "data/image/common/info_login.swf",
+      "sourceSha256": "c97822f2e6a53d7111112be13d82d736b4034a2592aa3346e5a3e5a9906c5b2a",
+      "sha256": "7910c40f93c93bd6cd139d0fa6cf9a0f93400010999daad3fd50a421b45691eb",
+      "sourceBitmaps": [
+        14,
+        11
+      ],
+      "sourceShapes": [
+        15,
+        12
+      ],
+      "sourceSprites": [
+        16,
+        13
+      ],
+      "sourceDepth": 8,
+      "sourceInstance": "novice",
+      "sourceFrame": 1
+    },
     "achievement-mincho.woff": {
       "source": "res/data/wt004.ttf",
       "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
       "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
-      "sha256": "85ab4fb394487282656604a8f07df2a81670039cce4ec6a9d96dc4ff5d5e05e9",
-      "glyphs": "Record0123456789x記憶的碎片魔女秘藥完全恢復虛擬人物的行動力。抽獎券抽獎券"
+      "sha256": "06f2a640e9f2a1aa16c30f7525f19356d16d7881a0447089429cdb227c42e4b9",
+      "glyphs": "Record0123456789x Lv.庫勒尼西傑多阿奇波爾多馬庫斯布列依斯伯恩哈德弗雷特里西瑪格莉特多妮妲史普拉多貝琳達羅索艾妲薩爾卡多蕾格烈芙里斯沃肯佛羅倫斯帕茉阿修羅布朗寧記憶的碎片時間的碎片魔女秘藥完全恢復虛擬人物的行動力。抽獎券抽獎券創立虛擬人物虛擬人物Lv到達3虛擬人物Lv到達5突破初期地區突破HexRealm完成落日大蝙蝠1次完成落日大蝙蝠2次完成落日大蝙蝠3次請選擇情報追加了新的成就「__ARCHIEVEMENT_CAPTION__」。請您務必挑戰看看。恭喜。達成了「__ARCHIEVEMENT_CAPTION__」成就。請選擇獎勵。獲得了__NAME__。"
     },
     "item-3.png": {
       "source": "public/image/avatar_items/item_c_a000.swf",

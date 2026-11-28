@@ -60,10 +60,15 @@
 ### 大廳成就的直接獎勵
 
 - 成就完成通知使用 `info_login.swf` 的 Information 外框與 Braw 圖層，標題為 Record。舞台面板 `(116,144)`、`528×416`，OK 中心 `(380,541)`。面板以 300 ms 滑入、150 ms 滑出，獎品掛載後等 200 ms，再用 300 ms 翻牌並播放 `ulse23`。每筆直接獎勵以本機 OK 逐筆確認。新版實跑驗到四次播放、底層入口暫停、最後恢復焦點。[原版通知時序](../../../app/client/src/view/scene/lobby/NoticePanel.as#L893) · [獎品翻面](../../../app/client/src/view/scene/common/TreasureCardClip.as#L316) · [來源素材清單](../../../source-login/lobby-achievement-art/index.json)
-- q3 兩版在初次就緒的 Lobby 送 `CS35(true)`，旗標 0 時成就 #2、#31 維持待完成。兩版實跑 Data `SC22` 先於 `SC6` 抵達，抽獎券 ×3 已實際入庫。兩版重新登入同一角色後進入 q3；新版確認未重發抽獎券。原版還有獨立的 Lv3 新挑戰視窗，尚待移植顯示與確認。[首次登入抽獎券並排](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/initial-record-ticket-comparison.png) · [原版初始新挑戰](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-original/q3-initial-observation/initial-record-02-settled.png)
+- q3 兩版在初次就緒的 Lobby 送 `CS35(true)`，旗標 0 時成就 #2、#31 維持待完成。兩版實跑 Data `SC22` 先於 `SC6` 抵達，抽獎券 ×3 已實際入庫。兩版重新登入同一角色後進入 q3，新版確認未重發抽獎券。[首次登入抽獎券並排](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/initial-record-ticket-comparison.png)
 - q3 原版連打兩場獲勝，Quest `SC26` 先確認旗標 1，離場前為 124 Gem／30 EXP／Lv3／AP 6/6。Back 後同一 Lobby 送 `CS35(true)`，獨立發放抽獎券一張、記憶的碎片七張、魔女秘藥一件和 3,000 Gem。實際面板依序是抽獎券、記憶的碎片、Gem、魔女秘藥，與封包先到魔女秘藥再到 Gem 的次序有差異。四張面板的 OK 均有實際滑鼠操作。原版畫面下方仍顯示 124，原版 Lobby `SC25` 和 SQLite 都記錄 3,124，原版 HUD 顯示更新時點仍待釐清。[原版畫面、封包及存檔](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-original/q3/README.md)
 - 新版用同一 Lobby 的唯讀 `CS3` 及 Pong 確認此批回覆完整。等候期間依原回覆更新錢包和庫存，通知依原版佇列規則等收齊後才開始。暫緩真 Pong 的實跑已核對四筆真通知、3,124 Gem 及尚未開啟的 Record，放行後依原版順序顯示。新版再進任務和 Back 時實際送新一輪檢查，維持同一 Lobby 且沒有重發。[等候原回覆的畫面](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/native/42-lobby-records-awaiting-actual-pong.png) · [兩版四筆並排與封包](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-live/q3/README.md)
-- 同場另出現新挑戰與 `26:2` 可選獎品。實際選第一項後，固定 Flash 的 `CS52` 被此版 Ruby 路由到襲擊通知處理。畫面顯示領取提示，SQLite 沒有新增該卡，原暫存通知已被後續命令清除。待核對固定 Flash 和 Ruby 的選擇領獎命令版本，再驗拒絕、有效領取和重試。原版當次停在額外提示，同登入二次返回尚待驗。[原版選項及封包差異](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-original/q3/selectable-source-mismatch.json)
+
+### 新挑戰與可選角色卡
+
+- 「新挑戰」接續直接獎勵進入同一通知佇列，採用 `info_login.swf` 的標誌及既有大廳外框。新手及一般版本各用原始標誌。#2 的條件為 Lv3，按 OK 由客戶端確認，沒有領獎封包。參考 Ruffle 實跑可見完整面板，三處 OK 點擊及 Tab 未能關閉面板。新版按 ActionScript 定義提供本機確認。[原始處理](../../../app/client/src/view/scene/lobby/NoticePanel.as) · [原版畫面及封包](/workspace/shared/unlight-web-port/flash-parity/quest-record-choice-original/README.md)
+- Level 3 的 `26:2` 有 21 個按原始索引排列的角色卡。閉合選單在舞台 `(300,493)`、`160×18`。選擇時使用 `ulse22`，預覽翻牌使用 `ulse23`。未選擇時 OK 停用，瀏覽選項及預覽不寫入庫存。實際領取須先從當前已驗證 Lobby 收到 `SC54` 待領及配套 `SC71`，再送一次 `CS51(成就,索引)`。[畫面、佇列及音效](../../../source-login/lobby-achievement.js) · [Lobby 封包](../../../app/server/src/protocol/command/lobbycommand.rb)
+- 固定 Flash 選第一項後，實際送出 `CS52` 及 `CS37`。目前 Ruby 將前者路由為襲擊通知處理，原版畫面出現領取提示，但 SQLite 只清了待領，沒有新增卡。修正後 Ruby 在同一交易發卡並移除所選通知，提交後才發 `SC72`。新版收到與 `SC31` 卡片入庫事件相符的確認再顯示情報；無效索引保留待領，重複領取不再發卡。[原版指令差異](/workspace/shared/unlight-web-port/flash-parity/quest-lobby-record-original/q3/selectable-source-mismatch.json) · [Ruby 交易](../../../app/server/src/model/avatar.rb)
 
 ## 公告、事件資訊與聊天
 

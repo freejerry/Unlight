@@ -114,3 +114,110 @@
 #lobby-achievement-notice-ok:not(:disabled):active [data-button-state="over"] { visibility: hidden; }
 #lobby-achievement-notice-ok:not(:disabled):hover:not(:active) [data-button-state="over"],
 #lobby-achievement-notice-ok:not(:disabled):active [data-button-state="down"] { visibility: visible; }
+
+#lobby-achievement-notice-choice-container {
+  position: absolute;
+  z-index: 4;
+  font: 10px/1 Verdana, var(--interface-font), sans-serif;
+}
+
+#lobby-achievement-notice-choice {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #646464;
+  border-bottom-color: #343434;
+  border-radius: 5px;
+  padding: 0 24px 0 9px;
+  background: linear-gradient(#e7e7e7, #acaaaa 57%, #9d9b9a);
+  color: #111;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+#lobby-achievement-notice-choice::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  right: 20px;
+  border-left: 1px solid #585554;
+}
+
+#lobby-achievement-notice-choice::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  border: 3px solid transparent;
+  border-top: 4px solid #151515;
+}
+
+#lobby-achievement-notice-choice[aria-expanded="true"] { border-color: #a32623; }
+#lobby-achievement-notice-choice:disabled { cursor: default; }
+#lobby-achievement-notice-choice:focus { outline: none; }
+#lobby-achievement-notice-choice[data-keyboard]:focus-visible { outline: 1px solid #8c302c; outline-offset: -1px; }
+
+#lobby-achievement-notice-choice-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  max-height: calc(var(--achievement-choice-rows) * 21px);
+  overflow: auto;
+  scrollbar-gutter: stable;
+  background: #fff;
+  color: #111;
+  list-style: none;
+  box-shadow: 0 1px 2px #0008;
+}
+
+#lobby-achievement-notice-choice-list [role="option"] {
+  box-sizing: border-box;
+  height: 21px;
+  padding: 0 9px;
+  line-height: 21px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+#lobby-achievement-notice-choice-list [aria-selected="true"] { background: #ffd0cf; }
+#lobby-achievement-notice-choice-list [data-active="true"] { background: #ffb2b2; }
+#lobby-achievement-notice-choice-list::-webkit-scrollbar { width: 15px; background: #ddd; }
+#lobby-achievement-notice-choice-list::-webkit-scrollbar-track { border: 1px solid #b5b8ba; background: #eee; }
+#lobby-achievement-notice-choice-list::-webkit-scrollbar-thumb { border: 1px solid #8a8c8e; background: linear-gradient(#fff, #d2d2d2); }
+#lobby-achievement-notice-choice-list::-webkit-scrollbar-button:single-button {
+  height: 16px;
+  border: 1px solid #8a8c8e;
+  background-color: #eee;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 6px 4px;
+}
+#lobby-achievement-notice-choice-list::-webkit-scrollbar-button:decrement {
+  background-image: conic-gradient(from 150deg at 50% 0, #222 60deg, transparent 0);
+}
+#lobby-achievement-notice-choice-list::-webkit-scrollbar-button:increment {
+  background-image: conic-gradient(from 330deg at 50% 100%, #222 60deg, transparent 0);
+}
+
+#lobby-achievement-notice-status {
+  z-index: 3;
+  left: 220px;
+  top: 459px;
+  width: 310px;
+  margin: 0;
+  padding: 4px 6px;
+  background: #efe8e0;
+  color: #5d251e;
+  font: 13px/1.3 var(--interface-font), sans-serif;
+  text-align: center;
+}

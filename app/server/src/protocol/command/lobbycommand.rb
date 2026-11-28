@@ -1046,6 +1046,23 @@ module Unlight
         ]
        ],
 
+       [:sc_notice_selectable_offer,
+        [
+         ["achievement_id", :int, 4],
+         ["options", :String, 0],
+        ]
+       ],
+
+       [:sc_notice_selectable_result,
+        [
+         ["achievement_id", :int, 4],
+         ["selection_index", :int, 4],
+         ["result_code", :char, 1],
+         ["inventory_id", :int, 4],
+         ["card_id", :int, 4],
+        ]
+       ],
+
       ]
   end
 end

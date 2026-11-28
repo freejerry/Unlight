@@ -67,6 +67,9 @@ SOURCE_LOGIN_SOUND_EFFECTS = {
     "public/sound/se/ulse01.mp3": "2f67cac2f64df9a516984f9d2d579b2e3da26e58ae8545001ce0a34bdcfa6b51",
     "public/sound/se/ulse02.mp3": "a18e72cdaab4ba75d76dedbbe32ff08e460a45b5a28120da63e977c7dc5fe195",
 }
+SOURCE_LOBBY_SOUND_EFFECTS = {
+    "public/sound/se/ulse22.mp3": "0a5aae30818ce9068889d9f3ee690cf5bbbc87ba41a8a8eb70020b7b2f17ee76",
+}
 SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse06.mp3": "b0655a05ef946fe47671a2bbf67768545ed02a59f084c93d3f951773a57abde0",
     "public/sound/se/ulse07.mp3": "752ae4ec5ab51843bbf311d149c451d2fefb1b04f968e58cef232da0c43ab1f7",
@@ -634,7 +637,7 @@ def create_app(
                 if path is None:
                     raise ValueError(f"--source-login-wasm requires the pinned {filename} in the original --assets mirror")
                 app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
-            for filename, digest in (SOURCE_SCENE_TRACKS | SOURCE_QUEST_BATTLE_SOUND_EFFECTS).items():
+            for filename, digest in (SOURCE_SCENE_TRACKS | SOURCE_LOBBY_SOUND_EFFECTS | SOURCE_QUEST_BATTLE_SOUND_EFFECTS).items():
                 if path := pinned_native_asset(assets, filename, digest):
                     app.router.add_get(f"/{filename}", serve_file(path, {"Content-Type": "audio/mpeg"}))
             for target, (filename, digest, decode, content_type) in SOURCE_SCENE_ART.items():

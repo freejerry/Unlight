@@ -86,7 +86,7 @@ async function loadNews(view, signal) {
   return false;
 }
 
-export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest }) {
+export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -105,7 +105,12 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     signal,
     returnFocus: focus,
     onFlip: () => playQuestBattleEffect('flip', signal),
+    onChoice: () => playQuestBattleEffect('lobby-choice', signal),
     onAcknowledge: receipt => session.acknowledgeLobbyAchievement(receipt),
+    getSelectableOptions: receipt => session.getLobbyAchievementOptions(receipt),
+    getSelectableState: receipt => session.getLobbyAchievementRewardState(receipt),
+    onClaimSelectable: (receipt, index, options) => session.claimLobbyAchievementReward(receipt, index, options),
+    onSelectableClaimed: details => onSelectableClaimed?.(details, signal),
     onIdle: presentNotices,
   });
 
@@ -156,7 +161,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     if (document.activeElement === title) focus.focus({ preventScroll: true });
     session.refreshLobbyAvatar?.();
     session.subscribeLobbyAchievementEvents(event => {
-      if (event.kind !== 'achievement' && event.kind !== 'new-achievement') return;
+      if (event.kind !== 'achievement' && event.kind !== 'new-achievement' && event.kind !== 'selectable-achievement') return;
       waitingNotices.push(event);
       presentNotices();
     }, { signal });
