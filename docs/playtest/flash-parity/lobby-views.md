@@ -55,6 +55,7 @@
 - `Serial CodeInput` 面板 `(280,235) 245×245`，繁中載入普通序號、序號加密碼、Infection。普通 20 字、Infection 15 字英數與連字號，密碼版兩欄各至多 12 位數。非空提交交給對應 Lobby 命令、清空、關閉。伺服器才決定接受、拒絕、獎品及限制。關閉恢復 TopView。 [SerialInputPanel.as](../../../app/client/src/view/scene/lobby/SerialInputPanel.as#L183) · [SerialInputPanel.as](../../../app/client/src/view/scene/lobby/SerialInputPanel.as#L455) · [LobbyCtrl.as](../../../app/client/src/controller/LobbyCtrl.as#L719) · [Lobby Ruby controller](../../../app/server/src/controller/lobby_controller.rb#L389)
 - 好友 `friend/btn_f_list.swf → friend/friendlist.swf`，`x125,y−120→150`、0.3s Quad.easeOut，關閉 0.15s sine-out。好友、申請待處理、封鎖、搜尋四 tab，搜尋停刷新且須驗名稱最短限制，等回覆暫停輸入。Data 搜尋、Lobby 更新／申請／確認／刪除，5 分鐘檢查、限流後延 3s 更新，關閉停 timer。寄任務是另一個僅開好友 tab 的模式。不能以本機假結果代替權限、回覆或失敗提示。 [FriendListButton.as](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L250) · [FriendListView.as](../../../app/client/src/view/FriendListView.as#L398) · [FriendListContainer.as](../../../app/client/src/view/scene/common/FriendListContainer.as#L148) · [Lobby Ruby controller](../../../app/server/src/controller/lobby_controller.rb#L235)
 - 右側「紀錄」實為 `AchievementListView`，`achievement/achievement.swf`，`x52,y−120→100`、0.3s Quad.easeOut，關閉 0.15s sine-out。顯示真正成就狀態及條件，開啟會刷新本機列表。另有 `LogListView`（`x152,y150`，須 `activate`）及 AvatarDetailBase 的 `log` 符號被隱藏。與右側成就、原生獨立戰鬥紀錄皆為不同入口。 [AchievementListButton.as](../../../app/client/src/view/image/common/AchievementListButton.as#L51) · [AchievementListView.as](../../../app/client/src/view/AchievementListView.as#L45) · [AchievementListContainer.as](../../../app/client/src/view/scene/common/AchievementListContainer.as#L255) · [LogListView.as](../../../app/client/src/view/LogListView.as#L63)
+- 原版每次大廳進場序列完成後，另以同一 Lobby 連線送 `CS35(true)` 檢查已達成的成就與獎勵通知。大蝙蝠之群的繁中試跑在 Back 後觸發等級和魔女山谷成就，新增 7 張卡 10006 及 3000 Gem。寶箱至通關的三次確認已有個別 SQLite 快照。新版大廳成就檢查、獎勵通知、卡冊與角色資料交接待移植及驗收。[原版進場順序](../../../app/client/src/view/LobbyView.as#L319) · [Ruby 成就檢查](../../../app/server/src/controller/lobby_controller.rb#L351) · [原版成就實跑](/workspace/shared/unlight-web-port/flash-parity/quest-boss-treasure-original/README.md)
 
 ## 公告、事件資訊與聊天
 
@@ -63,7 +64,7 @@
 
 ## 原生現況與首個安全交付
 
-- `source-login` 已接 Auth／Lobby／Data／GlobalChat、登入後原玫瑰轉場、創角／指引、實際大廳角色與 AP／免費對戰，並有自動公告。大廳唯一遊戲操作為任務入口讀既有 Data snapshot 的 dialog。尚未是原版 QuestView 世界地圖。其他入口只繪原始圖樣及 hover。原生獨立 `web-client` 中的任務／戰鬥／牌組另有會話資料，尚未接進此入口。 [登入路由](../../../source-login/login.js#L119) · [大廳入口](../../../source-login/lobby.js#L38) · [目前任務 dialog](../../../source-login/lobby.js#L326)
+- `source-login` 已接 Auth／Lobby／Data／GlobalChat、原版玫瑰轉場、創角／指引、大廳角色與 AP／免費對戰。設定與任務接入固定舞台實際遊戲流程。任務沿原世界地圖到兩戰、寶箱及首區解鎖。其餘大廳入口依原始圖與 hover 保留，逐項接通及驗收。[登入路由](../../../source-login/login.js#L119) · [大廳入口](../../../source-login/lobby.js#L38) · [任務驗收](quest-pve.md)
 - 第一項建議接通 `btn_h → 選項設定 → Back`。保留同一登入、原始進退場與 Back 後焦點。以 `SoundPanel` 的 0–100、預設50 先提供現有 BGM／SE 真實音量，對應同源本機設定與拒絕寫入時的預設。實測 click／alert／大廳 BGM 音量、0 靜音、鍵盤與刷新及 Back。同一首大廳音樂在進出設定保持既有播放位置。VOICE、工具提示及箭頭的各消費端驗通再顯示控制。若同輪要求完整入口協議，先獨立驗原版 Lobby AvatarUpdateCheck 回覆。不以設定切場假造同步。 [OptionView.as](../../../app/client/src/view/OptionView.as#L149) · [SoundPanel.as](../../../app/client/src/view/image/option/SoundPanel.as#L53) · [Option.as](../../../app/client/src/model/Option.as#L32) · [目前原生音源](../../../source-login/bgm.js#L1)
 ## 牌組內的兩個獨立流程
 

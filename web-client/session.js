@@ -86,6 +86,8 @@ const QUEST_ACTION_CARD_COUNT_REPLY = 32;
 const MAX_QUEST_ROWS = 127; // The original Data inventory count is a signed byte.
 const QUEST_LAND_SLOTS = 15;
 const QUEST_GEM_TREASURE_TYPE = 5; // Original TG_GEM.
+const QUEST_CHARACTER_TREASURE_TYPE = 1; // Original TG_CHARA_CARD.
+const QUEST_BOSS_KIND = 2; // Original QT_BOSS.
 const MAX_QUEST_MAP_ID = 35; // Ordinary Traditional Chinese quest maps.
 const LAST_ORDINARY_SEARCH_MAP = 36;
 const FIRST_TUTORIAL_SEARCH_MAP = 2009;
@@ -1183,11 +1185,11 @@ async function readQuestRoute(questId, signal) {
   if (!response.ok) return null;
   const { quests } = await response.json();
   if (signal.aborted || !Array.isArray(quests) || quests.length !== 1 || quests[0].id !== questId) return null;
-  const { positions, mapId } = quests[0];
+  const { positions, mapId, kind, mapClearTarget, storyNo } = quests[0];
   const ordinaryMap = Number.isInteger(mapId) && mapId >= 1 && mapId <= MAX_QUEST_MAP_ID;
   if (!Array.isArray(positions) || positions.length > QUEST_LAND_SLOTS) return null;
   const nodes = new Map();
-  for (const { slot, id, name, caption, stage, nextMask, enemyId, emptyTerrain, fixedGemTreasure, nextSlots } of positions) {
+  for (const { slot, id, name, caption, stage, nextMask, enemyId, emptyTerrain, fixedGemTreasure, fixedCharacterTreasure, nextSlots } of positions) {
     if (!validQuestSlot(slot) || nodes.has(slot) || !validQuestCardId(id) || typeof name !== 'string'
         || typeof caption !== 'string' || !Array.isArray(nextSlots) || nextSlots.length > 3
         || new Set(nextSlots).size !== nextSlots.length || nextSlots.some((next) => !validQuestSlot(next)
@@ -1198,7 +1200,10 @@ async function readQuestRoute(questId, signal) {
       nextMask: Number.isInteger(nextMask) && nextMask >= 0 && nextMask <= 7 ? nextMask : null,
       emptyTerrain: ordinaryMap && emptyTerrain === true && enemyId === 0,
       fixedGemTreasure: ordinaryMap && emptyTerrain === false && enemyId === 0
-        ? verifiedFixedGemTreasure(fixedGemTreasure) : null,
+        ? verifiedFixedTreasure(fixedGemTreasure, QUEST_GEM_TREASURE_TYPE) : null,
+      fixedCharacterTreasure: ordinaryMap && storyNo === 0 && nextMask === 0 && validQuestCardId(enemyId)
+        ? verifiedFixedTreasure(fixedCharacterTreasure, QUEST_CHARACTER_TREASURE_TYPE) : null,
+      mapId, questKind: kind, mapClearTarget,
       nextSlots,
     });
   }
@@ -1206,12 +1211,24 @@ async function readQuestRoute(questId, signal) {
   return nodes;
 }
 
-function verifiedFixedGemTreasure(treasure) {
+function verifiedFixedTreasure(treasure, expectedType) {
   if (!treasure || typeof treasure !== 'object') return null;
   const { treasureId, type, slotType, value } = treasure;
-  if (!validQuestCardId(treasureId) || type !== QUEST_GEM_TREASURE_TYPE || !validQuestCardId(value)
+  if (!validQuestCardId(treasureId) || type !== expectedType || !validQuestCardId(value)
       || !Number.isInteger(slotType) || slotType < 0 || slotType > 0x7fffffff) return null;
   return { treasureId, type, slotType, value };
+}
+
+function expectedTreasureMapUpdate(land, map) {
+  const { mapId, questKind, mapClearTarget } = land;
+  const { questFlag, questClearNum } = map;
+  if (!Number.isInteger(questFlag) || !Number.isInteger(questClearNum) || !Number.isInteger(questKind)) return null;
+  if (questFlag + 1 !== mapId) return { questFlag: null, questClearNum: null };
+  if (questKind === QUEST_BOSS_KIND) {
+    if (!Number.isInteger(mapClearTarget) || mapClearTarget < 0) return null;
+    if (questClearNum >= mapClearTarget) return { questFlag: mapId, questClearNum: 0 };
+  }
+  return { questFlag: null, questClearNum: questClearNum + 1 };
 }
 
 function sameValues(first, second) {
@@ -1235,11 +1252,12 @@ function questSceneAdventureSnapshot(current, operation) {
 }
 
 function freezeQuestReceipt(receipt) {
-  const { avatar, map, cards, deltas, deckRestored } = receipt;
+  const { avatar, map, cards, deltas, deckRestored, treasure } = receipt;
   return Object.freeze({
     ...receipt, avatar: Object.freeze(avatar), map: Object.freeze(map),
     cards: Object.freeze(cards.map((card) => Object.freeze({ ...card }))), deltas: Object.freeze(deltas),
     deckRestored: deckRestored && Object.freeze(deckRestored),
+    ...(treasure ? { treasure: Object.freeze({ ...treasure, card: Object.freeze({ ...treasure.card }) }) } : {}),
   });
 }
 
@@ -1307,6 +1325,12 @@ function questRoster(cardIds, damage) {
 }
 
 function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, encounter, run, applySettlement, onStateChange, continuation) {
+  const land = continuation && run.positions?.get(slot);
+  const fixedCharacterTreasure = land?.fixedCharacterTreasure;
+  const treasureMap = fixedCharacterTreasure ? expectedTreasureMapUpdate(land, continuation.mapBefore) : null;
+  let treasureStage = 'progress';
+  let treasureCard;
+  let treasure;
   let phase = 'encounter';
   let turn = null;
   let startDistance = null;
@@ -1908,6 +1932,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     return hasNextLand() && duelFinish?.result === 0 && !duelFinish.bonus;
   }
 
+  function expectsFixedCharacterTreasure() {
+    return fixedCharacterTreasure && duelFinish?.result === 0 && !duelFinish.bonus;
+  }
+
   function confirmLandProgress() {
     if (landFence) return;
     const signal = catalogRequests.signal;
@@ -1957,7 +1985,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
   function receiveSettlement(reply) {
     if (settlement || outcomeState === 'uncertain') return;
     if (reply.command === QUEST_DUEL_FINISH_REPLY) {
-      if (duelFinish && hasNextLand()) {
+      if (duelFinish && (hasNextLand() || fixedCharacterTreasure)) {
         const duplicate = readQuestDuelFinishReply(reply, { awards: true });
         if (Object.entries(duplicate).some(([field, value]) => outcomeDuel[field] !== value)) failQuestOutcome();
       }
@@ -1978,6 +2006,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       case QUEST_DELETED_REPLY:
         if (readQuestDeletedReply(reply) === inventoryId) {
           if (onStateChange && (!duelFinish || outcomeState === 'land-cleared')) return failQuestOutcome();
+          if (expectsFixedCharacterTreasure()) {
+            if (treasureStage !== 'delete') return failQuestOutcome();
+            treasureStage = 'finish';
+          }
           questDeleted = true;
         }
         break;
@@ -1988,6 +2020,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (onStateChange && (!duelFinish || !questDeleted || finish.result !== (duelFinish.result === 0 ? 0 : 1))) {
           return failQuestOutcome();
         }
+        if (expectsFixedCharacterTreasure() && treasureStage !== 'finish') return failQuestOutcome();
         if (finish.result !== 0 && finish.result !== 1) return;
         questFinish ??= finish;
         if (exchange) {
@@ -2004,6 +2037,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         if (hasNextLand() && (!duelFinish || (expectsLandContinuation() && !expected))) {
           return failQuestOutcome();
         }
+        if (fixedCharacterTreasure && !duelFinish) return failQuestOutcome();
+        if (expectsFixedCharacterTreasure()) {
+          if (!expected || treasureStage !== 'progress') return failQuestOutcome();
+          treasureStage = 'award';
+        }
         if (expected) {
           progress ??= update.progress;
           if (!expectsLandContinuation()) run.progress = progress;
@@ -2013,7 +2051,14 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       case QUEST_DECK_STATE_REPLY: {
         const update = readQuestDeckStateReply(reply);
         if (update.deckIndex !== deckIndex) break;
-        if (hasNextLand() && !duelFinish) return failQuestOutcome();
+        if ((hasNextLand() || fixedCharacterTreasure) && !duelFinish) return failQuestOutcome();
+        if (expectsFixedCharacterTreasure()) {
+          if (update.status !== QUEST_IN_PROGRESS || update.damage.some((damage) => damage < 0)) return failQuestOutcome();
+          if (treasureStage === 'damage') treasureStage = 'reset';
+          else if (treasureStage === 'reset' && treasureMap && update.damage.every((damage) => damage === 0)) {
+            treasureStage = treasureMap.questClearNum === null ? 'delete' : 'clear-count';
+          } else return failQuestOutcome();
+        }
         if (expectsLandContinuation() && !questDeleted && !questFinish) {
           if (progress === null || update.status !== QUEST_IN_PROGRESS || update.damage.some((damage) => damage < 0)
               || (arrivedDamage && !sameValues(arrivedDamage, update.damage))) return failQuestOutcome();
@@ -2031,7 +2076,25 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
       case QUEST_CHARACTER_AWARD_REPLY: {
         const card = readQuestCharacterAwardReply(reply);
+        if (expectsFixedCharacterTreasure()) {
+          if (awards.has(card.inventoryId) || continuation.knowsCard(card.inventoryId) || awards.size >= MAX_QUEST_ROWS) {
+            return failQuestOutcome();
+          }
+          if (card.cardId === fixedCharacterTreasure.value && ['progress', 'award', 'treasure'].includes(treasureStage)) {
+            if (treasureStage !== 'award') return failQuestOutcome();
+            treasureCard = card;
+            treasureStage = 'treasure';
+          }
+        }
         if (awards.size < MAX_QUEST_ROWS && !awards.has(card.inventoryId)) awards.set(card.inventoryId, card);
+        break;
+      }
+      case QUEST_TREASURE_REPLY: {
+        const { type, slotType, value } = readQuestTreasureReply(reply);
+        if (!expectsFixedCharacterTreasure() || treasureStage !== 'treasure' || type !== fixedCharacterTreasure.type
+            || slotType !== fixedCharacterTreasure.slotType || value !== fixedCharacterTreasure.value) return failQuestOutcome();
+        treasure = { ...fixedCharacterTreasure, card: treasureCard };
+        treasureStage = 'damage';
         break;
       }
       case QUEST_ENERGY_REPLY:
@@ -2039,6 +2102,11 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
         break;
       default: {
         const { field, value } = readQuestSettlementValueReply(reply);
+        if (expectsFixedCharacterTreasure() && Object.hasOwn(settlementMap, field)) {
+          const expectedStage = field === 'questClearNum' ? 'clear-count' : 'map-flag';
+          if (treasureStage !== expectedStage || treasureMap?.[field] !== value) return failQuestOutcome();
+          treasureStage = field === 'questClearNum' && treasureMap.questFlag !== null ? 'map-flag' : 'delete';
+        }
         const group = Object.hasOwn(settlementAvatar, field) ? settlementAvatar : settlementMap;
         group[field] = value;
         break;
@@ -2047,7 +2115,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     if (questDeleted && questFinish) {
       settlement = applySettlement({
         ...questFinish, questId, avatar: { ...settlementAvatar }, map: { ...settlementMap, progress },
-        cards: [...awards.values()],
+        cards: [...awards.values()], ...(treasure ? { treasure } : {}),
       });
       if (onStateChange) {
         clearTimeout(outcomeDeadline);
@@ -2150,6 +2218,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     ...QUEST_HAND_EFFECT_REPLIES, QUEST_CHARA_CHANGE_REPLY, QUEST_CHARA_TRANSFORM_REPLY, ...QUEST_ROSTER_HP_REPLIES,
     ...(onStateChange ? [QUEST_MOVE_SUBMITTED_REPLY, QUEST_ATTACK_SUBMITTED_REPLY, QUEST_DEFENCE_SUBMITTED_REPLY,
       QUEST_POINT_UPDATE_REPLY] : []),
+    ...(fixedCharacterTreasure ? [QUEST_TREASURE_REPLY] : []),
   ];
   function receiveReply(reply) {
     if (phase === 'closed') return;
@@ -2157,7 +2226,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
     try {
       if (sceneCombat?.nextAttackPoints && reply.command !== QUEST_POINT_UPDATE_REPLY
           && reply.command !== QUEST_ATTACK_PHASE_START_REPLY) sceneCombat.nextAttackPoints = null;
-      if (QUEST_SETTLEMENT_REPLIES.includes(reply.command)) {
+      if (QUEST_SETTLEMENT_REPLIES.includes(reply.command) || reply.command === QUEST_TREASURE_REPLY) {
         const beforeOutcome = outcomeState;
         const beforeReceipt = outcomeReceipt;
         receiveSettlement(reply);
@@ -2165,7 +2234,7 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
           || (sceneCombat?.exchange === exchange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_FINISH_REPLY));
         return;
       }
-      if (expectsLandContinuation() && reply.command === QUEST_ERROR_REPLY) {
+      if ((expectsLandContinuation() || expectsFixedCharacterTreasure()) && reply.command === QUEST_ERROR_REPLY) {
         readQuestErrorReply(reply);
         failQuestOutcome();
         return;
@@ -2306,8 +2375,10 @@ function observeQuestBattle(socket, { inventoryId, questId, deckIndex }, slot, e
       }
     } catch {
       if (onStateChange && (reply.command === QUEST_DUEL_FINISH_REPLY || reply.command === QUEST_DELETED_REPLY
-          || reply.command === QUEST_FINISH_REPLY || (hasNextLand() && (reply.command === QUEST_PROGRESS_REPLY
+          || reply.command === QUEST_FINISH_REPLY || ((hasNextLand() || fixedCharacterTreasure) && (reply.command === QUEST_PROGRESS_REPLY
             || reply.command === QUEST_DECK_STATE_REPLY || reply.command === QUEST_ERROR_REPLY)))) failQuestOutcome();
+      else if (fixedCharacterTreasure && [QUEST_CHARACTER_AWARD_REPLY, QUEST_TREASURE_REPLY, QUEST_MAP_FLAG_REPLY,
+        QUEST_MAP_CLEAR_COUNT_REPLY].includes(reply.command)) failQuestOutcome();
       else uncertain();
     } finally {
       publishBattlePhase(combatChanged);
@@ -3063,6 +3134,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     const { selected, state: previousState, battle: previousBattle } = current;
     return runQuestSceneOperation(scene, 'land', signal, async (socket, questSignal) => {
       const priorRun = current.run;
+      const earlierAwards = scene.lastOutcome?.receipt?.cards ?? [];
       let run = priorRun;
       let firstLand;
       if (continuing) {
@@ -3106,6 +3178,10 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
           }, {
             fence: (signal) => fenceQuestSceneLand(scene, signal),
             reconcile: (receipt) => reconcileSceneLandProgress(scene, current, receipt),
+            mapBefore: { questFlag: questData.questFlag, questClearNum: questData.questClearNum },
+            knowsCard: (id) => earlierAwards.some(({ inventoryId }) => inventoryId === id)
+              || initialData?.deckCollection?.binder.some(({ inventoryId }) => inventoryId === id)
+              || initialData?.deckChoices?.some(({ cards }) => cards.some(({ inventoryId }) => inventoryId === id)),
           });
           void previousBattle?.stop('closed');
         }, {

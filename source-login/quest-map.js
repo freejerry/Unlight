@@ -3,6 +3,7 @@ import { playBackClick } from './bgm.js';
 import { getPreferences } from './preferences.js';
 import { renderCharacterCard } from './character-card.js';
 import { mountQuestBattleEntry, prepareQuestBattleStage } from './quest-battle-entry.js';
+import { mountQuestTreasurePanel } from './quest-treasure-panel.js';
 import {
   DEFAULT_QUEST_SEARCH_TIME, QUEST_SEARCH_TIMES, ordinaryQuestProgressMap, ordinaryQuestRegions,
   tutorialQuestProgressMap, tutorialQuestRegion,
@@ -617,7 +618,13 @@ function setupQuestDetails(view, {
             const continuing = settlement.state === 'land-cleared' && current().adventure?.state === 'between-lands'
               && current().adventure.inventoryId === settlement.inventoryId;
             if (!continuing && !settlement.quest) return false;
-            const assets = continuing ? null : await settlementArt;
+            const award = settlement.receipt?.treasure;
+            const treasure = settlement.quest?.result === 0 && award?.card?.cardId === award?.value &&
+              Number.isInteger(award?.value) ? award : null;
+            const [assets, treasureCards] = await Promise.all([
+              continuing ? null : settlementArt,
+              treasure ? loadCards([treasure.value]) : null,
+            ]);
             if (battleSignal.aborted || activeBattle !== lifetime) return false;
             lifetime.abort();
             activeBattle = undefined;
@@ -636,10 +643,25 @@ function setupQuestDetails(view, {
             pawn.replaceChildren();
             pawnCard = pawnOrigin = undefined;
             close(false);
-            showQuestSettlement(view, settlement, assets, signal, () => {
-              board.inert = false;
-              get('#quest-map-back').focus({ preventScroll: true });
-            });
+            let clearShown = false;
+            const showClear = () => {
+              if (signal.aborted || clearShown) return;
+              clearShown = true;
+              showQuestSettlement(view, settlement, assets, signal, () => {
+                board.inert = false;
+                get('#quest-map-back').focus({ preventScroll: true });
+              });
+            };
+            if (!treasure) showClear();
+            else {
+              const panel = mountQuestTreasurePanel(view, { treasure, card: treasureCards.get(treasure.value), assets, signal,
+                onConfirm: showClear, onSound: onBattleSound });
+              void panel.ready.catch(() => false).then(ready => {
+                if (ready) return;
+                panel.dispose();
+                showClear();
+              });
+            }
             return true;
           },
         });

@@ -35,7 +35,7 @@
 | [標題、帳號、建角、教學與大廳](flash-parity/shell.md) | **已實跑**標題、註冊及接續登入、驗證失敗、玫瑰轉場、建角資料、大廳素材與懸停。**部分**新手引導、公告及共同控制。 | 驗收原版教學播放、進度保存及返回大廳。 |
 | [共用渲染、時間軸、字型與音訊](flash-parity/renderer.md) | **已實跑**標題面板透明邊角、分數像素比切片與登入 BGM 交接。**部分**其餘共用面板與場景音訊。 | 依來源校正完成視窗的字重、焦點框和模糊遮罩，接續建角曲的退場。 |
 | [大廳功能、選項與社交](flash-parity/lobby-views.md) | **已實跑**設定、音量與偏好保存、大廳原連線刷新角色及 AP 恢復。**部分**大廳其他入口及共用提示。 | 驗收 AP 的滑入倒數與到期刷新。VOICE 和箭頭偏好在對應場景驗收。[設定對照與差異](flash-parity/options-reference.md) |
-| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群第一戰勝利後接續第二格。**部分**戰鬥 HUD 與寶箱。 | 接續實機和局、第二格固定寶箱及最終通關、換角和其他地形。 |
+| [任務、探索、PvE 與報酬](flash-parity/quest-pve.md) | **已實跑**地圖、搜尋、任務詳情、牌組切換、開場、攻守互換、次回合、落日大蝙蝠勝利與敗北，以及大蝙蝠之群兩戰、固定蝙蝠卡寶箱與首區解鎖。**部分**戰鬥 HUD 與其他獎勵。 | 接續實機和局、空地與 Gem 寶物、換角及其他地形。 |
 | [多人對戰、旁觀與襲擊](flash-parity/multiplayer.md) | **待接通或驗證**原版選頻道、房間及襲擊服務。 | 以隔離服務驗證原版頻道及真實對手，再接遊戲流程。 |
 | [環境、測例和截圖來源](flash-parity/qa.md) | **已實跑**既有原版與固定舞台測例。截圖記錄區分實際入口及版本。 | 讓新增流程都有同次對照的操作證據與回歸檢查。 |
 
@@ -118,3 +118,7 @@
 - 原版與新版實跑大蝙蝠之群，第一戰勝利後一次 OK 回到原任務詳情，再由同一 Quest 進到第二格。兩版實測都確認 3 點損傷、同一牌組及持有 ID。兩戰皆用舞台 11 的原版戰鬥曲，中間返回任務曲。新版第二戰進入 Move，生命為 4/7。[同一任務地圖並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q3-retained-detail-comparison.png) · [第二戰開場並排](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/q3-second-opening-comparison.png) · [逐項來源](flash-parity/quest-pve.md#非終點獲勝後接續下一格)
 - 完整動畫的升級案例在同一詳情驗到原 Lobby 的實際 AP 回覆及 AP 6/6。較早的 Lobby 回覆不會蓋掉較新的 Quest AP，既有 Lobby 刷新節奏也已回歸。[升級後畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-03-same-detail-after-ok.png) · [原版 AP 封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/root-full-motion/root-intermediate-wire.json)
 - 新版真實敗北後依序顯示 Lose 及任務失敗，SQLite 核對獎勵、原持有列歸檔及牌組解鎖。原版另以完整 18 回合在 Ruby 模型中判和，瀏覽器和局待驗。[敗北畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-07-one-hp-defeat.png) · [任務失敗畫面](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-08-quest-failed.png) · [真實封包](/workspace/shared/unlight-web-port/flash-parity/quest-next-land-live/qa-native-next-land-wire.json) · [原版模型](/workspace/shared/unlight-web-port/flash-parity/quest-outcome-model/README.md)
+
+### 末格蝙蝠卡寶箱與隱者之道
+
+- 原版與新版均實際完成兩場勝利，依序確認戰鬥結果、蝙蝠卡及任務完成。兩版都沿用原 Quest 連線，資料庫確認只增加一張蝙蝠卡、一次通關、牌組解鎖及區域旗標 1／計數 0。新版另外暫緩真 `SC25`，證明實體 `SC13` 先入庫時，畫面維持原結果，直到其餘結算確認。翻牌使用原圖、時序及 `ulse23.mp3`，最後 Back 正常關閉任務。[蝙蝠卡寶箱並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/treasure-comparison.png) · [任務完成並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/quest-clear-comparison.png) · [新區域並排](/workspace/shared/unlight-web-port/flash-parity/quest-treasure-live/hermit-road-comparison.png) · [逐項規格](flash-parity/quest-pve.md#末格蝙蝠卡寶箱與區域解鎖)

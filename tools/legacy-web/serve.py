@@ -73,6 +73,7 @@ SOURCE_QUEST_BATTLE_SOUND_EFFECTS = {
     "public/sound/se/ulse12.mp3": "8310c5703786e71f0599fbf86aad4fdda663bda3095c9c03ba5574287d6f07b1",
     "public/sound/se/ulse15.mp3": "d97f878eaa31eee16dd00f478d1889da16b662673f422d4a0e7e1c2f2e796203",
     "public/sound/se/ulse16.mp3": "493b8b0ed2c64cff4fbf401f44d4fce971518e5a23106267ec4edfdbace7bea3",
+    "public/sound/se/ulse23.mp3": "35144255330e5f81d9445b831f4df7e0ee769191eaed509e6c7d53c5a594a430",
     "public/sound/se/ulse28.mp3": "6345735fa4f8686ac3c1bd093e008bcbc5d6308bbf86539c7d055c42f3de0024",
     "public/sound/se/ulse29.mp3": "78623927f2591f3ff6fe5afac445e7e6c661f485b02638a7bb49f539d3c4052a",
 }
@@ -180,6 +181,10 @@ def native_quest_catalog():
         }
     treasure_types = {}
     fixed_gem_treasures = {}
+    fixed_character_treasures = {}
+    character_cards = {}
+    with suppress(OSError):
+        character_cards = native_quest_character_card_catalog()
     with suppress(OSError):
         with (SERVER_CSV / "ja/TreasureDatas.csv").open(encoding="utf-8-sig", newline="") as source:
             for row in DictReader(source):
@@ -191,12 +196,14 @@ def native_quest_catalog():
                     allocation, slot_type, value = (
                         int(row.get(key)) for key in ("allocation_type", "slot_type", "value")
                     )
-                    # Source TREASURE_ALLOC_TYPE_NONE and TG_GEM.
-                    if (allocation == 0 and treasure_type == 5 and 0 <= slot_type <= 0x7fffffff
-                            and 0 < value <= 0x7fffffff):
-                        fixed_gem_treasures[treasure_id] = {
-                            "treasureId": treasure_id, "type": treasure_type, "slotType": slot_type, "value": value,
-                        }
+                    if allocation != 0 or not (0 <= slot_type <= 0x7fffffff and 0 < value <= 0x7fffffff):
+                        continue
+                    fixed = {"treasureId": treasure_id, "type": treasure_type, "slotType": slot_type, "value": value}
+                    # Source TREASURE_ALLOC_TYPE_NONE, TG_CHARA_CARD and TG_GEM.
+                    if treasure_type == 1 and value in character_cards:
+                        fixed_character_treasures[treasure_id] = fixed
+                    elif treasure_type == 5:
+                        fixed_gem_treasures[treasure_id] = fixed
     land_rows = []
     with suppress(OSError):
         with (SERVER_CSV / "ja/QuestLands.csv").open(encoding="utf-8-sig", newline="") as source:
@@ -226,6 +233,8 @@ def native_quest_catalog():
                     contents["emptyTerrain"] = (enemy_id, treasure_id, event_id) == (0, 0, 0)
                     if enemy_id == 0 and event_id == 0 and treasure_id in fixed_gem_treasures:
                         contents["fixedGemTreasure"] = fixed_gem_treasures[treasure_id]
+                    if treasure_id in fixed_character_treasures:
+                        contents["fixedCharacterTreasure"] = fixed_character_treasures[treasure_id]
     quests = {}
     with (SERVER_CSV / "tcn/Quests.csv").open(encoding="utf-8-sig", newline="") as source:
         for row in DictReader(source):
@@ -261,11 +270,11 @@ def native_quest_catalog():
                     positions.append(position)
                 quests[quest_id] = {
                     "id": quest_id, "name": row["name"], "map": area.get("name", ""),
-                    "mapId": map_id,
+                    "mapId": map_id, "mapClearTarget": area.get("clearTarget"),
                     "caption": row["caption"] or "",
                     "ap": int(row["ap"]),
                     "difficulty": int(row["difficulty"]), "rarity": int(row["rarity"]),
-                    "kind": int(row["kind"]),
+                    "kind": int(row["kind"]), "storyNo": int(row["story_no"] or 0),
                     "lands": [lands[land_id] for land_id in land_ids if land_id > 0 and land_id in lands],
                     "firstLand": first_land,
                     "positions": positions,
@@ -614,7 +623,7 @@ def create_app(
                 "onboarding.js", "onboarding.css", "lobby.js", "lobby.css", "options.js", "options.css",
                 "quest-map.js", "quest-map.css", "quest-preview-data.js", "quest-battle-entry.js",
                 "quest-battle-move.js", "quest-battle-exchange.js", "quest-dice-roll.js", "quest-hit-effect.js",
-                "quest-battle-result.js",
+                "quest-battle-result.js", "quest-treasure-panel.js",
                 "character-card.js", "battle-card.js",
                 "lobby-avatar.js", "avatar-layer.js", "preferences.js", "avatar-catalog.json", "avatar-wardrobe/index.json",
             ):

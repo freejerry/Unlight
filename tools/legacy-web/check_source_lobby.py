@@ -226,6 +226,7 @@ def observe_session_codec(page, origin):
             : [13, 19].includes(reply.command) && body.byteLength === 10 ? [bytes.getInt32(2), bytes.getInt32(6)]
             : reply.command === 20 && body.byteLength === 7 ? Array.from({length: 5}, (_, n) => bytes.getInt8(2 + n))
             : reply.command === 24 && body.byteLength === 7 ? [bytes.getInt8(2), bytes.getInt32(3)]
+            : reply.command === 25 && body.byteLength === 11 ? [bytes.getInt8(2), bytes.getInt32(3), bytes.getInt32(7)]
             : reply.command === 128 && body.byteLength === 3 ? [bytes.getInt8(2)]
             : reply.command === 37 && body.byteLength >= 9 ? encounterFields(body)
             : reply.command === 40 && body.byteLength === 7 ? [...body.slice(2)]
@@ -1047,7 +1048,7 @@ def observe_quest_opening_audio(page):
       trace.openingEffects = [];
       HTMLMediaElement.prototype.play = function () {
         const file = this.src.split('/').at(-1);
-        if (!/^ulse(?:05_[ab]|06|07|08|09|10_f|12|28|29)\\.mp3$/.test(file)) return play.call(this);
+        if (!/^ulse(?:05_[ab]|06|07|08|09|10_f|12|23|28|29)\\.mp3$/.test(file)) return play.call(this);
         const view = document.getElementById('quest-map-battle');
         const phase = view?.dataset.exchangePhase || view?.dataset.phase;
         return play.call(this).then(() => { trace.openingEffects.push([file, phase]); });
@@ -1852,16 +1853,17 @@ def place_terminal_cards(page, battle, attack_type, player_attacks, *, reserve_a
     return actions, placed
 
 
-def play_terminal_combat(page, stage, directory, *, completion=24, defeat=False):
+def play_terminal_combat(page, stage, directory, *, completions=(24,), defeat=False):
     battle = page.locator("#quest-map-battle")
     done = battle.locator('button[data-combat-command="done"]')
     actions = []
+    completed_roles = sum(packet[0] == 51 for packet in read_movement_trace(page)["replies"])
     for turn in range(1, 4):
         actions.extend(check_terminal_movement(page, stage, directory, turn, retreat=defeat))
         move = [packet for packet in read_movement_trace(page)["replies"] if packet[0] == 48][-1]
         attack_type = 1 if move[3] == 1 else 2
         for index, following in ((1, 51), (2, 46)):
-            count = (turn - 1) * 2 + index
+            count = completed_roles + (turn - 1) * 2 + index
             page.wait_for_function("""count => window.qaQuestWire.sockets.at(-1).replies
               .filter(([command]) => command === 51).length === count""", arg=count, timeout=TIMEOUT)
             phase = [payload for payload in read_movement_trace(page)["replies"] if payload[0] == 51][-1]
@@ -1875,12 +1877,12 @@ def play_terminal_combat(page, stage, directory, *, completion=24, defeat=False)
             actions.extend(card_actions)
             capture(stage, directory, f"26-{turn}-{index}-terminal-{role}.png")
             command = 33 if player_attacks else 34
-            hold_movement_reply(page, command, done.click, before=[completion, following])
+            hold_movement_reply(page, command, done.click, before=[*completions, following])
             actions.append([command, "", ""])
             trace = read_movement_trace(page)
             last_reveal = [payload for payload in trace["replies"] if payload[0] == 55][-1]
             assert last_reveal[2] == placed, (last_reveal, placed)
-            if page.evaluate("window.qaQuestWire.actionHold.blocked") == completion:
+            if page.evaluate("window.qaQuestWire.actionHold.blocked") in completions:
                 return actions, trace, turn
             release_movement_reply(page)
     outcomes = [packet for packet in trace["replies"] if packet[0] in (51, 56, 73)]
@@ -2347,9 +2349,115 @@ def check_next_quest_land(page, stage, directory, database, quest, avatar_id, lo
     assert quest_inventory(database, avatar_id) == [quest[:2] + (2, quest[3], 2, 1, *damage)]
     assert quest_deck(database, avatar_id) == locked
     capture(stage, directory, "36-q3-original-second-move.png")
+    return trace
 
 
-def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land):
+def check_q3_final_treasure(page, stage, directory, database, quest, deck, before, cards_before, second_open, held):
+    inventory_id, quest_id = quest[:2]
+    final_replies = held["replies"][len(second_open["replies"]):]
+    (duel,) = [packet for packet in final_replies if packet[0] == 41]
+    assert duel[2] == 0 and duel[-1] == 0, f"Actual q3 final fight ended with {duel}"
+    assert page.evaluate("window.qaQuestWire.actionHold.blocked") == 25
+    pending = [packet for packet in final_replies if packet[0] in (19, 20, 22, 24, 25, 26, 28, 41)
+               or (packet[0] == 13 and packet[3] == 1004)]
+    assert [packet[0] for packet in pending] == [41, 19, 13], pending
+    assert pending[1] == [19, 10, inventory_id, 18]
+    _, _, card_inventory, card_id = pending[2]
+    assert card_inventory > 0 and card_id == 1004
+
+    battle = page.locator("#quest-map-battle")
+    result = battle.locator("#quest-battle-result")
+    duel_ok = result.locator("#quest-battle-result-ok")
+    treasure = page.locator("#quest-map-treasure")
+    clear = page.locator("#quest-map-settlement")
+    back = page.locator("#quest-map-back")
+    expect(battle).to_have_attribute("data-outcome-state", "awaiting-settlement")
+    expect(result).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    expect(duel_ok).to_be_disabled()
+    expect(treasure).to_have_count(0)
+    expect(clear).to_have_count(0)
+    expect(back).to_be_hidden()
+    expect(page.locator("#quest-map-view")).to_have_attribute("data-map-id", "1")
+    # The original service has committed the card even though the corresponding treasure reply is still held.
+    avatar_id = before[0]
+    assert cards_before | {(card_inventory, card_id)} <= owned_character_cards(database, avatar_id)
+    capture(stage, directory, "38-q3-awaiting-treasure-reply.png")
+
+    release_movement_reply(page)
+    expect(battle).to_have_attribute("data-outcome-state", "settled", timeout=TIMEOUT)
+    expect(duel_ok).to_be_enabled()
+    expect(treasure).to_have_count(0)
+    expect(clear).to_have_count(0)
+    trace = read_movement_trace(page)
+    awards = [(packet[2], packet[3]) for packet in trace["replies"] if packet[0] == 13]
+    assert len(awards) == len({physical for physical, _ in awards})
+    assert [(physical, awarded) for physical, awarded in awards if awarded == 1004] == [(card_inventory, card_id)]
+    after_cards = cards_before | set(awards)
+    assert owned_character_cards(database, avatar_id) == after_cards
+    suffix = [packet for packet in trace["replies"][len(held["replies"]):] if packet[0] in (20, 22, 24, 25, 26, 28)]
+    assert [packet[0] for packet in suffix] == [25, 20, 20, 28, 26, 22, 24], suffix
+    assert suffix[0] == [25, 11, 1, 1, 1004]
+    assert suffix[1][:4] == [20, 7, 1, 2]
+    assert suffix[2:] == [[20, 7, 1, 2, 0, 0, 0], [28, 6, 0], [26, 6, 1], [22, 6, inventory_id], [24, 7, 0, inventory_id]]
+    assert query(database, """
+        SELECT quest_id, avatar_id, before_avatar_id, status, progress, deck_index, hp0, hp1, hp2
+        FROM avatar_quest_inventories WHERE id = ?
+    """, inventory_id) == [(quest_id, 0, avatar_id, 3, 18, 1, 0, 0, 0)]
+    log_sql = """SELECT quest_inventory_id, finish_point, result, chara_card_id_0
+                 FROM quest_clear_logs WHERE avatar_id = ?"""
+    assert query(database, log_sql, avatar_id) == [(inventory_id, 4, 0, STARTER_CARD)]
+    assert quest_deck(database, avatar_id) == deck
+    assert quest_inventory(database, avatar_id) == []
+    assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [(1, 0)]
+
+    page.emulate_media(reduced_motion="no-preference")
+    duel_ok.dblclick()
+    expect(treasure).to_be_visible(timeout=TIMEOUT)
+    treasure_ok = treasure.locator("#quest-map-treasure-ok")
+    expect(treasure_ok).to_be_disabled()
+    expect(treasure).to_have_attribute("data-state", "ready", timeout=TIMEOUT)
+    for field, value in (("treasure-id", 1004), ("type", 1), ("slot-type", 1), ("value", 1004),
+                         ("card-id", card_id), ("card-inventory-id", card_inventory)):
+        expect(treasure).to_have_attribute(f"data-{field}", str(value))
+    expect(treasure.locator("#quest-map-treasure-card")).to_be_visible()
+    expect(clear).to_have_count(0)
+    expect(result).to_have_count(0)
+    expect(treasure_ok).to_be_enabled()
+    expect(treasure_ok).to_be_focused()
+    page.wait_for_function("""() => window.qaQuestWire.sockets.at(-1).openingEffects
+      .filter(([file]) => file === 'ulse23.mp3').length === 1""", timeout=TIMEOUT)
+    capture(stage, directory, "39-q3-authentic-bat-treasure.png")
+    treasure_ok.click()
+    expect(treasure).to_have_count(0)
+    expect(clear).to_have_attribute("open", "")
+    expect(clear).to_have_attribute("data-result", "clear")
+    expect(clear).to_have_attribute("data-inventory-id", str(inventory_id))
+    capture(stage, directory, "40-q3-authentic-quest-clear.png")
+    clear.locator("#quest-map-settlement-ok").click()
+    expect(clear).to_be_hidden()
+    expect(back).to_be_enabled()
+    expect(back).to_be_focused()
+    view = page.locator("#quest-map-view")
+    expect(view).to_have_attribute("data-map-id", "2", timeout=TIMEOUT)
+    expect(view.locator('button[data-map-id="2"]')).to_have_accessible_name("隱者之道")
+    expect(view.locator('button[data-map-id="2"]')).to_be_enabled()
+    expect(page.locator("#quest-map-progress")).to_have_text("0/3")
+    expect(page.locator("#quest-map-capacity")).to_have_text("0/4")
+    expect(page.locator("#quest-map-deck-next")).to_be_enabled()
+    metrics = {packet[0]: packet[2] for packet in trace["replies"] if packet[0] in (7, 8, 10)}
+    profile = tuple(metrics.get(command, before[index]) for index, command in ((2, 8), (3, 10), (4, 7)))
+    assert query(database, "SELECT level, gems, exp FROM avatars WHERE id = ?", avatar_id) == [profile]
+    for field, value in zip(("level", "gems", "exp"), profile, strict=True):
+        expect(view.locator(f"#quest-map-{field}")).to_have_text(str(value))
+    after_modal = read_movement_trace(page)
+    assert [p for p in after_modal["sent"] if p[0] != 3] == [p for p in trace["sent"] if p[0] != 3]
+    assert sum(file == "ulse23.mp3" for file, _ in after_modal["openingEffects"]) == 1
+    assert query(database, log_sql, avatar_id) == [(inventory_id, 4, 0, STARTER_CARD)]
+    assert owned_character_cards(database, avatar_id) == after_cards
+    capture(stage, directory, "41-q3-authoritative-map-unlock.png")
+
+
+def check_preowned_quest(page, origin, database, name, password, directory, *, continue_land, complete=False):
     ((player_id, flags),) = player(database, name)
     (profile,) = avatar(database, player_id)
     avatar_id = profile[0]
@@ -2375,6 +2483,10 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
         assert [(row["slot"], row["id"], row["nextSlots"], row["stage"], row["eventNo"]) for row in source["positions"]] == [
             (1, 201, [4], 11, 0), (4, 210, [], 11, 0),
         ]
+        if complete:
+            assert source["positions"][1]["fixedCharacterTreasure"] == {
+                "treasureId": 1004, "type": 1, "slotType": 1, "value": 1004,
+            }
     row = page.locator(f'#quest-map-inventory > li[data-inventory-id="{inventory_id}"][data-quest-id="{quest_id}"]')
     row.locator(".quest-map-row-open").click()
     detail = page.locator("#quest-map-detail")
@@ -2403,9 +2515,16 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     ]
     page.emulate_media(reduced_motion="reduce")
     cards_before = owned_character_cards(database, avatar_id)
-    actions, held, _ = play_terminal_combat(page, stage, directory, completion=20 if continue_land else 24, defeat=not continue_land)
+    actions, held, _ = play_terminal_combat(page, stage, directory, completions=(20,) if continue_land else (24,),
+                                            defeat=not continue_land)
     if continue_land:
-        check_next_quest_land(page, stage, directory, database, quest, avatar_id, locked, held)
+        second_open = check_next_quest_land(page, stage, directory, database, quest, avatar_id, locked, held)
+        if complete:
+            page.emulate_media(reduced_motion="reduce")
+            second_actions, second_held, _ = play_terminal_combat(page, stage, directory, completions=(25, 24))
+            check_q3_final_treasure(page, stage, directory, database, quest, deck, before, cards_before, second_open, second_held)
+            page.locator("#quest-map-back").click()
+            screen(stage, "lobby")
     else:
         duel, after = check_terminal_storage(database, player_id, inventory_id, deck, before, cards_before, held["replies"])
         assert duel[2] == 1 and any(packet[0] == 73 and packet[2] == 1 and packet[3] > 0 for packet in held["replies"])
@@ -2416,10 +2535,11 @@ def check_preowned_quest(page, origin, database, name, password, directory, *, c
     trace = read_movement_trace(page)
     assert len(live) == 5 and not trace["overlaps"]
     assert all(not peer.is_closed() for peer in live[:4])
-    assert trace["close"] == (None if continue_land else [1000, True])
+    assert trace["close"] == (None if continue_land and not complete else [1000, True])
     assert trace["confirms"] == [[inventory_id, 1]]
     assert [packet[0] for packet in trace["sent"] if packet[0] not in (0, 1, 3)] == [
-        12, 13, 16, 22, *(command for command, *_ in actions), *([16, 22] if continue_land else [2]),
+        12, 13, 16, 22, *(command for command, *_ in actions), *([16, 22] if continue_land else []),
+        *([command for command, *_ in second_actions] if complete else []), *([2] if not continue_land or complete else []),
     ]
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
@@ -3015,6 +3135,8 @@ def main():
                         help="Hold the genuine role switch and next Move through two exchanges on the same Quest")
     parser.add_argument("--quest-next-land", action="store_true",
                         help="Use an owned q3 fixture to verify both encounters on the retained original Quest")
+    parser.add_argument("--quest-complete-q3", action="store_true",
+                        help="Use an owned q3 fixture to win both battles and hold the genuine fixed treasure reply")
     parser.add_argument("--quest-terminal", choices=("return", "late", "defeat"),
                         help="Complete a stock duel and verify settlement or its delayed original SC24")
     args = parser.parse_args()
@@ -3032,6 +3154,9 @@ def main():
         parser.error("--quest-terminal requires --quest-start-user and its own case")
     if args.quest_next_land and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn or args.quest_terminal):
         parser.error("--quest-next-land requires --quest-start-user and its own case")
+    if args.quest_complete_q3 and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
+                                   or args.quest_terminal or args.quest_next_land):
+        parser.error("--quest-complete-q3 requires --quest-start-user and its own case")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -3052,11 +3177,13 @@ def main():
                     check_owned_quest_inventory(page, origin, args.database, args.quest_user,
                                                 args.quest_password_file.read_text().rstrip("\r\n"), args.screens)
                     print("Real Quest certificate cancellation, discovered + pending inventory, and clean Back passed.")
-                elif args.quest_next_land or args.quest_terminal == "defeat":
+                elif args.quest_next_land or args.quest_complete_q3 or args.quest_terminal == "defeat":
                     check_preowned_quest(page, origin, args.database, args.quest_start_user,
                                          args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens,
-                                         continue_land=args.quest_next_land)
+                                         continue_land=args.quest_next_land or args.quest_complete_q3, complete=args.quest_complete_q3)
                     mode = "authorized next land" if args.quest_next_land else "one-HP defeat"
+                    if args.quest_complete_q3:
+                        mode = "two wins, verified fixed treasure and map unlock"
                     print(f"Real retained Quest passed ({mode}).")
                 else:
                     check_quest_start(page, origin, args.database, args.quest_start_user,

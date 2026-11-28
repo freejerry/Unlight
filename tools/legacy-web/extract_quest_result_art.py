@@ -27,8 +27,10 @@ PINS = {
     "rewards": ("data/image/game/result/result_ch.swf", "7e7b71f9e2539620ed6e0faee0f18adc67ef9fd0e5bd089b72d4663da6d499f0"),
     "duelOk": ("data/image/game/result/result_ok.swf", "313d69ab0e025130b96dcf836cb7d52d9b4cf7e4241acf34b0124777e5def82a"),
     "quest": ("data/image/quest/quest_result_ch.swf", "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32"),
+    "treasureBack": ("data/image/quest/quest_treasure.swf", "7dcb2412ac8705ecfa4ade71fcb9986914334ac0224ff0c20d222f049dcec19c"),
     "levelUp": ("data/image/game/result/lvup_avatar.swf", "38bf03a787bc280add1f96b0e7be6621a9a6348eeca435f6dae60943d788c2f8"),
 }
+TREASURE_SOUND = ("public/sound/se/ulse23.mp3", "35144255330e5f81d9445b831f4df7e0ee769191eaed509e6c7d53c5a594a430")
 STAGE = (760, 680)
 RESULT_ORIGIN = (380, 250)
 # ResultImage.as uses gotoAndPlay(1), then maincall's child scripts stop on these frames.
@@ -214,11 +216,29 @@ def generate(args):
         quest[name] = {"panel": panel, "ok": {"up": up, "over": over, "down": over,
                                             "hit": [152.05, button_y, 159.95, 39.95]}}
 
+    chest = emit_bitmap("quest", 12, "quest-treasure.png", (224, 320), 120, 96,
+                        sourceInstance="get_tbox", sourceSprite=14, sourceFrame=1)
+    # TreasureCardClip's pivot is (224,260). The closed card's container and
+    # authored back frame together offset it by (-79.95,-119.95).
+    card_back = emit_bitmap("treasureBack", 1, "treasure-card-back.png", (168, 240), 144.05, 140.05,
+                            sourceLabel="red", sourceShape=2, sourceFrame=1)
+    chest_up = quest_up | {"x": 152.05, "y": 376}
+    chest_over = quest_over | {"x": 152.05, "y": 376}
+    checked_source(args.assets, TREASURE_SOUND)
+    treasure = {
+        "panel": chest,
+        "ok": {"up": chest_up, "over": chest_over, "down": chest_over, "hit": [152.05, 376, 159.95, 39.95]},
+        "card": {"back": card_back, "face": {"x": 144, "y": 140, "width": 168, "height": 240}, "pivot": [224, 260]},
+        "motion": {"slideDelayMs": 300, "slideFromY": -420, "slideDurationMs": 130, "slideEasing": "sine-out",
+                   "holdMs": 400, "flipDurationMs": 300, "flipDegrees": 180, "flipEasing": "expo-out", "showFaceAtDeg": 94},
+        "flipSound": {"url": "/" + TREASURE_SOUND[0], "sha256": TREASURE_SOUND[1]},
+    }
+
     index = {"assetRevision": REVISION, "assetRepository": "https://github.com/ni-light/Unlight-Images",
              "assetLicense": "CC-BY-ND-4.0", "renderer": "JPEXS FFDec 26.6.0", "rendererSha256": FFDEC_SHA256,
              "outcomes": outcomes, "rewards": {"plate": plate, "labels": reward_positions()},
              "ok": {"up": duel_up, "over": duel_over, "down": duel_over, "hit": [576, 600, 159.95, 31.95]},
-             "quest": quest, "levelUp": level_up, "provenance": provenance}
+             "quest": quest, "levelUp": level_up, "treasure": treasure, "provenance": provenance}
     (args.output / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
 
 

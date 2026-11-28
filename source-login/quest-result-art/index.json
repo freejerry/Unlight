@@ -1079,6 +1079,78 @@
     "holdLast": true,
     "waitMs": 3360
   },
+  "treasure": {
+    "panel": {
+      "file": "quest-treasure.png",
+      "x": 120,
+      "y": 96,
+      "width": 224,
+      "height": 320
+    },
+    "ok": {
+      "up": {
+        "file": "quest-ok-up.png",
+        "x": 152.05,
+        "y": 376,
+        "width": 160,
+        "height": 40
+      },
+      "over": {
+        "file": "quest-ok-over.png",
+        "x": 152.05,
+        "y": 376,
+        "width": 160,
+        "height": 40
+      },
+      "down": {
+        "file": "quest-ok-over.png",
+        "x": 152.05,
+        "y": 376,
+        "width": 160,
+        "height": 40
+      },
+      "hit": [
+        152.05,
+        376,
+        159.95,
+        39.95
+      ]
+    },
+    "card": {
+      "back": {
+        "file": "treasure-card-back.png",
+        "x": 144.05,
+        "y": 140.05,
+        "width": 168,
+        "height": 240
+      },
+      "face": {
+        "x": 144,
+        "y": 140,
+        "width": 168,
+        "height": 240
+      },
+      "pivot": [
+        224,
+        260
+      ]
+    },
+    "motion": {
+      "slideDelayMs": 300,
+      "slideFromY": -420,
+      "slideDurationMs": 130,
+      "slideEasing": "sine-out",
+      "holdMs": 400,
+      "flipDurationMs": 300,
+      "flipDegrees": 180,
+      "flipEasing": "expo-out",
+      "showFaceAtDeg": 94
+    },
+    "flipSound": {
+      "url": "/public/sound/se/ulse23.mp3",
+      "sha256": "35144255330e5f81d9445b831f4df7e0ee769191eaed509e6c7d53c5a594a430"
+    }
+  },
   "provenance": {
     "win-01.png": {
       "source": "data/image/game/result/maincall.swf",
@@ -1746,6 +1818,24 @@
       "sourceBitmap": 1,
       "sourceInstance": "failed",
       "sourceSprite": 8,
+      "sourceFrame": 1
+    },
+    "quest-treasure.png": {
+      "source": "data/image/quest/quest_result_ch.swf",
+      "sourceSha256": "84939f95d91964da4c22301c98b8ecfb37e02eee235bf3d7cdab2f1dc5de3c32",
+      "sha256": "24801793889f9ddbb13db1fc58cc89382f17cb672554684bdb4416b2a8bee967",
+      "sourceBitmap": 12,
+      "sourceInstance": "get_tbox",
+      "sourceSprite": 14,
+      "sourceFrame": 1
+    },
+    "treasure-card-back.png": {
+      "source": "data/image/quest/quest_treasure.swf",
+      "sourceSha256": "7dcb2412ac8705ecfa4ade71fcb9986914334ac0224ff0c20d222f049dcec19c",
+      "sha256": "b43e39a99bac957e88868a1f9ccadf4f9254e072030911726a3eca3a1f6bd105",
+      "sourceBitmap": 1,
+      "sourceLabel": "red",
+      "sourceShape": 2,
       "sourceFrame": 1
     }
   }
