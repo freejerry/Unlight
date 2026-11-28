@@ -3445,16 +3445,19 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
     expect(detail).to_have_attribute("data-progress", "34")
     expect(detail).to_have_attribute("data-inventory-id", str(inventory_id))
     expect(active_lands).to_have_count(1)
-    expect(active_lands.and_(detail.locator('[data-slot="7"][data-land-id="1106"]'))).to_be_enabled()
+    next_land = active_lands.and_(detail.locator('[data-slot="7"][data-land-id="1106"]'))
+    expect(next_land).to_be_enabled()
     expect(page.locator("#quest-map-settlement")).to_have_count(0)
     expect(treasure).to_have_count(0)
     expect(page.locator("#quest-map-gems")).to_have_text(str(profile[3]))
     expect(page.locator("#quest-map-exp")).to_have_text(str(profile[4]))
-    check_receipt_ap(page, "quest-map", profile)
+    expect(page.locator("#quest-map-energy")).to_have_text(f"{profile[5]}/{profile[6]}", timeout=TIMEOUT)
     assert quest_inventory(database, avatar_id) == stored and quest_deck(database, avatar_id) == locked
     assert query(database, "SELECT quest_flag, quest_clear_num FROM avatars WHERE id = ?", avatar_id) == [(21, 0)]
     expect(page.locator("#quest-map-back")).to_be_hidden()
     music(page, "quest", "ulbgm03.mp3")
+    check_terrain_hover(page, stage, directory, next_land, lands[7]["name"], lands[7]["caption"],
+                        "12-return-on-the-same-active-quest.png")
     trace = read_movement_trace(page)
     assert trace["actions"] == [[13, inventory_id, 1], [16, inventory_id, 1, 1], [16, inventory_id, 1, 5]]
     assert trace["readySends"] == [["settled", "complete"]] * 2
@@ -3468,7 +3471,6 @@ def check_q568_high_low(page, origin, database, name, password, directory, choic
         "profile": dict(zip(("level", "gems", "exp", "energy", "energyMax"), profile[2:7], strict=True)),
         "questProgress": 34, "questInjury": [4, 0, 0], "deckLocked": locked[0][-1], "inventoryAdded": added,
     }
-    capture(stage, directory, "12-return-on-the-same-active-quest.png", animations="allow")
     assert page.reload(wait_until="domcontentloaded").ok
     wait_logout(page, database, player_id)
     assert not errors, errors

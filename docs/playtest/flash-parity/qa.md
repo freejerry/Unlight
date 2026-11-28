@@ -198,7 +198,7 @@ python3 tools/legacy-web/check_source_lobby.py --port 4389 \
   --quest-high-low high --screens /tmp/unlight-q568-high
 ```
 
-每次重跑使用另一位仍持有 NEW q568、進度 0、4/8 AP 的隔離角色。兩戰後只在原路線確認第 7 格的入口，留存最後一張場景截圖及 `quest-high-low-wire.json`。[已驗證測例與固定尺寸截圖](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/README.md)
+每次重跑使用另一位仍持有 NEW q568、進度 0、4/8 AP 的隔離角色。兩戰後核對實際目前 AP 和上限，滑入原路線第 7 格並驗地形名稱與說明。留存最後一張場景截圖及 `quest-high-low-wire.json`。[已驗證測例與固定尺寸截圖](/workspace/shared/unlight-web-port/flash-parity/quest-high-low-live/README.md)
 
 ## 待驗收
 

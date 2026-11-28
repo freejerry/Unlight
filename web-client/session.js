@@ -68,6 +68,9 @@ const LOBBY_DECK_LEVEL_REPLY = 24;
 const LOBBY_GEMS_REPLY = 25;
 const LOBBY_FREE_DUEL_COUNT_REPLY = 42;
 const LOBBY_REFRESH_INTERVAL = 2000;
+// Destination levels with a nonzero LEVEL_ENG_BOUNUS in the original Ruby table (levels 1–150).
+const ENERGY_CAP_GROWTH_LEVELS = [2, 4, 6, 8, 10, 13, 17, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 73, 80, 90, 100,
+  110, 120, 130, 140, 150];
 const AVATAR_REGISTRATION_REPLIES = [LOBBY_AVATAR_COMMAND, LOBBY_CREATE_AVATAR_REPLY, LOBBY_CHECK_NAME_REPLY];
 // Original AvatarParts.csv types, in the order sent by AvatarStyleEditor.
 const AVATAR_STARTER_PART_GROUPS = [
@@ -3781,14 +3784,20 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, ...ini
     if (!avatar) return deltas;
 
     for (const { inventoryId } of receipt.cards ?? []) confirmedQuestAwards.add(inventoryId);
-    const leveled = receipt.avatar.level !== null && receipt.avatar.level !== avatar.level;
+    const nextLevel = receipt.avatar.level;
+    const leveled = nextLevel !== null && nextLevel !== avatar.level;
     if (questScene?.energyOwned && (leveled || receipt.avatar.energy !== null)) ownQuestEnergy(questScene);
     if (leveled) {
-      // check_level_up can refill and raise the AP cap without sending an AP update.
+      // check_level_up can refill AP without an update. It can also leave the cap unchanged,
+      // in which case the subsequent Lobby refresh only needs to report current AP.
+      const capUnchanged = Number.isInteger(avatar.level) && Number.isInteger(nextLevel)
+        && avatar.level >= 1 && nextLevel > avatar.level && nextLevel <= ENERGY_CAP_GROWTH_LEVELS.at(-1)
+        && !ENERGY_CAP_GROWTH_LEVELS.some((level) => level > avatar.level && level <= nextLevel);
       avatar.energy = null;
       avatar.energyRemainingSeconds = null;
       avatar.energyReceivedAt = null;
-      avatar.energyMax = verifiedLobbyCap?.level === receipt.avatar.level ? verifiedLobbyCap.energyMax : null;
+      if (verifiedLobbyCap?.level === nextLevel) avatar.energyMax = verifiedLobbyCap.energyMax;
+      else if (!capUnchanged) avatar.energyMax = null;
     }
     for (const field of Object.keys(deltas)) {
       const absolute = receipt.avatar[field];
