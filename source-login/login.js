@@ -83,6 +83,17 @@ function showError(kind, message, field, alertKind = 'error') {
   openAlert(alertKind, 'Error', message, field);
 }
 
+function showFriendSearchError(field, signal) {
+  if (signal.aborted || loginAlert.open) return;
+  openAlert('lobby-friend-search-error', 'Error', '最少需要3個字', field);
+  loginAlertOK.focus({ preventScroll: true });
+  const closeOnAbort = () => {
+    if (loginAlert.dataset.kind === 'lobby-friend-search-error') loginAlert.close();
+  };
+  signal.addEventListener('abort', closeOnAbort, { once: true });
+  loginAlert.addEventListener('close', () => signal.removeEventListener('abort', closeOnAbort), { once: true });
+}
+
 function confirmLobbyReward({ name }, signal) {
   if (signal.aborted || loginAlert.open) return Promise.resolve();
   openAlert('lobby-selectable-reward', '情報', `獲得了${name}。`);
@@ -230,6 +241,7 @@ function showLobby(session, returnFocus) {
     onOptions: () => switchOptions(session, true),
     onQuest: () => openQuest(session),
     onSelectableClaimed: confirmLobbyReward,
+    onFriendSearchInvalid: showFriendSearchError,
   });
 }
 
@@ -255,7 +267,11 @@ async function switchOptions(session, opening) {
 
   if (opening) {
     changeScreen('options', 'lobby');
-    cleanupScreen = mountOptions(postLogin, { session, onBack: () => switchOptions(session, false) });
+    cleanupScreen = mountOptions(postLogin, {
+      session,
+      onBack: () => switchOptions(session, false),
+      onFriendSearchInvalid: showFriendSearchError,
+    });
   } else {
     showLobby(session, '#lobby-option-open');
   }

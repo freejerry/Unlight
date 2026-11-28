@@ -221,6 +221,19 @@ python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
 
 腳本獨立解碼 Data `SC6` 與 SQLite 比對。`populated` 驗證六組加一組、雙向循環、關閉重開及設定頁；`empty` 核對速查類別沒有可列道具。`potion` 暫緩真實 `SC28`，確認 AP 已依 `SC17` 更新而數量仍為 2。放行後維持選取、數量變為 1，兩個時間點皆無提示窗。核對只送一次 `CS18`，只改一筆實體庫存及其使用時間。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [原版與新版實跑](/workspace/shared/unlight-web-port/flash-parity/lobby-item-quick-live/README.md)
 
+### 重跑右側好友清單
+
+在獨立 Ruby 建立已結束教學的角色「尋友測自己」。以 `Avatar#inc_friend_max(5)` 將容量提高至 15。用 `Player#create_friend_link` 與對方 `confirm_friend_link` 建立 11 位好友，第一位透過原版登入模型建立上線狀態。再準備送出與收到的待確認各一筆，及不同對象的本人封鎖與遭對方封鎖各一筆。同服未有關係的角色名以「尋友測」開頭兩筆，異服一筆作對照。「零結果」前綴在同服無角色。`empty` 使用完全沒有關係的另一個角色。測名單前先用原版 `achievement_check` 發出已完成成就的獎勵，再用 `clear_notice` 確認這批已處理的成就通知。[好友模型](../../../app/server/src/model/player.rb#L455) · [隔離伺服器](../../../tools/legacy-server/README.md)
+
+```bash
+python3 -Bu tools/legacy-web/check_source_lobby.py --port 4390 \
+  --database /path/to/isolated/game_dev2.db \
+  --quest-start-user friend-pane --quest-start-password-file /path/to/disposable-password \
+  --lobby-friend populated --screens /tmp/unlight-lobby-friend
+```
+
+以 SQLite 核對關係和搜尋成員，以實際 `SC12`、`SC9` 和 `SC26` 核對順序、角色裝備及畫面。`populated` 比對 10+1 分頁、四個分類、紅色提示、兩字搜尋錯誤、同服結果和空搜尋。大廳與設定各驗關閉時送出原版成就檢查，且名單瀏覽沿用登入連線及 BGM。重開設定不重送有效快取內的分頁查詢。封包證據只摘錄數字欄位，並在操作前後核對關係表。[驗收腳本](../../../tools/legacy-web/check_source_lobby.py) · [好友規格](lobby-views.md#右側好友清單)
+
 ### 重跑空地與固定 Gem 後續戰
 
 使用獨立的隔離測試角色，各以 Deck 1 持有卡 21、起始 AP 5/5，並完成教學狀態。經原版 `quest_map_clear(map - 1)` 設定可達區域，再由模型執行 `get_quest(map, 0)`。「山丘矮人」用 map 2、搜尋種子 22。「紫色泥沼澤2」用 map 4、搜尋種子 106。核對得到的任務分別為 4 和 32、AP 4/5，兩位角色保存初始傷勢 `[1,0,0]`。戰鬥使用原有 Ruby 時間及亂數。[原版搜尋](../../../app/server/src/model/avatar.rb#L2798)

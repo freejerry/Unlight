@@ -3,6 +3,8 @@ import { playBackClick } from './bgm.js';
 import { getPreferences, setPreference, subscribePreferences } from './preferences.js';
 import { mountLobbyRecord } from './lobby-record.js';
 import { mountLobbyItem } from './lobby-item.js';
+import { bindLobbyFriendIndicator } from './lobby.js';
+import { mountLobbyFriend } from './lobby-friend.js';
 
 const volumes = [['bgm', 'BGM'], ['se', 'SE'], ['cv', 'VOICE']];
 const layout = `
@@ -35,10 +37,11 @@ const layout = `
       <img class="options-back-over" src="/source-login/option-art/back-over.png" width="48" height="32" alt="">
     </button>
     <button id="options-record-open" class="source-record-open" type="button" aria-label="紀錄" aria-haspopup="dialog"></button>
+    <button id="options-friend-open" class="source-friend-open" type="button" aria-label="好友" aria-haspopup="dialog"></button>
     <button id="options-item-open" class="source-item-open" type="button" aria-label="道具" aria-haspopup="dialog"></button>
   </section>`;
 
-export function mountOptions(host, { session, onBack }) {
+export function mountOptions(host, { session, onBack, onFriendSearchInvalid }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -76,13 +79,21 @@ export function mountOptions(host, { session, onBack }) {
 
   host.append(view);
   const record = mountLobbyRecord(view, { session, trigger: view.querySelector('#options-record-open'), signal,
-    canOpen: () => !item.isOpen() });
+    canOpen: () => !item.isOpen() && !friend.isOpen() });
   const item = mountLobbyItem(view, {
     session, trigger: view.querySelector('#options-item-open'), signal,
-    canOpen: () => !record.isOpen(),
+    canOpen: () => !record.isOpen() && !friend.isOpen(),
     onRowClick: playBackClick,
     onUse: (row, options) => session.useLobbyAvatarItem(row.inventoryId, options),
   });
+  const friendTrigger = view.querySelector('#options-friend-open');
+  const friend = mountLobbyFriend(view, {
+    session, trigger: friendTrigger, signal,
+    canOpen: () => !record.isOpen() && !item.isOpen(),
+    onClosing: () => session.checkLobbyAchievements({ signal: AbortSignal.any([signal]) }),
+    onSearchInvalid: focus => onFriendSearchInvalid?.(focus, signal),
+  });
+  bindLobbyFriendIndicator(friendTrigger, { session, signal });
   void prepareLobbyArt(view, signal);
   view.querySelector('#options-title').focus({ preventScroll: true });
 

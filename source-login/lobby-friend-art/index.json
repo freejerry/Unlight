@@ -1,0 +1,1055 @@
+{
+  "assetRevision": "0ec2d2ffb0e294e46cd0edfb84c9778e3dd4ed0e",
+  "origin": [
+    125,
+    150
+  ],
+  "motion": {
+    "initialY": -120,
+    "openMs": 300,
+    "closeMs": 150,
+    "openEasing": "quad-out",
+    "closeEasing": "sine-out"
+  },
+  "panel": {
+    "file": "panel.png",
+    "x": 0.0,
+    "y": 0.0,
+    "width": 528,
+    "height": 408
+  },
+  "tabs": [
+    {
+      "up": {
+        "file": "tab-friend-up.png",
+        "x": 2.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "over": {
+        "file": "tab-friend-over.png",
+        "x": 2.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "down": {
+        "file": "tab-friend-over.png",
+        "x": 2.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "hit": [
+        2.0,
+        24.0,
+        72.0,
+        24.0
+      ]
+    },
+    {
+      "up": {
+        "file": "tab-waiting-up.png",
+        "x": 74.0,
+        "y": 24.05,
+        "width": 72,
+        "height": 24
+      },
+      "over": {
+        "file": "tab-waiting-over.png",
+        "x": 74.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "down": {
+        "file": "tab-waiting-over.png",
+        "x": 74.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "hit": [
+        74.0,
+        24.0,
+        72.0,
+        24.0
+      ]
+    },
+    {
+      "up": {
+        "file": "tab-blocking-up.png",
+        "x": 146.0,
+        "y": 24.0,
+        "width": 72,
+        "height": 24
+      },
+      "over": {
+        "file": "tab-blocking-over.png",
+        "x": 146.0,
+        "y": 24.05,
+        "width": 72,
+        "height": 24
+      },
+      "down": {
+        "file": "tab-blocking-over.png",
+        "x": 146.0,
+        "y": 24.05,
+        "width": 72,
+        "height": 24
+      },
+      "hit": [
+        146.0,
+        24.05,
+        72.0,
+        24.0
+      ]
+    },
+    {
+      "up": {
+        "file": "tab-search-up.png",
+        "x": 218.0,
+        "y": 24.0,
+        "width": 32,
+        "height": 24
+      },
+      "over": {
+        "file": "tab-search-over.png",
+        "x": 218.0,
+        "y": 24.0,
+        "width": 32,
+        "height": 24
+      },
+      "down": {
+        "file": "tab-search-over.png",
+        "x": 218.0,
+        "y": 24.0,
+        "width": 32,
+        "height": 24
+      },
+      "hit": [
+        218.0,
+        24.0,
+        31.95,
+        23.95
+      ]
+    }
+  ],
+  "buttons": {
+    "close": {
+      "up": {
+        "file": "close-up.png",
+        "x": 502.0,
+        "y": 2.0,
+        "width": 21,
+        "height": 21
+      },
+      "over": {
+        "file": "close-over.png",
+        "x": 502.0,
+        "y": 2.0,
+        "width": 21,
+        "height": 21
+      },
+      "down": {
+        "file": "close-over.png",
+        "x": 502.0,
+        "y": 2.0,
+        "width": 21,
+        "height": 21
+      },
+      "hit": [
+        502.0,
+        2.0,
+        20.95,
+        20.95
+      ]
+    },
+    "previous": {
+      "up": {
+        "file": "previous-up.png",
+        "x": 488.05,
+        "y": 360.0,
+        "width": 16,
+        "height": 16
+      },
+      "over": {
+        "file": "previous-over.png",
+        "x": 488.05,
+        "y": 360.05,
+        "width": 16,
+        "height": 16
+      },
+      "down": {
+        "file": "previous-over.png",
+        "x": 488.05,
+        "y": 360.05,
+        "width": 16,
+        "height": 16
+      },
+      "hit": [
+        488.05,
+        360.05,
+        15.95,
+        15.95
+      ]
+    },
+    "next": {
+      "up": {
+        "file": "next-up.png",
+        "x": 504.0,
+        "y": 360.05,
+        "width": 16,
+        "height": 16
+      },
+      "over": {
+        "file": "next-over.png",
+        "x": 504.05,
+        "y": 360.0,
+        "width": 16,
+        "height": 16
+      },
+      "down": {
+        "file": "next-over.png",
+        "x": 504.05,
+        "y": 360.0,
+        "width": 16,
+        "height": 16
+      },
+      "hit": [
+        504.05,
+        360.0,
+        15.95,
+        15.95
+      ]
+    }
+  },
+  "entry": {
+    "normal": {
+      "up": {
+        "file": "friend-up.png",
+        "url": "/source-login/lobby-art/hover/friend-up.png",
+        "x": 712.0,
+        "y": 528.0,
+        "width": 48.0,
+        "height": 32.0
+      },
+      "over": {
+        "file": "friend-over.png",
+        "url": "/source-login/lobby-art/hover/friend-over.png",
+        "x": 712.0,
+        "y": 528.0,
+        "width": 48.0,
+        "height": 32.0
+      },
+      "down": {
+        "file": "friend-over.png",
+        "url": "/source-login/lobby-art/hover/friend-over.png",
+        "x": 712.0,
+        "y": 528.0,
+        "width": 48.0,
+        "height": 32.0
+      },
+      "hit": [
+        712.0,
+        528.0,
+        48.0,
+        32.0
+      ]
+    },
+    "alert": {
+      "up": {
+        "file": "entry-alert-up.png",
+        "x": 712.0,
+        "y": 521.0,
+        "width": 48,
+        "height": 39
+      },
+      "over": {
+        "file": "entry-alert-over.png",
+        "x": 712.0,
+        "y": 521.0,
+        "width": 48,
+        "height": 39
+      },
+      "down": {
+        "file": "entry-alert-over.png",
+        "x": 712.0,
+        "y": 521.0,
+        "width": 48,
+        "height": 39
+      },
+      "hit": [
+        712.0,
+        528.0,
+        48.0,
+        32.0
+      ]
+    }
+  },
+  "grid": {
+    "x": 32,
+    "y": 70,
+    "columns": 5,
+    "rows": 2,
+    "stepX": 94,
+    "stepY": 145
+  },
+  "card": {
+    "online": {
+      "file": "card-online.png",
+      "x": 0.0,
+      "y": 0.0,
+      "width": 88,
+      "height": 12
+    },
+    "action": {
+      "up": {
+        "file": "card-action-up.png",
+        "x": 8.0,
+        "y": 122.0,
+        "width": 78,
+        "height": 20
+      },
+      "over": {
+        "file": "card-action-over.png",
+        "x": 8.0,
+        "y": 122.05,
+        "width": 78,
+        "height": 20
+      },
+      "down": {
+        "file": "card-action-over.png",
+        "x": 8.0,
+        "y": 122.05,
+        "width": 78,
+        "height": 20
+      },
+      "hit": [
+        8.0,
+        122.05,
+        77.95,
+        19.95
+      ]
+    },
+    "remove": {
+      "up": {
+        "file": "card-remove-up.png",
+        "x": 75.0,
+        "y": 0.0,
+        "width": 14,
+        "height": 14
+      },
+      "over": {
+        "file": "card-remove-over.png",
+        "x": 75.0,
+        "y": 0.0,
+        "width": 14,
+        "height": 14
+      },
+      "down": {
+        "file": "card-remove-over.png",
+        "x": 75.0,
+        "y": 0.0,
+        "width": 14,
+        "height": 14
+      },
+      "hit": [
+        75.0,
+        0.0,
+        14.0,
+        14.0
+      ]
+    },
+    "labels": {
+      "name": [
+        0,
+        100,
+        87,
+        28
+      ],
+      "level": [
+        2,
+        15,
+        88,
+        16
+      ],
+      "waiting": [
+        2,
+        48,
+        88,
+        24
+      ]
+    },
+    "namePlate": [
+      0,
+      102,
+      87,
+      15
+    ],
+    "namePlateStyle": {
+      "color": "#eeeeee",
+      "opacity": 0.5
+    },
+    "actionText": [
+      8,
+      125,
+      78,
+      20
+    ]
+  },
+  "search": {
+    "input": [
+      170,
+      381,
+      100,
+      21
+    ],
+    "maxLength": 12,
+    "button": {
+      "up": {
+        "file": "card-action-up.png",
+        "x": 280.0,
+        "y": 381.0,
+        "width": 78,
+        "height": 20
+      },
+      "over": {
+        "file": "card-action-over.png",
+        "x": 280.0,
+        "y": 381.05,
+        "width": 78,
+        "height": 20
+      },
+      "down": {
+        "file": "card-action-over.png",
+        "x": 280.0,
+        "y": 381.05,
+        "width": 78,
+        "height": 20
+      },
+      "hit": [
+        280.0,
+        381.05,
+        77.95,
+        19.95
+      ]
+    },
+    "buttonText": [
+      280,
+      384,
+      78,
+      20
+    ],
+    "label": "搜索",
+    "pending": "檢索中",
+    "minimumPrefix": "最少需要",
+    "minimumSuffix": "個字"
+  },
+  "invites": {
+    "sns": {
+      "button": {
+        "up": {
+          "file": "card-action-up.png",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 78,
+          "height": 20
+        },
+        "over": {
+          "file": "card-action-over.png",
+          "x": 0.0,
+          "y": 0.05,
+          "width": 78,
+          "height": 20
+        },
+        "down": {
+          "file": "card-action-over.png",
+          "x": 0.0,
+          "y": 0.05,
+          "width": 78,
+          "height": 20
+        },
+        "hit": [
+          0.0,
+          0.05,
+          77.95,
+          19.95
+        ]
+      },
+      "label": "邀請",
+      "buttonText": [
+        0,
+        3,
+        78,
+        20
+      ]
+    },
+    "code": {
+      "button": {
+        "up": {
+          "file": "card-action-up.png",
+          "x": 280.0,
+          "y": 381.0,
+          "width": 78,
+          "height": 20
+        },
+        "over": {
+          "file": "card-action-over.png",
+          "x": 280.0,
+          "y": 381.05,
+          "width": 78,
+          "height": 20
+        },
+        "down": {
+          "file": "card-action-over.png",
+          "x": 280.0,
+          "y": 381.05,
+          "width": 78,
+          "height": 20
+        },
+        "hit": [
+          280.0,
+          381.05,
+          77.95,
+          19.95
+        ]
+      },
+      "label": "邀請Code",
+      "buttonText": [
+        280,
+        384,
+        78,
+        20
+      ]
+    }
+  },
+  "page": [
+    253,
+    360,
+    50,
+    20
+  ],
+  "count": [
+    432,
+    50,
+    90,
+    32
+  ],
+  "wording": {
+    "friendPrefix": "Friend ",
+    "blockedPrefix": "Blocked ",
+    "levelPrefix": "Level: ",
+    "waiting": "認證中",
+    "approve": "認證",
+    "request": "申請",
+    "delete": "刪除",
+    "unblock": "解除",
+    "confirm": "確認",
+    "selection": "選擇",
+    "mail": "送信"
+  },
+  "layoutSources": [
+    "app/client/src/view/FriendListView.as",
+    "app/client/src/view/image/common/FriendListImage.as",
+    "app/client/src/view/scene/common/FriendListContainer.as",
+    "app/client/src/view/image/common/FriendButton.as",
+    "app/client/data/css/UL.css.cn"
+  ],
+  "fonts": {
+    "mincho": {
+      "file": "friend-mincho.woff"
+    },
+    "minchoBold": {
+      "file": "friend-mincho-bold.woff"
+    },
+    "bradley": {
+      "file": "bradley-gratis.ttf",
+      "url": "/source-login/fonts/bradley-gratis.ttf"
+    }
+  },
+  "provenance": {
+    "card-action-up.png": {
+      "source": "data/image/friend/btn_invite.swf",
+      "sourceSha256": "c66d17febcbbcb905209010be1aa2b1324e423e25e54e8efd4c5e4a1257ee65c",
+      "sha256": "a61e12b0bdb95e6b2dba1897e37f9c10069824da7864664cd495c774bfa3d24d",
+      "sourceFrame": 1,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_act_a",
+      "sourceButton": 5,
+      "hitShapeIds": [
+        4
+      ]
+    },
+    "card-action-over.png": {
+      "source": "data/image/friend/btn_invite.swf",
+      "sourceSha256": "c66d17febcbbcb905209010be1aa2b1324e423e25e54e8efd4c5e4a1257ee65c",
+      "sha256": "22dac405b02e651a95a3314ba92b474f9d15ded65ae8bc71e4584113d657ab28",
+      "sourceFrame": 1,
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_act_a",
+      "sourceButton": 5,
+      "hitShapeIds": [
+        4
+      ]
+    },
+    "panel.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "4f577d1e603b99b7223ef844bea6c7aeca3e70c1ff46525efc1bf153f8d00b18",
+      "sourceFrame": 1,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceDepth": 1
+    },
+    "tab-friend-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "85a64750183b9efc4999eb0fe84de98379b95bb5ffa43295626a6ea6e44271f5",
+      "sourceFrame": 1,
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "tab_a",
+      "sourceButton": 7,
+      "hitShapeIds": [
+        6
+      ]
+    },
+    "tab-friend-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "8cdcfa6db7344523c760f39230ff24740ecc0e9926c75f5ebffb4e8f8c0f300c",
+      "sourceFrame": 1,
+      "shapeIds": [
+        6
+      ],
+      "bitmapIds": [
+        5
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "tab_a",
+      "sourceButton": 7,
+      "hitShapeIds": [
+        6
+      ]
+    },
+    "tab-waiting-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "79c40832334dbb8b4ef7e4a9bae8a8e689ad7f7b642abbc2fa5e8625e7b7aee7",
+      "sourceFrame": 1,
+      "shapeIds": [
+        9
+      ],
+      "bitmapIds": [
+        8
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "tab_c",
+      "sourceButton": 12,
+      "hitShapeIds": [
+        11
+      ]
+    },
+    "tab-waiting-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "b04c219ae5f8543b70e9d8a8765be2a8202d1b788f64a2dd203880a045902f0c",
+      "sourceFrame": 1,
+      "shapeIds": [
+        11
+      ],
+      "bitmapIds": [
+        10
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "tab_c",
+      "sourceButton": 12,
+      "hitShapeIds": [
+        11
+      ]
+    },
+    "tab-blocking-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "cd77e1baaa440cca9ad6c61575026352abd34185acb7e9a407e600170de2701c",
+      "sourceFrame": 1,
+      "shapeIds": [
+        14
+      ],
+      "bitmapIds": [
+        13
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "tab_d",
+      "sourceButton": 17,
+      "hitShapeIds": [
+        16
+      ]
+    },
+    "tab-blocking-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "767280f3803f78327db275051fedf5ed259212060d2826587ddf1e164ae4880e",
+      "sourceFrame": 1,
+      "shapeIds": [
+        16
+      ],
+      "bitmapIds": [
+        15
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "tab_d",
+      "sourceButton": 17,
+      "hitShapeIds": [
+        16
+      ]
+    },
+    "tab-search-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "175ccc4b9b817c2856953ed3f207db2638dfceddafaf89542ec0455f1b27c3fb",
+      "sourceFrame": 1,
+      "shapeIds": [
+        19
+      ],
+      "bitmapIds": [
+        18
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "tab_f",
+      "sourceButton": 22,
+      "hitShapeIds": [
+        21
+      ]
+    },
+    "tab-search-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "be5a2a7204b456f8521621ddc23d83faa6000cec6b0c2643d7778eea31abedba",
+      "sourceFrame": 1,
+      "shapeIds": [
+        21
+      ],
+      "bitmapIds": [
+        20
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "tab_f",
+      "sourceButton": 22,
+      "hitShapeIds": [
+        21
+      ]
+    },
+    "close-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "196fdefe041faa0fa9a8d4d4b8b03c1e80a471dea3e66bc3d9e4060c01fbee4c",
+      "sourceFrame": 1,
+      "shapeIds": [
+        24
+      ],
+      "bitmapIds": [
+        23
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_close",
+      "sourceButton": 27,
+      "hitShapeIds": [
+        26
+      ]
+    },
+    "close-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "024c59632dc836c0f10af1fb7096b7d75bf7773a8f8aa89f4f4296c45a3cfb16",
+      "sourceFrame": 1,
+      "shapeIds": [
+        26
+      ],
+      "bitmapIds": [
+        25
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_close",
+      "sourceButton": 27,
+      "hitShapeIds": [
+        26
+      ]
+    },
+    "previous-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "9c0c7875894f711e36eb08c408ba32df5638d5fac6080c2312f0600f29099de6",
+      "sourceFrame": 1,
+      "shapeIds": [
+        29
+      ],
+      "bitmapIds": [
+        28
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_back",
+      "sourceButton": 32,
+      "hitShapeIds": [
+        31
+      ]
+    },
+    "previous-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "10db7f3d82050df1a54e6c9bdd9f239ae6c8f465a986b70b5a5b2e387b9f6841",
+      "sourceFrame": 1,
+      "shapeIds": [
+        31
+      ],
+      "bitmapIds": [
+        30
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_back",
+      "sourceButton": 32,
+      "hitShapeIds": [
+        31
+      ]
+    },
+    "next-up.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "a73dddf24207791ba605705e2532c9d508eb69dcdc63277e6acce3ac03ebe2c6",
+      "sourceFrame": 1,
+      "shapeIds": [
+        34
+      ],
+      "bitmapIds": [
+        33
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_next",
+      "sourceButton": 37,
+      "hitShapeIds": [
+        36
+      ]
+    },
+    "next-over.png": {
+      "source": "data/image/friend/friendlist_ch.swf",
+      "sourceSha256": "c2f94f9e58b9a97eb2a9b00bd565023dcaa33e6bc139779a94ce9bdb48d6bb7e",
+      "sha256": "66a3e3f0534fc65e3c546bbd41aba78b9a71bb48051d40eb8f5f98656d211906",
+      "sourceFrame": 1,
+      "shapeIds": [
+        36
+      ],
+      "bitmapIds": [
+        35
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_next",
+      "sourceButton": 37,
+      "hitShapeIds": [
+        36
+      ]
+    },
+    "/source-login/lobby-art/hover/friend-up.png": {
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "sourceFrame": 1,
+      "sha256": "f8d90475b710a02425b6f629ac5d6950052efd36ca14e2a2db09a922aad41da3",
+      "sourceInstance": "btn_f_list",
+      "sourceButton": 5,
+      "sourceStates": [
+        "up"
+      ]
+    },
+    "/source-login/lobby-art/hover/friend-over.png": {
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "sourceFrame": 1,
+      "sha256": "7e9f71f9dfb5a3133f5373482ebdb52d1d14542b0d8676ba294058baa00cc627",
+      "sourceInstance": "btn_f_list",
+      "sourceButton": 5,
+      "sourceStates": [
+        "over",
+        "down"
+      ]
+    },
+    "entry-alert-up.png": {
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "sha256": "ea5deeda86be24570e229c6c4da1935ffd471a7ea598184330fff79ebff587c3",
+      "sourceFrame": 1,
+      "shapeIds": [
+        6,
+        8
+      ],
+      "bitmapIds": [
+        7
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_f_list_m",
+      "sourceButton": 13,
+      "hitShapeIds": [
+        12
+      ]
+    },
+    "entry-alert-over.png": {
+      "source": "data/image/friend/btn_f_list.swf",
+      "sourceSha256": "539b4fb71fade2e190a20a1120ed02970d7d922aef85427e0ac6dcbccc765a6a",
+      "sha256": "f438085967f6d75f21de832b7b083dd088391972da46c58f47318b9bcc3e13ac",
+      "sourceFrame": 1,
+      "shapeIds": [
+        9,
+        11
+      ],
+      "bitmapIds": [
+        10
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_f_list_m",
+      "sourceButton": 13,
+      "hitShapeIds": [
+        12
+      ]
+    },
+    "card-online.png": {
+      "source": "data/image/friend/friendlist_state.swf",
+      "sourceSha256": "8e85d69f780a8e23ccd405ded00857a49264069c8ee876610b35114ea4718d56",
+      "sha256": "ff3cab76e7327a288c63e22e14e7ba2fb64744c79e8e566405f91c6fb34f7ae6",
+      "sourceFrame": 1,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceDepth": 1
+    },
+    "card-remove-up.png": {
+      "source": "data/image/friend/btn_delete.swf",
+      "sourceSha256": "35b47ad7c76560a1328b80ff9597d2e456c126ceb73d908bd4d8fdf4e079abb8",
+      "sha256": "f936d3d495c0edb261c7280958af6c83387839f50a9f388ecea550423cd1a485",
+      "sourceFrame": 1,
+      "shapeIds": [
+        2
+      ],
+      "bitmapIds": [
+        1
+      ],
+      "sourceStates": [
+        "up"
+      ],
+      "sourceInstance": "btn_delete",
+      "sourceButton": 6,
+      "hitShapeIds": [
+        5
+      ]
+    },
+    "card-remove-over.png": {
+      "source": "data/image/friend/btn_delete.swf",
+      "sourceSha256": "35b47ad7c76560a1328b80ff9597d2e456c126ceb73d908bd4d8fdf4e079abb8",
+      "sha256": "cc7d908fb0a3c6a2a429deb3f2466a0034ec4c799813600d44368363c3e05534",
+      "sourceFrame": 1,
+      "shapeIds": [
+        4
+      ],
+      "bitmapIds": [
+        3
+      ],
+      "sourceStates": [
+        "over",
+        "down"
+      ],
+      "sourceInstance": "btn_delete",
+      "sourceButton": 6,
+      "hitShapeIds": [
+        5
+      ]
+    },
+    "friend-mincho.woff": {
+      "source": "res/data/cwming.ttf",
+      "sourceSha256": "094a5c7340f181059baf2c574da05f558a3dfe6b12d6323349354c64c0ecbb5e",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "0f8502658ed8cbd783af75835d7c193e1dc75ecdccd625e0d080fe9413501591",
+      "glyphs": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~中信個刪字少搜擇最檢申確索要解認請證送選邀除需"
+    },
+    "friend-mincho-bold.woff": {
+      "source": "res/data/wt004.ttf",
+      "sourceSha256": "33ade736c8df39fe207a5b7dddbf2c3c6ee1f6283eaed10297b2d02e2a247a6e",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "3d204ddf92f2a6b30f09a8d429a43efc38052f9f03234d12fa8fe792bf7b6380",
+      "glyphs": "中認證"
+    },
+    "/source-login/fonts/bradley-gratis.ttf": {
+      "source": "res/data/nbr.ttf",
+      "sourceSha256": "fd3f93f469227f2c796f60cf9984baa351f5ed13e1e7d86dedae0241efa83520",
+      "sourceRevision": "4e7b49ea6e0dd3bf78275cc3977fe8be8ae754cc",
+      "sha256": "fd3f93f469227f2c796f60cf9984baa351f5ed13e1e7d86dedae0241efa83520"
+    }
+  }
+}

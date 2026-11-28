@@ -1,6 +1,7 @@
 import { createAuthExchange, createRegistrationVerifier } from './srp.js';
 import { applySessionKey, createFrameParser, encodeCommand, readReply, signedByte } from './wire.js';
 import { createAchievementRecords, readAchievementRows, readAchievementVectorFields } from './achievement-data.js';
+import { FRIEND_PAGE_SIZE, readFriendAvatarReply, readFriendPageReply, readFriendSearchReply } from './friend-data.js';
 import {
   AVATAR_COMMAND, LOBBY_AVATAR_COMMAND, REGISTRATION_COMMAND, VERSION_COMMAND, readDataProfile, readLobbyAvatar, readVersions,
 } from './data-bootstrap.js';
@@ -49,6 +50,13 @@ const SERVER_SB = 0;
 const LOBBY_PORT = 12002;
 const DATA_PORT = 12003;
 const DATA_AVATAR_CREATED_REQUEST = 4;
+const DATA_FRIEND_AVATAR_REQUEST = 5;
+const DATA_FRIEND_PAGE_REQUEST = 8;
+const DATA_FRIEND_SEARCH_REQUEST = 15;
+const DATA_FRIEND_AVATAR_REPLY = 9;
+const DATA_FRIEND_PAGE_REPLY = 12;
+const DATA_FRIEND_SEARCH_REPLY = 26;
+const FRIEND_PAGE_CACHE_MS = 5 * 60 * 1000;
 const DATA_ACHIEVEMENT_BASELINE_REPLY = 7;
 const DATA_ACHIEVEMENT_REPLIES = { clear: 22, add: 23, fail: 24, updates: 25 };
 const LOBBY_ACHIEVEMENT_REPLIES = { clear: 51, add: 52, fail: 53, updates: 56, drop: 61 };
@@ -71,6 +79,7 @@ const LOBBY_REFRESH_AVATAR = 17;
 const LOBBY_USE_ITEM_REQUEST = 18;
 const LOBBY_ENERGY_REPLY = 17;
 const LOBBY_ENERGY_MAX_REPLY = 18;
+const LOBBY_FRIEND_MAX_REPLY = 19;
 const LOBBY_LEVEL_REPLY = 22;
 const LOBBY_DECK_EXP_REPLY = 23;
 const LOBBY_DECK_LEVEL_REPLY = 24;
@@ -230,6 +239,10 @@ const messages = {
   'lobby-reward-uncertain': '尚未確認獎勵是否入庫，請重新登入查看。',
   'lobby-item-unavailable': '目前無法使用這個道具。',
   'lobby-item-uncertain': '尚未確認道具是否已使用，請重新登入查看。',
+  'friend-data-unavailable': '目前無法讀取好友資料。',
+  'friend-data-uncertain': '好友資料尚未確認，請重新登入後再試。',
+  'friend-search-invalid': '請輸入三到十二個字元搜尋。',
+  'friend-search-uncertain': '搜尋結果尚未確認，請重新登入後再試。',
 };
 
 export class SessionError extends Error {
@@ -542,6 +555,11 @@ function observeLobbyAvatar(reply, publish) {
         if (energyMax > 0) patch = { energyMax };
         break;
       }
+      case LOBBY_FRIEND_MAX_REPLY: {
+        const friendMax = reply.int();
+        if (friendMax >= 0) patch = { friendMax };
+        break;
+      }
       case LOBBY_RECOVERY_INTERVAL_REPLY: {
         const energyRecoveryInterval = reply.int();
         if (energyRecoveryInterval > 0) patch = { energyRecoveryInterval };
@@ -720,6 +738,30 @@ function avatarRegistrationFields({ name, partIds, cardId }, { partGroups, cardI
 async function finishLobbyObservation(socket, signal) {
   const pong = await socket.ask(3, [], [LOBBY_PONG], { signal, allowOther: true });
   pong.done();
+}
+
+async function requestFriendReply(socket, signal, command, fields, replyCommand, decode, matches, onSend) {
+  let unsubscribe;
+  const response = new Promise((resolve, reject) => {
+    unsubscribe = socket.observe([replyCommand], (reply) => {
+      try {
+        const value = decode(reply);
+        if (!matches || matches(value)) resolve(value);
+      } catch {
+        reject(new SessionError('protocol'));
+      }
+    });
+  });
+  try {
+    signal.throwIfAborted();
+    socket.send(command, fields);
+    onSend();
+    const value = await bounded(response, signal);
+    signal.throwIfAborted();
+    return value;
+  } finally {
+    unsubscribe();
+  }
 }
 
 async function requestAvatarName(socket, name, signal, markSent) {
@@ -3220,6 +3262,13 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
   const removedAvatarItems = new Set();
   const uncertainLobbyItemUses = new Set();
   let lobbyItemUse;
+  const friendLifetime = new AbortController();
+  const friendPages = new Map();
+  const friendAvatars = new Map();
+  const friendSubscriptions = new Set();
+  const uncertainFriendReads = new Set();
+  let friendSearchRows = [];
+  let friendReadQueue;
   const blockedQuestItems = new Set();
   let resolveClosed;
   const closed = new Promise((resolve) => { resolveClosed = resolve; });
@@ -3291,6 +3340,59 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     } catch {
       // Presentation callbacks cannot interrupt the verified Lobby stream.
     }
+  }
+
+  function hasIncomingLobbyFriendRequest() {
+    return [...friendPages.values()].some(({ page }) => page.rows.some(({ status }) => status === 1));
+  }
+
+  function cachedFriendPage(key) {
+    const entry = friendPages.get(key);
+    if (entry && entry.avatarId === initialData?.avatar?.id && performance.now() - entry.receivedAt <= FRIEND_PAGE_CACHE_MS) {
+      return entry.page;
+    }
+  }
+
+  function readFriendData(signal, key, work) {
+    const previous = friendReadQueue;
+    const wait = friendLifetime.signal;
+    const uncertain = key === 'search' ? 'friend-search-uncertain' : 'friend-data-uncertain';
+    const task = (async () => {
+      if (previous) await previous.catch(() => {});
+      if (signal?.aborted) throw new SessionError('cancelled');
+      if (!initialData?.avatar || !data.verified) throw new SessionError('friend-data-unavailable');
+      if (profileRequest?.channel === data) throw new SessionError('busy');
+      if (uncertainFriendReads.has(key)) throw new SessionError(uncertain);
+      const heartbeat = data.heartbeat;
+      if (heartbeat) (await bounded(heartbeat, wait)).done();
+      if (signal?.aborted) throw new SessionError('cancelled');
+      wait.throwIfAborted();
+      auth.assertOpen();
+      let dispatched = false;
+      function request(command, fields, replyCommand, decode, matches) {
+        return requestFriendReply(data.socket, wait, command, fields, replyCommand, decode, matches, () => { dispatched = true; });
+      }
+      let result;
+      try {
+        result = await work(request);
+      } catch (error) {
+        if (!dispatched || wait.aborted) throw error;
+        uncertainFriendReads.add(key);
+        throw new SessionError(uncertain);
+      }
+      if (signal?.aborted) throw new SessionError('cancelled');
+      wait.throwIfAborted();
+      return result;
+    })();
+    friendReadQueue = task;
+    return task.finally(() => { if (friendReadQueue === task) friendReadQueue = undefined; });
+  }
+
+  function referencesFriendAvatar(avatarId) {
+    if (friendSearchRows.some(row => row.avatarId === avatarId)) return true;
+    return [...friendPages.values()].some(({ page }) => page.rows.some(
+      row => row.avatarId === avatarId && row.status !== 4 && row.status !== 5,
+    ));
   }
 
   function recordLobbyEvent(event) {
@@ -3606,6 +3708,12 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
       questData = null;
       achievementRecords.close();
       for (const subscription of avatarItemSubscriptions) subscription.unsubscribe();
+      for (const subscription of friendSubscriptions) subscription.unsubscribe();
+      friendLifetime.abort(new SessionError(reason === 'closed' ? 'cancelled' : 'network'));
+      friendPages.clear();
+      friendAvatars.clear();
+      uncertainFriendReads.clear();
+      friendSearchRows = [];
       removedAvatarItems.clear();
       uncertainLobbyItemUses.clear();
       replaceAvatarItems(null);
@@ -4422,7 +4530,7 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
         auth.ask(6, [], [7], { allowOther: true }),
         ...channels.map((channel) => {
           const { socket, pong } = channel;
-          if (profileRequest?.channel === channel || channel.heartbeat) return null;
+          if (profileRequest?.channel === channel || channel.heartbeat || (channel === data && friendReadQueue)) return null;
           const heartbeat = socket.ask(3, [], [pong], { allowOther: true }).finally(() => {
             if (channel.heartbeat === heartbeat) channel.heartbeat = null;
           });
@@ -4466,6 +4574,70 @@ function activeSession(auth, channels, playerId, sessionKey, { questData, avatar
     },
     canUseLobbyAvatarItem,
     useLobbyAvatarItem,
+    async readLobbyFriendPage(type, offset, { signal } = {}) {
+      if (!Number.isInteger(type) || type < 0 || type > 2 || !Number.isInteger(offset) || offset < 0 || offset > 0x7fffffff) {
+        throw new SessionError('friend-data-unavailable');
+      }
+      const key = `${type}:${offset}`;
+      if (signal?.aborted) throw new SessionError('cancelled');
+      const existing = cachedFriendPage(key);
+      if (existing) return existing;
+      return readFriendData(signal, key, async request => {
+        const cached = cachedFriendPage(key);
+        if (cached) return cached;
+        const avatarId = initialData.avatar.id;
+        const page = await request(DATA_FRIEND_PAGE_REQUEST, [type, offset, FRIEND_PAGE_SIZE], DATA_FRIEND_PAGE_REPLY,
+          readFriendPageReply, value => value.type === type && value.offset === offset);
+        const before = hasIncomingLobbyFriendRequest();
+        friendPages.set(key, { avatarId, page, receivedAt: performance.now() });
+        const after = hasIncomingLobbyFriendRequest();
+        if (before !== after) {
+          for (const subscription of [...friendSubscriptions]) {
+            if (friendSubscriptions.has(subscription)) notifyLobbyListener(subscription.listener, after);
+          }
+        }
+        return page;
+      });
+    },
+    async searchLobbyFriends(query, { signal } = {}) {
+      if (typeof query !== 'string' || query.length < 3 || query.length > 12 || /[\p{Cc}\p{Cs}]/u.test(query)) {
+        throw new SessionError('friend-search-invalid');
+      }
+      return readFriendData(signal, 'search', async request => {
+        const results = await request(DATA_FRIEND_SEARCH_REQUEST, [query], DATA_FRIEND_SEARCH_REPLY, readFriendSearchReply);
+        const known = new Set([...friendPages.values()].flatMap(({ page }) => page.rows.map(({ avatarId }) => avatarId)));
+        const rows = results.filter(row => {
+          if (row.playerId === playerId || known.has(row.avatarId)) return false;
+          known.add(row.avatarId);
+          return true;
+        });
+        friendSearchRows = Object.freeze(rows);
+        return Object.freeze({ count: results.length, rows: friendSearchRows });
+      });
+    },
+    async readLobbyFriendAvatar(avatarId, { signal } = {}) {
+      if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 0x7fffffff) throw new SessionError('friend-data-unavailable');
+      return readFriendData(signal, `avatar:${avatarId}`, async request => {
+        if (!referencesFriendAvatar(avatarId)) throw new SessionError('friend-data-unavailable');
+        if (friendAvatars.has(avatarId)) return friendAvatars.get(avatarId);
+        const profile = await request(DATA_FRIEND_AVATAR_REQUEST, [avatarId], DATA_FRIEND_AVATAR_REPLY,
+          readFriendAvatarReply, value => value.avatarId === avatarId);
+        friendAvatars.set(avatarId, profile);
+        return profile;
+      });
+    },
+    hasIncomingLobbyFriendRequest,
+    subscribeLobbyFriendRequests(listener, { signal } = {}) {
+      if (!initialData || signal?.aborted || typeof listener !== 'function') return () => {};
+      const subscription = { listener, unsubscribe() {
+        friendSubscriptions.delete(subscription);
+        signal?.removeEventListener('abort', subscription.unsubscribe);
+      } };
+      friendSubscriptions.add(subscription);
+      signal?.addEventListener('abort', subscription.unsubscribe, { once: true });
+      notifyLobbyListener(listener, hasIncomingLobbyFriendRequest());
+      return subscription.unsubscribe;
+    },
     refreshLobbyAvatar() {
       const now = performance.now();
       if (!initialData?.avatar || profileRequest || questRequest || questReturn) return false;

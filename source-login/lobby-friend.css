@@ -1,0 +1,178 @@
+@font-face {
+  font-family: 'Unlight Friend Ming';
+  src: url('./lobby-friend-art/friend-mincho.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Unlight Friend Waiting';
+  src: url('./lobby-friend-art/friend-mincho-bold.woff') format('woff');
+  font-display: swap;
+}
+
+#lobby-friend-shell {
+  position: fixed;
+  inset: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: clip;
+  border: 0;
+  background: transparent;
+}
+
+#lobby-friend-shell::backdrop { background: transparent; }
+
+#lobby-friend {
+  position: absolute;
+  isolation: isolate;
+  color: #000;
+  font: 10px Verdana, sans-serif;
+}
+
+#lobby-friend [hidden] { display: none !important; }
+
+.lobby-friend-art,
+.lobby-friend-label {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lobby-friend-button {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-friend-button:is(:disabled, [aria-pressed="true"]) { cursor: default; }
+
+.lobby-friend-button:focus-visible,
+#lobby-friend-search-input:focus-visible { outline: 1px solid #82e1f9; outline-offset: 1px; }
+
+.lobby-friend-button > [data-skin]:not([data-skin="up"]),
+.lobby-friend-button:not(:disabled):is(:hover, :focus-visible, :active, [data-retained-hover="true"]) > [data-skin="up"],
+.lobby-friend-button:not(:disabled):active > [data-skin="over"],
+.lobby-friend-button[aria-pressed="true"] > [data-skin] { visibility: hidden; }
+
+.lobby-friend-button:not(:disabled):is(:hover, :focus-visible, [data-retained-hover="true"]):not(:active):not([aria-pressed="true"]) > [data-skin="over"],
+.lobby-friend-button:not(:disabled):active:not([aria-pressed="true"]) > [data-skin="down"] { visibility: visible; }
+
+#lobby-friend-page,
+#lobby-friend-count {
+  padding: 0 2px;
+  font: 10px/10px 'Unlight Friend Ming', serif;
+}
+#lobby-friend-page { text-align: center; }
+
+#lobby-friend-rows,
+#lobby-friend-search-form { position: absolute; inset: 0; margin: 0; pointer-events: none; }
+
+.lobby-friend-card {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.lobby-friend-avatar-clip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 98px;
+  height: 120px;
+  overflow: clip;
+  pointer-events: none;
+}
+
+/* AvatarClip.as uses the same parts at (-1, 0, 0, 1, 50, 340) for the Match Room crop. */
+.lobby-friend-avatar {
+  position: absolute;
+  left: 180px;
+  top: -70px;
+  width: 290px;
+  height: 450px;
+  max-width: none;
+  transform: scaleX(-1);
+  transform-origin: left top;
+}
+
+.lobby-friend-card[data-status="0"] .lobby-friend-avatar { filter: brightness(.3); }
+
+.lobby-friend-name-plate,
+.lobby-friend-name,
+.lobby-friend-level,
+.lobby-friend-waiting {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.lobby-friend-name-plate { background: rgb(238 238 238 / .5); }
+
+.lobby-friend-name {
+  padding: 2px;
+  font: bold 12px 'Unlight Friend Ming', 'Unlight Record Ming', var(--interface-font, sans-serif);
+  text-align: center;
+}
+
+.lobby-friend-level,
+.lobby-friend-waiting,
+.lobby-friend-card-action > span,
+.lobby-friend-invite > span,
+#lobby-friend-search-submit > span {
+  color: #fff;
+  text-shadow: 0 0 1px #000, 0 0 2px #000, 0 0 2px #000;
+}
+
+.lobby-friend-level {
+  padding: 2px 0 0 2px;
+  font: 16px/16px 'Bradley Gratis', serif;
+  letter-spacing: 3px;
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.lobby-friend-waiting {
+  padding-top: 2px;
+  font: 14px 'Unlight Friend Waiting', 'Unlight Friend Ming', var(--interface-font, serif);
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+.lobby-friend-card-action > span,
+.lobby-friend-invite > span,
+#lobby-friend-search-submit > span {
+  position: absolute;
+  font: 12px 'Unlight Friend Ming', var(--interface-font, serif);
+  text-align: center;
+  pointer-events: none;
+}
+
+.lobby-friend-card-remove { visibility: hidden; }
+.lobby-friend-card:hover .lobby-friend-card-remove { visibility: visible; }
+
+#lobby-friend-search-input {
+  position: absolute;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid #696969;
+  border-top-color: #303030;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font: 11px 'Unlight Friend Ming', var(--interface-font, sans-serif);
+}
+
+#lobby-friend-search-input:disabled { background: #eee; color: #555; }
+#lobby-friend-search-form > :is(button, input) { pointer-events: auto; }

@@ -149,7 +149,7 @@ const questFields = [
 ];
 const fields = [
   ...questFields,
-  2 * 4, { key: 'freeDuelCount', width: 1 }, // friend_max, part_max, free_duel_count.
+  { key: 'friendMax', width: 4 }, 4, { key: 'freeDuelCount', width: 1 }, // friend_max, part_max, free_duel_count.
   3 * 4, { key: 'currentDeck', width: 1 }, // Original exp, gem and Quest find power, then current_deck.
   1 + 5 * 4, // Sale type/time, favorite character, tower floor, and event flag/count.
   { key: 'tutorialQuestFlag', width: 4 },
@@ -880,6 +880,10 @@ export function createQuestDataReader() {
     freeDuelCount() {
       const count = values.freeDuelCount;
       return count >= 0 && count <= MAX_FREE_DUEL_COUNT ? count : null;
+    },
+    friendMax() {
+      const total = values.friendMax;
+      return total >= 0 ? total : null;
     },
     deckChoices() {
       try {

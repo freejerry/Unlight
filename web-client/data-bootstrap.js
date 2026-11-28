@@ -42,6 +42,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
   let reader;
   let quests = createQuestDataReader();
   let equippedPartIds = null;
+  let friendMax = null;
   let avatarItemInventory = null;
   const cancel = () => {
     void reader?.cancel().catch(() => {});
@@ -76,6 +77,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
           quests?.push(value);
         } catch {
           equippedPartIds = quests.equippedPartIds();
+          friendMax = quests.friendMax();
           avatarItemInventory = quests.itemInventory();
           quests.dispose();
           quests = null;
@@ -98,6 +100,7 @@ async function readAvatar(compressed, signal, includeDeckCollection = false) {
       energyRemainingSeconds: null,
       energyReceivedAt: null,
       freeDuelCount: quests?.freeDuelCount() ?? null,
+      friendMax: quests?.friendMax() ?? friendMax,
       equippedPartIds: quests?.equippedPartIds() ?? equippedPartIds,
       questDecks: quests?.deckChoices() ?? [],
     };

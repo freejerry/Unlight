@@ -69,9 +69,10 @@
 
 ### 右側好友清單
 
-- **已盤點原始碼。** 開啟重設至好友分類，窗體自 `(125,-120)` 至 `(125,150)`，300 ms Quad-out，關閉用 150 ms sine-out。面板開啟時阻止底層點擊。每頁五欄兩列，列卡使用實際角色名、等級及裝備。右側按鈕的提醒只取已讀關係中待本人確認的狀態 1，等候總數包括送出與收到。[按鈕狀態](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [進退場](../../../app/client/src/view/FriendListView.as#L249) · [列卡與分頁](../../../app/client/src/view/scene/common/FriendListContainer.as#L148)
-- 好友、等待、封鎖由已認證 Data `CS8` 以類型 1、0、2 取每頁十筆，`SC12` 另帶各類總數。顯示角色資料時以正整數角色 ID 送 `CS5` 等 `SC9`。原分頁在總數恰為十的倍數時多一空頁。封鎖分頁仍可能收到被對方封鎖的關係，畫面只列本人封鎖的資料。搜尋用三至十二個字元，按 Enter 或按鈕才送 `CS15`，`SC26` 回傳同伺服器的角色名稱前綴比對結果，原版亦有一秒等候顯示。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版資料服務](../../../app/server/src/controller/data_controller.rb#L24) · [封鎖計數與排序](../../../app/server/src/model/friend_link.rb#L84)
-- 首輪驗收涵蓋點擊入口、四種分類、翻頁、收到及送出的待確認、空搜尋、同伺服器前綴匹配，以及一般關閉。關閉會另外觸發 Lobby `CS35(true)` 成就檢查。好友申請、接受、刪除與封鎖需寫入並依照原伺服器回覆，另以隔離角色驗收。[關閉行為](../../../app/client/src/view/FriendListView.as#L319) · [原版關係寫入](../../../app/server/src/controller/lobby_controller.rb#L235)
+- 大廳與設定的好友按鈕實際點擊區是 `(712,528,48,32)`，原紅色提示圖在 `(712,521)`。只以已讀關係中待本人確認的狀態 1 啟用紅色提示。兩種待確認總數含送出與收到。528×408 窗體以 300 ms Quad-out 從 `(125,-120)` 到 `(125,150)`，關閉用 150 ms sine-out。開啟時阻止底層點擊。每頁五欄兩列，卡片從原始裝備部件繪製角色，旁列真實角色名、等級及上線狀態。[按鈕狀態](../../../app/client/src/view/image/common/FriendListButton.as#L67) · [進退場](../../../app/client/src/view/FriendListView.as#L249) · [窗體與名片素材](../../../source-login/lobby-friend-art/index.json)
+- 好友、等待、封鎖由已認證 Data `CS8` 以類型 1、0、2 取每頁十筆，`SC12` 另帶各類總數。顯示已披露的正整數角色 ID 時送 `CS5` 等 `SC9`，介面只使用實際角色資料。好友容量取已認證的 Data `SC6` 或創角 Lobby `SC4`，後續由 Lobby `SC19` 更新。同登入短時間內翻回及重開沿用五分鐘快取。原分頁在總數恰為十的倍數時多一空頁。封鎖資料可能包含被對方封鎖的關係，畫面只列本人封鎖，且不補取對方封鎖列的角色名片。[原版清單快取](../../../app/client/src/model/FriendLink.as#L175) · [原版資料服務](../../../app/server/src/controller/data_controller.rb#L24) · [封鎖計數與排序](../../../app/server/src/model/friend_link.rb#L84)
+- 搜尋以三至十二個 UTF-16 碼元為限，使用 Enter 或按鈕。非空短名稱顯示 `Error` 和「最少需要3個字」，不送封包。有效搜尋由 Data `CS15` 與 `SC26` 確認同伺服器的角色名稱前綴，收到結果後維持原版的一秒等候，再更新名單。無結果清單清空。好友、等待及封鎖分頁顯示原版「邀請」與「邀請Code」，搜尋時兩者收起。關閉會觸發 Lobby `CS35(true)` 成就檢查。好友申請、接受、刪除、封鎖與邀請流程需經各自的原版確認及伺服器回覆，另以隔離角色驗收。[搜尋控制器](../../../app/client/src/view/FriendListView.as#L377) · [原版搜尋限制](../../../app/server/src/controller/data_controller.rb#L152) · [關閉行為](../../../app/client/src/view/FriendListView.as#L319) · [原版關係寫入](../../../app/server/src/controller/lobby_controller.rb#L235)
+- **已實跑。** 原版與新版均驗證 10+1 分頁、等待與封鎖的兩個方向、空清單、短名稱、同服搜尋及設定。原 `SC26` 回傳角色 ID 20、19，原版畫面依序呈現 19、20，新版沿用該畫面次序。鼠標點選後的橙字皮膚跨設定保留。關閉時檢查成就，瀏覽前後關係列一致。原版開啟中定時刷新及所有關係寫入仍待各自驗收。[原版搜尋物件迭代](../../../app/client/src/view/scene/common/FriendListContainer.as#L514) · [並排截圖及封包](/workspace/shared/unlight-web-port/flash-parity/lobby-friend-live/README.md)
 
 ### 右側紀錄清單
 

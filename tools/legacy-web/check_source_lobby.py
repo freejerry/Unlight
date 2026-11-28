@@ -262,6 +262,23 @@ def observe_session_codec(page, origin):
           default: return [];
         }
       }
+      function friendReplyFields(body, command) {
+        const fields = read(body);
+        const csv = () => fields.string(65536, true).split(',').filter(Boolean).map(Number);
+        let result;
+        if (command === 9) {
+          const id = fields.int();
+          fields.string(4096, true); // The display name is never copied to the trace.
+          result = [id, fields.int(), csv(), fields.int()];
+        } else if (command === 12) {
+          const [players, avatars, statuses] = Array.from({length: 3}, csv);
+          fields.string(65536, true); // The original parallel account-name vector is private.
+          result = [...Array.from({length: 5}, () => fields.int()),
+            players.map((id, index) => [id, avatars[index], statuses[index]])];
+        } else result = [csv()];
+        fields.done();
+        return result;
+      }
       export function encodeCommand(command, fields, key) {
         const frame = encode(command, fields, key);
         const isRefresh = command === 17 && fields?.length === 0;
@@ -283,7 +300,12 @@ def observe_session_codec(page, origin):
         const lobbyItem = command === 18 && fields?.length === 1 && Number.isInteger(fields[0]) ? fields[0] : null;
         const notice = command === 35 && fields?.length === 1 ? fields[0]?.value : null;
         const claim = command === 51 && fields?.length === 1 && /^[0-9]+,[0-9]+$/.test(fields[0]) ? fields[0] : null;
-        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, lobbyItem, notice, claim, key});
+        const friendRead = window.qaQuestWire?.friends && (
+          command === 8 && fields?.length === 3 ? fields.map(Number)
+          : command === 5 && fields?.length === 1 && Number.isInteger(fields[0]) ? fields
+          : command === 15 && fields?.length === 1 && typeof fields[0] === 'string' ? [new TextEncoder().encode(fields[0]).length]
+          : []);
+        window.qaQuestWire?.encoded.set(frame, {command, confirm, deck, action, movement, combat, item, lobbyItem, notice, claim, key, friendRead});
         return frame;
       }
       export function readReply(body) {
@@ -301,6 +323,10 @@ def observe_session_codec(page, origin):
           startup.push([reply.command, body.byteLength, ...(metadata ? achievementFields(body, metadata) : [])]);
         }
         const lobby = window.qaQuestWire?.readingLobby;
+        const friends = window.qaQuestWire?.readingFriends;
+        if (friends && [9, 12, 26].includes(reply.command)) {
+          friends.replies.push([reply.command, body.byteLength, ...friendReplyFields(body, reply.command)]);
+        }
         if (lobby && reply.command === 9 && body.byteLength === 6) {
           lobby.replies.push([9, body.byteLength, new DataView(body.buffer, body.byteOffset, body.byteLength).getInt32(2)]);
         }
@@ -364,7 +390,7 @@ def observe_session_codec(page, origin):
 
 
 def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lobby_energy=False, lobby_record=False,
-                       lobby_items=False):
+                       lobby_items=False, lobby_friends=False):
     page.add_init_script(f"""(() => {{
       const wire = window.qaQuestWire = {{ sockets: [], encoded: new WeakMap(), hold: false, lobby: {{sent: [], replies: []}} }};
       if ({str(lobby_achievements).lower()}) wire.lobby.achievement = {{sent: [], replies: [], sockets: 0, closed: 0, timeline: []}};
@@ -375,6 +401,7 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         wire.itemBootstrap = [];
         wire.lobby.items = {{sent: [], replies: []}};
       }}
+      if ({str(lobby_friends).lower()}) wire.friends = {{sent: [], replies: []}};
       wire.holdAction = (command, {{forward = 0, through = null, before = null}} = {{}}) => {{
         const peer = wire.sockets.at(-1);
         wire.actionHold = {{ peer, command, forward, through, before, start: peer.sent.length,
@@ -391,7 +418,10 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         constructor(...args) {{
           super(...args);
           const service = new URL(this.url).pathname;
-          if (service === '/socket/12003' && wire.startupData) this.startupData = wire.startupData;
+          if (service === '/socket/12003') {{
+            this.startupData = wire.startupData;
+            this.friendData = wire.friends;
+          }}
           if (service === '/socket/12002') {{
             this.lobbyTrace = wire.lobby;
             if (this.lobbyTrace.achievement) {{
@@ -410,6 +440,7 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         }}
         send(frame) {{
           const encoded = wire.encoded.get(frame);
+          if (this.friendData && encoded) this.friendData.sent.push([encoded.command, frame.byteLength, ...encoded.friendRead]);
           if (this.questTrace) {{
             const {{ command, confirm, action, movement, combat, item, key }} = encoded;
             const hold = wire.actionHold;
@@ -445,10 +476,13 @@ def observe_quest_wire(page, *, lobby_achievements=False, startup_data=False, lo
         set onmessage(handler) {{
           let heldBytes = 0;
           let heldSize = 0;
-          if (this.startupData) {{
+          if (this.startupData || this.friendData) {{
             super.onmessage = event => {{
               wire.readingStartupData = this.startupData;
-              try {{ handler.call(this, event); }} finally {{ wire.readingStartupData = null; }}
+              wire.readingFriends = this.friendData;
+              try {{ handler.call(this, event); }} finally {{
+                wire.readingStartupData = wire.readingFriends = null;
+              }}
             }};
             return;
           }}
@@ -2253,14 +2287,14 @@ def check_terminal_presentation(page, stage, directory, mode, inventory_id, duel
 
 def open_quest_fixture(page, origin, player_id, name, password, *, lobby_achievements=False, startup_records=False,
                        q3_bootstrap_record=False, startup_directory=None, defer_lobby_notices=False,
-                       lobby_record=False, lobby_items=False):
+                       lobby_record=False, lobby_items=False, lobby_friends=False):
     _, sockets, errors = observe(page)
     live = []
     page.on("websocket", lambda socket: live.append(socket))
     observe_session_codec(page, origin)
     observe_quest_wire(page, lobby_achievements=lobby_achievements or startup_records,
                        startup_data=lobby_achievements or startup_records or lobby_record or lobby_items,
-                       lobby_record=lobby_record, lobby_items=lobby_items)
+                       lobby_record=lobby_record, lobby_items=lobby_items, lobby_friends=lobby_friends)
     assert page.goto(origin + ENTRY, wait_until="domcontentloaded").ok
     stage = page.locator("#stage")
     expect(stage).to_have_attribute("data-entry", "ready", timeout=TIMEOUT)
@@ -3202,21 +3236,298 @@ def check_q3_record_projection(page, stage, directory, *, finished):
     assert read_lobby_achievement_trace(page)["sent"] == before
 
 
-def observe_record_motion(page):
-    page.evaluate("""() => {
-      window.qaRecordMotion = [];
+def observe_lobby_panel_motion(page, panel_id):
+    page.evaluate("""panelId => {
+      window.qaLobbyPanelMotion = [];
       function sample() {
-        const dialog = document.getElementById('lobby-record');
+        const dialog = document.getElementById(panelId);
         const state = dialog?.dataset.state || 'closed';
-        const prior = window.qaRecordMotion.at(-1);
+        const prior = window.qaLobbyPanelMotion.at(-1);
         if (prior?.state === state) return;
-        window.qaRecordMotion.push({state, at: performance.now(), durations: dialog?.getAnimations({subtree: true})
+        window.qaLobbyPanelMotion.push({state, at: performance.now(), durations: dialog?.getAnimations({subtree: true})
           .map(animation => animation.effect.getTiming().duration) ?? []});
+        if (panelId === 'lobby-friend') window.qaQuestWire.lobby.achievement.timeline.push(['ui', panelId, state]);
       }
       new MutationObserver(sample).observe(document.getElementById('stage'), {
         childList: true, subtree: true, attributes: true, attributeFilter: ['data-state', 'open'],
       });
-    }""")
+    }""", panel_id)
+
+
+def check_lobby_panel_motion(page, opening, closing):
+    motion = page.evaluate("window.qaLobbyPanelMotion")
+    by_state = {event["state"]: event for event in motion}
+    for start, finish, duration in (("opening", "open", opening), ("closing", "closed", closing)):
+        elapsed = by_state[finish]["at"] - by_state[start]["at"]
+        assert elapsed >= duration * 0.8, motion
+        if by_state[start]["durations"]:
+            assert duration in by_state[start]["durations"], motion
+    return motion
+
+
+def stored_friend_links(database, player_id, server):
+    return query(database, """SELECT id, relating_player_id, related_player_id, friend_type, invated, updated_at
+        FROM friend_links WHERE server_type = ? AND (relating_player_id = ? OR related_player_id = ?) ORDER BY id""",
+                 server, player_id, player_id)
+
+
+def friend_fixture_lists(database, player_id, server, links):
+    lists = {0: [], 1: [], 2: []}
+    for _, owner, target, kind, _, _ in links:
+        other = target if owner == player_id else owner
+        ((avatar_id, live),) = query(database, """SELECT a.id, p.state & 1 FROM players p
+            JOIN avatars a ON a.player_id = p.id WHERE p.id = ? AND p.server_type = ? AND a.server_type = ?""",
+                                    other, server, server)
+        status = {0: int(owner != player_id), 1: 6 if live else 2, 2: 3 if owner == player_id else 4}[kind]
+        lists[kind].append([other, avatar_id, status])
+    return lists
+
+
+def check_friend_rows(rows, database, expected):
+    expect(rows).to_have_count(len(expected), timeout=TIMEOUT)
+    actual = rows.evaluate_all("""rows => rows.map(({dataset: data}) =>
+      [Number(data.playerId), Number(data.avatarId), Number(data.status)])""")
+    assert actual == expected, (actual, expected)
+    for index, (player_id, avatar_id, _) in enumerate(expected):
+        ((display_name, level),) = query(database, "SELECT name, level FROM avatars WHERE id = ? AND player_id = ?", avatar_id, player_id)
+        row = rows.nth(index)
+        expect(row.locator(".lobby-friend-name")).to_have_text(display_name, timeout=TIMEOUT)
+        expect(row.locator(".lobby-friend-level")).to_have_text(f"Level: {level}")
+        expect(row.locator("canvas.lobby-friend-avatar")).to_have_attribute("data-avatar-state", "ready")
+        assert row.locator("button:enabled").count() == 0
+
+
+def check_friend_invites(panel, *, visible=True):
+    for selector in ("#lobby-friend-invite", "#lobby-friend-invite-code"):
+        invite = panel.locator(selector)
+        if visible:
+            expect(invite).to_be_visible()
+            expect(invite).to_be_disabled()
+        else:
+            expect(invite).to_have_count(1)
+            expect(invite).to_be_hidden()
+
+
+def friend_search_rows(packet, expected):
+    pairs = packet[2]
+    rows = [[player_id, avatar_id, 7] for player_id, avatar_id in zip(pairs[::2], pairs[1::2], strict=True)]
+    assert sorted(rows) == sorted(expected), (rows, expected)
+    return rows
+
+
+def check_friend_data_trace(database, lists, search, trace):
+    totals = [len(lists[1]), sum(row[2] == 3 for row in lists[2]), len(lists[0])]
+    list_reads = [packet for packet in trace["sent"] if packet[0] == 8]
+    assert list_reads and list_reads[0] == [8, 17, 1, 0, 10], list_reads
+    required = {(1, 0), (1, 10), (0, 0), (2, 0)} if search else {(1, 0)}
+    assert all(packet[1] == 17 and packet[4] == 10 for packet in list_reads), list_reads
+    assert {tuple(packet[2:4]) for packet in list_reads} == required, list_reads
+    list_replies = [packet for packet in trace["replies"] if packet[0] == 12]
+    assert len(list_replies) == len(list_reads)
+    for request, reply in zip(list_reads, list_replies, strict=True):
+        kind, offset = request[2:4]
+        assert reply[2:] == [kind, offset, *totals, lists[kind][offset:offset + 10]], (request, reply)
+    searches = [packet for packet in trace["sent"] if packet[0] == 15]
+    assert searches == ([[15, 16, 9]] * 2 if search else []), searches
+    search_replies = [packet for packet in trace["replies"] if packet[0] == 26]
+    if search:
+        first, empty = search_replies
+        friend_search_rows(first, search)
+        assert empty[2] == [], empty
+    else:
+        assert not search_replies, search_replies
+    allowed = {row[1] for rows in lists.values() for row in rows if row[2] != 4} | {row[1] for row in search}
+    detail_reads = [packet for packet in trace["sent"] if packet[0] == 5]
+    assert all(packet[1] == 9 for packet in detail_reads)
+    assert {packet[2] for packet in detail_reads} == allowed, detail_reads
+    detail_replies = [packet for packet in trace["replies"] if packet[0] == 9]
+    assert sorted(packet[2] for packet in detail_reads) == sorted(packet[2] for packet in detail_replies)
+    for _, _, avatar_id, level, parts, point in detail_replies:
+        assert query(database, "SELECT level, point FROM avatars WHERE id = ?", avatar_id) == [(level, point)]
+        assert parts == equipped_parts(database, avatar_id), (avatar_id, parts)
+    assert all(packet[0] in (5, 8, 15) for packet in trace["sent"]), trace["sent"]
+
+
+def check_lobby_friends(page, origin, database, name, password, directory, mode):
+    ((player_id, flags),) = player(database, name)
+    ((display_name, server, capacity),) = query(database, "SELECT name, server_type, friend_max FROM avatars WHERE player_id = ?", player_id)
+    assert flags == 0
+    links = stored_friend_links(database, player_id, server)
+    lists = friend_fixture_lists(database, player_id, server, links)
+    search = []
+    if mode == "populated":
+        assert [len(lists[key]) for key in (1, 0, 2)] == [11, 2, 2], lists
+        assert [row[2] for row in lists[1]] == [6] + [2] * 10
+        assert sorted(row[2] for row in lists[0]) == [0, 1] and sorted(row[2] for row in lists[2]) == [3, 4]
+        prefix = display_name[:3]
+        search = [[other, avatar, 7] for other, avatar in query(database, """SELECT player_id, id FROM avatars
+            WHERE server_type = ? AND player_id > 0 AND player_id <> ? AND substr(name, 1, 3) = ? ORDER BY id""",
+                                                                               server, player_id, prefix)]
+        assert len(search) == 2 and not {row[1] for row in search}.intersection(row[1] for rows in lists.values() for row in rows)
+        assert query(database, "SELECT COUNT(*) FROM avatars WHERE server_type <> ? AND substr(name, 1, 3) = ?", server, prefix)[0][0] > 0
+        miss = "零結果"
+        assert query(database, "SELECT COUNT(*) FROM avatars WHERE server_type = ? AND substr(name, 1, 3) = ?", server, miss) == [(0,)]
+    else:
+        assert not links, links
+
+    traffic = {}
+
+    def count_websocket(peer):
+        service = urlsplit(peer.url).path
+        packets = traffic.setdefault(service, [])
+        peer.on("framesent", lambda _payload: packets.append(None))
+
+    def packet_counts():
+        return {service: len(packets) for service, packets in traffic.items()}
+
+    page.on("websocket", count_websocket)
+    page.emulate_media(reduced_motion="no-preference")
+    stage, live, errors = open_quest_fixture(page, origin, player_id, name, password, startup_records=True, lobby_friends=True)
+    start = wait_lobby_achievement_check(page, 1)
+    music(page, "lobby", "ulbgm02.mp3")
+    audio = stage.locator('audio[data-bgm-scene="lobby"]')
+    clock = audio.evaluate("audio => { window.qaFriendMusic = audio; return audio.currentTime; }")
+    before = packet_counts()
+    original_data = page.evaluate("window.qaQuestWire.friends")
+    assert set(before) == SESSION_PORTS and len(live) == 4
+    observe_lobby_panel_motion(page, "lobby-friend")
+    trigger = page.locator("#lobby-friend-open")
+    outer, icon = stage.bounding_box(), trigger.bounding_box()
+    assert outer and icon
+    assert (icon["x"] - outer["x"], icon["y"] - outer["y"], icon["width"], icon["height"]) == (712, 528, 48, 32), icon
+    trigger.click()
+    panel = page.locator("#lobby-friend-shell[open] #lobby-friend")
+    expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-status", "ready", timeout=TIMEOUT)
+    expect(panel).to_have_attribute("data-tab", "friend")
+    check_friend_invites(panel)
+    box = panel.bounding_box()
+    assert box
+    geometry = (box["x"] - outer["x"], box["y"] - outer["y"], box["width"], box["height"])
+    assert all(abs(value - expected) < 1 for value, expected in zip(geometry, (125, 150, 528, 408))), geometry
+    close = panel.locator("#lobby-friend-close")
+    expect(close).to_be_focused()
+    rows = panel.locator("#lobby-friend-rows [data-player-id]")
+    page_label = panel.locator("#lobby-friend-page")
+    count_label = panel.locator("#lobby-friend-count")
+    expect(page_label).to_have_text("1/2" if mode == "populated" else "1/1")
+    expect(count_label).to_have_text(f"Friend {len(lists[1])}/{capacity}")
+    check_friend_rows(rows, database, lists[1][:10])
+    for index, row in enumerate(rows.all()):
+        bounds = row.bounding_box()
+        assert bounds and abs(bounds["x"] - outer["x"] - 157 - index % 5 * 94) < 1 and abs(bounds["y"] - outer["y"] - 220 - index // 5 * 145) < 1, bounds
+    capture(stage, directory, "01-friend-original-first-page.png", animations="allow")
+
+    if mode == "populated":
+        panel.locator("#lobby-friend-next").click()
+        expect(page_label).to_have_text("2/2")
+        check_friend_rows(rows, database, lists[1][10:])
+        capture(stage, directory, "02-friend-original-second-page.png", animations="allow")
+        panel.locator("#lobby-friend-prev").press("Enter")
+        expect(page_label).to_have_text("1/2")
+        check_friend_rows(rows, database, lists[1][:10])
+
+        panel.locator("#lobby-friend-tab-waiting").click()
+        expect(panel).to_have_attribute("data-tab", "waiting")
+        check_friend_invites(panel)
+        check_friend_rows(rows, database, lists[0])
+        expect(trigger).to_have_attribute("data-pending", "true")
+        capture(stage, directory, "03-friend-original-waiting.png", animations="allow")
+        panel.locator("#lobby-friend-tab-block").click()
+        expect(panel).to_have_attribute("data-tab", "block")
+        check_friend_invites(panel)
+        check_friend_rows(rows, database, [row for row in lists[2] if row[2] == 3])
+        expect(count_label).to_have_text("Blocked 1/10")
+        capture(stage, directory, "04-friend-original-own-block.png", animations="allow")
+
+        panel.locator("#lobby-friend-tab-search").click()
+        expect(panel).to_have_attribute("data-tab", "search")
+        check_friend_invites(panel, visible=False)
+        field = panel.locator("#lobby-friend-search-input")
+        field.fill(prefix[:2])
+        field.press("Enter")
+        warning = page.locator('#login-alert[open][data-kind="lobby-friend-search-error"]')
+        expect(warning.locator("#login-alert-title")).to_have_text("Error")
+        expect(warning.locator("#login-alert-message")).to_have_text("最少需要3個字")
+        capture(stage, directory, "05a-friend-short-search-error.png", animations="allow")
+        warning.locator("#login-alert-ok").press("Enter")
+        expect(warning).to_have_count(0)
+        expect(field).to_be_focused()
+        assert not page.evaluate("window.qaQuestWire.friends.sent.some(packet => packet[0] === 15)")
+        field.fill(prefix)
+        field.press("Enter")
+        page.wait_for_function("() => window.qaQuestWire.friends.replies.some(packet => packet[0] === 26)", timeout=TIMEOUT)
+        reply = page.evaluate("window.qaQuestWire.friends.replies.find(packet => packet[0] === 26)")
+        wire_rows = friend_search_rows(reply, search)
+        # Flash enumerates search results by their numeric avatar keys.
+        check_friend_rows(rows, database, sorted(wire_rows, key=lambda row: row[1]))
+        capture(stage, directory, "05-friend-original-search-results.png", animations="allow")
+        field.fill(miss)
+        field.press("Enter")
+        page.wait_for_function("() => window.qaQuestWire.friends.replies.filter(packet => packet[0] === 26).length === 2", timeout=TIMEOUT)
+        expect(rows).to_have_count(0)
+        capture(stage, directory, "06-friend-original-empty-search.png", animations="allow")
+
+    other_panel = page.locator("#lobby-record-open").bounding_box()
+    assert other_panel
+    page.mouse.click(other_panel["x"] + other_panel["width"] / 2, other_panel["y"] + other_panel["height"] / 2)
+    expect(page.locator("#lobby-record-shell[open]")).to_have_count(0)
+    expect(panel).to_have_attribute("data-state", "open")
+    expect(stage).to_have_attribute("data-screen", "lobby")
+    browse = packet_counts()
+    assert all(count == browse[service] for service, count in before.items() if service != "/socket/12003"), (before, browse)
+    close.click()
+    expect(panel).to_have_count(0)
+    expect(trigger).to_be_focused()
+    end = wait_lobby_achievement_check(page, 2)
+    assert [packet[0] for packet in end["sent"][len(start["sent"]):]] == [35, 3], end["sent"]
+    close_marker = end["timeline"].index(["ui", "lobby-friend", "closed"], end["timeline"].index(["ui", "lobby-friend", "closing"]))
+    assert any(event == ["lobby", "send", 35] for event in end["timeline"][len(start["timeline"]):close_marker])
+    assert audio.evaluate("(audio, clock) => audio === window.qaFriendMusic && !audio.paused && audio.currentTime > clock", clock)
+    motion = check_lobby_panel_motion(page, 300, 150)
+    data = page.evaluate("window.qaQuestWire.friends")
+    trace = {key: data[key][len(original_data[key]):] for key in ("sent", "replies")}
+    assert browse["/socket/12003"] - before["/socket/12003"] == len(trace["sent"])
+    check_friend_data_trace(database, lists, search, trace)
+    assert len(live) == 4 and all(not peer.is_closed() for peer in live) and not errors, errors
+    assert stored_friend_links(database, player_id, server) == links
+    capture(stage, directory, "07-friend-closed-focus-return.png", animations="allow")
+
+    options_proof = None
+    if mode == "populated":
+        page.locator("#lobby-option-open").click()
+        screen(stage, "options")
+        expect(page.locator("#options-avatar")).to_have_attribute("data-avatar-state", "ready")
+        option_launcher = page.locator("#options-friend-open")
+        option_launcher.press("Enter")
+        expect(panel).to_have_attribute("data-state", "open", timeout=TIMEOUT)
+        expect(panel).to_have_attribute("data-tab", "friend")
+        expect(panel).to_have_attribute("data-status", "ready")
+        check_friend_invites(panel)
+        expect(page_label).to_have_text("1/2")
+        expect(count_label).to_have_text(f"Friend 11/{capacity}")
+        check_friend_rows(rows, database, lists[1][:10])
+        options_browse = page.evaluate("window.qaQuestWire.friends")
+        new_data = options_browse["sent"][len(data["sent"]):]
+        assert all(packet[0] == 5 and packet[2] in {row[1] for row in lists[1][:10]} for packet in new_data), new_data
+        assert audio.evaluate("(audio, clock) => audio === window.qaFriendMusic && !audio.paused && audio.currentTime > clock", clock)
+        capture(stage, directory, "08-options-friend-cached-first-page.png", animations="allow")
+
+        options_before = read_lobby_achievement_trace(page)
+        close.click()
+        expect(panel).to_have_count(0)
+        expect(option_launcher).to_be_focused()
+        options_after = read_lobby_achievement_trace(page)
+        close_sends = options_after["sent"][len(options_before["sent"]):]
+        assert close_sends == [[35, 6, 1, "options", None]], close_sends
+        assert len(live) == 4 and all(not peer.is_closed() for peer in live) and not errors, errors
+        assert stored_friend_links(database, player_id, server) == links
+        options_proof = {"dataReads": new_data, "closeSends": close_sends}
+    if directory is not None:
+        evidence = {"mode": mode, "relations": [link[:5] for link in links], "data": trace,
+                    "closeFence": end["timeline"][len(start["timeline"]):], "motion": motion,
+                    "geometry": geometry, "framesBefore": before, "framesWhileBrowsing": browse, "options": options_proof}
+        (directory / "lobby-friend-wire.json").write_text(json.dumps(evidence, indent=2) + "\n")
 
 
 def check_lobby_record(page, origin, database, name, password, directory):
@@ -3243,7 +3554,7 @@ def check_lobby_record(page, origin, database, name, password, directory):
     assert wire[2]["progress"] == "1", wire[2]
     before = {service: len(packets) for service, packets in traffic.items()}
     assert set(before) == SESSION_PORTS and len(live) == 4
-    observe_record_motion(page)
+    observe_lobby_panel_motion(page, "lobby-record")
 
     trigger = page.locator("#lobby-record-open")
     outer, button = stage.bounding_box(), trigger.bounding_box()
@@ -3350,13 +3661,7 @@ def check_lobby_record(page, origin, database, name, password, directory):
     close.press("Enter")
     expect(panel).to_have_count(0)
     expect(trigger).to_be_focused()
-    motion = page.evaluate("window.qaRecordMotion")
-    by_state = {event["state"]: event for event in motion}
-    for start, finish, duration in (("opening", "open", 300), ("closing", "closed", 150)):
-        elapsed = by_state[finish]["at"] - by_state[start]["at"]
-        assert elapsed >= duration * 0.8, motion
-        if by_state[start]["durations"]:
-            assert duration in by_state[start]["durations"], motion
+    motion = check_lobby_panel_motion(page, 300, 150)
     after = {service: len(packets) for service, packets in traffic.items()}
     assert before == after and len(live) == 4 and all(not peer.is_closed() for peer in live), (before, after)
     assert lobby_record_states(database, avatar_id) == stored and not errors, errors
@@ -5449,7 +5754,7 @@ def check_lobby_hover(page, stage, directory):
         expect(over).to_be_hidden()
         clip = entry.bounding_box()
         resting = page.screenshot(clip=clip, scale="css", animations="disabled")
-        target = lobby.locator(f"#lobby-{symbol}-open") if symbol in {"record", "item"} else entry
+        target = lobby.locator(f"#lobby-{symbol}-open") if symbol in {"record", "friend", "item"} else entry
         target.hover()
         expect(up).to_be_hidden()
         expect(over).to_be_visible()
@@ -5751,7 +6056,7 @@ def check(page, origin, database, directory, selected_parts, *, verify_login_ros
     parts = equipped_parts(database, profile[0])
     first_portrait = check_avatar_canvas(page, stage, parts, responses)
     assert sorted(page.locator("#lobby-view button:visible").evaluate_all("nodes => nodes.map(node => node.id)")) == [
-        "lobby-ap-gauge", "lobby-item-open", "lobby-option-open", "lobby-quest-load", "lobby-record-open",
+        "lobby-ap-gauge", "lobby-friend-open", "lobby-item-open", "lobby-option-open", "lobby-quest-load", "lobby-record-open",
     ]
     assert len(sockets) == first + 5 and all(not socket.is_closed() for socket in live[first:first + 4])
     assert query(database, "SELECT tutorial FROM players WHERE id = ?", player_id) == [(0,)]
@@ -6052,6 +6357,8 @@ def main():
                         help="Verify the native read-only Record book using a warm level 1 original fixture")
     parser.add_argument("--lobby-item", choices=("populated", "empty", "potion"),
                         help="Verify the original basic Item drawer and optional real potion use")
+    parser.add_argument("--lobby-friend", choices=("populated", "empty"), nargs="?", const="populated",
+                        help="Verify the original read-only Friends viewer on the matching disposable fixture")
     parser.add_argument("--quest-peaceful", choices=("empty", "gem"),
                         help="Hold the original q4 empty terrain or q32 fixed Gem proof before the next battle")
     parser.add_argument("--quest-peaceful-gem-slot", choices=(3, 5), type=int,
@@ -6106,6 +6413,10 @@ def main():
                             or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
                             or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record):
         parser.error("--lobby-item requires --quest-start-user with the matching disposable Item fixture")
+    if args.lobby_friend and (not args.quest_start_user or args.quest_start_fault or args.quest_next_turn
+                              or args.quest_terminal or args.quest_next_land or args.quest_complete_q3
+                              or args.quest_peaceful or args.quest_high_low or args.lobby_selectable or args.lobby_record or args.lobby_item):
+        parser.error("--lobby-friend requires --quest-start-user with the matching disposable Friends fixture")
     origin = f"http://127.0.0.1:{args.port}"
     with sync_playwright() as tool:
         browser = tool.chromium.launch(executable_path=args.chromium, args=[
@@ -6138,6 +6449,10 @@ def main():
                     check_lobby_items(page, origin, args.database, args.quest_start_user,
                                       args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens, args.lobby_item)
                     print(f"Original Lobby Item drawer and authenticated inventory passed ({args.lobby_item}).")
+                elif args.lobby_friend:
+                    check_lobby_friends(page, origin, args.database, args.quest_start_user,
+                                        args.quest_start_password_file.read_text().rstrip("\r\n"), args.screens, args.lobby_friend)
+                    print(f"Original Friends lists and same-peer close check passed ({args.lobby_friend}).")
                 elif args.quest_high_low:
                     page_errors = []
                     page.on("pageerror", lambda error: page_errors.append(str(error)))

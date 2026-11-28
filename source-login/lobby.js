@@ -5,6 +5,7 @@ import { mountLobbyAchievementNotices } from './lobby-achievement.js';
 import { mountLobbyApTooltip } from './lobby-ap-tooltip.js';
 import { mountLobbyRecord } from './lobby-record.js';
 import { mountLobbyItem } from './lobby-item.js';
+import { mountLobbyFriend } from './lobby-friend.js';
 
 const layout = `
   <section id="lobby-view" class="source-lobby lobby-stage" aria-labelledby="lobby-title">
@@ -42,6 +43,7 @@ const layout = `
     <div class="lower-slot chat" aria-hidden="true"></div>
     <button id="lobby-ap-gauge" type="button" aria-label="AP" aria-describedby="lobby-ap-tooltip"></button>
     <button id="lobby-record-open" class="source-record-open" type="button" aria-label="紀錄" aria-haspopup="dialog" disabled></button>
+    <button id="lobby-friend-open" class="source-friend-open" type="button" aria-label="好友" aria-haspopup="dialog" disabled></button>
     <button id="lobby-item-open" class="source-item-open" type="button" aria-label="道具" aria-haspopup="dialog" disabled></button>
     <dialog id="lobby-news" class="stage-panel source-lobby-dialog" aria-labelledby="lobby-news-title" data-state="loading">
       <header class="source-lobby-dialog-heading">
@@ -92,7 +94,15 @@ async function loadNews(view, signal) {
   return false;
 }
 
-export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed }) {
+export function bindLobbyFriendIndicator(trigger, { session, signal }) {
+  session.subscribeLobbyFriendRequests?.(pending => {
+    trigger.dataset.pending = String(pending);
+    if (pending) trigger.setAttribute('aria-description', '有待確認的好友申請');
+    else trigger.removeAttribute('aria-description');
+  }, { signal });
+}
+
+export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQuest, onSelectableClaimed, onFriendSearchInvalid }) {
   const template = document.createElement('template');
   template.innerHTML = layout;
   const view = template.content.firstElementChild;
@@ -121,23 +131,33 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     onIdle: presentNotices,
   });
   const recordTrigger = view.querySelector('#lobby-record-open');
+  const friendTrigger = view.querySelector('#lobby-friend-open');
   const itemTrigger = view.querySelector('#lobby-item-open');
   const canOpenSidePanel = () => ready && !checkingAchievements && !news.open && !achievements.hasPending();
   const record = mountLobbyRecord(view, {
     session, trigger: recordTrigger, signal,
-    canOpen: () => canOpenSidePanel() && !item.isOpen(),
+    canOpen: () => canOpenSidePanel() && !item.isOpen() && !friend.isOpen(),
     onClose: presentNotices,
   });
   const item = mountLobbyItem(view, {
     session, trigger: itemTrigger, signal,
-    canOpen: () => canOpenSidePanel() && !record.isOpen(),
+    canOpen: () => canOpenSidePanel() && !record.isOpen() && !friend.isOpen(),
     onClose: presentNotices,
     onRowClick: playBackClick,
     onUse: (row, options) => session.useLobbyAvatarItem(row.inventoryId, options),
   });
+  const friend = mountLobbyFriend(view, {
+    session, trigger: friendTrigger, signal,
+    canOpen: () => canOpenSidePanel() && !record.isOpen() && !item.isOpen(),
+    // The session accepts one achievement check per signal, including the entry check.
+    onClosing: () => checkAchievements(AbortSignal.any([signal])),
+    onClose: presentNotices,
+    onSearchInvalid: focus => onFriendSearchInvalid?.(focus, signal),
+  });
+  bindLobbyFriendIndicator(friendTrigger, { session, signal });
 
   function presentNotices() {
-    if (!ready || checkingAchievements || signal.aborted || news.open || record.isOpen() || item.isOpen()) return;
+    if (!ready || checkingAchievements || signal.aborted || news.open || record.isOpen() || item.isOpen() || friend.isOpen()) return;
     if (waitingNotices.length) {
       achievements.enqueue(waitingNotices.splice(0));
     } else if (newsAvailable && !newsSeen.has(session.playerId) && !achievements.hasPending() &&
@@ -145,6 +165,15 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
       news.showModal();
       newsSeen.add(session.playerId);
     }
+  }
+
+  function checkAchievements(scope) {
+    checkingAchievements = true;
+    const finishCheck = () => {
+      checkingAchievements = false;
+      presentNotices();
+    };
+    if (!session.checkLobbyAchievements({ signal: scope, onBatchReady: finishCheck })) finishCheck();
   }
 
   const options = view.querySelector('#lobby-option-open');
@@ -181,6 +210,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
     options.disabled = !canOpenOptions;
     quest.disabled = !canOpenQuest;
     recordTrigger.disabled = false;
+    friendTrigger.disabled = false;
     itemTrigger.disabled = false;
     if (document.activeElement === title) focus.focus({ preventScroll: true });
     session.refreshLobbyAvatar?.();
@@ -190,12 +220,7 @@ export function mountLobby(host, { session, fadeIn, returnFocus, onOptions, onQu
       presentNotices();
     }, { signal });
     presentNotices();
-    const finishCheck = () => {
-      checkingAchievements = false;
-      presentNotices();
-    };
-    checkingAchievements = true;
-    if (!session.checkLobbyAchievements({ signal, onBatchReady: finishCheck })) finishCheck();
+    checkAchievements(signal);
   });
 
   return () => {
